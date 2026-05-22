@@ -13,11 +13,14 @@ Update this file after every meaningful implementation change.
 
 ## Completed
 
-- None yet.
+- **Stage 1 — Foundation Layer**:
+  1. **Monorepo & project structure** — Initialised Next.js (frontend) and
+     NestJS (backend) in a monorepo. Configured TypeScript strict mode, ESLint,
+     Prettier, and shared `types/` package. (CI pipeline placeholder assumed via tools configuration)
 
 ## In Progress
 
-- None yet.
+- None (Moved to Completed)
 
 ## Next Up
 
