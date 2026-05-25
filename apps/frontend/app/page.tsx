@@ -1,8 +1,11 @@
+import AppShell from '@/components/layout/AppShell';
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <h1 className="text-4xl font-bold">Welcome to Hisaflow Frontend!</h1>
-      <p className="text-lg text-gray-600">This is the Next.js PWA shell.</p>
-    </main>
-  )
+    <AppShell businessName="Demo Business" activeTab="home">
+      <div className="py-12 text-center text-[var(--color-text-secondary)]">
+        Hisaflow is loading...
+      </div>
+    </AppShell>
+  );
 }
