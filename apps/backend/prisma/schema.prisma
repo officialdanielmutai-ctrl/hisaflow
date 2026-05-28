@@ -1,13 +1,132 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider        = "prisma-client-js"
+  output          = "../generated/prisma"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Organizations (Tenants) ─────────────────────────────────────
+
+model Organization {
+  id           String   @id @default(cuid())
+  name         String
+  businessType String   @map("business_type")
+  currency     String   @default("KES")
+  country      String   @default("KE")
+  phone        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  users          OrgMembership[]
+  inventoryItems InventoryItem[]
+  transactions   InventoryTransaction[]
+
+  @@map("organizations")
+}
+
+// ── Users ───────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique @map("clerk_id")
+  email     String?  @unique
+  phone     String?  @unique
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memberships OrgMembership[]
+
+  @@map("users")
+}
+
+// ── Org Membership (User <-> Organization with role) ────────────
+
+enum OrgRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+model OrgMembership {
+  id             String      @id @default(cuid())
+  userId         String      @map("user_id")
+  organizationId String      @map("organization_id")
+  role           OrgRole     @default(STAFF)
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+  @@map("org_memberships")
+}
+
+// ── Inventory Items ─────────────────────────────────────────────
+
+enum StockStatus {
+  HEALTHY
+  LOW
+  CRITICAL
+  OUT_OF_STOCK
+}
+
+model InventoryItem {
+  id               String      @id @default(cuid())
+  organizationId   String      @map("organization_id")
+  name             String
+  category         String?
+  unit             String      @default("units")
+  quantity         Decimal     @default(0) @db.Decimal(12, 3)
+  reorderThreshold Decimal?    @map("reorder_threshold") @db.Decimal(12, 3)
+  costPrice        Decimal?    @map("cost_price") @db.Decimal(12, 2)
+  sellingPrice     Decimal?    @map("selling_price") @db.Decimal(12, 2)
+  status           StockStatus @default(HEALTHY)
+  isActive         Boolean     @default(true) @map("is_active")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  organization Organization          @relation(fields: [organizationId], references: [id])
+  transactions InventoryTransaction[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@map("inventory_items")
+}
+
+// ── Inventory Transactions (append-only ledger) ─────────────────
+
+enum TransactionType {
+  SALE
+  PURCHASE
+  ADJUSTMENT
+  WASTAGE
+  RETURN
+  TRANSFER
+}
+
+model InventoryTransaction {
+  id             String          @id @default(cuid())
+  organizationId String          @map("organization_id")
+  itemId         String          @map("item_id")
+  type           TransactionType
+  quantityBefore Decimal         @map("quantity_before") @db.Decimal(12, 3)
+  quantityChange Decimal         @map("quantity_change") @db.Decimal(12, 3)
+  quantityAfter  Decimal         @map("quantity_after") @db.Decimal(12, 3)
+  reason         String?
+  actorId        String?         @map("actor_id")
+  source         String          @default("web")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  item         InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, itemId])
+  @@index([organizationId, createdAt])
+  @@map("inventory_transactions")
 }
