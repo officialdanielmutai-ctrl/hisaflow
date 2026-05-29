@@ -17,6 +17,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@clerk/backend": "^3.4.14",
     "@hisaflow/types": "workspace:^",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.4",

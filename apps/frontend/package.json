@@ -10,6 +10,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,css}\""
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.4.2",
     "@hisaflow/types": "workspace:^",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
