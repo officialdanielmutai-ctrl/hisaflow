@@ -4,12 +4,14 @@ import {
   Post,
   Body,
   Param,
-  Request,
+  UseGuards,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
+import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
 
-// TODO: add ClerkAuthGuard when auth module is ready
+@UseGuards(ClerkAuthGuard)
 @Controller('organizations')
 export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
@@ -17,9 +19,9 @@ export class OrganizationsController {
   @Post()
   async createOrganization(
     @Body() dto: CreateOrganizationDto,
-    @Request() req: any,
+    @CurrentUser() user: { id: string; clerkId: string },
   ) {
-    const userId = req.user?.id ?? 'dev-user';
+    const userId = user.id;
     return this.organizationsService.create(dto, userId);
   }
 
