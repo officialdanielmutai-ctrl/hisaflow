@@ -1,17 +1,17 @@
 import { IsString, IsNumber, IsEnum, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TransactionType } from '../../../generated/prisma/client';
+import { TransactionType } from '../../../../generated/prisma/client';
 
 export class AdjustStockDto {
   @IsString()
-  itemId: string;
+  itemId!: string;
 
   @IsEnum(TransactionType)
   type: TransactionType;
 
   @IsNumber()
   @Type(() => Number)
-  quantityChange: number;
+  quantityChange!: number;
 
   @IsOptional()
   @IsString()

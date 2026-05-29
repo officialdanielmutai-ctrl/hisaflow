@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 
 export class CreateInventoryItemDto {
   @IsString()
-  name: string;
+  name!: string;
 
   @IsOptional()
   @IsString()
