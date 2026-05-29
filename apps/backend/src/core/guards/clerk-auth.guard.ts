@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClerkClient } from '@clerk/backend';
+import { verifyToken } from '@clerk/backend';
 
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
