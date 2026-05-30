@@ -1,76 +1,111 @@
-import AppShell from '@/components/layout/AppShell'
-import AlertCard from '@/components/system/AlertCard'
-import InventoryCard from '@/components/system/InventoryCard'
-import OperationalSummary from '@/components/system/OperationalSummary'
+'use client';
 
-export default function Home() {
+import { useOrganization } from '@clerk/nextjs';
+import AppShell from '@/components/layout/AppShell';
+import AlertCard from '@/components/system/AlertCard';
+import OperationalSummary from '@/components/system/OperationalSummary';
+import { useDashboard } from '@/hooks/useDashboard';
+
+export default function DashboardPage() {
+  const { organization } = useOrganization();
+  const organizationId = organization?.id ?? null;
+  const { data, loading, error } = useDashboard(organizationId);
+
+  if (loading) {
+    return (
+      <AppShell businessName="Hisaflow" activeTab="home">
+        <div className="flex flex-col gap-3">
+          {[1,2,3].map(i => (
+            <div key={i}
+              className="h-20 rounded-xl bg-[var(--color-bg-surface)]
+                animate-pulse" />
+          ))}
+        </div>
+      </AppShell>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <AppShell businessName="Hisaflow" activeTab="home">
+        <div className="py-12 text-center
+          text-[var(--color-text-secondary)]">
+          {error ?? 'No data available'}
+        </div>
+      </AppShell>
+    )
+  }
+
+  const { snapshot, attentionFeed } = data
+
   return (
-    <AppShell businessName="Demo Business" activeTab="home">
-      <div className="flex flex-col gap-4">
+    <AppShell
+      businessName={organization?.name ?? 'Hisaflow'}
+      activeTab="home"
+    >
+      <div className="flex flex-col gap-6">
         <section>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">
-            Needs Attention
-          </p>
-          <div className="flex flex-col gap-3">
-            <AlertCard
-              severity="critical"
-              title="Rice stock critical"
-              description="Current stock will run out in approximately 2 days based on recent sales."
-              actionLabel="Restock now"
-            />
-            <AlertCard
-              severity="warning"
-              title="Cooking oil running low"
-              description="Stock is below reorder threshold. Consider placing an order soon."
-              actionLabel="View stock"
-            />
-          </div>
-        </section>
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">
+          <p className="text-xs font-semibold uppercase
+            tracking-wide text-[var(--color-text-muted)] mb-3">
             Today
           </p>
           <div className="grid grid-cols-2 gap-3">
             <OperationalSummary
               label="Sales"
-              value="KES 4,200"
-              trend="up"
-              trendLabel="vs yesterday"
+              value={String(snapshot.todaySales)}
             />
             <OperationalSummary
               label="Low stock"
-              value="3 items"
-              trend="down"
-              trendLabel="needs action"
+              value={String(
+                snapshot.lowStockCount +
+                snapshot.criticalStockCount
+              )}
+              trend={
+                snapshot.lowStockCount > 0 ? 'down' : 'neutral'
+              }
+              trendLabel={
+                snapshot.lowStockCount > 0
+                  ? 'needs attention'
+                  : 'all good'
+              }
             />
           </div>
         </section>
+
+        {attentionFeed.length > 0 && (
+          <section>
+            <p className="text-xs font-semibold uppercase
+              tracking-wide text-[var(--color-text-muted)] mb-3">
+              Needs Attention
+            </p>
+            <div className="flex flex-col gap-3">
+              {attentionFeed.slice(0, 5).map((item, i) => (
+                <AlertCard
+                  key={item.itemId ?? i}
+                  severity={item.severity}
+                  title={item.title}
+                  description={item.description}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         <section>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">
+          <p className="text-xs font-semibold uppercase
+            tracking-wide text-[var(--color-text-muted)] mb-3">
             Inventory
           </p>
-          <div className="flex flex-col gap-3">
-            <InventoryCard
-              name="Unga wa Dọuma"
-              quantity={4}
-              unit="bags"
-              status="critical"
-              category="Dry goods"
-            />
-            <InventoryCard
-              name="Cooking Oil 1L"
-              quantity={12}
-              unit="bottles"
-              status="warning"
-              category="Oils"
-            />
-            <InventoryCard
-              name="Sugar 1kg"
-              quantity={28}
-              unit="packets"
-              status="success"
-              category="Dry goods"
-            />
+          <div className="rounded-xl bg-[var(--color-bg-surface)]
+            p-4 shadow-sm">
+            <p className="text-2xl font-bold
+              text-[var(--color-text-primary)]">
+              {snapshot.totalItems}
+            </p>
+            <p className="text-sm
+              text-[var(--color-text-secondary)]">
+              active items
+            </p>
           </div>
         </section>
       </div>
