@@ -20,7 +20,7 @@ export function useDashboard(organizationId: string | null) {
       try {
         const token = await getToken();
         if (!token) throw new Error('Not authenticated');
-        const result = await getDashboard(token, organizationId);
+        const result = await getDashboard(token, organizationId!);
         setData(result);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load dashboard');
