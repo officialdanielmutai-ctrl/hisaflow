@@ -109,7 +109,7 @@ export class AnalyticsService {
         item =>
           !fastMovingIds.has(item.id) &&
           item.status !== StockStatus.OUT_OF_STOCK &&
-          item.quantity > 0,
+          Number(item.quantity) > 0,
       )
       .slice(0, 5);
 
