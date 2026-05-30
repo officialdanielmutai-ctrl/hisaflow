@@ -7,7 +7,7 @@ export class AdjustStockDto {
   itemId!: string;
 
   @IsEnum(TransactionType)
-  type: TransactionType;
+  type!: TransactionType;
 
   @IsNumber()
   @Type(() => Number)
