@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useOrganization } from '@clerk/nextjs';
 import AppShell from '@/components/layout/AppShell';
 import AlertCard from '@/components/system/AlertCard';
@@ -7,8 +9,16 @@ import OperationalSummary from '@/components/system/OperationalSummary';
 import { useDashboard } from '@/hooks/useDashboard';
 
 export default function DashboardPage() {
-  const { organization } = useOrganization();
+  const { organization, isLoaded } = useOrganization();
   const organizationId = organization?.id ?? null;
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && !organization) {
+      router.push('/onboarding')
+    }
+  }, [isLoaded, organization, router]);
+
   const { data, loading, error } = useDashboard(organizationId);
 
   if (loading) {
