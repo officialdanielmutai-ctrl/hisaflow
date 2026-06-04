@@ -1,11 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useInventory } from '@/hooks/useInventory';
 import InventoryItemCard from '@/components/system/InventoryItemCard';
+import AddItemSheet from '@/components/mobile/AddItemSheet';
 import { PackageOpen } from 'lucide-react';
 
 export default function InventoryPage() {
   const { items, loading, error } = useInventory();
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-4">
@@ -13,6 +16,7 @@ export default function InventoryPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Inventory</h1>
         <button
+          onClick={() => setSheetOpen(true)}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)] text-xl font-bold text-white"
           aria-label="Add item"
         >
@@ -60,6 +64,14 @@ export default function InventoryPage() {
           ))}
         </div>
       )}
+
+      <AddItemSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onCreated={() => {
+          /* will add refresh logic next session */
+        }}
+      />
     </div>
   );
 }

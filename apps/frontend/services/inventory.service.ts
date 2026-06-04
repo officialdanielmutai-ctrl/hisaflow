@@ -1,4 +1,4 @@
-import { apiGet } from '@/lib/api-client';
+import { apiGet, apiPost } from '@/lib/api-client';
 
 export interface InventoryItem {
   id: string;
@@ -18,4 +18,23 @@ export async function getInventoryItems(
   organizationId: string,
 ): Promise<InventoryItem[]> {
   return apiGet<InventoryItem[]>('/inventory', token, organizationId);
+}
+
+export interface CreateProductPayload {
+  name: string;
+  sku?: string;
+  category?: string;
+  unit: string;
+  quantity: number;
+  reorderThreshold: number;
+  costPrice?: number;
+  sellingPrice?: number;
+}
+
+export async function createInventoryItem(
+  payload: CreateProductPayload,
+  token: string,
+  organizationId: string,
+): Promise<InventoryItem> {
+  return apiPost<InventoryItem>('/inventory', payload, token, organizationId);
 }
