@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { AlertType, AlertSeverity } from '../../../generated/prisma/client';
+import { AfricasTalkingProvider } from '../../infrastructure/providers/africas-talking.provider';
 
 @Injectable()
 export class AlertsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly africasTalking: AfricasTalkingProvider,
+  ) {}
 
   async checkLowStock(organizationId: string) {
     const items = await this.prisma.db.inventoryItem.findMany({
@@ -43,6 +47,17 @@ export class AlertsService {
             : `${item.name} has ${item.quantity} ${item.unit} remaining (threshold: ${item.reorderThreshold}).`,
         },
       });
+
+      const org = await this.prisma.db.organization.findUnique({
+        where: { id: organizationId },
+        select: { phone: true },
+      });
+      if (org?.phone) {
+        await this.africasTalking.sendSms(
+          org.phone,
+          `${item.name} is ${isOut ? 'out of stock' : 'running low'}. Current: ${item.quantity} ${item.unit}.`,
+        );
+      }
     }
 
     return { checked: items.length, alerts: lowStock.length };
