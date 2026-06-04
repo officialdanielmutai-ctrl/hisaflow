@@ -25,6 +25,13 @@ export class OrganizationsController {
     return this.organizationsService.create(dto, userId);
   }
 
+  @Get('me')
+  async getMyOrganizations(
+    @CurrentUser() user: { id: string; clerkId: string },
+  ) {
+    return this.organizationsService.getOrganizationsForUser(user.id);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.organizationsService.findById(id);

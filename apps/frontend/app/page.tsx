@@ -7,6 +7,7 @@ import AppShell from '@/components/layout/AppShell';
 import AlertCard from '@/components/system/AlertCard';
 import OperationalSummary from '@/components/system/OperationalSummary';
 import { useDashboard } from '@/hooks/useDashboard';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
 
 export default function DashboardPage() {
   const { organization, isLoaded } = useOrganization();
@@ -20,6 +21,7 @@ export default function DashboardPage() {
   }, [isLoaded, organization, router]);
 
   const { data, loading, error } = useDashboard(organizationId);
+  const { membership } = useMyOrganization();
 
   if (loading) {
     return (
@@ -50,7 +52,7 @@ export default function DashboardPage() {
 
   return (
     <AppShell
-      businessName={organization?.name ?? 'Hisaflow'}
+      businessName={membership?.organization.name ?? 'Hisaflow'}
       activeTab="home"
     >
       <div className="flex flex-col gap-6">
