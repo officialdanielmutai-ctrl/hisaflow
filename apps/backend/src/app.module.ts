@@ -8,6 +8,7 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { AiIngestionModule } from './modules/ai-ingestion/ai-ingestion.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     InventoryModule,
     TransactionsModule,
     AiIngestionModule,
+    AlertsModule,
     AnalyticsModule,
   ],
   controllers: [AppController],
