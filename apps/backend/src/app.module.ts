@@ -7,6 +7,7 @@ import { DatabaseModule } from './infrastructure/database/database.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
+import { AiIngestionModule } from './modules/ai-ingestion/ai-ingestion.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     OrganizationsModule,
     InventoryModule,
     TransactionsModule,
+    AiIngestionModule,
     AnalyticsModule,
   ],
   controllers: [AppController],
