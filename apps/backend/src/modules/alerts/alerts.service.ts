@@ -1,50 +1,57 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
+import { AlertType, AlertSeverity } from '../../../generated/prisma/client';
 
 @Injectable()
 export class AlertsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async checkLowStock(organizationId: string) {
-    const products = await this.prisma.db.product.findMany({
+    const items = await this.prisma.db.inventoryItem.findMany({
       where: {
         organizationId,
         isActive: true,
-        reorderThreshold: { gt: 0 },
+        reorderThreshold: { not: null },
       },
     });
 
-    const lowStock = products.filter(
-      (p) => Number(p.quantity) <= Number(p.reorderThreshold),
+    const lowStock = items.filter(
+      (item) => Number(item.quantity) <= Number(item.reorderThreshold),
     );
 
-    for (const p of lowStock) {
+    for (const item of lowStock) {
+      const isOut = Number(item.quantity) === 0;
       await this.prisma.db.alert.upsert({
         where: {
-          organizationId_productId_type: {
+          organizationId_itemId_type: {
             organizationId,
-            productId: p.id,
-            type: 'LOW_STOCK',
+            itemId: item.id,
+            type: AlertType.LOW_STOCK,
           },
         },
         update: { resolvedAt: null, updatedAt: new Date() },
         create: {
           organizationId,
-          productId: p.id,
-          type: 'LOW_STOCK',
-          message: `${p.name} is low on stock (${p.quantity} ${p.unit} remaining, threshold: ${p.reorderThreshold})`,
-          severity: Number(p.quantity) === 0 ? 'CRITICAL' : 'WARNING',
+          itemId: item.id,
+          type: AlertType.LOW_STOCK,
+          severity: isOut ? AlertSeverity.CRITICAL : AlertSeverity.WARNING,
+          title: isOut
+            ? `${item.name} is out of stock`
+            : `${item.name} is running low`,
+          description: isOut
+            ? `${item.name} has zero stock. Restock immediately.`
+            : `${item.name} has ${item.quantity} ${item.unit} remaining (threshold: ${item.reorderThreshold}).`,
         },
       });
     }
 
-    return { checked: products.length, alerts: lowStock.length };
+    return { checked: items.length, alerts: lowStock.length };
   }
 
   async getActiveAlerts(organizationId: string) {
     return this.prisma.db.alert.findMany({
       where: { organizationId, resolvedAt: null },
-      include: { product: { select: { name: true, unit: true } } },
+      include: { item: { select: { name: true, unit: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
