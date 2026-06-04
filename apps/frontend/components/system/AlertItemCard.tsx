@@ -18,7 +18,12 @@ export default function AlertItemCard({ alert }: AlertItemCardProps) {
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium">{alert.message}</p>
+        <div>
+          <p className="text-sm font-medium">{alert.title}</p>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            {alert.description}
+          </p>
+        </div>
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-medium ${
             isCritical

@@ -3,10 +3,11 @@ import { apiGet, apiPost } from '@/lib/api-client';
 export interface Alert {
   id: string;
   type: string;
-  message: string;
-  severity: 'WARNING' | 'CRITICAL';
+  severity: 'WARNING' | 'CRITICAL' | 'INFO';
+  title: string;
+  description: string;
   createdAt: string;
-  product: { name: string; unit: string } | null;
+  item: { name: string; unit: string } | null;
 }
 
 export async function getActiveAlerts(
