@@ -22,7 +22,7 @@ model Organization {
   users          OrgMembership[]
   inventoryItems InventoryItem[]
   transactions   InventoryTransaction[]
-
+  alerts         Alert[]                     // <-- added
   @@map("organizations")
 }
 
@@ -90,7 +90,7 @@ model InventoryItem {
 
   organization Organization          @relation(fields: [organizationId], references: [id])
   transactions InventoryTransaction[]
-
+  alerts       Alert[]               // <-- added
   @@index([organizationId])
   @@index([organizationId, status])
   @@map("inventory_items")
@@ -127,4 +127,47 @@ model InventoryTransaction {
   @@index([organizationId, itemId])
   @@index([organizationId, createdAt])
   @@map("inventory_transactions")
+}
+
+// ── Alert Enums ─────────────────────────────────────────────────
+enum AlertSeverity {
+  CRITICAL
+  WARNING
+  INFO
+}
+
+enum AlertType {
+  LOW_STOCK
+  OUT_OF_STOCK
+  DEAD_STOCK
+  EXPIRY_RISK
+  VARIANCE
+}
+
+enum AlertStatus {
+  UNRESOLVED
+  RESOLVED
+  SNOOZED
+}
+
+// ── Alerts ───────────────────────────────────────────────────────
+model Alert {
+  id             String        @id @default(cuid())
+  organizationId String        @map("organization_id")
+  itemId         String        @map("item_id")
+  type           AlertType
+  severity       AlertSeverity
+  status         AlertStatus   @default(UNRESOLVED)
+  title          String
+  description    String
+  resolvedAt     DateTime?     @map("resolved_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  item          InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@unique([organizationId, itemId, type], name: "organizationId_itemId_type")
+  @@index([organizationId, status])
+  @@map("alerts")
 }
