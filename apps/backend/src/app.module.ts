@@ -6,10 +6,19 @@ import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { TransactionsModule } from './modules/transactions/transactions.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
-  imports: [CoreModule, ConfigModule, DatabaseModule, OrganizationsModule, InventoryModule, AnalyticsModule],
+  imports: [
+    CoreModule,
+    ConfigModule,
+    DatabaseModule,
+    OrganizationsModule,
+    InventoryModule,
+    TransactionsModule,
+    AnalyticsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

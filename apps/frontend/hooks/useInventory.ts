@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth, useOrganization } from '@clerk/nextjs';
-import { getInventoryItems, type InventoryItem } from '@/services/inventory.service';
+import {
+  getInventoryItems,
+  type InventoryItem,
+} from '@/services/inventory.service';
 
-export function useInventory() {
+export function useInventory(refreshKey = 0) {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,6 +19,8 @@ export function useInventory() {
       setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     async function fetchItems() {
       try {
@@ -31,7 +36,7 @@ export function useInventory() {
     }
 
     fetchItems();
-  }, [organization?.id, getToken]);
+  }, [organization?.id, getToken, refreshKey]);
 
   return { items, loading, error };
 }
