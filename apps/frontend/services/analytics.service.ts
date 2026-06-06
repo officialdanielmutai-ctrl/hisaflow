@@ -21,6 +21,11 @@ export interface DashboardData {
     outOfStock: number;
     stockHealthPct: number;
   };
+  recommendedActions: Array<{
+    action: string;
+    reason: string;
+    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  }>;
 }
 
 export async function getDashboardData(
