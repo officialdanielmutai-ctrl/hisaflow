@@ -204,6 +204,36 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Recommended Actions */}
+      <div className="mb-6">
+        <h2 className="font-bold text-base mb-3">
+          Recommended Actions
+        </h2>
+        {data.recommendedActions.map((rec, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border p-4 mb-2 flex items-start gap-3"
+          >
+            <span
+              className={`h-2 w-2 rounded-full mt-2 flex-shrink-0 ${
+                rec.priority === 'HIGH'
+                  ? 'bg-red-500'
+                  : rec.priority === 'MEDIUM'
+                    ? 'bg-yellow-500'
+                    : 'bg-green-500'
+              }`}
+            />
+            <div>
+              <p className="text-sm font-semibold">{rec.action}</p>
+              <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+                {rec.reason}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }
