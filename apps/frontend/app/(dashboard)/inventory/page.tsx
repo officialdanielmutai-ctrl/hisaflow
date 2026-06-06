@@ -6,34 +6,38 @@ import InventoryItemCard from '@/components/system/InventoryItemCard';
 import AddItemSheet from '@/components/mobile/AddItemSheet';
 import QuickTransactionSheet from '@/components/mobile/QuickTransactionSheet';
 import { PackageOpen } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
 
 export default function InventoryPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const { items, loading, error } = useInventory(refreshKey);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [txSheetOpen, setTxSheetOpen] = useState(false);
+  const { canManageInventory } = useRole();
 
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Inventory</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setTxSheetOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-bold text-[var(--color-text-primary)]"
-            aria-label="Log transaction"
-          >
-            ↕
-          </button>
-          <button
-            onClick={() => setSheetOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)] text-xl font-bold text-white"
-            aria-label="Add item"
-          >
-            +
-          </button>
-        </div>
+        {canManageInventory && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTxSheetOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-bold text-[var(--color-text-primary)]"
+              aria-label="Log transaction"
+            >
+              ↕
+            </button>
+            <button
+              onClick={() => setSheetOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)] text-xl font-bold text-white"
+              aria-label="Add item"
+            >
+              +
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Loading skeleton */}
@@ -77,18 +81,21 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <AddItemSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        onCreated={() => setRefreshKey((k) => k + 1)}
-      />
-
-      <QuickTransactionSheet
-        open={txSheetOpen}
-        onClose={() => setTxSheetOpen(false)}
-        onCompleted={() => setRefreshKey((k) => k + 1)}
-        items={items}
-      />
+      {canManageInventory && (
+        <>
+          <AddItemSheet
+            open={sheetOpen}
+            onClose={() => setSheetOpen(false)}
+            onCreated={() => setRefreshKey((k) => k + 1)}
+          />
+          <QuickTransactionSheet
+            open={txSheetOpen}
+            onClose={() => setTxSheetOpen(false)}
+            onCompleted={() => setRefreshKey((k) => k + 1)}
+            items={items}
+          />
+        </>
+      )}
     </div>
   );
 }

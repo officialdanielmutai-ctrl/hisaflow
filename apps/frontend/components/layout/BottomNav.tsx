@@ -9,6 +9,7 @@ import {
   Bell,
   Sparkles,
 } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
 
 const tabs = [
   { href: '/', label: 'Home', icon: LayoutDashboard },
@@ -20,11 +21,16 @@ const tabs = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { isStaff } = useRole();
+
+  const visibleTabs = isStaff
+    ? tabs.filter((tab) => tab.href !== '/ai')
+    : tabs;
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-[var(--color-bg-surface)] border-t border-[var(--color-border)] pb-safe">
       <div className="flex items-center justify-around h-16">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const isActive =
             pathname === tab.href ||
             (tab.href !== '/' && pathname.startsWith(tab.href));

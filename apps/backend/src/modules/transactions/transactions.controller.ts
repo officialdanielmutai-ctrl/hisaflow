@@ -3,8 +3,9 @@ import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
+import { RolesGuard } from '../../core/guards/roles.guard';
 
-@UseGuards(ClerkAuthGuard)
+@UseGuards(ClerkAuthGuard, RolesGuard)
 @Controller('transactions')
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}

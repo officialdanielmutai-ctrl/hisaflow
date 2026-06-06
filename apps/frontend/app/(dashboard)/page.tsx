@@ -5,11 +5,13 @@ import { useAuth, useOrganization, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Bell, TrendingUp, ShoppingCart, AlertTriangle, Coins, Package } from 'lucide-react';
 import { getDashboardData, DashboardData } from '@/services/analytics.service';
+import { useRole } from '@/hooks/useRole';
 
 export default function DashboardPage() {
   const { getToken } = useAuth();
   const { organization } = useOrganization();
   const { user } = useUser();
+  const { canViewAnalytics } = useRole();
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +20,11 @@ export default function DashboardPage() {
   useEffect(() => {
     const orgId = organization?.id;
     if (!orgId) {
+      setLoading(false);
+      return;
+    }
+
+    if (!canViewAnalytics) {
       setLoading(false);
       return;
     }
@@ -36,7 +43,31 @@ export default function DashboardPage() {
     }
 
     fetchDashboard();
-  }, [organization?.id, getToken]);
+  }, [organization?.id, getToken, canViewAnalytics]);
+
+  const firstName = user?.firstName ?? 'there';
+  const timeLabel = data?.greeting.timeOfDay ?? 'morning';
+  const greetingEmoji = timeLabel === 'morning' ? '👋' : timeLabel === 'afternoon' ? '☀️' : '🌙';
+
+  // Staff view – no analytics dashboard
+  if (!canViewAnalytics) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-xl font-bold">
+          Good {timeLabel}, {firstName} {greetingEmoji}
+        </h1>
+        <p className="text-sm text-[var(--color-text-secondary)]">
+          {organization?.name}
+        </p>
+        <div className="rounded-2xl border p-6 text-center">
+          <p className="font-semibold">Staff View</p>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+            Use the Log tab to record transactions.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -58,10 +89,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const firstName = user?.firstName ?? 'there';
-  const timeLabel = data.greeting.timeOfDay;
-  const greetingEmoji = timeLabel === 'morning' ? '👋' : timeLabel === 'afternoon' ? '☀️' : '🌙';
 
   return (
     <div className="flex flex-col gap-6">

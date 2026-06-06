@@ -36,7 +36,11 @@ export class ClerkAuthGuard implements CanActivate {
         create: { clerkId },
       });
 
-      request.user = { id: user.id, clerkId };
+      request.user = {
+        id: user.id,
+        clerkId,
+        orgRole: (payload as any).org_role ?? null,
+      };
       return true;
     } catch {
       throw new UnauthorizedException('Invalid token');
