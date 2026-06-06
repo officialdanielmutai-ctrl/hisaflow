@@ -9,23 +9,7 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('dashboard')
-  async getDashboard(@OrgContext() organizationId: string) {
-    const [snapshot, attentionFeed, inventoryHealth] = await Promise.all([
-      this.analyticsService.getOperationalSnapshot(organizationId),
-      this.analyticsService.getAttentionFeed(organizationId),
-      this.analyticsService.getInventoryHealth(organizationId),
-    ]);
-
-    return { snapshot, attentionFeed, inventoryHealth };
-  }
-
-  @Get('attention-feed')
-  getAttentionFeed(@OrgContext() organizationId: string) {
-    return this.analyticsService.getAttentionFeed(organizationId);
-  }
-
-  @Get('snapshot')
-  getSnapshot(@OrgContext() organizationId: string) {
-    return this.analyticsService.getOperationalSnapshot(organizationId);
+  getDashboard(@OrgContext() organizationId: string) {
+    return this.analyticsService.getDashboardSummary(organizationId);
   }
 }
