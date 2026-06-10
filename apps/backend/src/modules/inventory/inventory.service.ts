@@ -7,14 +7,14 @@ export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
   findAll(organizationId: string) {
-    return this.prisma.db.product.findMany({
+    return this.prisma.db.inventoryItem.findMany({
       where: { organizationId, isActive: true },
       orderBy: { name: 'asc' },
     });
   }
 
   create(dto: CreateProductDto, organizationId: string) {
-    return this.prisma.db.product.create({
+    return this.prisma.db.inventoryItem.create({
       data: { ...dto, organizationId },
     });
   }

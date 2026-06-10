@@ -1,14 +1,14 @@
 'use client';
 
-import { useOrganization } from '@clerk/nextjs';
+import { useMyOrganization } from './useMyOrganization';
 
 export function useRole() {
-  const { membership } = useOrganization();
-  const role = (membership?.role as string) ?? null;
+  const { membership } = useMyOrganization();
+  const role = membership?.role ?? null;
 
-  const isOwner = role === 'org:owner' || role === 'OWNER';
-  const isManager = role === 'org:manager' || role === 'MANAGER';
-  const isStaff = role === 'org:member' || role === 'STAFF';
+  const isOwner = role === 'OWNER';
+  const isManager = role === 'MANAGER';
+  const isStaff = role === 'STAFF';
 
   return {
     role,

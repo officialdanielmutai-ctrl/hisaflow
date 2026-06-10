@@ -18,7 +18,7 @@ export class AiIngestionController {
     @Body() dto: IngestTextDto,
     @OrgContext() orgId: string,
   ) {
-    const items = await this.prisma.db.product.findMany({
+    const items = await this.prisma.db.inventoryItem.findMany({
       where: { organizationId: orgId, isActive: true },
       select: { id: true, name: true },
     });

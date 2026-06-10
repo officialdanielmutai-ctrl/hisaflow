@@ -7,7 +7,7 @@ export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateTransactionDto, organizationId: string) {
-    const product = await this.prisma.db.product.findFirst({
+    const product = await this.prisma.db.inventoryItem.findFirst({
       where: { id: dto.itemId, organizationId },
     });
 
@@ -28,22 +28,23 @@ export class TransactionsService {
     }
 
     await this.prisma.db.$transaction([
-      this.prisma.db.product.update({
+      this.prisma.db.inventoryItem.update({
         where: { id: dto.itemId },
         data: { quantity: newQty },
       }),
-      this.prisma.db.stockTransaction.create({
+      this.prisma.db.inventoryTransaction.create({
         data: {
           organizationId,
-          productId: dto.itemId,
+          itemId: dto.itemId,       // was: productId
           type: dto.type,
           quantityBefore: currentQty,
           quantityChange: isDeduction ? -dto.quantity : dto.quantity,
           quantityAfter: newQty,
-          note: dto.note ?? null,
+          reason: dto.note ?? null, // was: note (schema field is 'reason')
           source: 'manual',
         },
-      }),
+   }),
+
     ]);
 
     return { success: true, newQuantity: newQty };

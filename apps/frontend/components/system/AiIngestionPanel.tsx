@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth, useOrganization } from '@clerk/nextjs';
+import { useAuth } from '@clerk/nextjs';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { parseInventoryText, type ParsedAction } from '@/services/ai-ingestion.service';
 import { logTransaction } from '@/services/transactions.service';
 
@@ -16,17 +17,17 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   const [actions, setActions] = useState<ParsedAction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
-  const { organization } = useOrganization();
+  const { membership } = useMyOrganization();
 
   const handleParse = async () => {
-    if (!organization?.id || !text.trim()) return;
+    if (!membership?.organization.id || !text.trim()) return;
     setActions([]);
     setError(null);
     setParsing(true);
     try {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
-      const result = await parseInventoryText(text.trim(), token, organization.id);
+      const result = await parseInventoryText(text.trim(), token, membership!.organization.id);
       setActions(result);
     } catch (err) {
       console.error(err);
@@ -37,7 +38,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   };
 
   const handleConfirmAll = async () => {
-    if (!organization?.id) return;
+    if (!membership?.organization.id) return;
     setConfirming(true);
     try {
       const token = await getToken();
@@ -51,7 +52,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
             quantity: action.quantity,
           },
           token,
-          organization.id,
+          membership!.organization.id,
         );
       }
       setActions([]);

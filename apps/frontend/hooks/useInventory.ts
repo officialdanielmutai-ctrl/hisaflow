@@ -1,21 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth, useOrganization } from '@clerk/nextjs';
-import {
-  getInventoryItems,
-  type InventoryItem,
-} from '@/services/inventory.service';
+import { useAuth } from '@clerk/nextjs';
+import { useMyOrganization } from './useMyOrganization';
+import { getInventoryItems, type InventoryItem } from '@/services/inventory.service';
 
 export function useInventory(refreshKey = 0) {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
-  const { organization } = useOrganization();
+  const { membership } = useMyOrganization();
 
   useEffect(() => {
-    if (!organization?.id) {
+    const organizationId = membership?.organization.id;
+    if (!organizationId) {
       setLoading(false);
       return;
     }
@@ -26,7 +25,7 @@ export function useInventory(refreshKey = 0) {
       try {
         const token = await getToken();
         if (!token) throw new Error('Not authenticated');
-        const result = await getInventoryItems(token, organization!.id);
+        const result = await getInventoryItems(token, organizationId!);
         setItems(result);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load inventory');
@@ -36,7 +35,7 @@ export function useInventory(refreshKey = 0) {
     }
 
     fetchItems();
-  }, [organization?.id, getToken, refreshKey]);
+  }, [membership?.organization.id, getToken, refreshKey]);
 
   return { items, loading, error };
 }

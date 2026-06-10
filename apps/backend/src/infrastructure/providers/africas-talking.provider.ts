@@ -9,7 +9,7 @@ export class AfricasTalkingProvider {
     const apiKey = this.configService.get<string>('africasTalking.apiKey');
     const username = this.configService.get<string>('africasTalking.username');
     if (!apiKey || !username) {
-      console.error('Africa’s Talking credentials missing');
+      console.error("Africa's Talking credentials missing");
       return;
     }
 
@@ -28,7 +28,7 @@ export class AfricasTalkingProvider {
     try {
       await fetch(url, { method: 'POST', headers, body });
     } catch (err) {
-      console.error('Africa’s Talking SMS send failed:', err);
+      console.error("Africa's Talking SMS send failed:", err);
     }
   }
 }

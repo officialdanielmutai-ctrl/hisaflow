@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth, useOrganization, useUser } from '@clerk/nextjs';
+import { useAuth, useUser } from '@clerk/nextjs';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
 import Link from 'next/link';
 import { Bell, TrendingUp, ShoppingCart, AlertTriangle, Coins, Package } from 'lucide-react';
 import { getDashboardData, DashboardData } from '@/services/analytics.service';
@@ -9,7 +10,7 @@ import { useRole } from '@/hooks/useRole';
 
 export default function DashboardPage() {
   const { getToken } = useAuth();
-  const { organization } = useOrganization();
+  const { membership } = useMyOrganization();
   const { user } = useUser();
   const { canViewAnalytics } = useRole();
 
@@ -18,7 +19,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const orgId = organization?.id;
+    const orgId = membership?.organization.id;
     if (!orgId) {
       setLoading(false);
       return;
@@ -43,7 +44,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboard();
-  }, [organization?.id, getToken, canViewAnalytics]);
+  }, [membership?.organization.id, getToken, canViewAnalytics]);
 
   const firstName = user?.firstName ?? 'there';
   const timeLabel = data?.greeting.timeOfDay ?? 'morning';
@@ -57,7 +58,7 @@ export default function DashboardPage() {
           Good {timeLabel}, {firstName} {greetingEmoji}
         </h1>
         <p className="text-sm text-[var(--color-text-secondary)]">
-          {organization?.name}
+          {membership?.organization.name}
         </p>
         <div className="rounded-2xl border p-6 text-center">
           <p className="font-semibold">Staff View</p>
@@ -99,7 +100,7 @@ export default function DashboardPage() {
             Good {timeLabel}, {firstName} {greetingEmoji}
           </h1>
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {organization?.name}
+            {membership?.organization.name}
           </p>
         </div>
         <Link href="/alerts" className="relative p-2">

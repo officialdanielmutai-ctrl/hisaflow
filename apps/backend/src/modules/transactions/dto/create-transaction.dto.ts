@@ -10,14 +10,14 @@ export enum TransactionTypeDto {
 export class CreateTransactionDto {
   @IsString()
   @IsNotEmpty()
-  itemId: string;
+  itemId!: string;
 
   @IsEnum(TransactionTypeDto)
-  type: TransactionTypeDto;
+  type!: TransactionTypeDto;
 
   @IsNumber()
   @Min(0.01)
-  quantity: number;
+  quantity!: number;
 
   @IsOptional()
   @IsString()

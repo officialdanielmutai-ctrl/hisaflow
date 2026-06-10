@@ -15,9 +15,9 @@ export async function parseInventoryText(
 ): Promise<ParsedAction[]> {
   const response = await apiPost<{ actions: ParsedAction[] }>(
     '/ai-ingestion/parse',
-    { text },
     token,
     organizationId,
+    { text },
   );
   return response.actions;
 }

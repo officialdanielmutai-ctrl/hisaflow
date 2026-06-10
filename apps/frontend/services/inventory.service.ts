@@ -36,5 +36,5 @@ export async function createInventoryItem(
   token: string,
   organizationId: string,
 ): Promise<InventoryItem> {
-  return apiPost<InventoryItem>('/inventory', payload, token, organizationId);
+  return apiPost<InventoryItem>('/inventory', token, organizationId, payload);
 }

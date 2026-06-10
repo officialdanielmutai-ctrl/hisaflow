@@ -3,7 +3,7 @@ import { IsString, IsNotEmpty, IsOptional, IsNumber, IsPositive, Min } from 'cla
 export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @IsOptional()
   @IsString()
@@ -15,15 +15,15 @@ export class CreateProductDto {
 
   @IsString()
   @IsNotEmpty()
-  unit: string;
+  unit!: string;
 
   @IsNumber()
   @Min(0)
-  quantity: number;
+  quantity!: number;
 
   @IsNumber()
   @Min(0)
-  reorderThreshold: number;
+  reorderThreshold!: number;
 
   @IsOptional()
   @IsNumber()
