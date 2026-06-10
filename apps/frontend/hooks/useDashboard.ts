@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { getDashboard, DashboardData } from '@/services/analytics.service';
+import { getDashboardData, DashboardData } from '@/services/analytics.service';
 
 export function useDashboard(organizationId: string | null) {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -20,7 +20,7 @@ export function useDashboard(organizationId: string | null) {
       try {
         const token = await getToken();
         if (!token) throw new Error('Not authenticated');
-        const result = await getDashboard(token, organizationId!);
+        const result = await getDashboardData(token, organizationId!);
         setData(result);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load dashboard');
