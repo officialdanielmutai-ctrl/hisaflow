@@ -34,6 +34,7 @@ export default function DashboardPage() {
       try {
         const token = await getToken();
         if (!token) throw new Error('Not authenticated');
+        if (!orgId) throw new Error('No organization found');
         const result = await getDashboardData(token, orgId);
         setData(result);
       } catch (e: any) {
