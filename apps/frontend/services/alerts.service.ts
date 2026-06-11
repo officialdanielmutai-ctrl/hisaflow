@@ -21,5 +21,5 @@ export async function triggerAlertCheck(
   token: string,
   organizationId: string,
 ): Promise<void> {
-  await apiPost('/alerts/check', {}, token, organizationId);
+  await apiPost('/alerts/check', token, organizationId, {});
 }
