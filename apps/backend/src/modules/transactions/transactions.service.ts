@@ -2,6 +2,19 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { CreateTransactionDto, TransactionTypeDto } from './dto/create-transaction.dto';
 
+export interface TransactionWithItem {
+  id: string;
+  type: string;
+  quantity: number;
+  note: string | null;
+  createdAt: string;
+  inventoryItem: {
+    id: string;
+    name: string;
+    unit: string;
+  };
+}
+
 @Injectable()
 export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -48,5 +61,37 @@ export class TransactionsService {
     ]);
 
     return { success: true, newQuantity: newQty };
+  }
+
+  async findAll(
+    organizationId: string,
+    filters?: { itemId?: string; type?: string },
+  ): Promise<TransactionWithItem[]> {
+    const where: any = { organizationId };
+    if (filters?.itemId) {
+      where.itemId = filters.itemId;
+    }
+    if (filters?.type) {
+      where.type = filters.type;
+    }
+
+    const transactions = await this.prisma.db.inventoryTransaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        inventoryItem: {
+          select: { id: true, name: true, unit: true },
+        },
+      },
+    });
+
+    return transactions.map((tx) => ({
+      id: tx.id,
+      type: tx.type,
+      quantity: tx.quantityChange,
+      note: tx.reason,
+      createdAt: tx.createdAt.toISOString(),
+      inventoryItem: tx.inventoryItem,
+    }));
   }
 }
