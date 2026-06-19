@@ -79,19 +79,18 @@ export class TransactionsService {
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        inventoryItem: {
+        item: {
           select: { id: true, name: true, unit: true },
         },
       },
     });
-
     return transactions.map((tx) => ({
       id: tx.id,
       type: tx.type,
-      quantity: tx.quantityChange,
+      quantity: Number(tx.quantityChange),
       note: tx.reason,
       createdAt: tx.createdAt.toISOString(),
-      inventoryItem: tx.inventoryItem,
+      inventoryItem: tx.item,
     }));
   }
 }
