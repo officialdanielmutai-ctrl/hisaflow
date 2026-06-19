@@ -171,3 +171,74 @@ model Alert {
   @@index([organizationId, status])
   @@map("alerts")
 }
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["prisma-client-runtime"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AlertType {
+  LOW_STOCK
+  STOCKOUT
+  EXPIRY
+  ABNORMAL_ACTIVITY
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model Organization {
+  id             String  @id @default(uuid())
+  name           String
+  phone          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  alerts         Alert[]
+  inventoryItems InventoryItem[]
+}
+
+model InventoryItem {
+  id               String    @id @default(uuid())
+  organizationId   String
+  name             String
+  unit             String
+  quantity         Decimal   @default(0)
+  reorderThreshold Decimal?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  alerts       Alert[]
+
+  @@index([organizationId])
+  @@index([organizationId, isActive])
+}
+
+model Alert {
+  id              String        @id @default(uuid())
+  organizationId  String
+  itemId          String?
+  type            AlertType
+  severity        AlertSeverity
+  title           String
+  description     String
+  resolvedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  item            InventoryItem? @relation(fields: [itemId], references: [id])
+
+  @@unique([organizationId, itemId, type])
+  @@index([organizationId, resolvedAt])
+  @@index([organizationId, severity])
+}
