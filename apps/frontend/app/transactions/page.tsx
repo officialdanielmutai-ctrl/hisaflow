@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { useTransactionHistory } from '@/hooks/useTransactionHistory';
-import AppShell from '@/components/layout/AppShell';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
-import { Badge } from '@/components/ui/badge';
+import AppShell from '@/components/layout/AppShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -24,12 +23,25 @@ const FILTER_OPTIONS = [
   { label: 'Return', value: 'RETURN' },
 ];
 
+function getQuantitySignAndColor(type: string) {
+  switch (type) {
+    case 'SALE':
+    case 'WASTAGE':
+      return { sign: '-', color: 'text-[var(--color-status-critical)]' };
+    case 'PURCHASE':
+    case 'RETURN':
+      return { sign: '+', color: 'text-[var(--color-status-success)]' };
+    default:
+      return { sign: '', color: 'text-[var(--color-text-secondary)]' };
+  }
+}
+
 export default function TransactionsPage() {
   const [typeFilter, setTypeFilter] = useState<string | undefined>();
+  const { membership } = useMyOrganization();
   const { transactions, loading, error } = useTransactionHistory({
     type: typeFilter,
   });
-  const { membership } = useMyOrganization();
 
   return (
     <AppShell
@@ -38,23 +50,23 @@ export default function TransactionsPage() {
     >
       <div className="p-4">
         {/* Page header */}
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-1">
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
           Transactions
         </h1>
-        <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+        <p className="text-sm text-[var(--color-text-muted)] mt-1 mb-4">
           Your full activity log
         </p>
 
-        {/* Filter row */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        {/* Filter row – horizontal scrollable pills */}
+        <div className="flex overflow-x-auto gap-2 mb-4 pb-1">
           {FILTER_OPTIONS.map((opt) => (
             <button
               key={opt.value ?? 'all'}
               onClick={() => setTypeFilter(opt.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 typeFilter === opt.value
-                  ? 'bg-[var(--color-accent)] text-white'
-                  : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)]'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground'
               }`}
             >
               {opt.label}
@@ -73,7 +85,7 @@ export default function TransactionsPage() {
 
         {/* Error state */}
         {error && (
-          <p className="text-sm text-[var(--color-status-critical)]">
+          <p className="text-sm text-[var(--color-status-critical)] text-center py-8">
             {error}
           </p>
         )}
@@ -89,33 +101,26 @@ export default function TransactionsPage() {
         {!loading && !error && transactions.length > 0 && (
           <ul className="space-y-3">
             {transactions.map((tx) => {
-              const isPositive =
-                tx.type === 'PURCHASE' || tx.type === 'RETURN';
-              const isNeutral = tx.type === 'ADJUSTMENT';
-              const qtySign = isPositive ? '+' : isNeutral ? '' : '-';
+              const { sign, color } = getQuantitySignAndColor(tx.type);
+              const displayQuantity =
+                sign === ''
+                  ? tx.quantity
+                  : `${sign}${Math.abs(tx.quantity)}`;
 
               return (
                 <li
                   key={tx.id}
-                  className="p-4 rounded-xl bg-[var(--color-bg-surface)] shadow-sm flex items-center justify-between"
+                  className="rounded-xl border bg-card p-4 flex items-start justify-between"
                 >
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 pr-3">
                     <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
                       {tx.inventoryItem?.name ?? 'Unknown item'}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Badge
-                        variant="outline"
-                        className={TYPE_COLORS[tx.type] ?? 'bg-gray-100 text-gray-700'}
-                      >
-                        {tx.type}
-                      </Badge>
-                      {tx.note && (
-                        <span className="text-xs text-[var(--color-text-muted)] truncate">
-                          {tx.note}
-                        </span>
-                      )}
-                    </div>
+                    {tx.note && (
+                      <p className="text-sm text-[var(--color-text-muted)] truncate mt-0.5">
+                        {tx.note}
+                      </p>
+                    )}
                     <p className="text-xs text-[var(--color-text-muted)] mt-1">
                       {new Date(tx.createdAt).toLocaleDateString('en-GB')}{' '}
                       {new Date(tx.createdAt).toLocaleTimeString('en-GB', {
@@ -124,19 +129,18 @@ export default function TransactionsPage() {
                       })}
                     </p>
                   </div>
-                  <div className="ml-3 text-right">
+                  <div className="text-right flex-shrink-0">
                     <span
-                      className={`text-sm font-semibold ${
-                        isPositive
-                          ? 'text-[var(--color-status-success)]'
-                          : isNeutral
-                          ? 'text-[var(--color-text-secondary)]'
-                          : 'text-[var(--color-status-critical)]'
+                      className={`inline-block text-xs font-medium px-2 py-1 rounded-full ${
+                        TYPE_COLORS[tx.type] ?? 'bg-gray-100 text-gray-700'
                       }`}
                     >
-                      {qtySign}
-                      {tx.quantity} {tx.inventoryItem?.unit ?? ''}
+                      {tx.type}
                     </span>
+                    <p className={`text-sm font-semibold mt-1 ${color}`}>
+                      {displayQuantity}{' '}
+                      {tx.inventoryItem?.unit ?? ''}
+                    </p>
                   </div>
                 </li>
               );
