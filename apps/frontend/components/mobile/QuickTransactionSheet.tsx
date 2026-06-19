@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useAuth, useOrganization } from '@clerk/nextjs';
+import { useAuth } from '@clerk/nextjs';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
 import {
   logTransaction,
   type TransactionType,
@@ -26,11 +27,11 @@ export default function QuickTransactionSheet({
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const { getToken } = useAuth();
-  const { organization } = useOrganization();
+  const { membership } = useMyOrganization();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!organization?.id || !selectedItemId) return;
+    if (!membership?.organization.id || !selectedItemId) return;
     setLoading(true);
     try {
       const token = await getToken();
@@ -43,7 +44,7 @@ export default function QuickTransactionSheet({
           note: note || undefined,
         },
         token,
-        organization.id,
+        membership!.organization.id,
       );
       onCompleted();
       onClose();
