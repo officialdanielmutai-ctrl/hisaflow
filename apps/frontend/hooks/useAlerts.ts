@@ -1,15 +1,31 @@
-import { useQuery } from '@tanstack/react-query';
-import { getActiveAlerts, Alert } from '@/services/alerts.service';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getActiveAlerts, Alert, resolveAlert } from '@/services/alerts.service';
 import { useAuth } from '@clerk/nextjs';
-import { useOrganization } from '@clerk/nextjs';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
 
 export function useAlerts() {
   const { getToken } = useAuth();
-  const { organization } = useOrganization();
-  const orgId = (organization?.publicMetadata as any)?.organizationId;
+  const { membership } = useMyOrganization();
+  const orgId = membership?.organization.id;
   const tokenPromise = getToken();
 
-  return useQuery<Alert[]>({
+  const queryClient = useQueryClient();
+
+  const dismiss = async (alertId: string) => {
+    try {
+      const token = await tokenPromise;
+      if (!token) return;
+      await resolveAlert(alertId, token, orgId);
+      queryClient.setQueryData(['alerts', orgId], (oldData: Alert[] | undefined) => {
+        if (!oldData) return [];
+        return oldData.filter((a) => a.id !== alertId);
+      });
+    } catch (error) {
+      console.error('Failed to resolve alert', error);
+    }
+  };
+
+  const query = useQuery<Alert[]>({
     queryKey: ['alerts', orgId],
     queryFn: async () => {
       const token = await tokenPromise;
@@ -18,4 +34,6 @@ export function useAlerts() {
     },
     enabled: !!orgId,
   });
+
+  return { ...query, dismiss };
 }

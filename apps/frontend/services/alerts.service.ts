@@ -23,3 +23,16 @@ export async function triggerAlertCheck(
 ): Promise<void> {
   await apiPost('/alerts/check', token, organizationId, {});
 }
+
+export async function resolveAlert(
+  alertId: string,
+  token: string,
+  organizationId: string,
+): Promise<void> {
+  return apiPost<void>(
+    `/alerts/${alertId}/resolve`,
+    token,
+    organizationId,
+    {},
+  );
+}
