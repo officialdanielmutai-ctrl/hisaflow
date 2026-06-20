@@ -70,4 +70,17 @@ export class AlertsService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  async resolveAlert(alertId: string, organizationId: string) {
+    return this.prisma.db.alert.update({
+      where: {
+        id: alertId,
+        organizationId: organizationId,
+      },
+      data: {
+        status: 'RESOLVED',
+        resolvedAt: new Date(),
+      },
+    });
+  }
 }
