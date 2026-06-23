@@ -4,9 +4,10 @@ import type { Alert } from '@/services/alerts.service';
 
 interface AlertItemCardProps {
   alert: Alert;
+  onDismiss?: () => void;
 }
 
-export default function AlertItemCard({ alert }: AlertItemCardProps) {
+export default function AlertItemCard({ alert, onDismiss }: AlertItemCardProps) {
   const isCritical = alert.severity === 'CRITICAL';
 
   return (
@@ -34,6 +35,16 @@ export default function AlertItemCard({ alert }: AlertItemCardProps) {
           {alert.severity}
         </span>
       </div>
+      {onDismiss && (
+        <div className="mt-3 flex justify-end">
+          <button
+            onClick={onDismiss}
+            className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
     </div>
   );
 }

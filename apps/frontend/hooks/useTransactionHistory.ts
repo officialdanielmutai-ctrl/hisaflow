@@ -26,7 +26,7 @@ export function useTransactionHistory(
         }
         const data = await getTransactions(
           token,
-          membership.organization.id,
+          membership!.organization.id,
           filters,
         );
         setTransactions(data);
