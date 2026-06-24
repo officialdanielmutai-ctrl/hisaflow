@@ -1,4 +1,5 @@
 import BottomNav from '@/components/layout/BottomNav';
+import OrgGate from '@/components/system/OrgGate';
 
 export default function DashboardLayout({
   children,
@@ -8,9 +9,10 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-[var(--color-bg-base)] pb-20">
       <main className="max-w-lg mx-auto px-4 pt-6">
-        {children}
+        <OrgGate>{children}</OrgGate>
       </main>
       <BottomNav />
     </div>
   );
 }
+

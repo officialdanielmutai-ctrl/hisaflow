@@ -16,13 +16,14 @@ model Organization {
   currency     String   @default("KES")
   country      String   @default("KE")
   phone        String?
+  inviteCode   String?  @unique @map("invite_code")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   users          OrgMembership[]
   inventoryItems InventoryItem[]
   transactions   InventoryTransaction[]
-  alerts         Alert[]                     // <-- added
+  alerts         Alert[]
   @@map("organizations")
 }
 
