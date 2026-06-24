@@ -24,7 +24,7 @@ export default function AlertsPage() {
   if (error) {
     return (
       <div className="py-12 text-center text-[var(--color-text-secondary)]">
-        {error || 'Failed to load alerts'}
+        {error}
       </div>
     );
   }
