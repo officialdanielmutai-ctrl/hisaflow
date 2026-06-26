@@ -9,7 +9,7 @@
     "start": "node --max-old-space-size=256 dist/src/main.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "prestart:prod": "npx prisma db push --accept-data-loss",
+    "prestart": "npx prisma db push --accept-data-loss",
     "start:prod": "node --max-old-space-size=256 dist/src/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
