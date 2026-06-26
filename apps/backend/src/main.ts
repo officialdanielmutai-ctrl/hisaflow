@@ -11,13 +11,12 @@ async function bootstrap() {
       'https://www.hisaflow.com',
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    // Add the custom header right here:
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-organization-id'], 
     credentials: true,
   });
 
-  // Force the string into a strict integer, fallback to 3001
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
-  
   await app.listen(port, '0.0.0.0');
 }
 bootstrap();
