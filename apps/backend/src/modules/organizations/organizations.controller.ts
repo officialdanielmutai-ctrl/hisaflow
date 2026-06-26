@@ -22,7 +22,12 @@ export class OrganizationsController {
     @Body() dto: CreateOrganizationDto,
     @CurrentUser() user: { id: string; clerkId: string },
   ) {
-    return this.organizationsService.create(dto, user.id);
+    try {
+      return await this.organizationsService.create(dto, user.id);
+    } catch (error) {
+      console.error('CRITICAL 500 ERROR CAUSE:', error);
+      throw error;
+    }
   }
 
   // ── Join an existing org via invite code (caller becomes STAFF) ───────────
@@ -32,7 +37,12 @@ export class OrganizationsController {
     @Body('inviteCode') inviteCode: string,
     @CurrentUser() user: { id: string; clerkId: string },
   ) {
-    return this.organizationsService.joinOrganization(inviteCode, user.id);
+    try {
+      return await this.organizationsService.joinOrganization(inviteCode, user.id);
+    } catch (error) {
+      console.error('CRITICAL 500 ERROR CAUSE:', error);
+      throw error;
+    }
   }
 
   // ── List the caller's memberships ─────────────────────────────────────────
