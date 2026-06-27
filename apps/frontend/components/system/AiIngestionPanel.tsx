@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { parseInventoryText, type ParsedAction } from '@/services/ai-ingestion.service';
 import { logTransaction } from '@/services/transactions.service';
+import { createInventoryItem, updateInventoryItem } from '@/services/inventory.service';
 
 interface AiIngestionPanelProps {
   onCompleted: () => void;
@@ -40,36 +41,89 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   const handleConfirmAll = async () => {
     if (!membership?.organization.id) return;
     setConfirming(true);
+    setError(null);
+    const orgId = membership!.organization.id;
+
     try {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
-      const actionable = actions.filter((a) => a.itemId !== null);
-      for (const action of actionable) {
-        await logTransaction(
-          {
-            itemId: action.itemId!,
-            type: action.type,
-            quantity: action.quantity,
-          },
-          token,
-          membership!.organization.id,
-        );
+
+      for (const action of actions) {
+        try {
+          if (action.type === 'SALE' || action.type === 'PURCHASE') {
+            // Only execute transaction actions for matched (HIGH confidence) items
+            if (action.itemId) {
+              await logTransaction(
+                { itemId: action.itemId, type: action.type, quantity: action.quantity },
+                token,
+                orgId,
+              );
+            }
+          } else if (action.type === 'CREATE') {
+            // Create brand-new inventory item
+            await createInventoryItem(
+              {
+                name: action.itemName,
+                unit: action.unit ?? 'pcs',
+                quantity: action.quantity ?? 0,
+                reorderThreshold: action.reorderThreshold ?? 5,
+                category: action.category ?? undefined,
+                costPrice: action.costPrice ?? undefined,
+                sellingPrice: action.sellingPrice ?? undefined,
+              },
+              token,
+              orgId,
+            );
+          } else if (action.type === 'UPDATE' && action.itemId && action.updates) {
+            // Update existing item fields
+            await updateInventoryItem(action.itemId, action.updates, token, orgId);
+          }
+        } catch (actionErr) {
+          console.error(`Failed action for "${action.itemName}":`, actionErr);
+          // Continue with remaining actions even if one fails
+        }
       }
+
       setActions([]);
       setText('');
       onCompleted();
     } catch (err) {
       console.error('Confirmation failed', err);
+      setError('Something went wrong. Some actions may not have been applied.');
     } finally {
       setConfirming(false);
     }
   };
 
+  const actionLabel = (action: ParsedAction) => {
+    if (action.type === 'SALE') return 'Sale';
+    if (action.type === 'PURCHASE') return 'Stock In';
+    if (action.type === 'CREATE') return 'New Item';
+    if (action.type === 'UPDATE') return 'Update';
+    return action.type;
+  };
+
+  const actionColor = (action: ParsedAction) => {
+    if (action.type === 'SALE') return 'bg-red-100 text-red-700';
+    if (action.type === 'PURCHASE') return 'bg-green-100 text-green-700';
+    if (action.type === 'CREATE') return 'bg-blue-100 text-blue-700';
+    if (action.type === 'UPDATE') return 'bg-yellow-100 text-yellow-700';
+    return 'bg-gray-100 text-gray-700';
+  };
+
+  const hasConfirmable = actions.some(
+    (a) =>
+      (a.type === 'SALE' && a.itemId) ||
+      (a.type === 'PURCHASE' && a.itemId) ||
+      a.type === 'CREATE' ||
+      (a.type === 'UPDATE' && a.itemId && a.updates),
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <textarea
         rows={3}
-        placeholder='e.g. "sold 3 unga and 2 cooking oil"'
+        placeholder='e.g. "sold 3 unga and 2 cooking oil" or "add new item Maize flour at 150 per kg"'
         className="w-full rounded-2xl border p-4 text-base resize-none"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -82,38 +136,42 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
         {parsing ? 'Parsing...' : 'Parse with AI'}
       </button>
 
-      {error && <p className="text-red-500">{error}</p>}
+      {error && <p className="text-red-500 text-sm">{error}</p>}
 
       {actions.length > 0 && (
         <div className="mt-4">
-          <h3 className="mb-3 text-lg font-semibold">Review</h3>
+          <h3 className="mb-3 text-lg font-semibold">Review Actions</h3>
           <div className="flex flex-col gap-2">
             {actions.map((action, i) => (
               <div
                 key={i}
                 className={`rounded-2xl border p-4 ${
-                  action.itemId === null ? 'border-yellow-400' : ''
+                  action.confidence === 'LOW' ? 'border-yellow-400 opacity-60' : ''
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col gap-0.5">
                     <span className="text-base font-semibold">
-                      {action.quantity}× {action.itemName}
+                      {action.type !== 'UPDATE' && `${action.quantity}× `}
+                      {action.itemName}
                     </span>
-                    {action.confidence === 'LOW' && (
-                      <span className="ml-2 text-xs text-yellow-600">
-                        (unmatched)
+                    {action.type === 'CREATE' && (
+                      <span className="text-xs text-gray-500">
+                        Unit: {action.unit ?? 'pcs'} · Qty: {action.quantity ?? 0}
+                        {action.sellingPrice ? ` · Price: ${action.sellingPrice}` : ''}
                       </span>
                     )}
+                    {action.type === 'UPDATE' && action.updates && (
+                      <span className="text-xs text-gray-500">
+                        Changes: {Object.entries(action.updates).map(([k, v]) => `${k} → ${v}`).join(', ')}
+                      </span>
+                    )}
+                    {action.confidence === 'LOW' && (
+                      <span className="text-xs text-yellow-600">(unmatched — will be skipped)</span>
+                    )}
                   </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      action.type === 'SALE'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}
-                  >
-                    {action.type === 'SALE' ? 'Sale' : 'Stock In'}
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${actionColor(action)}`}>
+                    {actionLabel(action)}
                   </span>
                 </div>
               </div>
@@ -122,13 +180,10 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
 
           <button
             onClick={handleConfirmAll}
-            disabled={
-              confirming ||
-              !actions.some((a) => a.itemId !== null)
-            }
-            className="mt-4 h-12 w-full rounded-2xl bg-[var(--color-accent)] font-semibold text-white"
+            disabled={confirming || !hasConfirmable}
+            className="mt-4 h-12 w-full rounded-2xl bg-[var(--color-accent)] font-semibold text-white disabled:opacity-50"
           >
-            {confirming ? 'Confirming...' : 'Confirm All'}
+            {confirming ? 'Applying...' : 'Confirm All'}
           </button>
         </div>
       )}

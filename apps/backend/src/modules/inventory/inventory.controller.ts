@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
 import { RolesGuard } from '../../core/guards/roles.guard';
@@ -23,5 +24,15 @@ export class InventoryController {
     @OrgContext() orgId: string,
   ) {
     return this.inventoryService.create(dto, orgId);
+  }
+
+  @Roles(AppRole.OWNER, AppRole.MANAGER)
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductDto,
+    @OrgContext() orgId: string,
+  ) {
+    return this.inventoryService.update(id, dto, orgId);
   }
 }

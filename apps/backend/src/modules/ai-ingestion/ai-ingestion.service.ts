@@ -2,11 +2,28 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface ParsedAction {
+  // ── Transaction actions ──────────────────────────────────────────
   itemId: string | null;
   itemName: string;
-  type: 'SALE' | 'PURCHASE';
+  type: 'SALE' | 'PURCHASE' | 'CREATE' | 'UPDATE';
   quantity: number;
   confidence: 'HIGH' | 'LOW';
+  // ── Fields used only for CREATE ──────────────────────────────────
+  unit?: string;
+  costPrice?: number;
+  sellingPrice?: number;
+  reorderThreshold?: number;
+  category?: string;
+  // ── Fields used only for UPDATE ──────────────────────────────────
+  updates?: {
+    name?: string;
+    unit?: string;
+    costPrice?: number;
+    sellingPrice?: number;
+    reorderThreshold?: number;
+    category?: string;
+    quantity?: number;
+  };
 }
 
 @Injectable()
@@ -29,7 +46,7 @@ export class AiIngestionService {
     const itemsJson = JSON.stringify(availableItems);
 
     const prompt = `
-You are an inventory extraction assistant. You are given a list of available items in the system (with id and name). The user will describe inventory actions in free text.
+You are an inventory management assistant. You receive a list of existing inventory items (with id and name) and a free-text instruction from the user. Your job is to extract ALL intended inventory actions.
 
 Available items (JSON):
 ${itemsJson}
@@ -38,23 +55,67 @@ User text:
 "${text}"
 
 Instructions:
-- Return ONLY a JSON array (no markdown code fences, no additional text) of objects with the following shape:
-  {
-    "itemId": string | null,  // if the item name in the text closely matches an available item, set this to the matching item's id; otherwise null
-    "itemName": string,        // the item name mentioned by the user (original)
-    "type": "SALE" | "PURCHASE",
-    "quantity": number,
-    "confidence": "HIGH" | "LOW"
+- Return ONLY a valid JSON array (no markdown fences, no extra commentary).
+- Each element must match ONE of the four shapes below depending on the action type:
+
+1. SALE — user sold or gave out an existing item:
+{
+  "itemId": "<matching item id>",
+  "itemName": "<original name from user>",
+  "type": "SALE",
+  "quantity": <number>,
+  "confidence": "HIGH" | "LOW"
+}
+
+2. PURCHASE — user restocked or received an existing item:
+{
+  "itemId": "<matching item id>",
+  "itemName": "<original name from user>",
+  "type": "PURCHASE",
+  "quantity": <number>,
+  "confidence": "HIGH" | "LOW"
+}
+
+3. CREATE — user wants to add a brand-new item that does NOT exist in the available items list:
+{
+  "itemId": null,
+  "itemName": "<name of the new item>",
+  "type": "CREATE",
+  "quantity": <initial stock quantity, default 0>,
+  "confidence": "HIGH",
+  "unit": "<unit e.g. pcs, kg, litres — infer from context, default pcs>",
+  "costPrice": <number or null>,
+  "sellingPrice": <number or null>,
+  "reorderThreshold": <number, default 5>,
+  "category": "<category string or null>"
+}
+
+4. UPDATE — user wants to change details (price, name, unit, threshold, quantity) of an existing item:
+{
+  "itemId": "<matching item id>",
+  "itemName": "<original item name>",
+  "type": "UPDATE",
+  "quantity": 0,
+  "confidence": "HIGH",
+  "updates": {
+    "name": "<new name or omit>",
+    "costPrice": <number or omit>,
+    "sellingPrice": <number or omit>,
+    "reorderThreshold": <number or omit>,
+    "unit": "<string or omit>",
+    "category": "<string or omit>",
+    "quantity": <number or omit — only if user explicitly sets stock to a specific number>
   }
-- If an item name in the text closely matches an available item (case-insensitive, minor spelling variations), set "itemId" to the matched item's id and "confidence" to "HIGH".
-- If no match found, set "itemId" to null and "confidence" to "LOW".
-- Infer the type from the text:
-  - words like "sold", "sale", "sold out", "gave out" → "SALE"
-  - words like "received", "bought", "stock in", "added", "delivery", "restock" → "PURCHASE"
-  - If ambiguous, default to "SALE".
-- Extract numerical quantity from the text. If not found, use 1.
-- Return one object per action mentioned. Do not merge items of different names.
-- The JSON array must be valid and contain only those objects. No commentary.
+}
+
+Rules:
+- For SALE/PURCHASE: match item names case-insensitively with minor spelling tolerance. Set confidence HIGH if matched, LOW if not.
+- For CREATE: only use this type when the item clearly does NOT exist in the available list.
+- For UPDATE: only include fields the user explicitly mentioned changing inside the updates object.
+- If the user mixes actions return one object per distinct action.
+- quantity for UPDATE and CREATE should reflect what the user stated. If not mentioned for CREATE, use 0.
+- Extract numerical quantities. If not stated, default to 1 for SALE/PURCHASE.
+- Return only the JSON array. No markdown. No extra text.
 `;
 
     try {

@@ -3,9 +3,25 @@ import { apiPost } from '@/lib/api-client';
 export interface ParsedAction {
   itemId: string | null;
   itemName: string;
-  type: 'SALE' | 'PURCHASE';
+  type: 'SALE' | 'PURCHASE' | 'CREATE' | 'UPDATE';
   quantity: number;
   confidence: 'HIGH' | 'LOW';
+  // CREATE fields
+  unit?: string;
+  costPrice?: number;
+  sellingPrice?: number;
+  reorderThreshold?: number;
+  category?: string;
+  // UPDATE fields
+  updates?: {
+    name?: string;
+    unit?: string;
+    costPrice?: number;
+    sellingPrice?: number;
+    reorderThreshold?: number;
+    category?: string;
+    quantity?: number;
+  };
 }
 
 export async function parseInventoryText(
