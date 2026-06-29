@@ -8,6 +8,7 @@ const TYPE_LABELS: Record<string, string> = {
   DEAD_STOCK: 'Dead Stock',
   EXPIRY_RISK: 'Expiry Risk',
   VARIANCE: 'High Wastage',
+  DAILY_INSIGHT: 'Daily Insight',
 };
 
 interface AlertItemCardProps {

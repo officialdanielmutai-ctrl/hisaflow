@@ -143,6 +143,7 @@ enum AlertType {
   DEAD_STOCK
   EXPIRY_RISK
   VARIANCE
+  DAILY_INSIGHT
 }
 
 enum AlertStatus {
@@ -155,7 +156,7 @@ enum AlertStatus {
 model Alert {
   id             String        @id @default(cuid())
   organizationId String        @map("organization_id")
-  itemId         String        @map("item_id")
+  itemId         String?       @map("item_id")
   type           AlertType
   severity       AlertSeverity
   status         AlertStatus   @default(UNRESOLVED)
@@ -165,8 +166,8 @@ model Alert {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  organization  Organization  @relation(fields: [organizationId], references: [id])
-  item          InventoryItem @relation(fields: [itemId], references: [id])
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  item          InventoryItem? @relation(fields: [itemId], references: [id])
 
   @@unique([organizationId, itemId, type], name: "organizationId_itemId_type")
   @@index([organizationId, status])

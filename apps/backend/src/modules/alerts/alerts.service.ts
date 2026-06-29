@@ -16,6 +16,7 @@ export class AlertsService {
       this.checkStockLevels(organizationId),
       this.checkDeadStock(organizationId),
       this.checkWastageSpike(organizationId),
+      this.checkDailyInsights(organizationId),
     ]);
     return { ok: true };
   }
@@ -78,22 +79,37 @@ export class AlertsService {
     }
   }
 
-  // ── Dead stock: items with stock but zero sales in the last 30 days ────────
+  // ── Dead stock: 7-day grace period logic ────────────────────────────────
   private async checkDeadStock(organizationId: string) {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const items = await this.prisma.db.inventoryItem.findMany({
       where: { organizationId, isActive: true, quantity: { gt: 0 } },
     });
 
     for (const item of items) {
+      // Find the most recent PURCHASE transaction
+      const lastPurchase = await this.prisma.db.inventoryTransaction.findFirst({
+        where: { organizationId, itemId: item.id, type: 'PURCHASE' },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const lastStockedDate = lastPurchase ? lastPurchase.createdAt : item.createdAt;
+
+      if (lastStockedDate > sevenDaysAgo) {
+        // Item is still in its 7-day grace period
+        // Resolve any existing dead stock alert just in case
+        await this.autoResolveAlert(organizationId, item.id, AlertType.DEAD_STOCK);
+        continue;
+      }
+
       const recentSales = await this.prisma.db.inventoryTransaction.count({
         where: {
           organizationId,
           itemId: item.id,
           type: 'SALE',
-          createdAt: { gte: thirtyDaysAgo },
+          createdAt: { gte: sevenDaysAgo },
         },
       });
 
@@ -103,8 +119,8 @@ export class AlertsService {
           itemId: item.id,
           type: AlertType.DEAD_STOCK,
           severity: AlertSeverity.INFO,
-          title: `${item.name} has had no sales in 30 days`,
-          description: `${item.name} has ${item.quantity} ${item.unit} in stock but has not been sold in the last 30 days. Consider a promotion or review pricing.`,
+          title: `${item.name} has had no sales in 7 days`,
+          description: `${item.name} has ${item.quantity} ${item.unit} in stock but hasn't sold since ${lastStockedDate.toLocaleDateString()}. Consider a promotion.`,
         });
       } else {
         // Item sold recently — resolve any open dead stock alert
@@ -224,6 +240,108 @@ export class AlertsService {
     });
   }
 
+  // Keep for backwards-compat — just delegates to runAllChecks
+  // ── Daily Insights ────────────────────────────────────────────────────────
+  private async checkDailyInsights(organizationId: string) {
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+    const items = await this.prisma.db.inventoryItem.findMany({
+      where: { organizationId, isActive: true, quantity: { gt: 0 } },
+    });
+
+    const noActivityNames: string[] = [];
+
+    for (const item of items) {
+      // Find all transactions in the last 24h
+      const txs = await this.prisma.db.inventoryTransaction.findMany({
+        where: { organizationId, itemId: item.id, createdAt: { gte: twentyFourHoursAgo } },
+      });
+
+      if (txs.length === 0) {
+        // Only flag 'No Activity' if the item is older than 24h (prevents spam for brand new items)
+        if (item.createdAt <= twentyFourHoursAgo) {
+          noActivityNames.push(item.name);
+        }
+      } else {
+        // High activity check
+        const salesTxs = txs.filter((tx) => tx.type === 'SALE');
+        const unitsSold = salesTxs.reduce((sum, tx) => sum + Math.abs(Number(tx.quantityChange)), 0);
+        
+        // High activity if sold >= 10 units OR more than 20% of current stock
+        if (unitsSold >= 10 || (unitsSold > 0 && unitsSold >= Number(item.quantity) * 0.2)) {
+          await this.prisma.db.alert.upsert({
+            where: {
+              organizationId_itemId_type: {
+                organizationId,
+                itemId: item.id,
+                type: AlertType.DAILY_INSIGHT,
+              },
+            },
+            update: {
+              resolvedAt: null,
+              status: 'UNRESOLVED',
+              title: `High Activity: ${item.name}`,
+              description: `${item.name} has sold ${unitsSold} units today. Great job!`,
+              updatedAt: new Date(),
+            },
+            create: {
+              organizationId,
+              itemId: item.id,
+              type: AlertType.DAILY_INSIGHT,
+              severity: AlertSeverity.INFO,
+              title: `High Activity: ${item.name}`,
+              description: `${item.name} has sold ${unitsSold} units today. Great job!`,
+            },
+          });
+        } else {
+          // Resolve individual high activity alert if it slowed down
+          await this.autoResolveAlert(organizationId, item.id, AlertType.DAILY_INSIGHT);
+        }
+      }
+    }
+
+    // Process Grouped No Activity Insight
+    const noActivityTitle = 'No Activity Today';
+    if (noActivityNames.length > 0) {
+      const namesStr =
+        noActivityNames.slice(0, 5).join(', ') +
+        (noActivityNames.length > 5 ? ` and ${noActivityNames.length - 5} others` : '');
+
+      const existing = await this.prisma.db.alert.findFirst({
+        where: { organizationId, type: AlertType.DAILY_INSIGHT, title: noActivityTitle },
+      });
+
+      if (existing) {
+        await this.prisma.db.alert.update({
+          where: { id: existing.id },
+          data: {
+            description: `${noActivityNames.length} items had no activity today: ${namesStr}. Consider checking on them.`,
+            updatedAt: new Date(),
+            resolvedAt: null,
+            status: 'UNRESOLVED',
+          },
+        });
+      } else {
+        await this.prisma.db.alert.create({
+          data: {
+            organizationId,
+            // itemId is left null explicitly for grouped alerts
+            type: AlertType.DAILY_INSIGHT,
+            severity: AlertSeverity.INFO,
+            title: noActivityTitle,
+            description: `${noActivityNames.length} items had no activity today: ${namesStr}. Consider checking on them.`,
+          },
+        });
+      }
+    } else {
+      // Resolve if there are no idle items today
+      await this.prisma.db.alert.updateMany({
+        where: { organizationId, type: AlertType.DAILY_INSIGHT, title: noActivityTitle, resolvedAt: null },
+        data: { status: 'RESOLVED', resolvedAt: new Date() },
+      });
+    }
+  }
   // Keep for backwards-compat — just delegates to runAllChecks
   async checkLowStock(organizationId: string) {
     return this.runAllChecks(organizationId);
