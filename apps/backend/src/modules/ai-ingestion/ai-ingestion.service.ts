@@ -5,9 +5,11 @@ export interface ParsedAction {
   // ── Transaction actions ──────────────────────────────────────────
   itemId: string | null;
   itemName: string;
-  type: 'SALE' | 'PURCHASE' | 'CREATE' | 'UPDATE';
+  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE';
   quantity: number;
   confidence: 'HIGH' | 'LOW';
+  // ── Fields used only for WASTAGE ─────────────────────────────────
+  wastageReason?: string; // e.g. 'expired', 'damaged', 'stolen', 'spoiled', 'broken'
   // ── Fields used only for CREATE ──────────────────────────────────
   unit?: string;
   costPrice?: number;
@@ -56,9 +58,9 @@ User text:
 
 Instructions:
 - Return ONLY a valid JSON array (no markdown fences, no extra commentary).
-- Each element must match ONE of the four shapes below depending on the action type:
+- Each element must match ONE of the five shapes below depending on the action type:
 
-1. SALE — user sold or gave out an existing item:
+1. SALE — user sold, gave out, or issued an existing item to a customer:
 {
   "itemId": "<matching item id>",
   "itemName": "<original name from user>",
@@ -67,7 +69,7 @@ Instructions:
   "confidence": "HIGH" | "LOW"
 }
 
-2. PURCHASE — user restocked or received an existing item:
+2. PURCHASE — user restocked, received, bought, or added an existing item:
 {
   "itemId": "<matching item id>",
   "itemName": "<original name from user>",
@@ -76,7 +78,21 @@ Instructions:
   "confidence": "HIGH" | "LOW"
 }
 
-3. CREATE — user wants to add a brand-new item that does NOT exist in the available items list:
+3. WASTAGE — stock was lost, destroyed, or written off for any non-sale reason.
+   Trigger words: expired, expiry, expire, went bad, rotten, spoiled, spoilt, damaged, broken,
+   cracked, leaked, leaking, stolen, theft, lost, missing, contaminated, mouldy, mold, flooded,
+   fire, burned, burnt, write-off, written off, disposed, discarded, wasted, wastage, perished.
+   IMPORTANT: Do NOT use SALE for any of these — always use WASTAGE.
+{
+  "itemId": "<matching item id>",
+  "itemName": "<original name from user>",
+  "type": "WASTAGE",
+  "quantity": <number>,
+  "confidence": "HIGH" | "LOW",
+  "wastageReason": "<one of: expired | damaged | stolen | spoiled | broken | contaminated | lost | other — pick best match>"
+}
+
+4. CREATE — user wants to add a brand-new item that does NOT exist in the available items list:
 {
   "itemId": null,
   "itemName": "<name of the new item>",
@@ -90,7 +106,7 @@ Instructions:
   "category": "<category string or null>"
 }
 
-4. UPDATE — user wants to change details (price, name, unit, threshold, quantity) of an existing item:
+5. UPDATE — user wants to change details (price, name, unit, threshold, quantity) of an existing item:
 {
   "itemId": "<matching item id>",
   "itemName": "<original item name>",
@@ -109,12 +125,13 @@ Instructions:
 }
 
 Rules:
-- For SALE/PURCHASE: match item names case-insensitively with minor spelling tolerance. Set confidence HIGH if matched, LOW if not.
+- CRITICAL: expired, damaged, stolen, spoiled, broken items are always WASTAGE — never SALE.
+- For SALE/PURCHASE/WASTAGE: match item names case-insensitively with minor spelling tolerance. Set confidence HIGH if matched, LOW if not.
 - For CREATE: only use this type when the item clearly does NOT exist in the available list.
 - For UPDATE: only include fields the user explicitly mentioned changing inside the updates object.
 - If the user mixes actions return one object per distinct action.
 - quantity for UPDATE and CREATE should reflect what the user stated. If not mentioned for CREATE, use 0.
-- Extract numerical quantities. If not stated, default to 1 for SALE/PURCHASE.
+- Extract numerical quantities. If not stated, default to 1 for SALE/PURCHASE/WASTAGE.
 - Return only the JSON array. No markdown. No extra text.
 `;
 

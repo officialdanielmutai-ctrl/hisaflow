@@ -50,11 +50,16 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
 
       for (const action of actions) {
         try {
-          if (action.type === 'SALE' || action.type === 'PURCHASE') {
+          if (action.type === 'SALE' || action.type === 'PURCHASE' || action.type === 'WASTAGE') {
             // Only execute transaction actions for matched (HIGH confidence) items
             if (action.itemId) {
               await logTransaction(
-                { itemId: action.itemId, type: action.type, quantity: action.quantity },
+                {
+                  itemId: action.itemId,
+                  type: action.type,
+                  quantity: action.quantity,
+                  note: action.type === 'WASTAGE' ? (action.wastageReason ?? 'wastage') : undefined,
+                },
                 token,
                 orgId,
               );
@@ -98,6 +103,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   const actionLabel = (action: ParsedAction) => {
     if (action.type === 'SALE') return 'Sale';
     if (action.type === 'PURCHASE') return 'Stock In';
+    if (action.type === 'WASTAGE') return 'Wastage';
     if (action.type === 'CREATE') return 'New Item';
     if (action.type === 'UPDATE') return 'Update';
     return action.type;
@@ -106,6 +112,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   const actionColor = (action: ParsedAction) => {
     if (action.type === 'SALE') return 'bg-red-100 text-red-700';
     if (action.type === 'PURCHASE') return 'bg-green-100 text-green-700';
+    if (action.type === 'WASTAGE') return 'bg-orange-100 text-orange-700';
     if (action.type === 'CREATE') return 'bg-blue-100 text-blue-700';
     if (action.type === 'UPDATE') return 'bg-yellow-100 text-yellow-700';
     return 'bg-gray-100 text-gray-700';
@@ -115,6 +122,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     (a) =>
       (a.type === 'SALE' && a.itemId) ||
       (a.type === 'PURCHASE' && a.itemId) ||
+      (a.type === 'WASTAGE' && a.itemId) ||
       a.type === 'CREATE' ||
       (a.type === 'UPDATE' && a.itemId && a.updates),
   );
@@ -164,6 +172,11 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
                     {action.type === 'UPDATE' && action.updates && (
                       <span className="text-xs text-gray-500">
                         Changes: {Object.entries(action.updates).map(([k, v]) => `${k} → ${v}`).join(', ')}
+                      </span>
+                    )}
+                    {action.type === 'WASTAGE' && (
+                      <span className="text-xs text-orange-600">
+                        Reason: {action.wastageReason ?? 'unspecified'}
                       </span>
                     )}
                     {action.confidence === 'LOW' && (

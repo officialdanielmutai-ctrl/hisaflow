@@ -3,9 +3,11 @@ import { apiPost } from '@/lib/api-client';
 export interface ParsedAction {
   itemId: string | null;
   itemName: string;
-  type: 'SALE' | 'PURCHASE' | 'CREATE' | 'UPDATE';
+  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE';
   quantity: number;
   confidence: 'HIGH' | 'LOW';
+  // WASTAGE fields
+  wastageReason?: string;
   // CREATE fields
   unit?: string;
   costPrice?: number;
