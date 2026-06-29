@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { CreateTransactionDto, TransactionTypeDto } from './dto/create-transaction.dto';
+import { AlertsService } from '../alerts/alerts.service';
 
 export interface TransactionWithItem {
   id: string;
@@ -17,7 +18,10 @@ export interface TransactionWithItem {
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly alertsService: AlertsService,
+  ) {}
 
   async create(dto: CreateTransactionDto, organizationId: string) {
     const product = await this.prisma.db.inventoryItem.findFirst({
@@ -59,6 +63,11 @@ export class TransactionsService {
    }),
 
     ]);
+
+    // Fire alert checks non-blocking so stock alerts update after every transaction
+    this.alertsService.runAllChecks(organizationId).catch((e) =>
+      console.error('Alert check failed after transaction:', e),
+    );
 
     return { success: true, newQuantity: newQty };
   }

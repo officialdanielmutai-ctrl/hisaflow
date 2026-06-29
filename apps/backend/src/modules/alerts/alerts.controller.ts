@@ -14,8 +14,8 @@ export class AlertsController {
   }
 
   @Post('check')
-  async checkLowStock(@OrgContext() orgId: string) {
-    return this.alertsService.checkLowStock(orgId);
+  async runChecks(@OrgContext() orgId: string) {
+    return this.alertsService.runAllChecks(orgId);
   }
 
   @Patch(':id/resolve')

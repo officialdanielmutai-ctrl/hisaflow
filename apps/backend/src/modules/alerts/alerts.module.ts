@@ -6,5 +6,6 @@ import { AfricasTalkingProvider } from '../../infrastructure/providers/africas-t
 @Module({
   controllers: [AlertsController],
   providers: [AlertsService, AfricasTalkingProvider],
+  exports: [AlertsService],
 })
 export class AlertsModule {}

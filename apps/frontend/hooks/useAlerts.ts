@@ -6,6 +6,7 @@ import { useMyOrganization } from '@/hooks/useMyOrganization';
 import {
   getActiveAlerts,
   resolveAlert,
+  triggerAlertCheck,
   type Alert,
 } from '@/services/alerts.service';
 
@@ -26,7 +27,12 @@ export function useAlerts() {
       try {
         const token = await getToken();
         if (!token) throw new Error('Not authenticated');
-        const result = await getActiveAlerts(token, membership!.organization.id);
+        const orgId = membership!.organization.id;
+
+        // Run all checks first so alerts are always fresh when the page opens
+        await triggerAlertCheck(token, orgId).catch(() => {}); // non-fatal
+
+        const result = await getActiveAlerts(token, orgId);
         setAlerts(result);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load alerts');
