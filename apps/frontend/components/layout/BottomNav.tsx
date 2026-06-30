@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   Bell,
   Sparkles,
+  TrendingUp,
 } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 
@@ -15,6 +16,7 @@ const tabs = [
   { href: '/', label: 'Home', icon: LayoutDashboard },
   { href: '/inventory', label: 'Stock', icon: Package },
   { href: '/transactions', label: 'Log', icon: ArrowLeftRight },
+  { href: '/finance', label: 'Finance', icon: TrendingUp },
   { href: '/alerts', label: 'Alerts', icon: Bell },
   { href: '/ai', label: 'AI', icon: Sparkles },
 ];

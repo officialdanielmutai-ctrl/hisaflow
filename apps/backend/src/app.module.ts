@@ -10,6 +10,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
 import { AiIngestionModule } from './modules/ai-ingestion/ai-ingestion.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { FinanceModule } from './modules/finance/finance.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     AiIngestionModule,
     AlertsModule,
     AnalyticsModule,
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
