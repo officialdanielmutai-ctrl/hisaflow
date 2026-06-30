@@ -58,8 +58,8 @@ export default function RevenueChart({ data, currency = 'KES' }: RevenueChartPro
           width={36}
         />
         <Tooltip
-          formatter={(value: number, name: string) => [
-            formatKES(value),
+          formatter={(value: any, name: any) => [
+            formatKES(Number(value)),
             name === 'revenue' ? 'Revenue' : name === 'profit' ? 'Profit' : 'COGS',
           ]}
           contentStyle={{
