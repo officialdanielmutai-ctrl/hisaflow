@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { AlertType, AlertSeverity } from '../../../generated/prisma/client';
 import { AfricasTalkingProvider } from '../../infrastructure/providers/africas-talking.provider';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AlertsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly africasTalking: AfricasTalkingProvider,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── Main entry point: runs every check and auto-resolves stale alerts ──────
@@ -176,7 +178,7 @@ export class AlertsService {
     title: string;
     description: string;
   }) {
-    await this.prisma.db.alert.upsert({
+    const alert = await this.prisma.db.alert.upsert({
       where: {
         organizationId_itemId_type: {
           organizationId: data.organizationId,
@@ -201,6 +203,15 @@ export class AlertsService {
         description: data.description,
       },
     });
+
+    // Send push notification
+    this.notificationsService.sendPushToOrganization(data.organizationId, {
+      title: data.title,
+      body: data.description,
+      url: '/alerts',
+    }).catch(console.error);
+
+    return alert;
   }
 
   private async autoResolveAlert(

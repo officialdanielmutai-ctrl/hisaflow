@@ -11,6 +11,7 @@ import { AiIngestionModule } from './modules/ai-ingestion/ai-ingestion.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { FinanceModule } from './modules/finance/finance.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { FinanceModule } from './modules/finance/finance.module';
     AlertsModule,
     AnalyticsModule,
     FinanceModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

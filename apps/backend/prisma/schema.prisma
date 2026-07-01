@@ -38,7 +38,8 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships OrgMembership[]
+  memberships        OrgMembership[]
+  pushSubscriptions  PushSubscription[]
 
   @@map("users")
 }
@@ -172,4 +173,19 @@ model Alert {
   @@unique([organizationId, itemId, type], name: "organizationId_itemId_type")
   @@index([organizationId, status])
   @@map("alerts")
+}
+
+// ── Push Subscriptions ─────────────────────────────────────────
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

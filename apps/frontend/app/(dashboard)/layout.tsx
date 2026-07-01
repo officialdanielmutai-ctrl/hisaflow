@@ -1,5 +1,6 @@
 import BottomNav from '@/components/layout/BottomNav';
 import OrgGate from '@/components/system/OrgGate';
+import NotificationPrompt from '@/components/system/NotificationPrompt';
 
 export default function DashboardLayout({
   children,
@@ -12,6 +13,7 @@ export default function DashboardLayout({
         <OrgGate>{children}</OrgGate>
       </main>
       <BottomNav />
+      <NotificationPrompt />
     </div>
   );
 }
