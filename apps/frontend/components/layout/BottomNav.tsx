@@ -9,6 +9,7 @@ import {
   Bell,
   Sparkles,
   TrendingUp,
+  Settings,
 } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 
@@ -19,6 +20,7 @@ const tabs = [
   { href: '/finance', label: 'Finance', icon: TrendingUp },
   { href: '/alerts', label: 'Alerts', icon: Bell },
   { href: '/ai', label: 'AI', icon: Sparkles },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function BottomNav() {
