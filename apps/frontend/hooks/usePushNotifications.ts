@@ -16,12 +16,23 @@ export function usePushNotifications() {
       setIsSupported(true);
       // Check existing subscription
       navigator.serviceWorker.ready.then((reg) => {
-        reg.pushManager.getSubscription().then((sub) => {
+        reg.pushManager.getSubscription().then(async (sub) => {
           setSubscription(sub);
+          // If we have a subscription, make sure the backend knows about it
+          if (sub) {
+            try {
+              const token = await getToken();
+              if (token && membership?.organization.id) {
+                await subscribeToPushNotifications(token, membership.organization.id, sub);
+              }
+            } catch (e) {
+              console.error('Failed to background sync subscription', e);
+            }
+          }
         });
       });
     }
-  }, []);
+  }, [getToken, membership]);
 
   const subscribe = useCallback(async () => {
     if (!isSupported) {
