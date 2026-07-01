@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
-import { OrgContext } from '../../core/decorators/org-context.decorator';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
 
 @Controller('notifications')
 @UseGuards(ClerkAuthGuard)
@@ -10,10 +10,10 @@ export class NotificationsController {
 
   @Post('subscribe')
   async subscribe(
-    @OrgContext('userId') userId: string,
+    @CurrentUser() user: { id: string; clerkId: string },
     @Body() subscription: any,
   ) {
-    await this.notificationsService.subscribe(userId, subscription);
+    await this.notificationsService.subscribe(user.id, subscription);
     return { success: true };
   }
 }
