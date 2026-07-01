@@ -32,7 +32,7 @@ export class NotificationsService {
       throw new Error('Invalid subscription payload');
     }
     
-    return this.prisma.pushSubscription.upsert({
+    return this.prisma.db.pushSubscription.upsert({
       where: { endpoint: subscriptionInfo.endpoint },
       update: {
         userId,
@@ -52,7 +52,7 @@ export class NotificationsService {
     if (!this.isConfigured) return;
 
     // Find all users who are members of this organization
-    const memberships = await this.prisma.orgMembership.findMany({
+    const memberships = await this.prisma.db.orgMembership.findMany({
       where: { organizationId },
       select: { userId: true },
     });
@@ -61,7 +61,7 @@ export class NotificationsService {
     if (userIds.length === 0) return;
 
     // Find all subscriptions for these users
-    const subscriptions = await this.prisma.pushSubscription.findMany({
+    const subscriptions = await this.prisma.db.pushSubscription.findMany({
       where: { userId: { in: userIds } },
     });
 
@@ -82,7 +82,7 @@ export class NotificationsService {
         } catch (error: any) {
           if (error.statusCode === 410 || error.statusCode === 404) {
             // Subscription expired or unsubscribed, clean it up
-            await this.prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
+            await this.prisma.db.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
           } else {
             this.logger.error(`Failed to send push to sub ${sub.id}`, error);
           }

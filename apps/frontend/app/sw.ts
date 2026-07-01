@@ -26,7 +26,7 @@ self.addEventListener("push", (event) => {
   try {
     const data = event.data.json();
     const title = data.title || "HisaFlow Alert";
-    const options: NotificationOptions = {
+    const options: any = {
       body: data.body || "You have a new alert.",
       icon: "/icons/icon-192x192.png",
       badge: "/icons/icon-192x192.png",
