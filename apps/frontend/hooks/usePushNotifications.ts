@@ -5,80 +5,90 @@ import { subscribeToPushNotifications } from '@/services/notifications.service';
 
 export function usePushNotifications() {
   const { getToken } = useAuth();
-  const { membership } = useMyOrganization();
+  const { membership, loading: orgLoading } = useMyOrganization();
   const [isSupported, setIsSupported] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Check support and existing subscription on mount
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       setIsSupported(true);
-      // Check existing subscription
       navigator.serviceWorker.ready.then((reg) => {
-        reg.pushManager.getSubscription().then(async (sub) => {
+        reg.pushManager.getSubscription().then((sub) => {
           setSubscription(sub);
-          // If we have a subscription, make sure the backend knows about it
-          if (sub) {
-            try {
-              const token = await getToken();
-              if (token && membership?.organization.id) {
-                await subscribeToPushNotifications(token, membership.organization.id, sub);
-              }
-            } catch (e) {
-              console.error('Failed to background sync subscription', e);
-            }
-          }
         });
       });
     }
-  }, [getToken, membership]);
+  }, []);
+
+  // Once membership loads, background-sync any existing subscription with the backend
+  useEffect(() => {
+    if (orgLoading || !membership?.organization.id || !subscription) return;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (token) {
+          await subscribeToPushNotifications(token, membership.organization.id, subscription);
+        }
+      } catch (e) {
+        console.error('Background push sync failed:', e);
+      }
+    })();
+  }, [membership, subscription, orgLoading, getToken]);
 
   const subscribe = useCallback(async () => {
     if (!isSupported) {
       setError('Push notifications are not supported on this device/browser.');
       return;
     }
-    
+
+    if (orgLoading) {
+      setError('Still loading your account — please try again in a moment.');
+      return;
+    }
+
     setIsSubscribing(true);
     setError(null);
-    
+
     try {
       const token = await getToken();
-      if (!token || !membership?.organization.id) {
-        throw new Error('Authentication required');
-      }
+      if (!token) throw new Error('You are not logged in.');
+      if (!membership?.organization.id) throw new Error('No organization found for your account.');
 
-      // Request permission
+      // Request OS-level permission
       const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        throw new Error('Permission denied for notifications');
-      }
+      if (permission === 'denied') throw new Error('Notification permission was denied. Please enable it in your browser settings.');
+      if (permission !== 'granted') throw new Error('Notification permission was not granted.');
 
-      // Subscribe to PushManager
+      // Subscribe via PushManager using the VAPID public key
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) throw new Error('Push configuration is missing. Contact support.');
+
       const reg = await navigator.serviceWorker.ready;
-      
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        applicationServerKey: vapidKey,
       });
 
-      // Send to backend
+      // Save subscription to backend
       await subscribeToPushNotifications(token, membership.organization.id, sub);
       setSubscription(sub);
-      
+
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to subscribe to push notifications');
+      console.error('Push subscribe error:', err);
+      setError(err.message || 'Failed to enable notifications. Please try again.');
     } finally {
       setIsSubscribing(false);
     }
-  }, [isSupported, getToken, membership]);
+  }, [isSupported, orgLoading, getToken, membership]);
 
   return {
     isSupported,
     subscription,
     isSubscribing,
+    orgLoading,
     subscribe,
     error,
   };

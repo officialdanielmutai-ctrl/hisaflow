@@ -9,11 +9,16 @@ export const metadata: Metadata = {
   title: 'Hisaflow',
   description: 'Operational intelligence for East African businesses',
   manifest: '/manifest.json',
-  themeColor: '#1F7A5A',
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png',
+    shortcut: '/icons/icon-192.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Hisaflow',
+    startupImage: '/icons/icon-512.png',
   },
   other: {
     'mobile-web-app-capable': 'yes',

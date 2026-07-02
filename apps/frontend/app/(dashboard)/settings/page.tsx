@@ -8,7 +8,7 @@ import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 
 export default function SettingsPage() {
-  const { isSupported, subscription, subscribe, isSubscribing, error } = usePushNotifications();
+  const { isSupported, subscription, subscribe, isSubscribing, orgLoading, error } = usePushNotifications();
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const [testStatus, setTestStatus] = useState('');
@@ -84,10 +84,10 @@ export default function SettingsPage() {
             {!subscription && isSupported && (
               <button
                 onClick={subscribe}
-                disabled={isSubscribing}
+                disabled={isSubscribing || orgLoading}
                 className="bg-[var(--color-accent)] text-white px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
               >
-                {isSubscribing ? 'Enabling...' : 'Enable Now'}
+                {isSubscribing ? 'Enabling...' : orgLoading ? 'Loading...' : 'Enable Now'}
               </button>
             )}
           </div>
