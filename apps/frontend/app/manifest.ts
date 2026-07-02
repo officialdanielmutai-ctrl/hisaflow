@@ -14,13 +14,25 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/icons/icon-192.png',
         sizes: '192x192',
         type: 'image/png',
-        purpose: 'any maskable',
+        purpose: 'any' as const,
+      },
+      {
+        src: '/icons/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable' as const,
       },
       {
         src: '/icons/icon-512.png',
         sizes: '512x512',
         type: 'image/png',
-        purpose: 'any maskable',
+        purpose: 'any' as const,
+      },
+      {
+        src: '/icons/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable' as const,
       },
     ],
   };
