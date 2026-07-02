@@ -2,7 +2,6 @@ import './globals.css'
 import { Inter } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
-import PwaRegistry from '@/components/system/PwaRegistry'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -48,8 +47,38 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className={inter.variable}>
+        <head>
+          {/* This runs SYNCHRONOUSLY before any React hydration.
+              It captures beforeinstallprompt (which fires very early) and
+              registers the service worker immediately — both stored globally
+              so any component can use them at any time. */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function() {
+                  // Capture install prompt as soon as it fires
+                  window.addEventListener('beforeinstallprompt', function(e) {
+                    e.preventDefault();
+                    window.__pwaInstallPrompt = e;
+                    window.dispatchEvent(new Event('pwa-install-ready'));
+                    console.log('[PWA] beforeinstallprompt captured (inline script)');
+                  });
+                  // Register service worker immediately
+                  if ('serviceWorker' in navigator) {
+                    window.addEventListener('load', function() {
+                      navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                        console.log('[PWA] SW registered:', reg.scope);
+                      }).catch(function(err) {
+                        console.error('[PWA] SW registration failed:', err);
+                      });
+                    });
+                  }
+                })();
+              `,
+            }}
+          />
+        </head>
         <body>
-          <PwaRegistry />
           {children}
         </body>
       </html>
