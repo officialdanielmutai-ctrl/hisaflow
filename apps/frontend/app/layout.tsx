@@ -1,7 +1,8 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import PwaRegistry from '@/components/system/PwaRegistry'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -31,6 +32,14 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: '#1F7A5A',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -39,7 +48,10 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className={inter.variable}>
-        <body>{children}</body>
+        <body>
+          <PwaRegistry />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   )
