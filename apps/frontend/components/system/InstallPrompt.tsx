@@ -30,27 +30,41 @@ export default function InstallPrompt() {
     const p = detectPlatform();
     setPlatform(p);
 
-    // Don't show if already installed
+    // Don't show if already installed or dismissed
     if (isInStandaloneMode()) return;
-
     const dismissed = localStorage.getItem('hide-install-prompt');
     if (dismissed === 'true') return;
 
-    // Android/Desktop: capture the browser's install event
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-      setIsVisible(true);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
+    let isNotificationPromptDismissed = localStorage.getItem('hide-push-prompt') === 'true';
+    let localInstallEvent: any = null;
 
-    // iOS: show manual guide since iOS doesn't fire beforeinstallprompt
-    if (p === 'ios') {
-      setIsVisible(true);
-    }
+    const checkAndShow = () => {
+      if (isNotificationPromptDismissed) {
+        setIsVisible(true);
+      }
+    };
+
+    const installHandler = (e: Event) => {
+      e.preventDefault();
+      localInstallEvent = e;
+      setInstallPrompt(e);
+      checkAndShow();
+    };
+
+    const notificationDismissedHandler = () => {
+      isNotificationPromptDismissed = true;
+      checkAndShow();
+    };
+
+    window.addEventListener('beforeinstallprompt', installHandler);
+    window.addEventListener('notification-prompt-dismissed', notificationDismissedHandler);
+
+    // If it's iOS (no beforeinstallprompt) or we want to show instructions anyway
+    checkAndShow();
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('beforeinstallprompt', installHandler);
+      window.removeEventListener('notification-prompt-dismissed', notificationDismissedHandler);
     };
   }, []);
 
@@ -133,7 +147,7 @@ export default function InstallPrompt() {
                   </button>
                 ) : (
                   <p className="text-xs text-[var(--color-text-secondary)] italic">
-                    Use your browser's menu to install this app.
+                    Tap the <strong>3 dots (⋮)</strong> in Chrome and select <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.
                   </p>
                 )}
                 <button onClick={handleDismiss} className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-xs font-medium">

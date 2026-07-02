@@ -18,9 +18,17 @@ export default function NotificationPrompt() {
     }
   }, [isSupported, subscription]);
 
-  const handleDismiss = () => {
+  const proceedToInstallPrompt = () => {
     localStorage.setItem('hide-push-prompt', 'true');
     setIsVisible(false);
+    window.dispatchEvent(new Event('notification-prompt-dismissed'));
+  };
+
+  const handleSubscribe = async () => {
+    await subscribe();
+    if (!error) {
+      setTimeout(proceedToInstallPrompt, 1500); // give them a moment to see success before switching
+    }
   };
 
   if (!isVisible) return null;
@@ -51,14 +59,14 @@ export default function NotificationPrompt() {
 
           <div className="flex gap-2">
             <button
-              onClick={subscribe}
+              onClick={handleSubscribe}
               disabled={buttonDisabled}
               className="flex-1 rounded-xl bg-[var(--color-accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             >
               {buttonLabel}
             </button>
             <button
-              onClick={handleDismiss}
+              onClick={proceedToInstallPrompt}
               className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-xs font-medium"
             >
               Maybe Later
@@ -66,7 +74,7 @@ export default function NotificationPrompt() {
           </div>
         </div>
 
-        <button onClick={handleDismiss} className="text-[var(--color-text-muted)] p-1 -m-1 shrink-0">
+        <button onClick={proceedToInstallPrompt} className="text-[var(--color-text-muted)] p-1 -m-1 shrink-0">
           <X className="h-4 w-4" />
         </button>
       </div>
