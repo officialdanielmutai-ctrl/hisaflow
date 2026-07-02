@@ -6,23 +6,28 @@ import { ClerkProvider } from '@clerk/nextjs'
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
 export const metadata: Metadata = {
-  title: 'Hisaflow',
-  description: 'Operational intelligence for East African businesses',
+  title: 'HisaFlow',
+  description: 'Intelligent Inventory and Financial Management',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png',
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
     shortcut: '/icons/icon-192.png',
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'Hisaflow',
-    startupImage: '/icons/icon-512.png',
+    statusBarStyle: 'black-translucent',
+    title: 'HisaFlow',
   },
   other: {
     'mobile-web-app-capable': 'yes',
-    'apple-mobile-web-app-status-bar-style': 'default',
+    'msapplication-TileImage': '/icons/icon-192.png',
+    'msapplication-TileColor': '#1F7A5A',
   },
 };
 
