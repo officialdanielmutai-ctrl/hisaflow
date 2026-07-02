@@ -30,58 +30,63 @@ export default function InstallPrompt() {
     const p = detectPlatform();
     setPlatform(p);
 
-    // Don't show if already installed or dismissed
     if (isInStandaloneMode()) return;
-    const dismissed = localStorage.getItem('hide-install-prompt');
-    if (dismissed === 'true') return;
+    if (localStorage.getItem('hide-install-prompt') === 'true') return;
 
-    let isNotificationPromptDismissed = localStorage.getItem('hide-push-prompt') === 'true';
-    let localInstallEvent: any = null;
+    // Check if the notification prompt has been dismissed (prerequisite)
+    const notifDismissed = localStorage.getItem('hide-push-prompt') === 'true';
 
-    const checkAndShow = () => {
-      if (isNotificationPromptDismissed) {
-        setIsVisible(true);
+    const tryShow = () => {
+      if (localStorage.getItem('hide-push-prompt') !== 'true') return; // wait for notification prompt first
+
+      // Read the globally captured install prompt (set by PwaRegistry before auth)
+      const globalPrompt = (window as any).__pwaInstallPrompt;
+      if (globalPrompt) {
+        setInstallPrompt(globalPrompt);
       }
+
+      // Always show the prompt — on Android/Desktop with no globalPrompt we show manual instructions
+      // On iOS we always show the manual guide
+      setIsVisible(true);
     };
 
-    const installHandler = (e: Event) => {
-      e.preventDefault();
-      localInstallEvent = e;
-      setInstallPrompt(e);
-      checkAndShow();
+    // If notification is already dismissed, show immediately
+    if (notifDismissed) {
+      tryShow();
+    }
+
+    // Listen for notification dismissal during this session
+    const onNotifDismissed = () => tryShow();
+    // Listen for the global install-ready event in case it fires after we mount
+    const onInstallReady = () => {
+      const globalPrompt = (window as any).__pwaInstallPrompt;
+      if (globalPrompt) setInstallPrompt(globalPrompt);
+      // If we're already visible, the button will now appear
+      if (localStorage.getItem('hide-push-prompt') === 'true') setIsVisible(true);
     };
 
-    const notificationDismissedHandler = () => {
-      isNotificationPromptDismissed = true;
-      checkAndShow();
-    };
-
-    window.addEventListener('beforeinstallprompt', installHandler);
-    window.addEventListener('notification-prompt-dismissed', notificationDismissedHandler);
-
-    // If it's iOS (no beforeinstallprompt) or we want to show instructions anyway
-    checkAndShow();
+    window.addEventListener('notification-prompt-dismissed', onNotifDismissed);
+    window.addEventListener('pwa-install-ready', onInstallReady);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', installHandler);
-      window.removeEventListener('notification-prompt-dismissed', notificationDismissedHandler);
+      window.removeEventListener('notification-prompt-dismissed', onNotifDismissed);
+      window.removeEventListener('pwa-install-ready', onInstallReady);
     };
   }, []);
 
   const handleInstall = async () => {
     if (!installPrompt) return;
-    installPrompt.prompt();
+    await installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') {
+      (window as any).__pwaInstallPrompt = null;
       setIsVisible(false);
-      setInstallPrompt(null);
     }
   };
 
   const handleDismiss = () => {
     localStorage.setItem('hide-install-prompt', 'true');
     setIsVisible(false);
-    setShowIOSGuide(false);
   };
 
   if (!isVisible) return null;
@@ -100,7 +105,7 @@ export default function InstallPrompt() {
             !showIOSGuide ? (
               <>
                 <p className="text-xs text-[var(--color-text-secondary)] mb-3">
-                  Add HisaFlow to your iPhone home screen for quick, full-screen access.
+                  Add HisaFlow to your home screen for quick, full-screen access.
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -116,44 +121,54 @@ export default function InstallPrompt() {
                 </div>
               </>
             ) : (
-              <ol className="text-xs text-[var(--color-text-secondary)] space-y-2 mt-1">
-                <li className="flex gap-2 items-start">
-                  <span className="font-bold text-emerald-500 shrink-0">1.</span>
-                  Tap the <strong>Share</strong> button <Share2 className="inline h-3 w-3 mb-0.5" /> at the bottom of Safari
-                </li>
-                <li className="flex gap-2 items-start">
-                  <span className="font-bold text-emerald-500 shrink-0">2.</span>
-                  Scroll down and tap <strong>"Add to Home Screen"</strong>
-                </li>
-                <li className="flex gap-2 items-start">
-                  <span className="font-bold text-emerald-500 shrink-0">3.</span>
-                  Tap <strong>"Add"</strong> in the top-right corner
-                </li>
-              </ol>
+              <>
+                <ol className="text-xs text-[var(--color-text-secondary)] space-y-2 mt-1 mb-3">
+                  <li className="flex gap-2 items-start">
+                    <span className="font-bold text-emerald-500 shrink-0">1.</span>
+                    Tap the <strong>Share</strong> <Share2 className="inline h-3 w-3 mb-0.5" /> button at the bottom of Safari
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="font-bold text-emerald-500 shrink-0">2.</span>
+                    Scroll down and tap <strong>"Add to Home Screen"</strong>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="font-bold text-emerald-500 shrink-0">3.</span>
+                    Tap <strong>"Add"</strong> in the top-right corner
+                  </li>
+                </ol>
+                <button onClick={handleDismiss} className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-xs font-medium">
+                  Done
+                </button>
+              </>
             )
-          ) : (
+          ) : installPrompt ? (
+            // Android/Desktop with native prompt available — ONE-TAP install
             <>
               <p className="text-xs text-[var(--color-text-secondary)] mb-3">
-                Add HisaFlow to your {platform === 'android' ? 'home screen' : 'desktop'} for a faster, app-like experience.
+                Install HisaFlow on your {platform === 'android' ? 'home screen' : 'desktop'} for a faster, app-like experience.
               </p>
               <div className="flex gap-2">
-                {installPrompt ? (
-                  <button
-                    onClick={handleInstall}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Install App
-                  </button>
-                ) : (
-                  <p className="text-xs text-[var(--color-text-secondary)] italic">
-                    Tap the <strong>3 dots (⋮)</strong> in Chrome and select <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.
-                  </p>
-                )}
+                <button
+                  onClick={handleInstall}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Install App
+                </button>
                 <button onClick={handleDismiss} className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-xs font-medium">
                   Later
                 </button>
               </div>
+            </>
+          ) : (
+            // Android fallback — prompt not available, show manual guide
+            <>
+              <p className="text-xs text-[var(--color-text-secondary)] mb-3">
+                Open Chrome's menu <strong>⋮</strong> and tap <strong>"Add to Home screen"</strong> to install HisaFlow.
+              </p>
+              <button onClick={handleDismiss} className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-xs font-medium">
+                Got it
+              </button>
             </>
           )}
         </div>
