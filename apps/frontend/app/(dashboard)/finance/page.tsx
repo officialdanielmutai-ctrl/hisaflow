@@ -4,19 +4,32 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import {
-  getFinanceOverview,
-  getItemFinancialProfile,
   getFinanceForecast,
   getPriceSuggestions,
-  type FinanceOverview,
-  type ItemFinancialProfile,
+  getItemFinancialProfile,
   type ForecastInsight,
   type PriceSuggestion,
+  type ItemFinancialProfile,
 } from '@/services/finance.service';
-import { getInventoryItems, type InventoryItem } from '@/services/inventory.service';
+import {
+  getBusinessOverview,
+  getBusinessTransactions,
+  createBusinessTransaction,
+  deleteBusinessTransaction,
+  getCategoryLabel,
+  getCategoryEmoji,
+  type BusinessOverview,
+  type BusinessTransactionRecord,
+} from '@/services/business-finance.service';
+import { getInventoryItems } from '@/services/inventory.service';
 import dynamic from 'next/dynamic';
-import { TrendingUp, TrendingDown, Minus, AlertCircle, Tag, Search } from 'lucide-react';
+import {
+  TrendingUp, TrendingDown, Minus, AlertCircle, Tag,
+  Search, Plus, Trash2, RotateCcw, RefreshCw, ChevronRight,
+  ArrowDownLeft, ArrowUpRight,
+} from 'lucide-react';
 import PriceReviewSheet from '@/components/system/PriceReviewSheet';
+import AddEntrySheet from '@/components/finance/AddEntrySheet';
 
 const RevenueChart = dynamic(() => import('@/components/charts/RevenueChart'), { ssr: false });
 
@@ -26,42 +39,34 @@ function formatKES(v: number | null | undefined) {
   if (v == null) return '—';
   return `KES ${v.toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
-
 function formatPct(v: number | null | undefined) {
   if (v == null) return '—';
   return `${v.toFixed(1)}%`;
 }
+function pctChange(curr: number, prev: number) {
+  if (prev === 0) return null;
+  return ((curr - prev) / Math.abs(prev)) * 100;
+}
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function KpiCard({
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  accent?: 'green' | 'red' | 'blue' | 'purple';
+function KpiCard({ label, value, sub, accent }: {
+  label: string; value: string; sub?: string;
+  accent?: 'green' | 'red' | 'blue' | 'purple' | 'amber';
 }) {
-  const colors = {
+  const colors: Record<string, string> = {
     green: 'from-green-500/10 to-green-500/5 border-green-400/30',
     red: 'from-red-500/10 to-red-500/5 border-red-400/30',
     blue: 'from-blue-500/10 to-blue-500/5 border-blue-400/30',
     purple: 'from-purple-500/10 to-purple-500/5 border-purple-400/30',
+    amber: 'from-amber-500/10 to-amber-500/5 border-amber-400/30',
   };
-  const textColors = {
-    green: 'text-green-600',
-    red: 'text-red-600',
-    blue: 'text-blue-600',
-    purple: 'text-purple-600',
+  const textColors: Record<string, string> = {
+    green: 'text-green-600', red: 'text-red-600', blue: 'text-blue-600',
+    purple: 'text-purple-600', amber: 'text-amber-600',
   };
-
   return (
-    <div
-      className={`rounded-2xl border bg-gradient-to-br p-4 ${accent ? colors[accent] : 'border-[var(--color-border)]'}`}
-    >
+    <div className={`rounded-2xl border bg-gradient-to-br p-4 ${accent ? colors[accent] : 'border-[var(--color-border)]'}`}>
       <p className="text-xs text-[var(--color-text-secondary)] mb-1">{label}</p>
       <p className={`text-xl font-bold ${accent ? textColors[accent] : ''}`}>{value}</p>
       {sub && <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{sub}</p>}
@@ -70,87 +75,54 @@ function KpiCard({
 }
 
 function InsightCard({ insight }: { insight: ForecastInsight }) {
-  const colors = {
-    POSITIVE: 'border-green-400/40 bg-green-50/60',
-    NEGATIVE: 'border-red-400/40 bg-red-50/60',
-    NEUTRAL: 'border-blue-300/40 bg-blue-50/40',
-  };
-  const icons = {
-    POSITIVE: <TrendingUp className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />,
-    NEGATIVE: <TrendingDown className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />,
-    NEUTRAL: <Minus className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />,
-  };
-
+  const colors = { POSITIVE: 'border-green-400/40 bg-green-50/60', NEGATIVE: 'border-red-400/40 bg-red-50/60', NEUTRAL: 'border-blue-300/40 bg-blue-50/40' };
+  const icons = { POSITIVE: <TrendingUp className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />, NEGATIVE: <TrendingDown className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />, NEUTRAL: <Minus className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" /> };
   return (
     <div className={`rounded-2xl border p-4 ${colors[insight.sentiment]}`}>
-      <div className="flex items-start gap-2 mb-1">
-        {icons[insight.sentiment]}
-        <p className="font-semibold text-sm">{insight.title}</p>
-      </div>
+      <div className="flex items-start gap-2 mb-1">{icons[insight.sentiment]}<p className="font-semibold text-sm">{insight.title}</p></div>
       <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">{insight.body}</p>
     </div>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Overview Tab ─────────────────────────────────────────────────────────────
 
-export default function FinancePage() {
-  const { getToken } = useAuth();
-  const { membership } = useMyOrganization();
-
-  const [overview, setOverview] = useState<FinanceOverview | null>(null);
+function OverviewTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
+  const [overview, setOverview] = useState<BusinessOverview | null>(null);
   const [forecast, setForecast] = useState<ForecastInsight[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<ItemFinancialProfile | null>(null);
+  const [dateMode, setDateMode] = useState<'rolling30' | 'calendar'>('rolling30');
+  const [loading, setLoading] = useState(true);
+  const [loadingForecast, setLoadingForecast] = useState(false);
   const [suggestions, setSuggestions] = useState<PriceSuggestion[]>([]);
   const [showPriceSheet, setShowPriceSheet] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loadingOverview, setLoadingOverview] = useState(true);
-  const [loadingForecast, setLoadingForecast] = useState(false);
-  const [loadingItem, setLoadingItem] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const orgId = membership?.organization.id;
-
-  // Load overview on mount
-  useEffect(() => {
-    if (!orgId) return;
-    async function load() {
-      try {
-        const token = await getToken();
-        if (!token) return;
-        const [ov, inv] = await Promise.all([
-          getFinanceOverview(token, orgId!),
-          getInventoryItems(token, orgId!),
-        ]);
-        setOverview(ov);
-        setItems(inv);
-      } catch (e) {
-        setError('Could not load financial data.');
-      } finally {
-        setLoadingOverview(false);
-      }
-    }
-    load();
+  const load = useCallback(async (mode: 'rolling30' | 'calendar') => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const data = await getBusinessOverview(token, orgId, mode);
+      setOverview(data);
+    } catch { setError('Could not load financial data.'); }
+    finally { setLoading(false); }
   }, [orgId, getToken]);
 
-  // Load forecast lazily
+  useEffect(() => { load(dateMode); }, [dateMode, load]);
+
   const loadForecast = useCallback(async () => {
-    if (!orgId || forecast.length > 0) return;
+    if (forecast.length > 0) return;
     setLoadingForecast(true);
     try {
       const token = await getToken();
       if (!token) return;
       const result = await getFinanceForecast(token, orgId);
       setForecast(result.insights);
-    } catch { /* fallback handled server-side */ }
-    finally { setLoadingForecast(false); }
+    } catch { } finally { setLoadingForecast(false); }
   }, [orgId, getToken, forecast.length]);
 
-  // Load price suggestions
   const loadSuggestions = useCallback(async () => {
-    if (!orgId) return;
     setLoadingSuggestions(true);
     try {
       const token = await getToken();
@@ -161,9 +133,309 @@ export default function FinancePage() {
     } catch { } finally { setLoadingSuggestions(false); }
   }, [orgId, getToken]);
 
-  // Select item for drill-down
-  const handleSelectItem = async (item: InventoryItem) => {
-    if (!orgId) return;
+  if (loading) return (
+    <div className="flex flex-col gap-4 pt-2">
+      {[1, 2, 3, 4].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted" />)}
+    </div>
+  );
+
+  if (error) return (
+    <div className="flex flex-col items-center justify-center py-16 gap-3">
+      <AlertCircle className="h-10 w-10 text-red-400" />
+      <p className="text-sm text-[var(--color-text-secondary)]">{error}</p>
+    </div>
+  );
+
+  const thisMonthPct = overview ? pctChange(overview.thisMonth.netProfit, overview.lastMonth.netProfit) : null;
+
+  return (
+    <div className="flex flex-col gap-5 pt-2">
+      {/* Date mode toggle */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setDateMode('rolling30')}
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${dateMode === 'rolling30' ? 'bg-[var(--color-accent)] text-white' : 'border border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+        >
+          Rolling 30d
+        </button>
+        <button
+          onClick={() => setDateMode('calendar')}
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${dateMode === 'calendar' ? 'bg-[var(--color-accent)] text-white' : 'border border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}
+        >
+          This Month
+        </button>
+        {(overview?.unpricedCount ?? 0) > 0 && (
+          <button onClick={loadSuggestions} disabled={loadingSuggestions}
+            className="ml-auto flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-200 transition-colors">
+            <Tag className="h-3 w-3" />
+            {loadingSuggestions ? '…' : `${overview?.unpricedCount} unpriced`}
+          </button>
+        )}
+      </div>
+
+      {/* Hero: Net Profit */}
+      {overview && (
+        <div className={`rounded-2xl p-5 border ${overview.netProfit >= 0 ? 'from-emerald-500/15 to-emerald-500/5 border-emerald-400/30 bg-gradient-to-br' : 'from-red-500/15 to-red-500/5 border-red-400/30 bg-gradient-to-br'}`}>
+          <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-1">Net Profit (after all costs)</p>
+          <p className={`text-3xl font-black ${overview.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            {formatKES(overview.netProfit)}
+          </p>
+          <div className="flex items-center gap-3 mt-2">
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              {formatPct(overview.netMarginPct)} net margin
+            </p>
+            {thisMonthPct !== null && (
+              <span className={`text-xs font-semibold ${thisMonthPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                {thisMonthPct >= 0 ? '↑' : '↓'} {Math.abs(thisMonthPct).toFixed(1)}% vs last month
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* KPI Grid */}
+      {overview && (
+        <div className="grid grid-cols-2 gap-3">
+          <KpiCard label="Gross Revenue" value={formatKES(overview.grossRevenue)} sub="from sales" accent="blue" />
+          <KpiCard label="Gross Profit" value={formatKES(overview.grossProfit)} sub={`${formatPct(overview.grossMarginPct)} margin`} accent={overview.grossProfit >= 0 ? 'green' : 'red'} />
+          <KpiCard label="Operating Costs" value={formatKES(overview.totalOperatingExpenses)} sub="rent, salaries, bills…" accent="red" />
+          <KpiCard label="Inventory Value" value={formatKES(overview.totalInventoryValue)} sub="at cost price" accent="purple" />
+        </div>
+      )}
+
+      {/* Month comparison */}
+      {overview && (
+        <div className="rounded-2xl border border-[var(--color-border)] p-4">
+          <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-3">Month Comparison</p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {['Revenue', 'Expenses', 'Net Profit'].map((label, i) => {
+              const thisVal = i === 0 ? overview.thisMonth.revenue : i === 1 ? overview.thisMonth.expenses : overview.thisMonth.netProfit;
+              const lastVal = i === 0 ? overview.lastMonth.revenue : i === 1 ? overview.lastMonth.expenses : overview.lastMonth.netProfit;
+              const pct = pctChange(thisVal, lastVal);
+              return (
+                <div key={label}>
+                  <p className="text-[10px] text-[var(--color-text-secondary)] mb-0.5">{label}</p>
+                  <p className="text-sm font-bold">{formatKES(thisVal)}</p>
+                  {pct !== null && (
+                    <p className={`text-[10px] font-semibold ${(i === 1 ? pct <= 0 : pct >= 0) ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {pct >= 0 ? '↑' : '↓'} {Math.abs(pct).toFixed(1)}%
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Expense breakdown */}
+      {overview && overview.expensesByCategory.length > 0 && (
+        <div className="rounded-2xl border border-[var(--color-border)] p-4">
+          <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-3">Expenses by Category</p>
+          <div className="flex flex-col gap-2">
+            {overview.expensesByCategory.map((cat) => {
+              const pct = overview.totalOperatingExpenses > 0 ? (cat.total / overview.totalOperatingExpenses) * 100 : 0;
+              return (
+                <div key={cat.category}>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-xs">{getCategoryEmoji(cat.category)} {getCategoryLabel(cat.category)}</span>
+                    <span className="text-xs font-semibold">{formatKES(cat.total)}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-[var(--color-bg-base)] overflow-hidden">
+                    <div className="h-full rounded-full bg-red-400" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Revenue chart */}
+      <div className="rounded-2xl border border-[var(--color-border)] p-4">
+        <p className="font-semibold text-sm mb-3">Revenue vs Profit (trend)</p>
+        <RevenueChart data={overview?.dailyTrend ?? []} />
+      </div>
+
+      {/* AI CFO Insights */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="font-semibold text-sm">CFO Insights</p>
+          {forecast.length === 0 && (
+            <button onClick={loadForecast} disabled={loadingForecast}
+              className="text-xs font-medium text-[var(--color-accent)] hover:underline">
+              {loadingForecast ? 'Analysing…' : 'Generate Analysis'}
+            </button>
+          )}
+        </div>
+        {loadingForecast && <div className="h-24 animate-pulse rounded-2xl bg-muted" />}
+        {forecast.length > 0 && (
+          <div className="flex flex-col gap-3">{forecast.map((ins, i) => <InsightCard key={i} insight={ins} />)}</div>
+        )}
+        {!loadingForecast && forecast.length === 0 && (
+          <p className="text-sm text-[var(--color-text-secondary)]">Tap "Generate Analysis" for personalised financial insights.</p>
+        )}
+      </div>
+
+      {showPriceSheet && suggestions.length > 0 && (
+        <PriceReviewSheet suggestions={suggestions} onClose={() => setShowPriceSheet(false)}
+          onConfirmed={() => { setShowPriceSheet(false); load(dateMode); }} />
+      )}
+    </div>
+  );
+}
+
+// ─── Expenses Tab ─────────────────────────────────────────────────────────────
+
+function ExpensesTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
+  const [entries, setEntries] = useState<BusinessTransactionRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'ALL' | 'EXPENSE' | 'INCOME'>('ALL');
+  const [showAddSheet, setShowAddSheet] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const data = await getBusinessTransactions(token, orgId);
+      setEntries(data);
+    } catch { } finally { setLoading(false); }
+  }, [orgId, getToken]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSave = async (payload: any) => {
+    const token = await getToken();
+    if (!token) return;
+    await createBusinessTransaction(payload, token, orgId);
+    await load();
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeleting(id);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await deleteBusinessTransaction(id, token, orgId);
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+    } catch { } finally { setDeleting(null); }
+  };
+
+  const filtered = filter === 'ALL' ? entries : entries.filter((e) => e.type === filter);
+  const totalExpenses = entries.filter((e) => e.type === 'EXPENSE').reduce((s, e) => s + e.amount, 0);
+  const totalIncome = entries.filter((e) => e.type === 'INCOME').reduce((s, e) => s + e.amount, 0);
+
+  return (
+    <div className="flex flex-col gap-4 pt-2">
+      {/* Totals + Add */}
+      <div className="flex items-stretch gap-3">
+        <div className="flex-1 rounded-2xl border border-red-400/30 bg-red-50/60 p-3 text-center">
+          <p className="text-[10px] text-red-600 font-semibold mb-0.5">Total Expenses</p>
+          <p className="text-base font-black text-red-600">{formatKES(totalExpenses)}</p>
+        </div>
+        <div className="flex-1 rounded-2xl border border-emerald-400/30 bg-emerald-50/60 p-3 text-center">
+          <p className="text-[10px] text-emerald-600 font-semibold mb-0.5">Other Income</p>
+          <p className="text-base font-black text-emerald-600">{formatKES(totalIncome)}</p>
+        </div>
+        <button
+          onClick={() => setShowAddSheet(true)}
+          className="flex items-center justify-center rounded-2xl bg-[var(--color-accent)] px-4 text-white shadow-md hover:opacity-90 transition-opacity"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Filter chips */}
+      <div className="flex gap-2">
+        {(['ALL', 'EXPENSE', 'INCOME'] as const).map((f) => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${filter === f ? 'bg-[var(--color-accent)] text-white' : 'border border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
+            {f === 'ALL' ? 'All' : f === 'EXPENSE' ? '↑ Expenses' : '↓ Income'}
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div className="flex flex-col gap-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl bg-muted" />)}</div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+          <span className="text-4xl">📋</span>
+          <p className="font-semibold">No entries yet</p>
+          <p className="text-sm text-[var(--color-text-secondary)]">Tap the + button to log your first expense or income.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {filtered.map((entry) => (
+            <div key={entry.id}
+              className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 py-3">
+              <div className={`flex items-center justify-center w-9 h-9 rounded-full shrink-0 ${entry.type === 'EXPENSE' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                <span className="text-base">{getCategoryEmoji(entry.category)}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold truncate">
+                    {getCategoryLabel(entry.category)}
+                    {entry.staffName && <span className="font-normal text-[var(--color-text-secondary)]"> – {entry.staffName}</span>}
+                  </p>
+                  {entry.isRecurring && (
+                    <span className="text-[10px] rounded-full bg-blue-100 text-blue-600 px-1.5 py-0.5 font-semibold flex items-center gap-0.5">
+                      <RotateCcw className="h-2.5 w-2.5" />{entry.recurrenceRule?.toLowerCase()}
+                    </span>
+                  )}
+                </div>
+                {entry.description && <p className="text-xs text-[var(--color-text-secondary)] truncate">{entry.description}</p>}
+                <p className="text-xs text-[var(--color-text-muted)]">{entry.date}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className={`text-sm font-bold ${entry.type === 'EXPENSE' ? 'text-red-500' : 'text-emerald-600'}`}>
+                  {entry.type === 'EXPENSE' ? '-' : '+'}{formatKES(entry.amount)}
+                </p>
+                <button onClick={() => handleDelete(entry.id)} disabled={deleting === entry.id}
+                  className="text-[var(--color-text-muted)] hover:text-red-500 transition-colors mt-1">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAddSheet && <AddEntrySheet onClose={() => setShowAddSheet(false)} onSave={handleSave} />}
+    </div>
+  );
+}
+
+// ─── Ledger Tab ───────────────────────────────────────────────────────────────
+
+function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
+  const [entries, setEntries] = useState<BusinessTransactionRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'EXPENSE' | 'INCOME'>('ALL');
+  const [items, setItems] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedItem, setSelectedItem] = useState<ItemFinancialProfile | null>(null);
+  const [loadingItem, setLoadingItem] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const [bizData, invItems] = await Promise.all([
+          getBusinessTransactions(token, orgId),
+          getInventoryItems(token, orgId),
+        ]);
+        setEntries(bizData);
+        setItems(invItems);
+      } catch { } finally { setLoading(false); }
+    }
+    load();
+  }, [orgId, getToken]);
+
+  const handleSelectItem = async (item: any) => {
     setLoadingItem(true);
     setSelectedItem(null);
     try {
@@ -174,212 +446,153 @@ export default function FinancePage() {
     } catch { } finally { setLoadingItem(false); }
   };
 
-  const filteredItems = items.filter((i) =>
-    i.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
-  if (loadingOverview) {
-    return (
-      <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold">Finance</h1>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted" />
-        ))}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-        <AlertCircle className="h-10 w-10 text-red-400" />
-        <p className="text-sm text-[var(--color-text-secondary)]">{error}</p>
-      </div>
-    );
-  }
+  const filtered = typeFilter === 'ALL' ? entries : entries.filter((e) => e.type === typeFilter);
+  const filteredItems = items.filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="flex flex-col gap-6 pb-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Finance</h1>
-        {(overview?.unpricedCount ?? 0) > 0 && (
-          <button
-            onClick={loadSuggestions}
-            disabled={loadingSuggestions}
-            className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200 transition-colors"
-          >
-            <Tag className="h-3.5 w-3.5" />
-            {loadingSuggestions ? 'Loading...' : `${overview?.unpricedCount} unpriced`}
+    <div className="flex flex-col gap-4 pt-2">
+      {/* Filter chips */}
+      <div className="flex gap-2">
+        {(['ALL', 'EXPENSE', 'INCOME'] as const).map((f) => (
+          <button key={f} onClick={() => setTypeFilter(f)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${typeFilter === f ? 'bg-[var(--color-accent)] text-white' : 'border border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
+            {f === 'ALL' ? 'All Entries' : f === 'EXPENSE' ? '↑ Expenses' : '↓ Income'}
           </button>
-        )}
+        ))}
       </div>
 
-      {/* KPI Cards */}
-      {overview && (
-        <div className="grid grid-cols-2 gap-3">
-          <KpiCard
-            label="Inventory Value"
-            value={formatKES(overview.totalInventoryValue)}
-            sub="at cost price"
-            accent="blue"
-          />
-          <KpiCard
-            label="Potential Revenue"
-            value={formatKES(overview.totalPotentialRevenue)}
-            sub="if all stock sold"
-            accent="purple"
-          />
-          <KpiCard
-            label="30-Day Revenue"
-            value={formatKES(overview.totalRevenue)}
-            sub="from sales"
-            accent="green"
-          />
-          <KpiCard
-            label="30-Day Profit"
-            value={formatKES(overview.totalProfit)}
-            sub={overview.grossMarginPct != null ? `${formatPct(overview.grossMarginPct)} margin` : undefined}
-            accent={overview.totalProfit >= 0 ? 'green' : 'red'}
-          />
+      {/* Business entries */}
+      {loading ? (
+        <div className="flex flex-col gap-2">{[1, 2, 3].map((i) => <div key={i} className="h-14 animate-pulse rounded-2xl bg-muted" />)}</div>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-center text-[var(--color-text-secondary)] py-8">No ledger entries yet.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {filtered.map((entry) => (
+            <div key={entry.id} className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] px-4 py-2.5">
+              {entry.type === 'INCOME'
+                ? <ArrowDownLeft className="h-4 w-4 text-emerald-500 shrink-0" />
+                : <ArrowUpRight className="h-4 w-4 text-red-500 shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {getCategoryEmoji(entry.category)} {getCategoryLabel(entry.category)}
+                  {entry.description ? ` – ${entry.description}` : ''}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)]">{entry.date}</p>
+              </div>
+              <p className={`text-sm font-bold shrink-0 ${entry.type === 'INCOME' ? 'text-emerald-600' : 'text-red-500'}`}>
+                {entry.type === 'INCOME' ? '+' : '-'}{formatKES(entry.amount)}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Revenue & Profit Chart */}
-      <div className="rounded-2xl border border-[var(--color-border)] p-4">
-        <p className="font-semibold text-sm mb-3">Revenue vs Profit (30 Days)</p>
-        <RevenueChart data={overview?.dailyTrend ?? []} />
-      </div>
-
-      {/* AI Forecast */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="font-semibold text-sm">CFO Insights</p>
-          {forecast.length === 0 && (
-            <button
-              onClick={loadForecast}
-              disabled={loadingForecast}
-              className="text-xs font-medium text-[var(--color-accent)] hover:underline"
-            >
-              {loadingForecast ? 'Analysing...' : 'Generate Analysis'}
-            </button>
-          )}
-        </div>
-        {loadingForecast && (
-          <div className="h-24 animate-pulse rounded-2xl bg-muted" />
-        )}
-        {forecast.length > 0 && (
-          <div className="flex flex-col gap-3">
-            {forecast.map((ins, i) => (
-              <InsightCard key={i} insight={ins} />
-            ))}
-          </div>
-        )}
-        {!loadingForecast && forecast.length === 0 && (
-          <p className="text-sm text-[var(--color-text-secondary)]">
-            Tap "Generate Analysis" to get your personalised financial insights.
-          </p>
-        )}
-      </div>
-
-      {/* Item Drill-Down */}
-      <div>
+      {/* Item drill-down */}
+      <div className="pt-2 border-t border-[var(--color-border)]">
         <p className="font-semibold text-sm mb-3">Commodity Breakdown</p>
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)]" />
-          <input
-            type="text"
-            placeholder="Search an item..."
-            value={searchQuery}
+          <input type="text" placeholder="Search an item…" value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          />
+            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]" />
         </div>
-
-        {/* Item list */}
         {searchQuery && (
           <div className="flex flex-col gap-2 mb-4 max-h-52 overflow-y-auto">
             {filteredItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleSelectItem(item)}
-                className="flex items-center justify-between rounded-xl border border-[var(--color-border)] px-4 py-2.5 text-left hover:border-[var(--color-accent)] transition-colors"
-              >
+              <button key={item.id} onClick={() => handleSelectItem(item)}
+                className="flex items-center justify-between rounded-xl border border-[var(--color-border)] px-4 py-2.5 text-left hover:border-[var(--color-accent)] transition-colors">
                 <div>
                   <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs text-[var(--color-text-secondary)]">
-                    {item.quantity} {item.unit} · {item.sellingPrice ? `KES ${item.sellingPrice}` : 'No price set'}
-                  </p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">{item.quantity} {item.unit} · {item.sellingPrice ? `KES ${item.sellingPrice}` : 'No price'}</p>
                 </div>
-                <span className="text-xs text-[var(--color-accent)]">View →</span>
+                <ChevronRight className="h-4 w-4 text-[var(--color-text-muted)]" />
               </button>
             ))}
-            {filteredItems.length === 0 && (
-              <p className="text-sm text-[var(--color-text-secondary)] text-center py-4">No items found.</p>
-            )}
+            {filteredItems.length === 0 && <p className="text-sm text-center text-[var(--color-text-secondary)] py-4">No items found.</p>}
           </div>
         )}
-
-        {/* Item Profile */}
         {loadingItem && <div className="h-40 animate-pulse rounded-2xl bg-muted" />}
         {selectedItem && !loadingItem && (
           <div className="rounded-2xl border border-[var(--color-border)] p-4 flex flex-col gap-4">
             <div className="flex items-start justify-between">
               <div>
                 <p className="font-bold text-base">{selectedItem.name}</p>
-                <p className="text-xs text-[var(--color-text-secondary)]">
-                  {selectedItem.currentStock} {selectedItem.unit} in stock
-                </p>
+                <p className="text-xs text-[var(--color-text-secondary)]">{selectedItem.currentStock} {selectedItem.unit} in stock</p>
               </div>
               <button onClick={() => setSelectedItem(null)} className="text-xs text-[var(--color-text-muted)]">✕</button>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <KpiCard label="Stock Value" value={formatKES(selectedItem.stockValue)} accent="blue" />
               <KpiCard label="Gross Margin" value={formatPct(selectedItem.grossMarginPct)} accent={selectedItem.grossMarginPct != null && selectedItem.grossMarginPct > 0 ? 'green' : 'red'} />
               <KpiCard label="All-Time Revenue" value={formatKES(selectedItem.totalRevenue)} accent="purple" />
               <KpiCard label="All-Time Profit" value={formatKES(selectedItem.totalProfit)} accent={selectedItem.totalProfit >= 0 ? 'green' : 'red'} />
             </div>
-
             <div>
               <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-2">Revenue vs Profit (30 Days)</p>
               <RevenueChart data={selectedItem.dailyTrend} />
             </div>
-
             {selectedItem.costPrice != null && selectedItem.sellingPrice != null && (
               <div className="rounded-xl bg-[var(--color-bg-base)] p-3 text-xs text-[var(--color-text-secondary)]">
                 <p>Cost: <strong>KES {selectedItem.costPrice}</strong> · Sell: <strong>KES {selectedItem.sellingPrice}</strong></p>
-                <p className="mt-0.5">
-                  Profit per unit: <strong className={selectedItem.sellingPrice > selectedItem.costPrice ? 'text-green-600' : 'text-red-600'}>
-                    KES {(selectedItem.sellingPrice - selectedItem.costPrice).toFixed(2)}
-                  </strong>
-                </p>
+                <p className="mt-0.5">Profit per unit: <strong className={selectedItem.sellingPrice > selectedItem.costPrice ? 'text-green-600' : 'text-red-600'}>KES {(selectedItem.sellingPrice - selectedItem.costPrice).toFixed(2)}</strong></p>
               </div>
             )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
 
-      {/* Price Review Sheet */}
-      {showPriceSheet && suggestions.length > 0 && (
-        <PriceReviewSheet
-          suggestions={suggestions}
-          onClose={() => setShowPriceSheet(false)}
-          onConfirmed={() => {
-            setShowPriceSheet(false);
-            // Reload overview to reflect new prices
-            setLoadingOverview(true);
-            getToken().then((token) => {
-              if (token && orgId) {
-                getFinanceOverview(token, orgId).then((ov) => {
-                  setOverview(ov);
-                  setLoadingOverview(false);
-                });
-              }
-            });
-          }}
-        />
-      )}
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function FinancePage() {
+  const { getToken } = useAuth();
+  const { membership } = useMyOrganization();
+  const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'ledger'>('overview');
+
+  const orgId = membership?.organization.id;
+
+  if (!orgId) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold">Finance</h1>
+        {[1, 2, 3].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted" />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4 pb-8">
+      {/* Header */}
+      <h1 className="text-2xl font-bold">Finance</h1>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 p-1 rounded-2xl bg-[var(--color-bg-base)] border border-[var(--color-border)]">
+        {[
+          { key: 'overview', label: '📊 Overview' },
+          { key: 'expenses', label: '💸 Expenses' },
+          { key: 'ledger', label: '📒 Ledger' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key as any)}
+            className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
+              activeTab === tab.key
+                ? 'bg-[var(--color-bg-surface)] shadow text-[var(--color-text-primary)]'
+                : 'text-[var(--color-text-secondary)]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'overview' && <OverviewTab orgId={orgId} getToken={getToken} />}
+      {activeTab === 'expenses' && <ExpensesTab orgId={orgId} getToken={getToken} />}
+      {activeTab === 'ledger' && <LedgerTab orgId={orgId} getToken={getToken} />}
     </div>
   );
 }

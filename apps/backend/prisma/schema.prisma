@@ -20,10 +20,11 @@ model Organization {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  users          OrgMembership[]
-  inventoryItems InventoryItem[]
-  transactions   InventoryTransaction[]
-  alerts         Alert[]
+  users                 OrgMembership[]
+  inventoryItems        InventoryItem[]
+  transactions          InventoryTransaction[]
+  alerts                Alert[]
+  businessTransactions  BusinessTransaction[]
   @@map("organizations")
 }
 
@@ -188,4 +189,32 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// ── Business Transactions (Operating expenses & non-inventory income) ──────────
+
+enum BusinessTxType {
+  INCOME
+  EXPENSE
+}
+
+model BusinessTransaction {
+  id             String         @id @default(cuid())
+  organizationId String         @map("organization_id")
+  type           BusinessTxType
+  category       String         // RENT | SALARY | UTILITIES | LOAN | SUPPLIES | TRANSPORT | MARKETING | TAX | SERVICES | OTHER_EXPENSE | SERVICE_FEE | OTHER_INCOME
+  amount         Decimal        @db.Decimal(12, 2)
+  description    String?
+  staffName      String?        @map("staff_name")   // for SALARY entries
+  date           DateTime       @default(now())
+  isRecurring    Boolean        @default(false)       @map("is_recurring")
+  recurrenceRule String?        @map("recurrence_rule") // MONTHLY | WEEKLY | YEARLY
+  createdAt      DateTime       @default(now())       @map("created_at")
+  updatedAt      DateTime       @updatedAt            @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, date])
+  @@index([organizationId, type])
+  @@map("business_transactions")
 }

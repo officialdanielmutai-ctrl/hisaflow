@@ -65,3 +65,26 @@ export async function apiPatch<T>(
 
   return response.json() as T;
 }
+
+export async function apiDelete<T>(
+  path: string,
+  token: string,
+  organizationId: string,
+): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'x-organization-id': organizationId,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+
+  // DELETE returns 204 No Content — don't parse body
+  if (response.status === 204) return undefined as T;
+  return response.json() as T;
+}
