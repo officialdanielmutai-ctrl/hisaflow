@@ -59,6 +59,8 @@ export class TransactionsService {
           quantityAfter: newQty,
           reason: dto.note ?? null, // was: note (schema field is 'reason')
           source: 'manual',
+          clientName: dto.clientName ?? null,
+          metadata: dto.metadata ?? undefined,
         },
    }),
 

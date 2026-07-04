@@ -16,6 +16,7 @@ const BUSINESS_TYPES = [
   { value: 'RESTAURANT', label: 'Restaurant' },
   { value: 'SCHOOL',     label: 'School' },
   { value: 'WHOLESALER', label: 'Wholesaler' },
+  { value: 'ISP',        label: 'Internet Service Provider (ISP)' },
 ];
 
 export default function OnboardingPage() {

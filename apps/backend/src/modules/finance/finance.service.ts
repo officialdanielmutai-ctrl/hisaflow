@@ -328,9 +328,14 @@ export class FinanceService {
   // ── 5. AI CFO Forecast (now opex-aware) ────────────────────────────────────
   async getForecast(organizationId: string): Promise<{ insights: Array<{ title: string; body: string; sentiment: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' }> }> {
     const apiKey = this.config.get<string>('gemini.apiKey');
-    const overview = await this.getBusinessOverview(organizationId, 'rolling30');
+    const [overview, org] = await Promise.all([
+      this.getBusinessOverview(organizationId, 'rolling30'),
+      this.prisma.db.organization.findUnique({ where: { id: organizationId }, select: { businessType: true } })
+    ]);
+    const businessType = org?.businessType ?? 'Retail';
 
     const prompt = `You are a Chief Financial Officer (CFO) advising a small business owner in Kenya.
+The business type is: ${businessType}. Adapt your vocabulary (e.g. for an ISP use terms like truck rolls, installations, service contracts; for a Chemist use terms like regulatory waste, expiry risk).
 Here is their current financial data for the last 30 days:
 
 Gross Revenue (from sales): KES ${overview.grossRevenue.toFixed(2)}

@@ -8,6 +8,9 @@ export interface ParsedAction {
   confidence: 'HIGH' | 'LOW';
   // WASTAGE fields
   wastageReason?: string;
+  // Business Specific Fields
+  clientName?: string;
+  metadata?: any;
   // CREATE fields
   unit?: string;
   costPrice?: number;

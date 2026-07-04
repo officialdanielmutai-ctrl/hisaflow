@@ -32,4 +32,17 @@ export class UpdateProductDto {
   @IsNumber()
   @IsPositive()
   sellingPrice?: number;
+
+  // Business specific fields
+  @IsOptional()
+  @IsString()
+  expiryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
 }

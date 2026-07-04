@@ -18,14 +18,21 @@ export class AiIngestionController {
     @Body() dto: IngestTextDto,
     @OrgContext() orgId: string,
   ) {
-    const items = await this.prisma.db.inventoryItem.findMany({
-      where: { organizationId: orgId, isActive: true },
-      select: { id: true, name: true },
-    });
+    const [items, org] = await Promise.all([
+      this.prisma.db.inventoryItem.findMany({
+        where: { organizationId: orgId, isActive: true },
+        select: { id: true, name: true },
+      }),
+      this.prisma.db.organization.findUnique({
+        where: { id: orgId },
+        select: { businessType: true },
+      }),
+    ]);
 
     const result = await this.aiIngestionService.parseInventoryText(
       dto.text,
       items,
+      org?.businessType ?? 'DUKA',
     );
 
     return { actions: result };

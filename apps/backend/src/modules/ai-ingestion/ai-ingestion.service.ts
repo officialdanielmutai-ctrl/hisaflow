@@ -10,6 +10,9 @@ export interface ParsedAction {
   confidence: 'HIGH' | 'LOW';
   // ── Fields used only for WASTAGE ─────────────────────────────────
   wastageReason?: string; // e.g. 'expired', 'damaged', 'stolen', 'spoiled', 'broken'
+  // ── Business Specific Fields (Optional) ──────────────────────────
+  clientName?: string; // For ISP installs, etc.
+  metadata?: any;
   // ── Fields used only for CREATE ──────────────────────────────────
   unit?: string;
   costPrice?: number;
@@ -35,6 +38,7 @@ export class AiIngestionService {
   async parseInventoryText(
     text: string,
     availableItems: Array<{ id: string; name: string }>,
+    businessType: string = 'DUKA',
   ): Promise<ParsedAction[]> {
     const apiKey = this.configService.get<string>('gemini.apiKey');
     if (!apiKey) {
@@ -48,7 +52,13 @@ export class AiIngestionService {
     const itemsJson = JSON.stringify(availableItems);
 
     const prompt = `
-You are an inventory management assistant. You receive a list of existing inventory items (with id and name) and a free-text instruction from the user. Your job is to extract ALL intended inventory actions.
+You are an inventory management assistant for a business of type: ${businessType}.
+You receive a list of existing inventory items (with id and name) and a free-text instruction from the user. Your job is to extract ALL intended inventory actions.
+
+Context for Business Type (${businessType}):
+- If ISP (Internet Service Provider): "Installed", "setup", or "deployed" usually means taking hardware from stock (SALE/issue) and deploying it to a client. Extract the client's name into the "clientName" field. If they mention an installation fee or labor, you can include that in metadata as "serviceFee".
+- If CHEMIST: Focus on expiry dates and batch numbers if mentioned, put them in "metadata".
+- For others: Standard retail operations.
 
 Available items (JSON):
 ${itemsJson}
@@ -60,13 +70,15 @@ Instructions:
 - Return ONLY a valid JSON array (no markdown fences, no extra commentary).
 - Each element must match ONE of the five shapes below depending on the action type:
 
-1. SALE — user sold, gave out, or issued an existing item to a customer:
+1. SALE — user sold, gave out, issued, or installed an existing item to a customer:
 {
   "itemId": "<matching item id>",
   "itemName": "<original name from user>",
   "type": "SALE",
   "quantity": <number>,
-  "confidence": "HIGH" | "LOW"
+  "confidence": "HIGH" | "LOW",
+  "clientName": "<name of client if mentioned, or null>",
+  "metadata": { <any extra info like service fees or location> }
 }
 
 2. PURCHASE — user restocked, received, bought, or added an existing item:
@@ -75,7 +87,8 @@ Instructions:
   "itemName": "<original name from user>",
   "type": "PURCHASE",
   "quantity": <number>,
-  "confidence": "HIGH" | "LOW"
+  "confidence": "HIGH" | "LOW",
+  "metadata": { <e.g. batch number or supplier> }
 }
 
 3. WASTAGE — stock was lost, destroyed, or written off for any non-sale reason.
@@ -103,7 +116,8 @@ Instructions:
   "costPrice": <number or null>,
   "sellingPrice": <number or null>,
   "reorderThreshold": <number, default 5>,
-  "category": "<category string or null>"
+  "category": "<category string or null>",
+  "metadata": { <expiryDate, serialNumber, or batchNumber if mentioned> }
 }
 
 5. UPDATE — user wants to change details (price, name, unit, threshold, quantity) of an existing item:

@@ -20,6 +20,17 @@ export default function InventoryItemCard({ item }: InventoryItemCardProps) {
           {item.category && (
             <p className="text-sm text-muted-foreground">{item.category}</p>
           )}
+          {item.serialNumber && (
+            <p className="text-xs text-muted-foreground font-mono mt-1">SN: {item.serialNumber}</p>
+          )}
+          {item.batchNumber && (
+            <p className="text-xs text-muted-foreground font-mono">Batch: {item.batchNumber}</p>
+          )}
+          {item.expiryDate && (
+            <p className="text-xs text-orange-600 mt-1">
+              Exp: {new Date(item.expiryDate).toLocaleDateString()}
+            </p>
+          )}
         </div>
       </div>
       <div className="text-right">

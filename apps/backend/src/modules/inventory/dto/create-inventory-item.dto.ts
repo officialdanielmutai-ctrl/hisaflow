@@ -36,4 +36,17 @@ export class CreateInventoryItemDto {
   @Min(0)
   @Type(() => Number)
   sellingPrice?: number;
+
+  // Business specific fields
+  @IsOptional()
+  @IsString()
+  expiryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
 }

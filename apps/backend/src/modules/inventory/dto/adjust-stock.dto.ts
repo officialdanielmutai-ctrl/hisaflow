@@ -16,4 +16,12 @@ export class AdjustStockDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  // Business specific fields
+  @IsOptional()
+  @IsString()
+  clientName?: string;
+
+  @IsOptional()
+  metadata?: any;
 }

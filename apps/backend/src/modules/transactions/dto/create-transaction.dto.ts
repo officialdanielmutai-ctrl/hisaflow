@@ -22,4 +22,12 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  // Business specific fields
+  @IsOptional()
+  @IsString()
+  clientName?: string;
+
+  @IsOptional()
+  metadata?: any;
 }

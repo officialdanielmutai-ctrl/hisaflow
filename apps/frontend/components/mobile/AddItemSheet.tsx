@@ -25,6 +25,9 @@ export default function AddItemSheet({
   const [unit, setUnit] = useState('');
   const [quantity, setQuantity] = useState(0);
   const [reorderThreshold, setReorderThreshold] = useState(0);
+  const [expiryDate, setExpiryDate] = useState('');
+  const [serialNumber, setSerialNumber] = useState('');
+  const [batchNumber, setBatchNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
@@ -42,6 +45,9 @@ export default function AddItemSheet({
         unit,
         quantity,
         reorderThreshold,
+        ...(expiryDate && { expiryDate }),
+        ...(serialNumber && { serialNumber }),
+        ...(batchNumber && { batchNumber }),
       };
       await createInventoryItem(payload, token, membership!.organization.id);
       onCreated();
@@ -130,6 +136,45 @@ export default function AddItemSheet({
               required
             />
           </div>
+
+          {/* Conditional Business Fields */}
+          {membership?.organization.businessType === 'CHEMIST' && (
+            <>
+              <div className="mb-4">
+                <label className="mb-1 block text-sm font-medium">Expiry Date</label>
+                <input
+                  type="date"
+                  className="w-full rounded-xl border px-3 py-2"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-1 block text-sm font-medium">Batch Number</label>
+                <input
+                  type="text"
+                  placeholder="e.g. BATCH-001"
+                  className="w-full rounded-xl border px-3 py-2"
+                  value={batchNumber}
+                  onChange={(e) => setBatchNumber(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {membership?.organization.businessType === 'ISP' && (
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium">Serial Number</label>
+              <input
+                type="text"
+                placeholder="e.g. SN-987654321"
+                className="w-full rounded-xl border px-3 py-2"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+              />
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}

@@ -11,6 +11,9 @@ export interface InventoryItem {
   costPrice: number | null;
   sellingPrice: number | null;
   isActive: boolean;
+  expiryDate?: string | null;
+  serialNumber?: string | null;
+  batchNumber?: string | null;
 }
 
 export async function getInventoryItems(
@@ -29,6 +32,9 @@ export interface CreateProductPayload {
   reorderThreshold: number;
   costPrice?: number;
   sellingPrice?: number;
+  expiryDate?: string;
+  serialNumber?: string;
+  batchNumber?: string;
 }
 
 export async function createInventoryItem(
@@ -47,6 +53,9 @@ export interface UpdateProductPayload {
   reorderThreshold?: number;
   costPrice?: number;
   sellingPrice?: number;
+  expiryDate?: string;
+  serialNumber?: string;
+  batchNumber?: string;
 }
 
 export async function updateInventoryItem(

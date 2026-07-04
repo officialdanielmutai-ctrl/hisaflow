@@ -5,6 +5,8 @@ export interface LogTransactionPayload {
   type: TransactionType;
   quantity: number;
   note?: string;
+  clientName?: string;
+  metadata?: any;
 }
 export interface TransactionResult {
   success: boolean;
