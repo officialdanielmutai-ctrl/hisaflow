@@ -132,11 +132,22 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
       (a.type === 'UPDATE' && a.itemId && a.updates),
   );
 
+  const getPlaceholder = () => {
+    switch (membership?.organization.businessType) {
+      case 'ISP':
+        return 'e.g. "Installed 1 router for John Doe" or "Restocked 50m of fiber cable"';
+      case 'CHEMIST':
+        return 'e.g. "Sold 2 Panadol" or "Add new item Amoxil at 200 per pack, expiry 2026-12"';
+      default:
+        return 'e.g. "sold 3 unga and 2 cooking oil" or "add new item Maize flour at 150 per kg"';
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <textarea
         rows={3}
-        placeholder='e.g. "sold 3 unga and 2 cooking oil" or "add new item Maize flour at 150 per kg"'
+        placeholder={getPlaceholder()}
         className="w-full rounded-2xl border p-4 text-base resize-none"
         value={text}
         onChange={(e) => setText(e.target.value)}

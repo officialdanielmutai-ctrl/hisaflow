@@ -29,8 +29,14 @@ export class AnalyticsService {
           orderBy: { createdAt: 'desc' },
           take: 3,
         }),
-        this.getRecommendedActions(organizationId),
+        this.prisma.db.organization.findUnique({
+          where: { id: organizationId },
+          select: { businessType: true },
+        }),
       ]);
+
+    const businessType = recommendedActions?.businessType ?? 'DUKA';
+    const actions = await this.getRecommendedActions(organizationId, businessType);
 
     let todaySales = 0;
     let todayExpenses = 0;
@@ -76,11 +82,11 @@ export class AnalyticsService {
         type: a.type,
       })),
       inventorySnapshot: { total, healthy, low, outOfStock, stockHealthPct },
-      recommendedActions,
+      recommendedActions: actions,
     };
   }
 
-  private async getRecommendedActions(organizationId: string) {
+  private async getRecommendedActions(organizationId: string, businessType: string) {
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -120,7 +126,8 @@ export class AnalyticsService {
     );
     const topSellersStr = topSellersWithNames.join(', ') || 'none';
 
-    const prompt = `You are an inventory advisor for a small business in Kenya.
+    const prompt = `You are a business and inventory advisor for a small business in Kenya.
+The business type is: ${businessType}. Adapt your recommendations and terminology to match this industry (e.g., if ISP, talk about field deployments and hardware stock; if Chemist, talk about medicine expiry and batch tracking).
 Based on the following inventory data, generate exactly 3 recommended actions for the business owner.
 Be specific, practical, and use plain language.
 Format your response as a JSON array of objects with these fields:
