@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 export const metadata: Metadata = {
   title: 'HisaFlow',
   description: 'Intelligent Inventory and Financial Management',
-  manifest: '/manifest.json?v=5',
+  manifest: '/manifest.json?v=6',
   icons: {
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
