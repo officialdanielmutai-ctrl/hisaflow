@@ -10,6 +10,7 @@
   "theme_color": "#1F7A5A",
   "orientation": "portrait",
   "categories": ["business", "finance", "productivity"],
+  "icons": [
     {
       "src": "/icons/icon-192.png?v=2",
       "sizes": "192x192",
