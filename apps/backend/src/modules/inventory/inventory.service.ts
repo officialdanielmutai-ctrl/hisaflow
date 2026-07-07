@@ -15,8 +15,14 @@ export class InventoryService {
   }
 
   create(dto: CreateProductDto, organizationId: string) {
+    const data: any = { ...dto, organizationId };
+    
+    if (data.expiryDate) {
+      data.expiryDate = new Date(data.expiryDate);
+    }
+    
     return this.prisma.db.inventoryItem.create({
-      data: { ...dto, organizationId },
+      data,
     });
   }
 
@@ -25,9 +31,15 @@ export class InventoryService {
       where: { id, organizationId },
     });
     if (!item) throw new NotFoundException('Inventory item not found');
+    
+    const data: any = { ...dto };
+    if (data.expiryDate) {
+      data.expiryDate = new Date(data.expiryDate);
+    }
+
     return this.prisma.db.inventoryItem.update({
       where: { id },
-      data: dto,
+      data,
     });
   }
 }
