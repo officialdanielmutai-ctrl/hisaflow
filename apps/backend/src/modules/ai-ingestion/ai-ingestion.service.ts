@@ -5,7 +5,7 @@ export interface ParsedAction {
   // ── Transaction actions ──────────────────────────────────────────
   itemId: string | null;
   itemName: string;
-  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE';
+  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE' | 'NOTE';
   quantity: number;
   confidence: 'HIGH' | 'LOW';
   // ── Fields used only for WASTAGE ─────────────────────────────────
@@ -29,6 +29,12 @@ export interface ParsedAction {
     category?: string;
     quantity?: number;
   };
+  // ── Fields used only for NOTE ────────────────────────────────────
+  title?: string;
+  content?: string;
+  importance?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  dueDate?: string; // ISO date string
+  checklists?: { text: string }[];
 }
 
 @Injectable()
@@ -136,6 +142,18 @@ Instructions:
     "category": "<string or omit>",
     "quantity": <number or omit — only if user explicitly sets stock to a specific number>
   }
+6. NOTE — user wants to leave a note, memo, or checklist for the team:
+{
+  "itemId": null,
+  "itemName": "Note",
+  "type": "NOTE",
+  "quantity": 0,
+  "confidence": "HIGH",
+  "title": "<short descriptive title>",
+  "content": "<full details of the note>",
+  "importance": "<infer from context: LOW, MEDIUM, HIGH, CRITICAL. If they say important, use HIGH. If urgent, use CRITICAL. Otherwise MEDIUM.>",
+  "dueDate": "<ISO 8601 date string if they mention a time/date like 'tomorrow 10am', else null>",
+  "checklists": [ { "text": "<item 1>" }, { "text": "<item 2>" } ] <only if they list items, else omit or empty array>
 }
 
 Rules:

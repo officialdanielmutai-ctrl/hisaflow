@@ -3,7 +3,7 @@ import { apiPost } from '@/lib/api-client';
 export interface ParsedAction {
   itemId: string | null;
   itemName: string;
-  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE';
+  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE' | 'NOTE';
   quantity: number;
   confidence: 'HIGH' | 'LOW';
   // WASTAGE fields
@@ -27,6 +27,12 @@ export interface ParsedAction {
     category?: string;
     quantity?: number;
   };
+  // NOTE fields
+  title?: string;
+  content?: string;
+  importance?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  dueDate?: string;
+  checklists?: { text: string }[];
 }
 
 export async function parseInventoryText(

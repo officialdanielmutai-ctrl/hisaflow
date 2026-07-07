@@ -25,6 +25,7 @@ model Organization {
   transactions          InventoryTransaction[]
   alerts                Alert[]
   businessTransactions  BusinessTransaction[]
+  notes                 Note[]
   @@map("organizations")
 }
 
@@ -41,6 +42,7 @@ model User {
 
   memberships        OrgMembership[]
   pushSubscriptions  PushSubscription[]
+  notes              Note[]
 
   @@map("users")
 }
@@ -228,4 +230,57 @@ model BusinessTransaction {
   @@index([organizationId, date])
   @@index([organizationId, type])
   @@map("business_transactions")
+}
+
+// ── Notes & Scheduling ─────────────────────────────────────────────────────────
+
+enum NoteImportance {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NoteStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+model Note {
+  id             String         @id @default(cuid())
+  organizationId String         @map("organization_id")
+  authorId       String         @map("author_id")
+  title          String
+  content        String?        @db.Text
+  importance     NoteImportance @default(MEDIUM)
+  status         NoteStatus     @default(OPEN)
+  dueDate        DateTime?      @map("due_date")
+  isPinned       Boolean        @default(false) @map("is_pinned")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  author         User           @relation(fields: [authorId], references: [id])
+  checklistItems ChecklistItem[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, dueDate])
+  @@index([organizationId, importance])
+  @@map("notes")
+}
+
+model ChecklistItem {
+  id          String   @id @default(cuid())
+  noteId      String   @map("note_id")
+  text        String
+  isCompleted Boolean  @default(false) @map("is_completed")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
+  @@map("checklist_items")
 }

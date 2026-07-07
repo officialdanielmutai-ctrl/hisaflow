@@ -10,6 +10,7 @@ import {
   Sparkles,
   TrendingUp,
   Settings,
+  ListTodo,
 } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 
@@ -18,6 +19,7 @@ const tabs = [
   { href: '/inventory', label: 'Stock', icon: Package },
   { href: '/transactions', label: 'Log', icon: ArrowLeftRight },
   { href: '/finance', label: 'Finance', icon: TrendingUp },
+  { href: '/notes', label: 'Notes', icon: ListTodo },
   { href: '/alerts', label: 'Alerts', icon: Bell },
   { href: '/ai', label: 'AI', icon: Sparkles },
   { href: '/settings', label: 'Settings', icon: Settings },

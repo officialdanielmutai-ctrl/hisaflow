@@ -6,6 +6,7 @@ import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { parseInventoryText, type ParsedAction } from '@/services/ai-ingestion.service';
 import { logTransaction } from '@/services/transactions.service';
 import { createInventoryItem, updateInventoryItem } from '@/services/inventory.service';
+import { createNote } from '@/services/notes.service';
 
 interface AiIngestionPanelProps {
   onCompleted: () => void;
@@ -87,6 +88,14 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
           } else if (action.type === 'UPDATE' && action.itemId && action.updates) {
             // Update existing item fields
             await updateInventoryItem(action.itemId, action.updates, token, orgId);
+          } else if (action.type === 'NOTE') {
+            await createNote(token, orgId, {
+              title: action.title || action.itemName,
+              content: action.content,
+              importance: action.importance as any,
+              dueDate: action.dueDate,
+              checklistItems: action.checklists,
+            });
           }
         } catch (actionErr) {
           console.error(`Failed action for "${action.itemName}":`, actionErr);
@@ -111,6 +120,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     if (action.type === 'WASTAGE') return 'Wastage';
     if (action.type === 'CREATE') return 'New Item';
     if (action.type === 'UPDATE') return 'Update';
+    if (action.type === 'NOTE') return 'Note';
     return action.type;
   };
 
@@ -120,6 +130,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     if (action.type === 'WASTAGE') return 'bg-orange-100 text-orange-700';
     if (action.type === 'CREATE') return 'bg-blue-100 text-blue-700';
     if (action.type === 'UPDATE') return 'bg-yellow-100 text-yellow-700';
+    if (action.type === 'NOTE') return 'bg-purple-100 text-purple-700';
     return 'bg-gray-100 text-gray-700';
   };
 
@@ -129,17 +140,18 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
       (a.type === 'PURCHASE' && a.itemId) ||
       (a.type === 'WASTAGE' && a.itemId) ||
       a.type === 'CREATE' ||
+      a.type === 'NOTE' ||
       (a.type === 'UPDATE' && a.itemId && a.updates),
   );
 
   const getPlaceholder = () => {
     switch (membership?.organization.businessType) {
       case 'ISP':
-        return 'e.g. "Installed 1 router for John Doe" or "Restocked 50m of fiber cable"';
+        return 'e.g. "Installed 1 router for John Doe" or "Note: Team meeting tomorrow at 9am"';
       case 'CHEMIST':
-        return 'e.g. "Sold 2 Panadol" or "Add new item Amoxil at 200 per pack, expiry 2026-12"';
+        return 'e.g. "Sold 2 Panadol" or "Important: Order more Amoxil urgently"';
       default:
-        return 'e.g. "sold 3 unga and 2 cooking oil" or "add new item Maize flour at 150 per kg"';
+        return 'e.g. "sold 3 unga" or "Remind team about stock count on Friday"';
     }
   };
 
@@ -193,6 +205,11 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
                     {action.type === 'WASTAGE' && (
                       <span className="text-xs text-orange-600">
                         Reason: {action.wastageReason ?? 'unspecified'}
+                      </span>
+                    )}
+                    {action.type === 'NOTE' && (
+                      <span className="text-xs text-purple-600">
+                        {action.importance} Priority {action.dueDate ? `· Due: ${action.dueDate}` : ''}
                       </span>
                     )}
                     {action.confidence === 'LOW' && (
