@@ -7,6 +7,9 @@ export interface LogTransactionPayload {
   note?: string;
   clientName?: string;
   metadata?: any;
+  isCredit?: boolean;
+  dueDate?: string;
+  creditNotes?: string;
 }
 export interface TransactionResult {
   success: boolean;

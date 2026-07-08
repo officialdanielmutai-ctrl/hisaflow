@@ -539,12 +539,166 @@ function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
   );
 }
 
+// ─── Credit Tab ───────────────────────────────────────────────────────────────
+
+function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
+  const { getCredits, recordPayment } = require('@/services/credit.service');
+  
+  const fetchCredits = async () => {
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    return getCredits(token, orgId);
+  };
+
+  const { data: credits = [], isLoading: loading, mutate: load } = useSWR(
+    orgId ? ['credits', orgId] : null,
+    fetchCredits
+  );
+
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNPAID' | 'PARTIAL' | 'PAID'>('ALL');
+  const [selectedCredit, setSelectedCredit] = useState<any | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<string>('');
+  const [paymentNotes, setPaymentNotes] = useState<string>('');
+  const [paying, setPaying] = useState(false);
+
+  const filtered = statusFilter === 'ALL' ? credits : credits.filter((c: any) => c.status === statusFilter);
+
+  const totalOwed = credits.filter((c: any) => c.status !== 'PAID').reduce((sum: number, c: any) => sum + (Number(c.amountTotal) - Number(c.amountPaid)), 0);
+
+  const handlePay = async () => {
+    if (!selectedCredit || !paymentAmount) return;
+    setPaying(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await recordPayment(selectedCredit.id, Number(paymentAmount), paymentNotes || undefined, token, orgId);
+      setPaymentAmount('');
+      setPaymentNotes('');
+      setSelectedCredit(null);
+      load();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4 pt-2">
+      <div className="rounded-2xl border border-blue-400/30 bg-blue-50/60 p-4 text-center">
+        <p className="text-xs text-blue-600 font-semibold mb-1">Total Outstanding Credit</p>
+        <p className="text-2xl font-black text-blue-600">{formatKES(totalOwed)}</p>
+      </div>
+
+      <div className="flex gap-2">
+        {(['ALL', 'UNPAID', 'PARTIAL', 'PAID'] as const).map((f) => (
+          <button key={f} onClick={() => setStatusFilter(f)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${statusFilter === f ? 'bg-[var(--color-accent)] text-white' : 'border border-[var(--color-border)] text-[var(--color-text-secondary)]'}`}>
+            {f === 'ALL' ? 'All' : f === 'UNPAID' ? 'Unpaid' : f === 'PARTIAL' ? 'Partial' : 'Paid'}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col gap-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 animate-pulse rounded-2xl bg-muted" />)}</div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+          <span className="text-4xl">💳</span>
+          <p className="font-semibold">No credit records</p>
+          <p className="text-sm text-[var(--color-text-secondary)]">Goods taken on credit will appear here.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {filtered.map((credit: any) => (
+            <div key={credit.id} className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3 bg-[var(--color-bg-surface)]">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{credit.clientName}</p>
+                <p className="text-xs text-[var(--color-text-secondary)]">
+                  Total: {formatKES(Number(credit.amountTotal))} · Paid: {formatKES(Number(credit.amountPaid))}
+                  {credit.dueDate && ` · Due: ${new Date(credit.dueDate).toLocaleDateString()}`}
+                </p>
+                {credit.transaction?.item?.name && (
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Item: {credit.transaction.item.name}</p>
+                )}
+              </div>
+              <div className="text-right shrink-0">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                  credit.status === 'PAID' ? 'bg-emerald-100 text-emerald-600' :
+                  credit.status === 'PARTIAL' ? 'bg-amber-100 text-amber-600' :
+                  'bg-red-100 text-red-600'
+                }`}>
+                  {credit.status}
+                </span>
+                {credit.status !== 'PAID' && (
+                  <button onClick={() => setSelectedCredit(credit)} className="block w-full mt-1 text-xs font-semibold text-[var(--color-accent)] hover:underline">
+                    Add Payment
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selectedCredit && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-[var(--color-bg-base)] p-5 shadow-xl">
+            <h2 className="text-lg font-bold mb-1">Record Payment</h2>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+              For {selectedCredit.clientName}. Owed: {formatKES(Number(selectedCredit.amountTotal) - Number(selectedCredit.amountPaid))}
+            </p>
+            
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-semibold mb-1 block">Amount Paid</label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--color-border)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block">Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Paid via M-PESA"
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--color-border)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center gap-3">
+              <button
+                onClick={() => setSelectedCredit(null)}
+                className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePay}
+                disabled={paying || !paymentAmount}
+                className="flex-1 rounded-xl bg-[var(--color-accent)] py-3 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {paying ? 'Saving...' : 'Save Payment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function FinancePage() {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
-  const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'ledger'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'ledger' | 'credit'>('overview');
 
   const orgId = membership?.organization.id;
 
@@ -568,11 +722,12 @@ export default function FinancePage() {
           { key: 'overview', label: '📊 Overview' },
           { key: 'expenses', label: '💸 Expenses' },
           { key: 'ledger', label: '📒 Ledger' },
+          { key: 'credit', label: '💳 Credit' },
         ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
-            className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
+            className={`flex-1 rounded-xl py-2 text-[10px] font-semibold transition-all ${
               activeTab === tab.key
                 ? 'bg-[var(--color-bg-surface)] shadow text-[var(--color-text-primary)]'
                 : 'text-[var(--color-text-secondary)]'
@@ -587,6 +742,7 @@ export default function FinancePage() {
       {activeTab === 'overview' && <OverviewTab orgId={orgId} getToken={getToken} />}
       {activeTab === 'expenses' && <ExpensesTab orgId={orgId} getToken={getToken} />}
       {activeTab === 'ledger' && <LedgerTab orgId={orgId} getToken={getToken} />}
+      {activeTab === 'credit' && <CreditTab orgId={orgId} getToken={getToken} />}
     </div>
   );
 }

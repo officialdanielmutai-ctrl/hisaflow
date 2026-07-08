@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { CreateTransactionDto, TransactionTypeDto } from './dto/create-transaction.dto';
 import { AlertsService } from '../alerts/alerts.service';
+import { CreditService } from '../finance/credit.service';
 
 export interface TransactionWithItem {
   id: string;
@@ -21,6 +22,7 @@ export class TransactionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly alertsService: AlertsService,
+    private readonly creditService: CreditService,
   ) {}
 
   async create(dto: CreateTransactionDto, organizationId: string) {
@@ -44,7 +46,8 @@ export class TransactionsService {
       throw new BadRequestException('Insufficient stock');
     }
 
-    await this.prisma.db.$transaction([
+    // Create the inventory transaction record
+    const [, txRecord] = await this.prisma.db.$transaction([
       this.prisma.db.inventoryItem.update({
         where: { id: dto.itemId },
         data: { quantity: newQty },
@@ -52,19 +55,37 @@ export class TransactionsService {
       this.prisma.db.inventoryTransaction.create({
         data: {
           organizationId,
-          itemId: dto.itemId,       // was: productId
+          itemId: dto.itemId,
           type: dto.type,
           quantityBefore: currentQty,
           quantityChange: isDeduction ? -dto.quantity : dto.quantity,
           quantityAfter: newQty,
-          reason: dto.note ?? null, // was: note (schema field is 'reason')
-          source: 'manual',
+          reason: dto.note ?? null,
+          source: dto.isCredit ? 'credit' : 'manual',
           clientName: dto.clientName ?? null,
           metadata: dto.metadata ?? undefined,
         },
-   }),
-
+      }),
     ]);
+
+    // If this is a credit sale, auto-create a CreditRecord
+    if (dto.isCredit && dto.type === TransactionTypeDto.SALE) {
+      const sellingPrice = Number(product.sellingPrice ?? 0);
+      const amountTotal = sellingPrice > 0 ? sellingPrice * dto.quantity : 0;
+      const clientName = dto.clientName ?? 'Unknown Client';
+
+      // Non-blocking — don't fail the whole transaction if credit creation has issues
+      this.creditService
+        .createForTransaction(
+          organizationId,
+          txRecord.id,
+          clientName,
+          amountTotal,
+          dto.dueDate,
+          dto.creditNotes,
+        )
+        .catch((e) => console.error('Credit record creation failed:', e));
+    }
 
     // Fire alert checks non-blocking so stock alerts update after every transaction
     this.alertsService.runAllChecks(organizationId).catch((e) =>

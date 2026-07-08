@@ -26,6 +26,7 @@ model Organization {
   alerts                Alert[]
   businessTransactions  BusinessTransaction[]
   notes                 Note[]
+  creditRecords         CreditRecord[]
   @@map("organizations")
 }
 
@@ -138,6 +139,7 @@ model InventoryTransaction {
 
   organization Organization  @relation(fields: [organizationId], references: [id])
   item         InventoryItem @relation(fields: [itemId], references: [id])
+  creditRecord CreditRecord?
 
   @@index([organizationId])
   @@index([organizationId, itemId])
@@ -283,4 +285,32 @@ model ChecklistItem {
 
   @@index([noteId])
   @@map("checklist_items")
+}
+
+// ── Credit Management (Accounts Receivable) ────────────────────────────────────
+
+enum CreditStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+model CreditRecord {
+  id               String       @id @default(cuid())
+  organizationId   String       @map("organization_id")
+  clientName       String       @map("client_name")
+  transactionId    String?      @unique @map("transaction_id")
+  amountTotal      Decimal      @db.Decimal(12, 2)
+  amountPaid       Decimal      @default(0) @db.Decimal(12, 2)
+  dueDate          DateTime?    @map("due_date")
+  status           CreditStatus @default(UNPAID)
+  notes            String?      @db.Text
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  transaction      InventoryTransaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([organizationId, status])
+  @@map("credit_records")
 }

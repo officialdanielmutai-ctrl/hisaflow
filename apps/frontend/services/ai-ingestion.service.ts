@@ -11,6 +11,10 @@ export interface ParsedAction {
   // Business Specific Fields
   clientName?: string;
   metadata?: any;
+  // Credit fields
+  isCredit?: boolean;
+  dueDate?: string;
+  creditNotes?: string;
   // CREATE fields
   unit?: string;
   costPrice?: number;
@@ -31,7 +35,6 @@ export interface ParsedAction {
   title?: string;
   content?: string;
   importance?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  dueDate?: string;
   checklists?: { text: string }[];
 }
 

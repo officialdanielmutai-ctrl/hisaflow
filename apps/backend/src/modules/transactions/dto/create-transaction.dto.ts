@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsEnum, IsOptional, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsEnum, IsOptional, IsBoolean, Min } from 'class-validator';
 
 export enum TransactionTypeDto {
   SALE = 'SALE',
@@ -30,4 +30,17 @@ export class CreateTransactionDto {
 
   @IsOptional()
   metadata?: any;
+
+  // Credit fields
+  @IsOptional()
+  @IsBoolean()
+  isCredit?: boolean;
+
+  @IsOptional()
+  @IsString()
+  dueDate?: string; // ISO date string
+
+  @IsOptional()
+  @IsString()
+  creditNotes?: string;
 }

@@ -13,6 +13,10 @@ export interface ParsedAction {
   // ── Business Specific Fields (Optional) ──────────────────────────
   clientName?: string; // For ISP installs, etc.
   metadata?: any;
+  // ── Credit Fields ────────────────────────────────────────────────
+  isCredit?: boolean;
+  dueDate?: string; // ISO string
+  creditNotes?: string;
   // ── Fields used only for CREATE ──────────────────────────────────
   unit?: string;
   costPrice?: number;
@@ -33,7 +37,6 @@ export interface ParsedAction {
   title?: string;
   content?: string;
   importance?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  dueDate?: string; // ISO date string
   checklists?: { text: string }[];
 }
 
@@ -84,8 +87,12 @@ Instructions:
   "quantity": <number>,
   "confidence": "HIGH" | "LOW",
   "clientName": "<name of client if mentioned, or null>",
-  "metadata": { <any extra info like service fees or location> }
+  "metadata": { <any extra info like service fees or location> },
+  "isCredit": <true if the user mentions the items were taken on credit, loaned, or they will pay later, false otherwise>,
+  "dueDate": "<ISO 8601 date string if they mention a time/date they will pay, else null>",
+  "creditNotes": "<any extra notes about the credit>"
 }
+*Note: If the sale is on credit (isCredit: true), you MUST ALSO emit a separate "NOTE" action explaining that the item was taken on credit, mentioning the client name and amount/quantity.*
 
 2. PURCHASE — user restocked, received, bought, or added an existing item:
 {
@@ -142,6 +149,7 @@ Instructions:
     "category": "<string or omit>",
     "quantity": <number or omit — only if user explicitly sets stock to a specific number>
   }
+}
 6. NOTE — user wants to leave a note, memo, or checklist for the team:
 {
   "itemId": null,

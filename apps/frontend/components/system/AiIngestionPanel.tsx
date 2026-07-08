@@ -62,6 +62,9 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
                   note: action.type === 'WASTAGE' ? (action.wastageReason ?? 'wastage') : undefined,
                   clientName: action.clientName,
                   metadata: action.metadata,
+                  isCredit: action.isCredit,
+                  dueDate: action.dueDate,
+                  creditNotes: action.creditNotes,
                 },
                 token,
                 orgId,
@@ -200,6 +203,11 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
                     {action.type === 'UPDATE' && action.updates && (
                       <span className="text-xs text-gray-500">
                         Changes: {Object.entries(action.updates).map(([k, v]) => `${k} → ${v}`).join(', ')}
+                      </span>
+                    )}
+                    {action.isCredit && (
+                      <span className="text-xs font-semibold text-blue-600">
+                        💳 Taken on Credit {action.dueDate ? `(Due: ${action.dueDate})` : ''}
                       </span>
                     )}
                     {action.type === 'WASTAGE' && (
