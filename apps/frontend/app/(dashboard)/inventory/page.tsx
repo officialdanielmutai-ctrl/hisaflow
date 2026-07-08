@@ -9,8 +9,7 @@ import { PackageOpen } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 
 export default function InventoryPage() {
-  const [refreshKey, setRefreshKey] = useState(0);
-  const { items, loading, error } = useInventory(refreshKey);
+  const { items, loading, error, mutate } = useInventory();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [txSheetOpen, setTxSheetOpen] = useState(false);
   const { canManageInventory } = useRole();
@@ -86,12 +85,12 @@ export default function InventoryPage() {
           <AddItemSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}
-            onCreated={() => setRefreshKey((k) => k + 1)}
+            onCreated={() => mutate()}
           />
           <QuickTransactionSheet
             open={txSheetOpen}
             onClose={() => setTxSheetOpen(false)}
-            onCompleted={() => setRefreshKey((k) => k + 1)}
+            onCompleted={() => mutate()}
             items={items}
           />
         </>

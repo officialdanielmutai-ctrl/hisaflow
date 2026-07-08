@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { getTransactions, TransactionRecord } from '@/services/transactions.service';
@@ -8,37 +8,21 @@ import { getTransactions, TransactionRecord } from '@/services/transactions.serv
 export function useTransactionHistory(
   filters?: { itemId?: string; type?: string },
 ) {
-  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
+  const orgId = membership?.organization.id;
 
-  useEffect(() => {
-    if (!membership) return;
+  const fetcher = async () => {
+    if (!orgId) throw new Error('No orgId');
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    return getTransactions(token, orgId, filters);
+  };
 
-    async function fetchTransactions() {
-      try {
-        const token = await getToken();
-        if (!token) {
-          setLoading(false);
-          return;
-        }
-        const data = await getTransactions(
-          token,
-          membership!.organization.id,
-          filters,
-        );
-        setTransactions(data);
-      } catch (err) {
-        setError('Failed to load transactions');
-      } finally {
-        setLoading(false);
-      }
-    }
+  const { data: transactions = [], error, isLoading } = useSWR<TransactionRecord[]>(
+    orgId ? ['transactions', orgId, filters?.itemId, filters?.type] : null,
+    fetcher
+  );
 
-    fetchTransactions();
-  }, [membership, filters?.itemId, filters?.type, getToken]);
-
-  return { transactions, loading, error };
+  return { transactions, loading: isLoading, error: error ? 'Failed to load transactions' : null };
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import {
@@ -88,28 +89,25 @@ function InsightCard({ insight }: { insight: ForecastInsight }) {
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 
 function OverviewTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
-  const [overview, setOverview] = useState<BusinessOverview | null>(null);
   const [forecast, setForecast] = useState<ForecastInsight[]>([]);
   const [dateMode, setDateMode] = useState<'rolling30' | 'calendar'>('rolling30');
-  const [loading, setLoading] = useState(true);
   const [loadingForecast, setLoadingForecast] = useState(false);
   const [suggestions, setSuggestions] = useState<PriceSuggestion[]>([]);
   const [showPriceSheet, setShowPriceSheet] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (mode: 'rolling30' | 'calendar') => {
-    setLoading(true);
-    try {
-      const token = await getToken();
-      if (!token) return;
-      const data = await getBusinessOverview(token, orgId, mode);
-      setOverview(data);
-    } catch { setError('Could not load financial data.'); }
-    finally { setLoading(false); }
-  }, [orgId, getToken]);
+  const fetchOverview = async () => {
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    return getBusinessOverview(token, orgId, dateMode);
+  };
 
-  useEffect(() => { load(dateMode); }, [dateMode, load]);
+  const { data: overview, error: fetchError, isLoading: loading, mutate: load } = useSWR(
+    orgId ? ['overview', orgId, dateMode] : null,
+    fetchOverview
+  );
+
+  const error = fetchError ? 'Could not load financial data.' : null;
 
   const loadForecast = useCallback(async () => {
     if (forecast.length > 0) return;
@@ -279,7 +277,7 @@ function OverviewTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
 
       {showPriceSheet && suggestions.length > 0 && (
         <PriceReviewSheet suggestions={suggestions} onClose={() => setShowPriceSheet(false)}
-          onConfirmed={() => { setShowPriceSheet(false); load(dateMode); }} />
+          onConfirmed={() => { setShowPriceSheet(false); load(); }} />
       )}
     </div>
   );
@@ -288,23 +286,20 @@ function OverviewTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
 // ─── Expenses Tab ─────────────────────────────────────────────────────────────
 
 function ExpensesTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
-  const [entries, setEntries] = useState<BusinessTransactionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const fetchExpenses = async () => {
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    return getBusinessTransactions(token, orgId);
+  };
+
+  const { data: entries = [], isLoading: loading, mutate: load } = useSWR(
+    orgId ? ['expenses', orgId] : null,
+    fetchExpenses
+  );
+
   const [filter, setFilter] = useState<'ALL' | 'EXPENSE' | 'INCOME'>('ALL');
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const token = await getToken();
-      if (!token) return;
-      const data = await getBusinessTransactions(token, orgId);
-      setEntries(data);
-    } catch { } finally { setLoading(false); }
-  }, [orgId, getToken]);
-
-  useEffect(() => { load(); }, [load]);
 
   const handleSave = async (payload: any) => {
     const token = await getToken();
@@ -319,7 +314,7 @@ function ExpensesTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
       const token = await getToken();
       if (!token) return;
       await deleteBusinessTransaction(id, token, orgId);
-      setEntries((prev) => prev.filter((e) => e.id !== id));
+      load();
     } catch { } finally { setDeleting(null); }
   };
 
@@ -411,29 +406,28 @@ function ExpensesTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
 // ─── Ledger Tab ───────────────────────────────────────────────────────────────
 
 function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
-  const [entries, setEntries] = useState<BusinessTransactionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const fetchLedger = async () => {
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    const [bizData, invItems] = await Promise.all([
+      getBusinessTransactions(token, orgId),
+      getInventoryItems(token, orgId),
+    ]);
+    return { entries: bizData, items: invItems };
+  };
+
+  const { data, isLoading: loading } = useSWR(
+    orgId ? ['ledger', orgId] : null,
+    fetchLedger
+  );
+
+  const entries = data?.entries ?? [];
+  const items = data?.items ?? [];
+
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'EXPENSE' | 'INCOME'>('ALL');
-  const [items, setItems] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<ItemFinancialProfile | null>(null);
   const [loadingItem, setLoadingItem] = useState(false);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const token = await getToken();
-        if (!token) return;
-        const [bizData, invItems] = await Promise.all([
-          getBusinessTransactions(token, orgId),
-          getInventoryItems(token, orgId),
-        ]);
-        setEntries(bizData);
-        setItems(invItems);
-      } catch { } finally { setLoading(false); }
-    }
-    load();
-  }, [orgId, getToken]);
 
   const handleSelectItem = async (item: any) => {
     setLoadingItem(true);

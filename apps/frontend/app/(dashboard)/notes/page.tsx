@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { Note, getNotes } from '@/services/notes.service';
@@ -11,30 +12,23 @@ import { Plus, ListTodo } from 'lucide-react';
 export default function NotesPage() {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
+  const orgId = membership?.organization.id;
+
+  const fetcher = async () => {
+    if (!orgId) throw new Error('No orgId');
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    const filters = filter !== 'ALL' ? { status: filter } : undefined;
+    return getNotes(token, orgId, filters);
+  };
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'ALL' | 'OPEN' | 'COMPLETED'>('ALL');
 
-  const fetchNotes = useCallback(async () => {
-    if (!membership?.organization.id) return;
-    try {
-      const token = await getToken();
-      if (!token) return;
-      
-      const filters = filter !== 'ALL' ? { status: filter } : undefined;
-      const data = await getNotes(token, membership.organization.id, filters);
-      setNotes(data);
-    } catch (error) {
-      console.error('Failed to fetch notes:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [getToken, membership?.organization.id, filter]);
-
-  useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
+  const { data: notes = [], isLoading: loading, mutate: fetchNotes } = useSWR(
+    orgId ? ['notes', orgId, filter] : null,
+    fetcher
+  );
 
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500">

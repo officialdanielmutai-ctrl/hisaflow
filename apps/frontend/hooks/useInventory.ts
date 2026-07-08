@@ -1,41 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from './useMyOrganization';
 import { getInventoryItems, type InventoryItem } from '@/services/inventory.service';
 
-export function useInventory(refreshKey = 0) {
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export function useInventory() {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
+  const orgId = membership?.organization.id;
 
-  useEffect(() => {
-    const organizationId = membership?.organization.id;
-    if (!organizationId) {
-      setLoading(false);
-      return;
-    }
+  const fetcher = async () => {
+    if (!orgId) throw new Error('No orgId');
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    return getInventoryItems(token, orgId);
+  };
 
-    setLoading(true);
+  const { data: items = [], error, isLoading, mutate } = useSWR<InventoryItem[]>(
+    orgId ? ['inventory', orgId] : null,
+    fetcher
+  );
 
-    async function fetchItems() {
-      try {
-        const token = await getToken();
-        if (!token) throw new Error('Not authenticated');
-        const result = await getInventoryItems(token, organizationId!);
-        setItems(result);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load inventory');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchItems();
-  }, [membership?.organization.id, getToken, refreshKey]);
-
-  return { items, loading, error };
+  return { items, loading: isLoading, error: error ? 'Failed to load inventory' : null, mutate };
 }

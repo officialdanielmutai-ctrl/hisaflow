@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import Link from 'next/link';
@@ -14,38 +14,22 @@ export default function DashboardPage() {
   const { user } = useUser();
   const { canViewAnalytics } = useRole();
 
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const orgId = membership?.organization.id;
 
-  useEffect(() => {
-    const orgId = membership?.organization.id;
-    if (!orgId) {
-      setLoading(false);
-      return;
-    }
+  const fetcher = async () => {
+    if (!orgId) throw new Error('No organization found');
+    const token = await getToken();
+    if (!token) throw new Error('Not authenticated');
+    return getDashboardData(token, orgId);
+  };
 
-    if (!canViewAnalytics) {
-      setLoading(false);
-      return;
-    }
+  const { data, error, isLoading } = useSWR<DashboardData>(
+    canViewAnalytics && orgId ? ['dashboard', orgId] : null,
+    fetcher,
+    { revalidateOnFocus: true }
+  );
 
-    async function fetchDashboard() {
-      try {
-        const token = await getToken();
-        if (!token) throw new Error('Not authenticated');
-        if (!orgId) throw new Error('No organization found');
-        const result = await getDashboardData(token, orgId);
-        setData(result);
-      } catch (e: any) {
-        setError(e.message ?? 'Failed to load dashboard');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchDashboard();
-  }, [membership?.organization.id, getToken, canViewAnalytics]);
+  const loading = isLoading;
 
   const firstName = user?.firstName ?? 'there';
   const timeLabel = data?.greeting.timeOfDay ?? 'morning';
