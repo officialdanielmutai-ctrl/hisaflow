@@ -5,11 +5,22 @@ import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles, AppRole } from '../../core/decorators/roles.decorator';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
 import { RecordPaymentDto } from './dto/record-payment.dto';
+import { CreateCreditDto } from './dto/create-credit.dto';
 
 @UseGuards(ClerkAuthGuard, RolesGuard)
 @Controller('finance/credits')
 export class CreditController {
   constructor(private readonly creditService: CreditService) {}
+
+  // ── Create manual credit record ───────────────────────────────────────────
+  @Roles(AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF)
+  @Post()
+  create(
+    @OrgContext() orgId: string,
+    @Body() dto: CreateCreditDto,
+  ) {
+    return this.creditService.createManualCredit(orgId, dto);
+  }
 
   // ── List all credit records ──────────────────────────────────────────────
   @Roles(AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF)

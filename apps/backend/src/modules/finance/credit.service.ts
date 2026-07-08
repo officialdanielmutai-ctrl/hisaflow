@@ -95,6 +95,30 @@ export class CreditService {
     });
   }
 
+  // ── Create a credit record manually ──────────────────────────────────────────
+  async createManualCredit(
+    organizationId: string,
+    dto: { clientName: string; amountTotal: number; dueDate?: string; notes?: string }
+  ) {
+    let parsedDate: Date | undefined;
+    if (dto.dueDate) {
+      const d = new Date(dto.dueDate);
+      if (!isNaN(d.getTime())) {
+        parsedDate = d;
+      }
+    }
+
+    return this.prisma.db.creditRecord.create({
+      data: {
+        organizationId,
+        clientName: dto.clientName,
+        amountTotal: dto.amountTotal,
+        ...(parsedDate ? { dueDate: parsedDate } : {}),
+        ...(dto.notes ? { notes: dto.notes } : {}),
+      },
+    });
+  }
+
   // ── Create a credit record (called by transaction service) ────────────────
   createForTransaction(
     organizationId: string,
@@ -104,13 +128,21 @@ export class CreditService {
     dueDate?: string,
     notes?: string,
   ) {
+    let parsedDate: Date | undefined;
+    if (dueDate) {
+      const d = new Date(dueDate);
+      if (!isNaN(d.getTime())) {
+        parsedDate = d;
+      }
+    }
+
     return this.prisma.db.creditRecord.create({
       data: {
         organizationId,
         transactionId,
         clientName,
         amountTotal,
-        ...(dueDate ? { dueDate: new Date(dueDate) } : {}),
+        ...(parsedDate ? { dueDate: parsedDate } : {}),
         ...(notes ? { notes } : {}),
       },
     });

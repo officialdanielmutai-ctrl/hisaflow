@@ -44,3 +44,16 @@ export async function recordPayment(
     { amount, notes },
   );
 }
+
+export async function createCredit(
+  payload: { clientName: string; amountTotal: number; dueDate?: string; notes?: string },
+  token: string,
+  organizationId: string,
+): Promise<CreditRecord> {
+  return apiPost<CreditRecord>(
+    `/finance/credits`,
+    token,
+    organizationId,
+    payload,
+  );
+}

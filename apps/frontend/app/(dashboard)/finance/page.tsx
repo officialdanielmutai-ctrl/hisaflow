@@ -539,10 +539,12 @@ function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
   );
 }
 
+import AddCreditSheet from '@/components/finance/AddCreditSheet';
+
 // ─── Credit Tab ───────────────────────────────────────────────────────────────
 
 function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
-  const { getCredits, recordPayment } = require('@/services/credit.service');
+  const { getCredits, recordPayment, createCredit } = require('@/services/credit.service');
   
   const fetchCredits = async () => {
     const token = await getToken();
@@ -560,6 +562,7 @@ function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [paymentNotes, setPaymentNotes] = useState<string>('');
   const [paying, setPaying] = useState(false);
+  const [showAddCredit, setShowAddCredit] = useState(false);
 
   const filtered = statusFilter === 'ALL' ? credits : credits.filter((c: any) => c.status === statusFilter);
 
@@ -583,11 +586,27 @@ function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
     }
   };
 
+  const handleAddCredit = async (payload: any) => {
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    await createCredit(payload, token, orgId);
+    load();
+  };
+
   return (
     <div className="flex flex-col gap-4 pt-2">
-      <div className="rounded-2xl border border-blue-400/30 bg-blue-50/60 p-4 text-center">
-        <p className="text-xs text-blue-600 font-semibold mb-1">Total Outstanding Credit</p>
-        <p className="text-2xl font-black text-blue-600">{formatKES(totalOwed)}</p>
+      <div className="flex items-stretch gap-3">
+        <div className="flex-1 rounded-2xl border border-blue-400/30 bg-blue-50/60 p-4 text-center">
+          <p className="text-xs text-blue-600 font-semibold mb-1">Total Outstanding Credit</p>
+          <p className="text-2xl font-black text-blue-600">{formatKES(totalOwed)}</p>
+        </div>
+        <button
+          onClick={() => setShowAddCredit(true)}
+          className="flex items-center justify-center rounded-2xl bg-[var(--color-accent)] px-4 text-white shadow-md hover:opacity-90 transition-opacity"
+          title="Log Manual Credit"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
       </div>
 
       <div className="flex gap-2">
@@ -619,6 +638,9 @@ function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
                 </p>
                 {credit.transaction?.item?.name && (
                   <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Item: {credit.transaction.item.name}</p>
+                )}
+                {credit.notes && !credit.transaction?.item?.name && (
+                  <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">Note: {credit.notes}</p>
                 )}
               </div>
               <div className="text-right shrink-0">
@@ -689,6 +711,8 @@ function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
           </div>
         </div>
       )}
+
+      {showAddCredit && <AddCreditSheet onClose={() => setShowAddCredit(false)} onSave={handleAddCredit} />}
     </div>
   );
 }
