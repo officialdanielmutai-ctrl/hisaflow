@@ -4,14 +4,17 @@ import { useState } from 'react';
 import { useInventory } from '@/hooks/useInventory';
 import InventoryItemCard from '@/components/system/InventoryItemCard';
 import AddItemSheet from '@/components/mobile/AddItemSheet';
+import EditItemSheet from '@/components/mobile/EditItemSheet';
 import QuickTransactionSheet from '@/components/mobile/QuickTransactionSheet';
 import { PackageOpen } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
+import type { InventoryItem } from '@/services/inventory.service';
 
 export default function InventoryPage() {
   const { items, loading, error, mutate } = useInventory();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [txSheetOpen, setTxSheetOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const { canManageInventory } = useRole();
 
   return (
@@ -75,7 +78,11 @@ export default function InventoryPage() {
       {!loading && !error && items.length > 0 && (
         <div className="flex flex-col gap-3">
           {items.map((item) => (
-            <InventoryItemCard key={item.id} item={item} />
+            <InventoryItemCard
+              key={item.id}
+              item={item}
+              onEdit={canManageInventory ? (i) => setEditingItem(i) : undefined}
+            />
           ))}
         </div>
       )}
@@ -95,6 +102,15 @@ export default function InventoryPage() {
           />
         </>
       )}
+
+      {editingItem && (
+        <EditItemSheet
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onUpdated={() => { mutate(); setEditingItem(null); }}
+        />
+      )}
     </div>
   );
 }
+

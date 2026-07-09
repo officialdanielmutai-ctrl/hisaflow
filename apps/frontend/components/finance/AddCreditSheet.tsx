@@ -2,17 +2,32 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import type { CreditRecord } from '@/services/credit.service';
 
 interface AddCreditSheetProps {
   onClose: () => void;
-  onSave: (payload: { clientName: string; amountTotal: number; dueDate?: string; notes?: string }) => Promise<void>;
+  /** Called when creating a new credit. Provide either onSave OR onUpdate, not both. */
+  onSave?: (payload: { clientName: string; amountTotal: number; dueDate?: string; notes?: string }) => Promise<void>;
+  /** Called when editing an existing credit. Provide either onSave OR onUpdate, not both. */
+  onUpdate?: (payload: { clientName?: string; amountTotal?: number; dueDate?: string; notes?: string; status?: 'UNPAID' | 'PARTIAL' | 'PAID' }) => Promise<void>;
+  /** Pre-fill fields when editing an existing credit record. */
+  initialValues?: Pick<CreditRecord, 'clientName' | 'amountTotal' | 'dueDate' | 'notes' | 'status'>;
 }
 
-export default function AddCreditSheet({ onClose, onSave }: AddCreditSheetProps) {
-  const [clientName, setClientName] = useState('');
-  const [amountTotal, setAmountTotal] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [notes, setNotes] = useState('');
+const STATUS_OPTIONS: Array<'UNPAID' | 'PARTIAL' | 'PAID'> = ['UNPAID', 'PARTIAL', 'PAID'];
+
+export default function AddCreditSheet({ onClose, onSave, onUpdate, initialValues }: AddCreditSheetProps) {
+  const isEditMode = !!initialValues;
+
+  const [clientName, setClientName] = useState(initialValues?.clientName ?? '');
+  const [amountTotal, setAmountTotal] = useState(
+    initialValues?.amountTotal != null ? String(Number(initialValues.amountTotal)) : ''
+  );
+  const [dueDate, setDueDate] = useState(
+    initialValues?.dueDate ? new Date(initialValues.dueDate).toISOString().slice(0, 10) : ''
+  );
+  const [notes, setNotes] = useState(initialValues?.notes ?? '');
+  const [status, setStatus] = useState<'UNPAID' | 'PARTIAL' | 'PAID'>(initialValues?.status ?? 'UNPAID');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,12 +38,22 @@ export default function AddCreditSheet({ onClose, onSave }: AddCreditSheetProps)
     setSaving(true);
     setError(null);
     try {
-      await onSave({
-        clientName: clientName.trim(),
-        amountTotal: Number(amountTotal),
-        dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-        notes: notes.trim() || undefined,
-      });
+      if (isEditMode && onUpdate) {
+        await onUpdate({
+          clientName: clientName.trim(),
+          amountTotal: Number(amountTotal),
+          dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+          notes: notes.trim() || undefined,
+          status,
+        });
+      } else if (onSave) {
+        await onSave({
+          clientName: clientName.trim(),
+          amountTotal: Number(amountTotal),
+          dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+          notes: notes.trim() || undefined,
+        });
+      }
       onClose();
     } catch (err: any) {
       console.error(err);
@@ -41,14 +66,14 @@ export default function AddCreditSheet({ onClose, onSave }: AddCreditSheetProps)
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
       <div className="flex h-full w-full max-w-md flex-col bg-[var(--color-bg-base)] shadow-2xl animate-in slide-in-from-right duration-300">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
-          <h2 className="text-xl font-bold">Log Manual Credit</h2>
+          <h2 className="text-xl font-bold">{isEditMode ? 'Edit Credit Record' : 'Log Manual Credit'}</h2>
           <button onClick={onClose} className="rounded-full p-2 hover:bg-[var(--color-bg-surface)] transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <form id="add-credit-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form id="credit-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
             {error && <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</div>}
 
             <div>
@@ -87,6 +112,28 @@ export default function AddCreditSheet({ onClose, onSave }: AddCreditSheetProps)
               />
             </div>
 
+            {isEditMode && (
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold">Status</label>
+                <div className="flex gap-2">
+                  {STATUS_OPTIONS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setStatus(s)}
+                      className={`flex-1 rounded-xl py-2 text-xs font-bold transition-all ${
+                        status === s
+                          ? s === 'PAID' ? 'bg-emerald-500 text-white' : s === 'PARTIAL' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'
+                          : 'border border-[var(--color-border)] text-[var(--color-text-secondary)]'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="mb-1.5 block text-sm font-semibold">Notes</label>
               <textarea
@@ -103,11 +150,11 @@ export default function AddCreditSheet({ onClose, onSave }: AddCreditSheetProps)
         <div className="border-t border-[var(--color-border)] p-6 bg-[var(--color-bg-surface)]">
           <button
             type="submit"
-            form="add-credit-form"
+            form="credit-form"
             disabled={saving || !clientName || !amountTotal}
             className="w-full rounded-2xl bg-[var(--color-accent)] py-3.5 font-bold text-white shadow-md disabled:opacity-50 transition-opacity"
           >
-            {saving ? 'Saving...' : 'Save Credit'}
+            {saving ? 'Saving...' : isEditMode ? 'Update Credit' : 'Save Credit'}
           </button>
         </div>
       </div>

@@ -57,3 +57,17 @@ export async function createCredit(
     payload,
   );
 }
+
+export async function updateCredit(
+  id: string,
+  payload: { clientName?: string; amountTotal?: number; dueDate?: string; notes?: string; status?: 'UNPAID' | 'PARTIAL' | 'PAID' },
+  token: string,
+  organizationId: string,
+): Promise<CreditRecord> {
+  return apiPatch<CreditRecord>(
+    `/finance/credits/${id}`,
+    token,
+    organizationId,
+    payload,
+  );
+}

@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Patch, Param, Body, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles, AppRole } from '../../core/decorators/roles.decorator';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
 import { CreateBusinessTransactionDto } from './dto/create-business-transaction.dto';
+import { UpdateBusinessTransactionDto } from './dto/update-business-transaction.dto';
 
 @UseGuards(ClerkAuthGuard, RolesGuard)
 @Controller('finance')
@@ -79,5 +80,15 @@ export class FinanceController {
     @OrgContext() orgId: string,
   ) {
     return this.financeService.deleteBusinessTransaction(id, orgId);
+  }
+
+  @Roles(AppRole.OWNER, AppRole.MANAGER)
+  @Patch('business-transactions/:id')
+  updateBusinessTransaction(
+    @Param('id') id: string,
+    @OrgContext() orgId: string,
+    @Body() dto: UpdateBusinessTransactionDto,
+  ) {
+    return this.financeService.updateBusinessTransaction(id, orgId, dto);
   }
 }

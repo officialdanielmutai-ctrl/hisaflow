@@ -6,6 +6,7 @@ import { Roles, AppRole } from '../../core/decorators/roles.decorator';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { CreateCreditDto } from './dto/create-credit.dto';
+import { UpdateCreditDto } from './dto/update-credit.dto';
 
 @UseGuards(ClerkAuthGuard, RolesGuard)
 @Controller('finance/credits')
@@ -51,14 +52,14 @@ export class CreditController {
     return this.creditService.recordPayment(id, orgId, dto);
   }
 
-  // ── Update credit notes / due date ────────────────────────────────────────
+  // ── Update credit record (full edit) ──────────────────────────────────────
   @Roles(AppRole.OWNER, AppRole.MANAGER)
   @Patch(':id')
   update(
     @Param('id') id: string,
     @OrgContext() orgId: string,
-    @Body() body: { notes?: string; dueDate?: string },
+    @Body() dto: UpdateCreditDto,
   ) {
-    return this.creditService.updateCredit(id, orgId, body);
+    return this.creditService.updateCredit(id, orgId, dto);
   }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { CreateBusinessTransactionDto } from './dto/create-business-transaction.dto';
+import { UpdateBusinessTransactionDto } from './dto/update-business-transaction.dto';
 
 // ─── Response Shapes ──────────────────────────────────────────────────────────
 
@@ -287,6 +288,33 @@ export class FinanceService {
     await this.prisma.db.businessTransaction.deleteMany({
       where: { id, organizationId },
     });
+  }
+
+  async updateBusinessTransaction(
+    id: string,
+    organizationId: string,
+    dto: UpdateBusinessTransactionDto,
+  ): Promise<BusinessTransactionRecord> {
+    // Verify ownership first
+    const existing = await this.prisma.db.businessTransaction.findFirst({
+      where: { id, organizationId },
+    });
+    if (!existing) throw new Error('Transaction not found');
+
+    const data: any = {};
+    if (dto.category !== undefined) data.category = dto.category;
+    if (dto.amount !== undefined) data.amount = dto.amount;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.staffName !== undefined) data.staffName = dto.staffName;
+    if (dto.isRecurring !== undefined) data.isRecurring = dto.isRecurring;
+    if (dto.recurrenceRule !== undefined) data.recurrenceRule = dto.recurrenceRule;
+    if (dto.date !== undefined) data.date = new Date(dto.date);
+
+    const updated = await this.prisma.db.businessTransaction.update({
+      where: { id },
+      data,
+    });
+    return this.mapBusinessTx(updated);
   }
 
   // ── 4. Single Item Financial Profile ───────────────────────────────────────

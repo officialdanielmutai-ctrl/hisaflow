@@ -25,12 +25,12 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsNumber()
-  @IsPositive()
+  @Min(0)
   costPrice?: number;
 
   @IsOptional()
   @IsNumber()
-  @IsPositive()
+  @Min(0)
   sellingPrice?: number;
 
   // Business specific fields

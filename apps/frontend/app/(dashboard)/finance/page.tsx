@@ -16,6 +16,7 @@ import {
   getBusinessOverview,
   getBusinessTransactions,
   createBusinessTransaction,
+  updateBusinessTransaction,
   deleteBusinessTransaction,
   getCategoryLabel,
   getCategoryEmoji,
@@ -27,7 +28,7 @@ import dynamic from 'next/dynamic';
 import {
   TrendingUp, TrendingDown, Minus, AlertCircle, Tag,
   Search, Plus, Trash2, RotateCcw, RefreshCw, ChevronRight,
-  ArrowDownLeft, ArrowUpRight,
+  ArrowDownLeft, ArrowUpRight, Edit2,
 } from 'lucide-react';
 import PriceReviewSheet from '@/components/system/PriceReviewSheet';
 import AddEntrySheet from '@/components/finance/AddEntrySheet';
@@ -299,12 +300,21 @@ function ExpensesTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
 
   const [filter, setFilter] = useState<'ALL' | 'EXPENSE' | 'INCOME'>('ALL');
   const [showAddSheet, setShowAddSheet] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<BusinessTransactionRecord | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const handleSave = async (payload: any) => {
     const token = await getToken();
     if (!token) return;
     await createBusinessTransaction(payload, token, orgId);
+    await load();
+  };
+
+  const handleUpdate = async (payload: any) => {
+    if (!editingEntry) return;
+    const token = await getToken();
+    if (!token) return;
+    await updateBusinessTransaction(editingEntry.id, payload, token, orgId);
     await load();
   };
 
@@ -388,10 +398,16 @@ function ExpensesTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
                 <p className={`text-sm font-bold ${entry.type === 'EXPENSE' ? 'text-red-500' : 'text-emerald-600'}`}>
                   {entry.type === 'EXPENSE' ? '-' : '+'}{formatKES(entry.amount)}
                 </p>
-                <button onClick={() => handleDelete(entry.id)} disabled={deleting === entry.id}
-                  className="text-[var(--color-text-muted)] hover:text-red-500 transition-colors mt-1">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center justify-end gap-1 mt-1">
+                  <button onClick={() => setEditingEntry(entry)}
+                    className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors">
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => handleDelete(entry.id)} disabled={deleting === entry.id}
+                    className="p-1 text-[var(--color-text-muted)] hover:text-red-500 transition-colors">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -399,6 +415,13 @@ function ExpensesTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
       )}
 
       {showAddSheet && <AddEntrySheet onClose={() => setShowAddSheet(false)} onSave={handleSave} />}
+      {editingEntry && (
+        <AddEntrySheet
+          onClose={() => setEditingEntry(null)}
+          onUpdate={handleUpdate}
+          initialValues={editingEntry}
+        />
+      )}
     </div>
   );
 }
@@ -544,7 +567,7 @@ import AddCreditSheet from '@/components/finance/AddCreditSheet';
 // ─── Credit Tab ───────────────────────────────────────────────────────────────
 
 function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
-  const { getCredits, recordPayment, createCredit } = require('@/services/credit.service');
+  const { getCredits, recordPayment, createCredit, updateCredit } = require('@/services/credit.service');
   
   const fetchCredits = async () => {
     const token = await getToken();
@@ -559,6 +582,7 @@ function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
 
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'UNPAID' | 'PARTIAL' | 'PAID'>('ALL');
   const [selectedCredit, setSelectedCredit] = useState<any | null>(null);
+  const [editingCredit, setEditingCredit] = useState<any | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [paymentNotes, setPaymentNotes] = useState<string>('');
   const [paying, setPaying] = useState(false);
@@ -590,6 +614,14 @@ function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
     const token = await getToken();
     if (!token) throw new Error('No token');
     await createCredit(payload, token, orgId);
+    load();
+  };
+
+  const handleUpdateCredit = async (payload: any) => {
+    if (!editingCredit) return;
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    await updateCredit(editingCredit.id, payload, token, orgId);
     load();
   };
 
@@ -644,13 +676,18 @@ function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
                 )}
               </div>
               <div className="text-right shrink-0">
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                  credit.status === 'PAID' ? 'bg-emerald-100 text-emerald-600' :
-                  credit.status === 'PARTIAL' ? 'bg-amber-100 text-amber-600' :
-                  'bg-red-100 text-red-600'
-                }`}>
-                  {credit.status}
-                </span>
+                <div className="flex items-center justify-end gap-2 mb-1">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                    credit.status === 'PAID' ? 'bg-emerald-100 text-emerald-600' :
+                    credit.status === 'PARTIAL' ? 'bg-amber-100 text-amber-600' :
+                    'bg-red-100 text-red-600'
+                  }`}>
+                    {credit.status}
+                  </span>
+                  <button onClick={() => setEditingCredit(credit)} className="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors p-1">
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
                 {credit.status !== 'PAID' && (
                   <button onClick={() => setSelectedCredit(credit)} className="block w-full mt-1 text-xs font-semibold text-[var(--color-accent)] hover:underline">
                     Add Payment
@@ -713,6 +750,13 @@ function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
       )}
 
       {showAddCredit && <AddCreditSheet onClose={() => setShowAddCredit(false)} onSave={handleAddCredit} />}
+      {editingCredit && (
+        <AddCreditSheet
+          onClose={() => setEditingCredit(null)}
+          onUpdate={handleUpdateCredit}
+          initialValues={editingCredit}
+        />
+      )}
     </div>
   );
 }

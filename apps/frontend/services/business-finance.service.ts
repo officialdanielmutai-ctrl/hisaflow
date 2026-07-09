@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete } from '@/lib/api-client';
+import { apiGet, apiPost, apiDelete, apiPatch } from '@/lib/api-client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -144,4 +144,28 @@ export async function deleteBusinessTransaction(
   organizationId: string,
 ): Promise<void> {
   return apiDelete<void>(`/finance/business-transactions/${id}`, token, organizationId);
+}
+
+export interface UpdateBusinessTransactionPayload {
+  category?: string;
+  amount?: number;
+  description?: string;
+  staffName?: string;
+  date?: string;
+  isRecurring?: boolean;
+  recurrenceRule?: string;
+}
+
+export async function updateBusinessTransaction(
+  id: string,
+  payload: UpdateBusinessTransactionPayload,
+  token: string,
+  organizationId: string,
+): Promise<BusinessTransactionRecord> {
+  return apiPatch<BusinessTransactionRecord>(
+    `/finance/business-transactions/${id}`,
+    token,
+    organizationId,
+    payload,
+  );
 }

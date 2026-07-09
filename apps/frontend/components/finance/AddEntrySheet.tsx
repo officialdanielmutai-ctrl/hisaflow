@@ -6,22 +6,33 @@ import {
   EXPENSE_CATEGORIES,
   INCOME_CATEGORIES,
   type CreateBusinessTransactionPayload,
+  type UpdateBusinessTransactionPayload,
+  type BusinessTransactionRecord,
 } from '@/services/business-finance.service';
 
 interface Props {
   onClose: () => void;
-  onSave: (payload: CreateBusinessTransactionPayload) => Promise<void>;
+  /** Called when creating. Provide either onSave OR onUpdate. */
+  onSave?: (payload: CreateBusinessTransactionPayload) => Promise<void>;
+  /** Called when editing. Provide either onSave OR onUpdate. */
+  onUpdate?: (payload: UpdateBusinessTransactionPayload) => Promise<void>;
+  /** Pre-fill values when editing an existing entry. */
+  initialValues?: Pick<BusinessTransactionRecord, 'type' | 'category' | 'amount' | 'description' | 'staffName' | 'date' | 'isRecurring' | 'recurrenceRule'>;
 }
 
-export default function AddEntrySheet({ onClose, onSave }: Props) {
-  const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
-  const [category, setCategory] = useState('');
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [staffName, setStaffName] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceRule, setRecurrenceRule] = useState<'MONTHLY' | 'WEEKLY' | 'YEARLY'>('MONTHLY');
+export default function AddEntrySheet({ onClose, onSave, onUpdate, initialValues }: Props) {
+  const isEditMode = !!initialValues;
+
+  const [type, setType] = useState<'EXPENSE' | 'INCOME'>(initialValues?.type ?? 'EXPENSE');
+  const [category, setCategory] = useState(initialValues?.category ?? '');
+  const [amount, setAmount] = useState(initialValues?.amount != null ? String(initialValues.amount) : '');
+  const [description, setDescription] = useState(initialValues?.description ?? '');
+  const [staffName, setStaffName] = useState(initialValues?.staffName ?? '');
+  const [date, setDate] = useState(initialValues?.date ?? new Date().toISOString().slice(0, 10));
+  const [isRecurring, setIsRecurring] = useState(initialValues?.isRecurring ?? false);
+  const [recurrenceRule, setRecurrenceRule] = useState<'MONTHLY' | 'WEEKLY' | 'YEARLY'>(
+    (initialValues?.recurrenceRule as any) ?? 'MONTHLY'
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,16 +46,28 @@ export default function AddEntrySheet({ onClose, onSave }: Props) {
     setSaving(true);
     setError('');
     try {
-      await onSave({
-        type,
-        category,
-        amount: amt,
-        description: description.trim() || undefined,
-        staffName: category === 'SALARY' && staffName.trim() ? staffName.trim() : undefined,
-        date,
-        isRecurring,
-        recurrenceRule: isRecurring ? recurrenceRule : undefined,
-      });
+      if (isEditMode && onUpdate) {
+        await onUpdate({
+          category,
+          amount: amt,
+          description: description.trim() || undefined,
+          staffName: category === 'SALARY' && staffName.trim() ? staffName.trim() : undefined,
+          date,
+          isRecurring,
+          recurrenceRule: isRecurring ? recurrenceRule : undefined,
+        });
+      } else if (onSave) {
+        await onSave({
+          type,
+          category,
+          amount: amt,
+          description: description.trim() || undefined,
+          staffName: category === 'SALARY' && staffName.trim() ? staffName.trim() : undefined,
+          date,
+          isRecurring,
+          recurrenceRule: isRecurring ? recurrenceRule : undefined,
+        });
+      }
       onClose();
     } catch {
       setError('Failed to save. Please try again.');
@@ -68,30 +91,41 @@ export default function AddEntrySheet({ onClose, onSave }: Props) {
         <div className="px-5 pt-2 pb-6 space-y-5 max-h-[85vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold">Log Entry</h2>
+            <h2 className="text-lg font-bold">{isEditMode ? 'Edit Entry' : 'Log Entry'}</h2>
             <button onClick={onClose} className="rounded-full p-1.5 hover:bg-[var(--color-bg-base)] transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Income / Expense toggle */}
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-[var(--color-bg-base)]">
-            {(['EXPENSE', 'INCOME'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => { setType(t); setCategory(''); }}
-                className={`rounded-xl py-2 text-sm font-semibold transition-all ${
-                  type === t
-                    ? t === 'EXPENSE'
-                      ? 'bg-red-500 text-white shadow'
-                      : 'bg-emerald-500 text-white shadow'
-                    : 'text-[var(--color-text-secondary)]'
-                }`}
-              >
-                {t === 'EXPENSE' ? '↑ Expense' : '↓ Income'}
-              </button>
-            ))}
-          </div>
+          {/* Income / Expense toggle — only in create mode; type is fixed in edit mode */}
+          {!isEditMode && (
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-[var(--color-bg-base)]">
+              {(['EXPENSE', 'INCOME'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => { setType(t); setCategory(''); }}
+                  className={`rounded-xl py-2 text-sm font-semibold transition-all ${
+                    type === t
+                      ? t === 'EXPENSE'
+                        ? 'bg-red-500 text-white shadow'
+                        : 'bg-emerald-500 text-white shadow'
+                      : 'text-[var(--color-text-secondary)]'
+                  }`}
+                >
+                  {t === 'EXPENSE' ? '↑ Expense' : '↓ Income'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* In edit mode, show a read-only type badge */}
+          {isEditMode && (
+            <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+              type === 'EXPENSE' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'
+            }`}>
+              {type === 'EXPENSE' ? '↑ Expense' : '↓ Income'}
+            </div>
+          )}
 
           {/* Category grid */}
           <div>
@@ -219,7 +253,7 @@ export default function AddEntrySheet({ onClose, onSave }: Props) {
             className="w-full rounded-2xl py-3 text-sm font-bold text-white transition-opacity disabled:opacity-50"
             style={{ background: type === 'EXPENSE' ? '#ef4444' : 'var(--color-accent)' }}
           >
-            {saving ? 'Saving…' : `Log ${type === 'EXPENSE' ? 'Expense' : 'Income'}`}
+            {saving ? 'Saving…' : isEditMode ? `Update ${type === 'EXPENSE' ? 'Expense' : 'Income'}` : `Log ${type === 'EXPENSE' ? 'Expense' : 'Income'}`}
           </button>
         </div>
       </div>
