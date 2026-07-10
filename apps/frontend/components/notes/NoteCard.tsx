@@ -35,6 +35,8 @@ export default function NoteCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(note.title);
   const [editContent, setEditContent] = useState(note.content || '');
+  const [editImportance, setEditImportance] = useState(note.importance);
+  const [editDueDate, setEditDueDate] = useState(note.dueDate ? new Date(note.dueDate).toISOString().slice(0, 10) : '');
   const [saving, setSaving] = useState(false);
 
   const handleTogglePin = async () => {
@@ -72,6 +74,8 @@ export default function NoteCard({
       await updateNote(note.id, token, orgId, {
         title: editTitle.trim(),
         content: editContent.trim() || undefined,
+        importance: editImportance,
+        dueDate: editDueDate ? new Date(editDueDate).toISOString() : undefined,
       });
       setIsEditing(false);
       onUpdate();
@@ -175,18 +179,44 @@ export default function NoteCard({
       )}
 
       {isEditing ? (
-        <div className="mt-3">
+        <div className="mt-3 space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Importance</label>
+              <select
+                value={editImportance}
+                onChange={(e) => setEditImportance(e.target.value as Note['importance'])}
+                className="w-full rounded-xl border border-gray-300 p-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="CRITICAL">Critical</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="mb-1 block text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Due Date</label>
+              <input
+                type="date"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 p-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+              />
+            </div>
+          </div>
           <textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
             className="w-full rounded-xl border border-gray-300 p-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-y min-h-[100px]"
             placeholder="Write your note here..."
           />
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="flex justify-end gap-2">
             <button
               onClick={() => {
                 setEditTitle(note.title);
                 setEditContent(note.content || '');
+                setEditImportance(note.importance);
+                setEditDueDate(note.dueDate ? new Date(note.dueDate).toISOString().slice(0, 10) : '');
                 setIsEditing(false);
               }}
               disabled={saving}

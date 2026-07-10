@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { useRole } from '@/hooks/useRole';
+
 import {
   getFinanceForecast,
   getPriceSuggestions,
@@ -766,9 +768,23 @@ function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
 export default function FinancePage() {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
+  const { isStaff } = useRole();
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'ledger' | 'credit'>('overview');
 
   const orgId = membership?.organization.id;
+
+  // Staff members cannot access the Finance page
+  if (isStaff) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
+        <div className="text-5xl">🔒</div>
+        <h2 className="text-xl font-bold">Access Restricted</h2>
+        <p className="text-sm text-[var(--color-text-secondary)] max-w-xs">
+          The Finance section is only available to business owners and managers.
+        </p>
+      </div>
+    );
+  }
 
   if (!orgId) {
     return (

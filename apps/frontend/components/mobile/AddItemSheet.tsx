@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { useRole } from '@/hooks/useRole';
 
 import {
   createInventoryItem,
@@ -25,12 +26,15 @@ export default function AddItemSheet({
   const [unit, setUnit] = useState('');
   const [quantity, setQuantity] = useState(0);
   const [reorderThreshold, setReorderThreshold] = useState(0);
+  const [costPrice, setCostPrice] = useState<number | ''>('');
+  const [sellingPrice, setSellingPrice] = useState<number | ''>('');
   const [expiryDate, setExpiryDate] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [batchNumber, setBatchNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
+  const { isStaff } = useRole();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -45,6 +49,8 @@ export default function AddItemSheet({
         unit,
         quantity,
         reorderThreshold,
+        ...(costPrice !== '' && !isStaff && { costPrice }),
+        ...(sellingPrice !== '' && !isStaff && { sellingPrice }),
         ...(expiryDate && { expiryDate }),
         ...(serialNumber && { serialNumber }),
         ...(batchNumber && { batchNumber }),
@@ -136,6 +142,36 @@ export default function AddItemSheet({
               required
             />
           </div>
+
+          {/* Price fields — hidden from staff */}
+          {!isStaff && (
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Cost Price (KES)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="0.00"
+                  className="w-full rounded-xl border px-3 py-2"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Selling Price (KES)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="0.00"
+                  className="w-full rounded-xl border px-3 py-2"
+                  value={sellingPrice}
+                  onChange={(e) => setSellingPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Conditional Business Fields */}
           {membership?.organization.businessType === 'CHEMIST' && (

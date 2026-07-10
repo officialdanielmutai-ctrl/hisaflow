@@ -25,7 +25,11 @@ export class TransactionsService {
     private readonly creditService: CreditService,
   ) {}
 
-  async create(dto: CreateTransactionDto, organizationId: string) {
+  async create(
+    dto: CreateTransactionDto,
+    organizationId: string,
+    actorContext?: { actorId: string; actorName: string; actorRole: string },
+  ) {
     const product = await this.prisma.db.inventoryItem.findFirst({
       where: { id: dto.itemId, organizationId },
     });
@@ -61,6 +65,7 @@ export class TransactionsService {
           quantityChange: isDeduction ? -dto.quantity : dto.quantity,
           quantityAfter: newQty,
           reason: dto.note ?? null,
+          actorId: actorContext?.actorId ?? null,
           source: dto.isCredit ? 'credit' : 'manual',
           clientName: dto.clientName ?? null,
           metadata: dto.metadata ?? undefined,
@@ -87,6 +92,27 @@ export class TransactionsService {
         .catch((e) => console.error('Credit record creation failed:', e));
     }
 
+    // If a staff member logged this transaction, create a STAFF_ACTIVITY alert
+    // so the owner sees it immediately in their attention feed.
+    // Note: itemId is intentionally omitted so we don't hit the unique(org,item,type) constraint.
+    if (actorContext && actorContext.actorRole === 'STAFF') {
+      const typeLabel = dto.type.toLowerCase();
+      const qty = Math.abs(dto.quantity);
+      const title = `${qty} ${product.name} ${typeLabel} reported by ${actorContext.actorName}`;
+
+      this.prisma.db.alert
+        .create({
+          data: {
+            organizationId,
+            type: 'STAFF_ACTIVITY',
+            severity: 'INFO',
+            title,
+            description: `Staff member ${actorContext.actorName} logged a ${typeLabel} of ${qty} ${product.unit} of ${product.name}.`,
+          },
+        })
+        .catch((e) => console.error('Staff activity alert creation failed:', e));
+    }
+
     // Fire alert checks non-blocking so stock alerts update after every transaction
     this.alertsService.runAllChecks(organizationId).catch((e) =>
       console.error('Alert check failed after transaction:', e),
@@ -94,6 +120,7 @@ export class TransactionsService {
 
     return { success: true, newQuantity: newQty };
   }
+
 
   async findAll(
     organizationId: string,

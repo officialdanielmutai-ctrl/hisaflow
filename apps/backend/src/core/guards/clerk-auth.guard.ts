@@ -36,9 +36,22 @@ export class ClerkAuthGuard implements CanActivate {
         create: { clerkId },
       });
 
+      // Optionally enrich with org role if x-organization-id header is present
+      const organizationId = request.headers['x-organization-id'] as string | undefined;
+      let orgRole: string | null = null;
+      if (organizationId) {
+        const membership = await this.prisma.db.orgMembership.findFirst({
+          where: { userId: user.id, organizationId },
+          select: { role: true },
+        });
+        orgRole = membership?.role ?? null;
+      }
+
       request.user = {
         id: user.id,
         clerkId,
+        name: user.name ?? null,
+        role: orgRole,
         orgRole: (payload as any).org_role ?? null,
       };
       return true;

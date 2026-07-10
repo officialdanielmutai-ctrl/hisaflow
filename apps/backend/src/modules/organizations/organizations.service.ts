@@ -93,6 +93,53 @@ export class OrganizationsService {
     };
   }
 
+  // ── Invite code: regenerate for owner/manager ─────────────────────────────
+
+  async regenerateInviteCode(userId: string) {
+    const membership = await this.prisma.db.orgMembership.findFirst({
+      where: { userId, role: { in: ['OWNER', 'MANAGER'] } },
+      include: { organization: { select: { id: true, name: true } } },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('No organisation found for this user');
+    }
+
+    const newCode = this.generateCode();
+    await this.prisma.db.organization.update({
+      where: { id: membership.organization.id },
+      data: { inviteCode: newCode },
+    });
+
+    return { inviteCode: newCode, orgName: membership.organization.name };
+  }
+
+  // ── List staff members for an org ────────────────────────────────────────
+
+  async getStaffMembers(userId: string) {
+    const membership = await this.prisma.db.orgMembership.findFirst({
+      where: { userId, role: { in: ['OWNER', 'MANAGER'] } },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('Not authorised');
+    }
+
+    const members = await this.prisma.db.orgMembership.findMany({
+      where: { organizationId: membership.organizationId },
+      include: { user: { select: { name: true, email: true, createdAt: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return members.map((m) => ({
+      userId: m.userId,
+      name: m.user.name,
+      email: m.user.email,
+      role: m.role,
+      joinedAt: m.createdAt,
+    }));
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private generateCode(): string {

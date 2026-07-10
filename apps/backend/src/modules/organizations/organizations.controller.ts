@@ -61,10 +61,25 @@ export class OrganizationsController {
     return this.organizationsService.getMyInviteCode(user.id);
   }
 
+  // ── Regenerate invite code (owner/manager only) ──────────────────────────
+  @Post('my/invite-code/regenerate')
+  async regenerateInviteCode(
+    @CurrentUser() user: { id: string; clerkId: string },
+  ) {
+    return this.organizationsService.regenerateInviteCode(user.id);
+  }
+
+  // ── List staff members in the caller's org ───────────────────────────────
+  @Get('my/staff')
+  async getStaffMembers(
+    @CurrentUser() user: { id: string; clerkId: string },
+  ) {
+    return this.organizationsService.getStaffMembers(user.id);
+  }
+
   // ── Find org by ID ────────────────────────────────────────────────────────
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.organizationsService.findById(id);
   }
 }
-

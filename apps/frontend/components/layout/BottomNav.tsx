@@ -8,10 +8,11 @@ import {
   ArrowLeftRight,
   Sparkles,
   TrendingUp,
+  StickyNote,
 } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 
-const tabs = [
+const ownerTabs = [
   { href: '/', label: 'Home', icon: LayoutDashboard },
   { href: '/inventory', label: 'Stock', icon: Package },
   { href: '/ai', label: 'AI', icon: Sparkles },
@@ -19,13 +20,18 @@ const tabs = [
   { href: '/finance', label: 'Finance', icon: TrendingUp },
 ];
 
+const staffTabs = [
+  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/inventory', label: 'Stock', icon: Package },
+  { href: '/transactions', label: 'Log', icon: ArrowLeftRight },
+  { href: '/notes', label: 'Notes', icon: StickyNote },
+];
+
 export default function BottomNav() {
   const pathname = usePathname();
   const { isStaff } = useRole();
 
-  const visibleTabs = isStaff
-    ? tabs.filter((tab) => tab.href !== '/ai')
-    : tabs;
+  const visibleTabs = isStaff ? staffTabs : ownerTabs;
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-[var(--color-bg-surface)] border-t border-[var(--color-border)] pb-safe">

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useTransactionHistory } from '@/hooks/useTransactionHistory';
 import { type TransactionType } from '@/services/transactions.service';
 import { ArrowDownLeft, ArrowUpRight, SlidersHorizontal, PackageOpen } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
+
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,20 @@ function formatDate(iso: string) {
 export default function TransactionsPage() {
   const [typeFilter, setTypeFilter] = useState<TransactionType | undefined>(undefined);
   const { transactions, loading, error } = useTransactionHistory({ type: typeFilter });
+  const { isStaff } = useRole();
+
+  // Staff members cannot view the full transaction log
+  if (isStaff) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
+        <div className="text-5xl">🔒</div>
+        <h2 className="text-xl font-bold">Access Restricted</h2>
+        <p className="text-sm text-[var(--color-text-secondary)] max-w-xs">
+          The transaction log is only available to business owners and managers.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">

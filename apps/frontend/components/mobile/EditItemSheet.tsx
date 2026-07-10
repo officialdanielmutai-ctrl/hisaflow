@@ -6,6 +6,7 @@ import type { InventoryItem, UpdateProductPayload } from '@/services/inventory.s
 import { updateInventoryItem } from '@/services/inventory.service';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { useRole } from '@/hooks/useRole';
 
 interface EditItemSheetProps {
   item: InventoryItem;
@@ -16,6 +17,7 @@ interface EditItemSheetProps {
 export default function EditItemSheet({ item, onClose, onUpdated }: EditItemSheetProps) {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
+  const { isStaff } = useRole();
 
   const [name, setName] = useState(item.name);
   const [unit, setUnit] = useState(item.unit);
@@ -51,10 +53,13 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
       if (!isNaN(qty) && qty !== item.quantity) payload.quantity = qty;
       const threshold = parseFloat(reorderThreshold);
       if (!isNaN(threshold) && threshold !== item.reorderThreshold) payload.reorderThreshold = threshold;
-      const cp = costPrice !== '' ? parseFloat(costPrice) : null;
-      if (cp !== null && !isNaN(cp) && cp !== item.costPrice) payload.costPrice = cp;
-      const sp = sellingPrice !== '' ? parseFloat(sellingPrice) : null;
-      if (sp !== null && !isNaN(sp) && sp !== item.sellingPrice) payload.sellingPrice = sp;
+      // Only owners/managers can update prices
+      if (!isStaff) {
+        const cp = costPrice !== '' ? parseFloat(costPrice) : null;
+        if (cp !== null && !isNaN(cp) && cp !== item.costPrice) payload.costPrice = cp;
+        const sp = sellingPrice !== '' ? parseFloat(sellingPrice) : null;
+        if (sp !== null && !isNaN(sp) && sp !== item.sellingPrice) payload.sellingPrice = sp;
+      }
       if (expiryDate) payload.expiryDate = new Date(expiryDate).toISOString();
 
       if (Object.keys(payload).length === 0) {
@@ -119,44 +124,47 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4">
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-3">💰 Pricing</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold">Cost Price (KES)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={costPrice}
-                    onChange={(e) => setCostPrice(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                  />
+            {/* Pricing — hidden from staff */}
+            {!isStaff && (
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4">
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-3">💰 Pricing</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold">Cost Price (KES)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={costPrice}
+                      onChange={(e) => setCostPrice(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold">Selling Price (KES)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={sellingPrice}
+                      onChange={(e) => setSellingPrice(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold">Selling Price (KES)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={sellingPrice}
-                    onChange={(e) => setSellingPrice(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                  />
-                </div>
+                {costPrice && sellingPrice && parseFloat(sellingPrice) > parseFloat(costPrice) && (
+                  <p className="mt-2 text-xs text-emerald-600 font-medium">
+                    Margin: {(((parseFloat(sellingPrice) - parseFloat(costPrice)) / parseFloat(sellingPrice)) * 100).toFixed(1)}%
+                    · Profit: KES {(parseFloat(sellingPrice) - parseFloat(costPrice)).toFixed(2)} per {unit || 'unit'}
+                  </p>
+                )}
+                {costPrice && sellingPrice && parseFloat(sellingPrice) <= parseFloat(costPrice) && parseFloat(sellingPrice) > 0 && (
+                  <p className="mt-2 text-xs text-red-500 font-medium">⚠ Selling price should be higher than cost price</p>
+                )}
               </div>
-              {costPrice && sellingPrice && parseFloat(sellingPrice) > parseFloat(costPrice) && (
-                <p className="mt-2 text-xs text-emerald-600 font-medium">
-                  Margin: {(((parseFloat(sellingPrice) - parseFloat(costPrice)) / parseFloat(sellingPrice)) * 100).toFixed(1)}%
-                  · Profit: KES {(parseFloat(sellingPrice) - parseFloat(costPrice)).toFixed(2)} per {unit || 'unit'}
-                </p>
-              )}
-              {costPrice && sellingPrice && parseFloat(sellingPrice) <= parseFloat(costPrice) && parseFloat(sellingPrice) > 0 && (
-                <p className="mt-2 text-xs text-red-500 font-medium">⚠ Selling price should be higher than cost price</p>
-              )}
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
