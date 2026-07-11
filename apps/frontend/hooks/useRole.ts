@@ -16,7 +16,7 @@ export function useRole() {
     isManager,
     isStaff,
     canViewAnalytics: isOwner || isManager,
-    canManageInventory: isOwner || isManager,
+    canManageInventory: true,
     canLogTransactions: true,
   };
 }

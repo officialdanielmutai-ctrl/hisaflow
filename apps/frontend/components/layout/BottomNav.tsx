@@ -23,6 +23,7 @@ const ownerTabs = [
 const staffTabs = [
   { href: '/', label: 'Home', icon: LayoutDashboard },
   { href: '/inventory', label: 'Stock', icon: Package },
+  { href: '/ai', label: 'AI', icon: Sparkles },
   { href: '/transactions', label: 'Log', icon: ArrowLeftRight },
   { href: '/notes', label: 'Notes', icon: StickyNote },
 ];
