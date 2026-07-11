@@ -17,7 +17,7 @@ export class InventoryController {
     return this.inventoryService.findAll(orgId);
   }
 
-  @Roles(AppRole.OWNER, AppRole.MANAGER)
+  // Any authenticated org member can create a new stock item
   @Post()
   create(
     @Body() dto: CreateProductDto,

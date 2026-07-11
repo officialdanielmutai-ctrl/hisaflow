@@ -16,7 +16,10 @@ export function useRole() {
     isManager,
     isStaff,
     canViewAnalytics: isOwner || isManager,
-    canManageInventory: true,
+    // All roles can add new stock items
+    canAddInventory: true,
+    // Only owners/managers can edit existing items or log manual transactions
+    canEditInventory: isOwner || isManager,
     canLogTransactions: true,
   };
 }

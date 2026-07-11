@@ -15,15 +15,16 @@ export default function InventoryPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [txSheetOpen, setTxSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
-  const { canManageInventory } = useRole();
+  const { canAddInventory, canEditInventory } = useRole();
 
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Inventory</h1>
-        {canManageInventory && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {/* Quick transaction — owners/managers only */}
+          {canEditInventory && (
             <button
               onClick={() => setTxSheetOpen(true)}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-bold text-[var(--color-text-primary)]"
@@ -31,6 +32,9 @@ export default function InventoryPage() {
             >
               ↕
             </button>
+          )}
+          {/* Add item — all roles */}
+          {canAddInventory && (
             <button
               onClick={() => setSheetOpen(true)}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)] text-xl font-bold text-white"
@@ -38,8 +42,8 @@ export default function InventoryPage() {
             >
               +
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Loading skeleton */}
@@ -81,19 +85,24 @@ export default function InventoryPage() {
             <InventoryItemCard
               key={item.id}
               item={item}
-              onEdit={canManageInventory ? (i) => setEditingItem(i) : undefined}
+              onEdit={canEditInventory ? (i) => setEditingItem(i) : undefined}
             />
           ))}
         </div>
       )}
 
-      {canManageInventory && (
+      {/* Add item sheet — all roles */}
+      {canAddInventory && (
+        <AddItemSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          onCreated={() => mutate()}
+        />
+      )}
+
+      {/* Quick transaction + Edit sheet — owners/managers only */}
+      {canEditInventory && (
         <>
-          <AddItemSheet
-            open={sheetOpen}
-            onClose={() => setSheetOpen(false)}
-            onCreated={() => mutate()}
-          />
           <QuickTransactionSheet
             open={txSheetOpen}
             onClose={() => setTxSheetOpen(false)}
@@ -103,7 +112,7 @@ export default function InventoryPage() {
         </>
       )}
 
-      {editingItem && (
+      {editingItem && canEditInventory && (
         <EditItemSheet
           item={editingItem}
           onClose={() => setEditingItem(null)}
