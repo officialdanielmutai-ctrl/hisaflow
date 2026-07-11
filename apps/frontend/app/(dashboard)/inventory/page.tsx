@@ -6,6 +6,7 @@ import InventoryItemCard from '@/components/system/InventoryItemCard';
 import AddItemSheet from '@/components/mobile/AddItemSheet';
 import EditItemSheet from '@/components/mobile/EditItemSheet';
 import QuickTransactionSheet from '@/components/mobile/QuickTransactionSheet';
+import ReceiveStockSheet from '@/components/mobile/ReceiveStockSheet';
 import { PackageOpen } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import type { InventoryItem } from '@/services/inventory.service';
@@ -15,7 +16,8 @@ export default function InventoryPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [txSheetOpen, setTxSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
-  const { canAddInventory, canEditInventory } = useRole();
+  const [receivingItem, setReceivingItem] = useState<InventoryItem | null>(null);
+  const { canAddInventory, canEditInventory, isStaff } = useRole();
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,6 +88,7 @@ export default function InventoryPage() {
               key={item.id}
               item={item}
               onEdit={canEditInventory ? (i) => setEditingItem(i) : undefined}
+              onReceiveStock={isStaff ? (i) => setReceivingItem(i) : undefined}
             />
           ))}
         </div>
@@ -119,6 +122,13 @@ export default function InventoryPage() {
           onUpdated={() => { mutate(); setEditingItem(null); }}
         />
       )}
+
+      {/* Receive stock sheet — staff only */}
+      <ReceiveStockSheet
+        item={receivingItem}
+        onClose={() => setReceivingItem(null)}
+        onCompleted={() => mutate()}
+      />
     </div>
   );
 }

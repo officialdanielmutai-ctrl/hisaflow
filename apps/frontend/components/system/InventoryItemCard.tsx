@@ -1,14 +1,15 @@
 'use client';
 
-import { Edit2 } from 'lucide-react';
+import { Edit2, PackagePlus } from 'lucide-react';
 import type { InventoryItem } from '@/services/inventory.service';
 
 interface InventoryItemCardProps {
   item: InventoryItem;
   onEdit?: (item: InventoryItem) => void;
+  onReceiveStock?: (item: InventoryItem) => void;
 }
 
-export default function InventoryItemCard({ item, onEdit }: InventoryItemCardProps) {
+export default function InventoryItemCard({ item, onEdit, onReceiveStock }: InventoryItemCardProps) {
   const isLowStock = item.quantity <= item.reorderThreshold;
 
   return (
@@ -42,11 +43,21 @@ export default function InventoryItemCard({ item, onEdit }: InventoryItemCardPro
           )}
         </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0 ml-2">
+      <div className="flex items-center gap-2 shrink-0 ml-2">
         <div className="text-right">
           <p className="text-2xl font-bold">{item.quantity}</p>
           <p className="text-xs text-muted-foreground">{item.unit}</p>
         </div>
+        {onReceiveStock && (
+          <button
+            onClick={() => onReceiveStock(item)}
+            className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700 transition-colors"
+            aria-label="Receive stock"
+            title="Receive stock"
+          >
+            <PackagePlus className="h-4 w-4" />
+          </button>
+        )}
         {onEdit && (
           <button
             onClick={() => onEdit(item)}
