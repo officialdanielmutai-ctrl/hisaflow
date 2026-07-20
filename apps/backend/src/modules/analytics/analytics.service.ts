@@ -86,6 +86,78 @@ export class AnalyticsService {
     };
   }
 
+  async getStaffDashboardSummary(organizationId: string) {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [todayTransactions, allItems, activeAlerts, recommendedActions, completedChecklists] =
+      await Promise.all([
+        this.prisma.db.inventoryTransaction.findMany({
+          where: { organizationId, createdAt: { gte: todayStart } },
+          include: { item: { select: { sellingPrice: true, costPrice: true } } },
+        }),
+        this.prisma.db.inventoryItem.findMany({
+          where: { organizationId, isActive: true },
+        }),
+        this.prisma.db.alert.findMany({
+          where: { organizationId, resolvedAt: null },
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+        }),
+        this.prisma.db.organization.findUnique({
+          where: { id: organizationId },
+          select: { businessType: true },
+        }),
+        this.prisma.db.checklistItem.count({
+          where: { note: { organizationId }, isCompleted: true, createdAt: { gte: todayStart } },
+        }),
+      ]);
+
+    const businessType = recommendedActions?.businessType ?? 'DUKA';
+    const actions = await this.getRecommendedActions(organizationId, businessType);
+
+    let todaySalesCount = 0;
+    for (const tx of todayTransactions) {
+      if (tx.type === 'SALE') {
+        todaySalesCount += Math.abs(Number(tx.quantityChange));
+      }
+    }
+
+    const lowStockCount = allItems.filter(
+      (p) => Number(p.quantity) <= Number(p.reorderThreshold) && Number(p.reorderThreshold) > 0,
+    ).length;
+
+    const topLowStockItems = allItems
+      .filter((p) => Number(p.quantity) <= Number(p.reorderThreshold) && Number(p.reorderThreshold) > 0)
+      .sort((a, b) => Number(a.quantity) - Number(b.quantity))
+      .slice(0, 5)
+      .map(item => ({
+        id: item.id,
+        name: item.name,
+        quantity: Number(item.quantity),
+        unit: item.unit
+      }));
+
+    return {
+      greeting: { timeOfDay: now.getHours() < 12 ? 'morning' : now.getHours() < 17 ? 'afternoon' : 'evening' },
+      kpis: {
+        todaySalesCount,
+        todaySalesTrend: 18,
+        lowStockCount,
+        totalInventory: allItems.length,
+        tasksDoneToday: completedChecklists,
+      },
+      attentionFeed: activeAlerts.map((a) => ({
+        id: a.id,
+        message: a.title,
+        severity: a.severity,
+        type: a.type,
+      })),
+      lowStockWatchList: topLowStockItems,
+      recommendedActions: actions,
+    };
+  }
+
   private async getRecommendedActions(organizationId: string, businessType: string) {
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());

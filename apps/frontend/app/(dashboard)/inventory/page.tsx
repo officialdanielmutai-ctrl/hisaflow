@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useInventory } from '@/hooks/useInventory';
 import InventoryItemCard from '@/components/system/InventoryItemCard';
 import AddItemSheet from '@/components/mobile/AddItemSheet';
@@ -12,12 +13,27 @@ import { useRole } from '@/hooks/useRole';
 import type { InventoryItem } from '@/services/inventory.service';
 
 export default function InventoryPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { items, loading, error, mutate } = useInventory();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [txSheetOpen, setTxSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [receivingItem, setReceivingItem] = useState<InventoryItem | null>(null);
   const { canAddInventory, canEditInventory, isStaff } = useRole();
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setSheetOpen(true);
+    }
+  }, [searchParams]);
+
+  const handleCloseSheet = () => {
+    setSheetOpen(false);
+    if (searchParams.get('action') === 'add') {
+      router.replace('/inventory');
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -98,7 +114,7 @@ export default function InventoryPage() {
       {canAddInventory && (
         <AddItemSheet
           open={sheetOpen}
-          onClose={() => setSheetOpen(false)}
+          onClose={handleCloseSheet}
           onCreated={() => mutate()}
         />
       )}

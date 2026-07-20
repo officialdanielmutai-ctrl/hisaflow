@@ -15,4 +15,9 @@ export class AnalyticsController {
   getDashboard(@OrgContext() organizationId: string) {
     return this.analyticsService.getDashboardSummary(organizationId);
   }
+
+  @Get('staff-dashboard')
+  getStaffDashboard(@OrgContext() organizationId: string) {
+    return this.analyticsService.getStaffDashboardSummary(organizationId);
+  }
 }

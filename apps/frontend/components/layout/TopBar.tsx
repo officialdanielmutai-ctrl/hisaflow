@@ -1,13 +1,17 @@
 'use client';
 
 import * as React from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Bell } from 'lucide-react';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { UserButton } from '@clerk/nextjs';
+import Link from 'next/link';
+import { useAlerts } from '@/hooks/useAlerts';
 import SideMenu from './SideMenu';
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const { membership } = useMyOrganization();
+  const { data: alerts } = useAlerts();
 
   return (
     <>
@@ -32,6 +36,23 @@ export default function TopBar() {
                 : 'Retail Workspace'}
             </span>
           </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <Link href="/alerts" className="relative p-2 text-[var(--color-text-primary)]">
+            <Bell className="h-6 w-6" />
+            {(alerts ?? []).length > 0 && (
+              <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
+                {(alerts ?? []).length}
+              </span>
+            )}
+          </Link>
+          <UserButton
+            appearance={{
+              elements: {
+                userButtonAvatarBox: "h-8 w-8"
+              }
+            }}
+          />
         </div>
       </header>
 
