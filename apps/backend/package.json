@@ -30,6 +30,7 @@
     "africastalking": "^0.8.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "openai": "^6.48.0",
     "pg": "^8.21.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",

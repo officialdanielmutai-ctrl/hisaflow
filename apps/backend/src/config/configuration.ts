@@ -42,4 +42,13 @@ export default () => ({
     apiKey: process.env.POSTHOG_API_KEY || '',
     host: process.env.POSTHOG_HOST || 'https://app.posthog.com',
   },
+  // ── LLM Routing Gateway (LiteLLM Proxy) ──────────────────────────────
+  // All AI inference is routed through this gateway. The gateway handles
+  // load balancing across all providers and cascading failover.
+  // Set LITELLM_BASE_URL to the Railway URL of the gateway service once
+  // deployed. Falls back to localhost for local development.
+  litellm: {
+    baseUrl: process.env.LITELLM_BASE_URL || 'http://localhost:4000/v1',
+    masterKey: process.env.LITELLM_MASTER_KEY || 'sk-hisaflow-local',
+  },
 });

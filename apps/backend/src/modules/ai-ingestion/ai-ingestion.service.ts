@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import OpenAI from 'openai';
 
 export interface ParsedAction {
   // ── Transaction actions ──────────────────────────────────────────
@@ -49,14 +50,18 @@ export class AiIngestionService {
     availableItems: Array<{ id: string; name: string }>,
     businessType: string = 'DUKA',
   ): Promise<ParsedAction[]> {
-    const apiKey = this.configService.get<string>('gemini.apiKey');
-    if (!apiKey) {
-      console.error('Missing GEMINI_API_KEY');
+    const baseUrl = this.configService.get<string>('litellm.baseUrl');
+    const apiKey = this.configService.get<string>('litellm.masterKey');
+
+    if (!baseUrl || !apiKey) {
+      console.error('Missing LiteLLM configuration');
       return [];
     }
 
-    const model =
-      this.configService.get<string>('gemini.model') ?? 'gemini-2.5-flash';
+    const openai = new OpenAI({
+      baseURL: baseUrl,
+      apiKey: apiKey,
+    });
 
     const itemsJson = JSON.stringify(availableItems);
 
@@ -176,27 +181,15 @@ Rules:
 `;
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const body = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1 },
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+      const response = await openai.chat.completions.create({
+        model: 'hisaflow-standard',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
       });
 
-      if (!response.ok) {
-        console.error('Gemini API error', response.status, await response.text());
-        return [];
-      }
-
-      const data = await response.json();
-      const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const rawText = response.choices?.[0]?.message?.content;
       if (!rawText) {
-        console.error('No content in Gemini response');
+        console.error('No content in AI gateway response');
         return [];
       }
 
