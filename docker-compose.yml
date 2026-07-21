@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    ports:
+      - "4000:4000"
+    env_file:
+      - apps/gateway/.env
+    restart: unless-stopped

@@ -8,7 +8,7 @@
 dockerfilePath = "apps/gateway/Dockerfile"
 
 [deploy]
-startCommand = "litellm --config /app/config.yaml --port 4000 --host 0.0.0.0"
+startCommand = "litellm --config /app/config.yaml --port ${PORT:-4000} --host 0.0.0.0"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
