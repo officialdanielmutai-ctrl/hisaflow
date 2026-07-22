@@ -9,8 +9,9 @@ FROM ghcr.io/berriai/litellm:main-stable
 WORKDIR /app
 COPY config.yaml /app/config.yaml
 
-# Set default port
+# Set default port (Railway will override this with its own $PORT)
 ENV PORT=4000
 
-# Start LiteLLM with our config, binding to the Railway-provided $PORT
+# Override the base image ENTRYPOINT so we can use shell variable expansion
+ENTRYPOINT []
 CMD ["sh", "-c", "litellm --config /app/config.yaml --port $PORT --host 0.0.0.0"]
