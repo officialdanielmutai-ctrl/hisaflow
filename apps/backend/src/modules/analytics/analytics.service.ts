@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import OpenAI from 'openai';
 
 @Injectable()
 export class AnalyticsService {
@@ -211,28 +212,28 @@ Top selling items today: ${topSellersStr}
 
 Return ONLY the JSON array, no markdown fences.`;
 
-    const apiKey = this.configService.get<string>('gemini.apiKey');
-    if (!apiKey) {
-      console.error('Missing GEMINI_API_KEY for recommended actions');
+    const baseUrl = this.configService.get<string>('litellm.baseUrl');
+    const apiKey = this.configService.get<string>('litellm.masterKey');
+
+    if (!baseUrl || !apiKey) {
+      console.error('Missing LiteLLM configuration for recommended actions');
       return this.getFallbackActions();
     }
 
+    const openai = new OpenAI({
+      baseURL: baseUrl,
+      apiKey: apiKey,
+    });
+
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3 },
-        }),
+      const response = await openai.chat.completions.create({
+        model: 'hisaflow-standard',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
       });
 
-      if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
-
-      const data = await response.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) throw new Error('No content returned from Gemini');
+      const rawText = response.choices?.[0]?.message?.content;
+      if (!rawText) throw new Error('No content returned from AI gateway');
 
       const jsonStr = rawText.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(jsonStr);

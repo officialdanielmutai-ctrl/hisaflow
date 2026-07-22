@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import OpenAI from 'openai';
 import { CreateBusinessTransactionDto } from './dto/create-business-transaction.dto';
 import { UpdateBusinessTransactionDto } from './dto/update-business-transaction.dto';
 
@@ -387,21 +388,24 @@ Rules:
 - Include at least one tip on cost control or pricing if net margin is below 15%.
 - Return ONLY the JSON array, no markdown fences.`;
 
-    if (!apiKey) return this.fallbackForecast();
+    const baseUrl = this.config.get<string>('litellm.baseUrl');
+    const apiKey = this.config.get<string>('litellm.masterKey');
+    if (!baseUrl || !apiKey) return this.fallbackForecast();
+
+    const openai = new OpenAI({
+      baseURL: baseUrl,
+      apiKey: apiKey,
+    });
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4 },
-        }),
+      const response = await openai.chat.completions.create({
+        model: 'hisaflow-standard',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.4,
       });
-      if (!response.ok) throw new Error(`Gemini error: ${response.status}`);
-      const data = await response.json();
-      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+
+      const raw = response.choices?.[0]?.message?.content;
+      if (!raw) throw new Error('No content from gateway');
       const cleaned = raw.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleaned);
       if (Array.isArray(parsed)) return { insights: parsed };
@@ -413,12 +417,10 @@ Rules:
 
   // ── 6. AI Price Suggestions ─────────────────────────────────────────────────
   async getPriceSuggestions(organizationId: string): Promise<PriceSuggestion[]> {
-    const apiKey = this.config.get<string>('gemini.apiKey');
     const items = await this.prisma.db.inventoryItem.findMany({
       where: { organizationId, isActive: true, OR: [{ costPrice: null }, { sellingPrice: null }] },
     });
     if (items.length === 0) return [];
-    if (!apiKey) return this.fallbackSuggestions(items);
 
     const itemList = items
       .map((i) => `- "${i.name}" (unit: ${i.unit}, category: ${i.category ?? 'general'}, costPrice: ${i.costPrice ?? 'unknown'}, sellingPrice: ${i.sellingPrice ?? 'unknown'})`)
@@ -445,19 +447,24 @@ Rules:
 - Use realistic Kenyan market prices.
 - Return ONLY the JSON array, no markdown.`;
 
+    const baseUrl = this.config.get<string>('litellm.baseUrl');
+    const apiKey = this.config.get<string>('litellm.masterKey');
+    if (!baseUrl || !apiKey) return this.fallbackSuggestions(items);
+
+    const openai = new OpenAI({
+      baseURL: baseUrl,
+      apiKey: apiKey,
+    });
+
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2 },
-        }),
+      const response = await openai.chat.completions.create({
+        model: 'hisaflow-standard',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
       });
-      if (!response.ok) throw new Error(`Gemini error: ${response.status}`);
-      const data = await response.json();
-      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+
+      const raw = response.choices?.[0]?.message?.content;
+      if (!raw) throw new Error('No content from gateway');
       const cleaned = raw.replace(/```json|```/g, '').trim();
       const suggestions: any[] = JSON.parse(cleaned);
 
