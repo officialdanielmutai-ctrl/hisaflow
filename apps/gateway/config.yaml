@@ -53,7 +53,7 @@ model_list:
 # and skipped until it recovers (cooldown_time seconds).
 # ----------------------------------------------------------------------
 router_settings:
-  routing_strategy: round_robin
+  routing_strategy: simple-shuffle
   num_retries: 2
   retry_after: 0
   allowed_fails: 2
