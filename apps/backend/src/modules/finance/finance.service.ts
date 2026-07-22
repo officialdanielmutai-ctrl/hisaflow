@@ -356,7 +356,6 @@ export class FinanceService {
 
   // ── 5. AI CFO Forecast (now opex-aware) ────────────────────────────────────
   async getForecast(organizationId: string): Promise<{ insights: Array<{ title: string; body: string; sentiment: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' }> }> {
-    const apiKey = this.config.get<string>('gemini.apiKey');
     const [overview, org] = await Promise.all([
       this.getBusinessOverview(organizationId, 'rolling30'),
       this.prisma.db.organization.findUnique({ where: { id: organizationId }, select: { businessType: true } })
