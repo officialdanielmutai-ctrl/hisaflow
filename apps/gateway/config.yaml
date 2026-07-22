@@ -1,9 +1,9 @@
 model_list:
-  # ══════════════════════════════════════════════════════════════════════
+  # ----------------------------------------------------------------------
   # PRIMARY POOL — Round-robin across 5 free/low-cost providers
   # LiteLLM will cycle through these for every standard request.
   # On 429 or 5xx it cascades immediately to the next entry.
-  # ══════════════════════════════════════════════════════════════════════
+  # ----------------------------------------------------------------------
 
   # Tier 1 — Groq (fastest inference, Llama 3.3 70B)
   - model_name: hisaflow-standard
@@ -35,10 +35,10 @@ model_list:
       model: gemini/gemini-2.5-flash
       api_key: os.environ/GEMINI_API_KEY
 
-  # ══════════════════════════════════════════════════════════════════════
+  # ----------------------------------------------------------------------
   # BEDROCK FOUNDATION — Tier 6 (added once AWS setup is complete)
   # Uncomment this block when AWS credentials are available.
-  # ══════════════════════════════════════════════════════════════════════
+  # ----------------------------------------------------------------------
   # - model_name: hisaflow-premium
   #   litellm_params:
   #     model: bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0
@@ -46,12 +46,12 @@ model_list:
   #     aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
   #     aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
 
-# ══════════════════════════════════════════════════════════════════════
+# ----------------------------------------------------------------------
 # ROUTER SETTINGS
 # round_robin distributes load evenly across the primary pool.
 # On allowed_fails consecutive errors the provider is marked unhealthy
 # and skipped until it recovers (cooldown_time seconds).
-# ══════════════════════════════════════════════════════════════════════
+# ----------------------------------------------------------------------
 router_settings:
   routing_strategy: round_robin
   num_retries: 2
@@ -59,26 +59,26 @@ router_settings:
   allowed_fails: 2
   cooldown_time: 60
 
-# ══════════════════════════════════════════════════════════════════════
+# ----------------------------------------------------------------------
 # FALLBACK CHAIN
 # If ALL providers in hisaflow-standard fail, fall back to:
 # - hisaflow-standard itself retries (handled by num_retries above)
 # When Bedrock is added, update to: ["hisaflow-premium"]
-# ══════════════════════════════════════════════════════════════════════
+# ----------------------------------------------------------------------
 fallbacks: []
 
-# ══════════════════════════════════════════════════════════════════════
+# ----------------------------------------------------------------------
 # LITELLM GLOBAL SETTINGS
-# ══════════════════════════════════════════════════════════════════════
+# ----------------------------------------------------------------------
 litellm_settings:
   request_timeout: 30
   drop_params: true       # Ignore unsupported params per-provider silently
   telemetry: false        # Disable LiteLLM's own telemetry
 
-# ══════════════════════════════════════════════════════════════════════
+# ----------------------------------------------------------------------
 # GENERAL / SECURITY
 # master_key gates all requests to the proxy
-# ══════════════════════════════════════════════════════════════════════
+# ----------------------------------------------------------------------
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   store_model_in_db: false   # Set true once a dedicated DB is wired up
