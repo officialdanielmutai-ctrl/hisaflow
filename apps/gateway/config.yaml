@@ -36,19 +36,21 @@ model_list:
       api_key: os.environ/GEMINI_API_KEY
 
   # ----------------------------------------------------------------------
-  # BEDROCK FOUNDATION — Tier 6 (added once AWS setup is complete)
-  # Uncomment this block when AWS credentials are available.
+  # Tier 6 — AWS Bedrock / Claude 3.5 Sonnet (foundation failsafe)
+  # This is the highest-capability model and acts as the final fallback.
+  # It runs under the hisaflow-premium alias so the fallback chain can
+  # reference it explicitly when all standard providers are exhausted.
   # ----------------------------------------------------------------------
-  # - model_name: hisaflow-premium
-  #   litellm_params:
-  #     model: bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0
-  #     aws_region_name: us-east-1
-  #     aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-  #     aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+  - model_name: hisaflow-premium
+    litellm_params:
+      model: bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0
+      aws_region_name: us-east-1
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
 
 # ----------------------------------------------------------------------
 # ROUTER SETTINGS
-# round_robin distributes load evenly across the primary pool.
+# simple-shuffle distributes load across the primary pool.
 # On allowed_fails consecutive errors the provider is marked unhealthy
 # and skipped until it recovers (cooldown_time seconds).
 # ----------------------------------------------------------------------
@@ -61,11 +63,11 @@ router_settings:
 
 # ----------------------------------------------------------------------
 # FALLBACK CHAIN
-# If ALL providers in hisaflow-standard fail, fall back to:
-# - hisaflow-standard itself retries (handled by num_retries above)
-# When Bedrock is added, update to: ["hisaflow-premium"]
+# If ALL providers in hisaflow-standard fail, fall back to Bedrock.
 # ----------------------------------------------------------------------
-fallbacks: []
+fallbacks:
+  - hisaflow-standard:
+      - hisaflow-premium
 
 # ----------------------------------------------------------------------
 # LITELLM GLOBAL SETTINGS
