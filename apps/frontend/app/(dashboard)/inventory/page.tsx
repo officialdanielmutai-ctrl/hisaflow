@@ -26,7 +26,7 @@ export default function InventoryPage() {
   const { canAddInventory, canEditInventory, isStaff } = useRole();
 
   const displayedItems = filter === 'LOW_STOCK' 
-    ? items.filter((i) => i.quantity <= i.reorderThreshold) 
+    ? items.filter((i) => i.quantity <= i.reorderThreshold && i.reorderThreshold > 0) 
     : items;
 
   useEffect(() => {
