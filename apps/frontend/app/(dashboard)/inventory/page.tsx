@@ -20,7 +20,14 @@ export default function InventoryPage() {
   const [txSheetOpen, setTxSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [receivingItem, setReceivingItem] = useState<InventoryItem | null>(null);
+  const [filter, setFilter] = useState<'ALL' | 'LOW_STOCK'>(
+    searchParams.get('filter') === 'LOW_STOCK' ? 'LOW_STOCK' : 'ALL'
+  );
   const { canAddInventory, canEditInventory, isStaff } = useRole();
+
+  const displayedItems = filter === 'LOW_STOCK' 
+    ? items.filter((i) => i.quantity <= i.reorderThreshold) 
+    : items;
 
   useEffect(() => {
     if (searchParams.get('action') === 'add') {
@@ -64,6 +71,30 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      {/* Filter pills */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+        <button
+          onClick={() => setFilter('ALL')}
+          className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+            filter === 'ALL'
+              ? 'bg-[var(--color-accent)] text-white'
+              : 'bg-muted text-[var(--color-text-secondary)]'
+          }`}
+        >
+          All Items
+        </button>
+        <button
+          onClick={() => setFilter('LOW_STOCK')}
+          className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+            filter === 'LOW_STOCK'
+              ? 'bg-[var(--color-accent)] text-white'
+              : 'bg-muted text-[var(--color-text-secondary)]'
+          }`}
+        >
+          Low Stock
+        </button>
+      </div>
+
       {/* Loading skeleton */}
       {loading && (
         <div className="flex flex-col gap-3">
@@ -84,22 +115,22 @@ export default function InventoryPage() {
       )}
 
       {/* Empty state */}
-      {!loading && !error && items.length === 0 && (
+      {!loading && !error && displayedItems.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <PackageOpen className="mb-4 h-12 w-12 text-[var(--color-text-muted)]" />
           <p className="text-base font-semibold text-[var(--color-text-primary)]">
-            No items yet
+            {filter === 'LOW_STOCK' ? 'No low stock items' : 'No items yet'}
           </p>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            Add your first product
+            {filter === 'LOW_STOCK' ? 'All items are well stocked' : 'Add your first product'}
           </p>
         </div>
       )}
 
       {/* Items list */}
-      {!loading && !error && items.length > 0 && (
+      {!loading && !error && displayedItems.length > 0 && (
         <div className="flex flex-col gap-3">
-          {items.map((item) => (
+          {displayedItems.map((item) => (
             <InventoryItemCard
               key={item.id}
               item={item}

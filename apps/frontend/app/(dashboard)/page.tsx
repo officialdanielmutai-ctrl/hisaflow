@@ -84,7 +84,7 @@ function StaffDashboard() {
           <span className="text-[10px] font-semibold text-green-600">+{data.kpis.todaySalesTrend}% vs yesterday</span>
         </div>
 
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
+        <Link href="/inventory?filter=LOW_STOCK" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-base)] transition-colors p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
               <AlertTriangle className="h-5 w-5 text-red-600" />
@@ -100,9 +100,9 @@ function StaffDashboard() {
           <span className={`text-[10px] font-semibold ${data.kpis.lowStockCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
             {data.kpis.lowStockCount > 0 ? 'Needs attention' : 'All healthy'}
           </span>
-        </div>
+        </Link>
 
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
+        <Link href="/inventory" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-base)] transition-colors p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
               <Package className="h-5 w-5 text-blue-600" />
@@ -116,9 +116,9 @@ function StaffDashboard() {
             </div>
           </div>
           <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">Across all categories</span>
-        </div>
+        </Link>
 
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
+        <Link href="/notes" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-base)] transition-colors p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
               <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -132,7 +132,7 @@ function StaffDashboard() {
             </div>
           </div>
           <span className="text-[10px] font-semibold text-green-600">Great progress!</span>
-        </div>
+        </Link>
       </div>
 
       {/* ── Active Alerts ─────────────────────────────────────────────── */}
@@ -314,31 +314,31 @@ export default function DashboardPage() {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="rounded-2xl bg-[var(--color-bg-surface)] border p-4">
+        <Link href="/transactions?type=SALE" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
           <TrendingUp className="h-5 w-5 text-green-600 mb-2" />
           <p className="text-xs text-muted-foreground">Today&apos;s Sales</p>
           <p className="font-bold text-lg">KES {data.kpis.todaySales.toLocaleString()}</p>
-        </div>
-        <div className="rounded-2xl bg-[var(--color-bg-surface)] border p-4">
+        </Link>
+        <Link href="/transactions?type=PURCHASE" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
           <ShoppingCart className="h-5 w-5 text-red-500 mb-2" />
           <p className="text-xs text-muted-foreground">Expenses</p>
           <p className="font-bold text-lg">KES {data.kpis.todayExpenses.toLocaleString()}</p>
-        </div>
-        <div className="rounded-2xl bg-[var(--color-bg-surface)] border p-4">
+        </Link>
+        <Link href="/inventory?filter=LOW_STOCK" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
           <AlertTriangle className="h-5 w-5 text-yellow-500 mb-2" />
           <p className="text-xs text-muted-foreground">Low Stock</p>
           <p className="font-bold text-lg">{data.kpis.lowStockCount} items</p>
           <p className={`text-xs ${data.kpis.lowStockCount > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
             {data.kpis.lowStockCount > 0 ? 'Needs attention' : 'All good'}
           </p>
-        </div>
-        <div className="rounded-2xl bg-[var(--color-bg-surface)] border p-4">
+        </Link>
+        <Link href="/finance" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
           <Coins className="h-5 w-5 text-green-600 mb-2" />
           <p className="text-xs text-muted-foreground">Profit Est.</p>
           <p className={`font-bold text-lg ${data.kpis.profitEstimate >= 0 ? 'text-green-600' : 'text-red-500'}`}>
             KES {data.kpis.profitEstimate.toLocaleString()}
           </p>
-        </div>
+        </Link>
       </div>
 
       {/* Attention Feed */}

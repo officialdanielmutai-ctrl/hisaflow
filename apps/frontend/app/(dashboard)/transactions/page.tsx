@@ -36,8 +36,13 @@ function formatDate(iso: string) {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
+import { useSearchParams } from 'next/navigation';
+
 export default function TransactionsPage() {
-  const [typeFilter, setTypeFilter] = useState<TransactionType | undefined>(undefined);
+  const searchParams = useSearchParams();
+  const [typeFilter, setTypeFilter] = useState<TransactionType | undefined>(
+    (searchParams.get('type') as TransactionType) || undefined
+  );
   const { transactions, loading, error } = useTransactionHistory({ type: typeFilter });
   const { isStaff } = useRole();
 
