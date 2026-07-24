@@ -14,6 +14,7 @@ import { useAlerts } from '@/hooks/useAlerts';
 import { getNotes, type Note } from '@/services/notes.service';
 import { useInventory } from '@/hooks/useInventory';
 import { format } from 'date-fns';
+import DashboardLoading from './loading';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const importanceColors: Record<string, string> = {
@@ -38,21 +39,11 @@ function StaffDashboard() {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
       return getStaffDashboardData(token, orgId);
-    },
-    { revalidateOnFocus: true }
+    }
   );
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col gap-5 pb-4">
-        <div className="h-20 animate-pulse rounded-2xl bg-muted" />
-        <div className="grid grid-cols-2 gap-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted" />
-          ))}
-        </div>
-      </div>
-    );
+    return <DashboardLoading />;
   }
 
   if (error || !data) {
@@ -282,8 +273,7 @@ export default function DashboardPage() {
 
   const { data, error, isLoading } = useSWR<DashboardData>(
     canViewAnalytics && orgId ? ['dashboard', orgId] : null,
-    fetcher,
-    { revalidateOnFocus: true }
+    fetcher
   );
 
   const loading = isLoading;
@@ -297,16 +287,7 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return (
-      <div className="grid grid-cols-2 gap-3">
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="h-24 animate-pulse rounded-2xl bg-muted"
-          />
-        ))}
-      </div>
-    );
+    return <DashboardLoading />;
   }
 
   if (error || !data) {
