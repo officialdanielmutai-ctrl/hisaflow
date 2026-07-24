@@ -251,6 +251,15 @@ export class AlertsService {
     });
   }
 
+  async resolveAllAlerts(organizationId: string) {
+    const result = await this.prisma.db.alert.updateMany({
+      where: { organizationId, resolvedAt: null },
+      data: { status: 'RESOLVED', resolvedAt: new Date() },
+    });
+    return { resolved: result.count };
+  }
+
+
   // Keep for backwards-compat — just delegates to runAllChecks
   // ── Daily Insights ────────────────────────────────────────────────────────
   private async checkDailyInsights(organizationId: string) {

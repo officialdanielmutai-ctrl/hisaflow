@@ -1,61 +1,78 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import useSWR from 'swr';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import {
   getActiveAlerts,
   resolveAlert,
+  resolveAllAlerts,
   triggerAlertCheck,
   type Alert,
 } from '@/services/alerts.service';
 
 export function useAlerts() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const { membership } = useMyOrganization();
+  const orgId = membership?.organization.id;
 
-  useEffect(() => {
-    if (!membership?.organization.id) {
-      setLoading(false);
-      return;
+  const fetcher = async () => {
+    const token = await getToken();
+    if (!token || !orgId) throw new Error('Not authenticated');
+
+    // Run heavy anomaly checks in the background (fire and forget).
+    // This removes the blocking waterfall and makes the UI instant.
+    triggerAlertCheck(token, orgId).catch(() => {});
+
+    // Fetch existing alerts from DB instantly
+    return getActiveAlerts(token, orgId);
+  };
+
+  const { data, error, isLoading, mutate } = useSWR<Alert[]>(
+    isLoaded && orgId ? ['alerts', orgId] : null,
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 30_000,
     }
-
-    async function fetchAlerts() {
-      try {
-        const token = await getToken();
-        if (!token) throw new Error('Not authenticated');
-        const orgId = membership!.organization.id;
-
-        // Run all checks first so alerts are always fresh when the page opens
-        await triggerAlertCheck(token, orgId).catch(() => {}); // non-fatal
-
-        const result = await getActiveAlerts(token, orgId);
-        setAlerts(result);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load alerts');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchAlerts();
-  }, [membership?.organization.id, getToken]);
+  );
 
   const dismiss = useCallback(async (alertId: string) => {
-    const orgId = membership?.organization.id;
     if (!orgId) return;
     try {
       const token = await getToken();
       if (!token) return;
+      // Optimistically remove from UI instantly
+      mutate((prev) => (prev ? prev.filter(a => a.id !== alertId) : []), false);
       await resolveAlert(alertId, token, orgId);
-      setAlerts((prev) => prev.filter((a) => a.id !== alertId));
+      mutate();
     } catch (e) {
-      console.error('Failed to resolve alert', e);
+      console.error('Failed to dismiss alert:', e);
+      mutate(); // Revert on failure
     }
-  }, [membership?.organization.id, getToken]);
+  }, [orgId, getToken, mutate]);
 
-  return { data: alerts, isLoading: loading, error, dismiss };
+  const dismissAll = useCallback(async () => {
+    if (!orgId || !data?.length) return;
+    try {
+      const token = await getToken();
+      if (!token) return;
+      // Optimistically clear all immediately
+      mutate([], false);
+      await resolveAllAlerts(token, orgId);
+      mutate();
+    } catch (e) {
+      console.error('Failed to dismiss all alerts:', e);
+      mutate(); // Revert on failure
+    }
+  }, [orgId, getToken, mutate, data]);
+
+  return {
+    data,
+    loading: isLoading,
+    error: error ? (error as Error).message : null,
+    dismiss,
+    dismissAll,
+  };
 }

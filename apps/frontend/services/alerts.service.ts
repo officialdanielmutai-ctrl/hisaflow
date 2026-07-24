@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '@/lib/api-client';
+import { apiGet, apiPost, apiPatch } from '@/lib/api-client';
 
 export interface Alert {
   id: string;
@@ -29,10 +29,17 @@ export async function resolveAlert(
   token: string,
   organizationId: string,
 ): Promise<void> {
-  return apiPost<void>(
+  return apiPatch<void>(
     `/alerts/${alertId}/resolve`,
     token,
     organizationId,
     {},
   );
+}
+
+export async function resolveAllAlerts(
+  token: string,
+  organizationId: string,
+): Promise<void> {
+  return apiPatch<void>('/alerts/resolve-all', token, organizationId, {});
 }
