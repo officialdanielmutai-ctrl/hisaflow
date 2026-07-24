@@ -10,16 +10,34 @@ interface InventoryItemCardProps {
 }
 
 export default function InventoryItemCard({ item, onEdit, onReceiveStock }: InventoryItemCardProps) {
-  const isLowStock = item.quantity <= item.reorderThreshold;
+  const qty = Number(item.quantity);
+  const threshold = Number(item.reorderThreshold);
+
+  let severity: 'CRITICAL' | 'MODERATE' | 'LOW' | 'HEALTHY' = 'HEALTHY';
+
+  if (threshold > 0 && qty <= threshold) {
+    if (qty === 0) {
+      severity = 'CRITICAL';
+    } else if (qty <= threshold / 2) {
+      severity = 'MODERATE';
+    } else {
+      severity = 'LOW';
+    }
+  }
 
   return (
     <div className="flex items-center justify-between rounded-2xl border bg-card p-4">
       <div className="flex items-center gap-2 min-w-0">
-        {isLowStock && (
-          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-red-500" />
-        )}
         <div className="min-w-0">
-          <p className="text-base font-semibold truncate">{item.name}</p>
+          <div className="flex items-center gap-1">
+            <p className="text-base font-semibold truncate">{item.name}</p>
+            {severity === 'CRITICAL' && (
+              <span className="text-red-500 font-bold text-lg leading-none animate-pulse" title="Critically Low">*</span>
+            )}
+            {severity === 'MODERATE' && (
+              <span className="text-orange-500 font-bold text-lg leading-none" title="Moderately Low">*</span>
+            )}
+          </div>
           {item.category && (
             <p className="text-sm text-muted-foreground">{item.category}</p>
           )}
