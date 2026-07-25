@@ -1,6 +1,6 @@
 ﻿import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { verifyToken, clerkClient } from '@clerk/backend';
+import { verifyToken, createClerkClient } from '@clerk/backend';
 import { PrismaService } from '../../infrastructure/prisma.service';
 
 @Injectable()
@@ -21,28 +21,37 @@ export class ClerkAuthGuard implements CanActivate {
     const token = header.split(' ')[1];
 
     try {
-      const payload = await verifyToken(token, {
-        secretKey: this.configService.get<string>('clerk.secretKey'),
-      });
-
+      const secretKey = this.configService.get<string>('clerk.secretKey');
+      const payload = await verifyToken(token, { secretKey });
       const clerkId = payload.sub;
 
       let user = await this.prisma.db.user.findUnique({ where: { clerkId } });
 
       if (!user || !user.name) {
-        // Fetch user from clerk to populate name/email
-        const clerkUser = await clerkClient.users.getUser(clerkId);
-        const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || null;
-        const email = clerkUser.emailAddresses[0]?.emailAddress || null;
-        
-        user = await this.prisma.db.user.upsert({
-          where: { clerkId },
-          update: { name, email },
-          create: { clerkId, name, email },
-        });
+        // Fetch real name from Clerk and persist it so team lists show actual names
+        try {
+          const clerk = createClerkClient({ secretKey });
+          const clerkUser = await clerk.users.getUser(clerkId);
+          const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || null;
+          const email = clerkUser.emailAddresses[0]?.emailAddress || null;
+
+          user = await this.prisma.db.user.upsert({
+            where: { clerkId },
+            update: { name, email },
+            create: { clerkId, name, email },
+          });
+        } catch (nameErr) {
+          // Non-fatal: fall back to upsert without name
+          console.warn('Could not fetch Clerk user name:', nameErr);
+          user = await this.prisma.db.user.upsert({
+            where: { clerkId },
+            update: {},
+            create: { clerkId },
+          });
+        }
       }
 
-      // Optionally enrich with org role if x-organization-id header is present
+      // Enrich with org role if x-organization-id header is present
       const organizationId = request.headers['x-organization-id'] as string | undefined;
       let orgRole: string | null = null;
       if (organizationId) {
@@ -62,7 +71,7 @@ export class ClerkAuthGuard implements CanActivate {
       };
       return true;
     } catch (e) {
-      console.error("Clerk Guard Error:", e);
+      console.error('ClerkAuthGuard error:', e);
       throw new UnauthorizedException('Invalid token');
     }
   }
