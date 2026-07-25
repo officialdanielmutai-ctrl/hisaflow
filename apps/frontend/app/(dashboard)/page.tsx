@@ -316,18 +316,24 @@ export default function DashboardPage() {
           <TrendingUp className="h-5 w-5 text-green-600 mb-2" />
           <p className="text-xs text-muted-foreground">Today&apos;s Sales</p>
           <p className="font-bold text-lg">KES {data.kpis.todaySales.toLocaleString()}</p>
+          <p className={`text-xs mt-1 font-medium ${data.kpis.salesTrendIsPositive ? 'text-green-600' : 'text-red-500'}`}>
+            {data.kpis.salesTrendLabel}
+          </p>
         </Link>
         <Link href="/transactions?type=PURCHASE" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
           <ShoppingCart className="h-5 w-5 text-red-500 mb-2" />
           <p className="text-xs text-muted-foreground">Expenses</p>
           <p className="font-bold text-lg">KES {data.kpis.todayExpenses.toLocaleString()}</p>
+          <p className={`text-xs mt-1 font-medium ${data.kpis.expensesTrendIsNegative ? 'text-red-500' : 'text-green-600'}`}>
+            {data.kpis.expensesTrendLabel}
+          </p>
         </Link>
         <Link href="/inventory?filter=LOW_STOCK" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
           <AlertTriangle className="h-5 w-5 text-yellow-500 mb-2" />
           <p className="text-xs text-muted-foreground">Low Stock</p>
           <p className="font-bold text-lg">{data.kpis.lowStockCount} items</p>
-          <p className={`text-xs ${data.kpis.lowStockCount > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
-            {data.kpis.lowStockCount > 0 ? 'Needs attention' : 'All good'}
+          <p className={`text-xs mt-1 font-medium ${data.kpis.lowStockCount > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+            {data.kpis.lowStockLabel}
           </p>
         </Link>
         <Link href="/finance" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
@@ -335,6 +341,9 @@ export default function DashboardPage() {
           <p className="text-xs text-muted-foreground">Profit Est.</p>
           <p className={`font-bold text-lg ${data.kpis.profitEstimate >= 0 ? 'text-green-600' : 'text-red-500'}`}>
             KES {data.kpis.profitEstimate.toLocaleString()}
+          </p>
+          <p className={`text-xs mt-1 font-medium ${data.kpis.profitTrendIsPositive ? 'text-green-600' : 'text-red-500'}`}>
+            {data.kpis.profitTrendLabel}
           </p>
         </Link>
       </div>

@@ -4,9 +4,16 @@ export interface DashboardData {
   greeting: { timeOfDay: 'morning' | 'afternoon' | 'evening' };
   kpis: {
     todaySales: number;
+    salesTrendLabel: string;
+    salesTrendIsPositive: boolean;
     todayExpenses: number;
+    expensesTrendLabel: string;
+    expensesTrendIsNegative: boolean;
     lowStockCount: number;
+    lowStockLabel: string;
     profitEstimate: number;
+    profitTrendLabel: string;
+    profitTrendIsPositive: boolean;
   };
   attentionFeed: Array<{
     id: string;

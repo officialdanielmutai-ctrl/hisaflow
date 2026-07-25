@@ -1,6 +1,6 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+﻿import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { verifyToken } from '@clerk/backend';
+import { verifyToken, clerkClient } from '@clerk/backend';
 import { PrismaService } from '../../infrastructure/prisma.service';
 
 @Injectable()
@@ -27,14 +27,20 @@ export class ClerkAuthGuard implements CanActivate {
 
       const clerkId = payload.sub;
 
-      // Find or create the User record in our database using the Clerk ID.
-      // This ensures request.user.id is always a valid database cuid,
-      // not the raw Clerk user ID.
-      const user = await this.prisma.db.user.upsert({
-        where: { clerkId },
-        update: {},
-        create: { clerkId },
-      });
+      let user = await this.prisma.db.user.findUnique({ where: { clerkId } });
+
+      if (!user || !user.name) {
+        // Fetch user from clerk to populate name/email
+        const clerkUser = await clerkClient.users.getUser(clerkId);
+        const name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || null;
+        const email = clerkUser.emailAddresses[0]?.emailAddress || null;
+        
+        user = await this.prisma.db.user.upsert({
+          where: { clerkId },
+          update: { name, email },
+          create: { clerkId, name, email },
+        });
+      }
 
       // Optionally enrich with org role if x-organization-id header is present
       const organizationId = request.headers['x-organization-id'] as string | undefined;
@@ -55,7 +61,8 @@ export class ClerkAuthGuard implements CanActivate {
         orgRole: (payload as any).org_role ?? null,
       };
       return true;
-    } catch {
+    } catch (e) {
+      console.error("Clerk Guard Error:", e);
       throw new UnauthorizedException('Invalid token');
     }
   }

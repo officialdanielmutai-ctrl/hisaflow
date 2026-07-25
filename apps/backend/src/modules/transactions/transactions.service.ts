@@ -107,7 +107,7 @@ export class TransactionsService {
             type: 'STAFF_ACTIVITY',
             severity: 'INFO',
             title,
-            description: `Staff member ${actorContext.actorName} logged a ${typeLabel} of ${qty} ${product.unit} of ${product.name}.`,
+            description: `${actorContext.actorName} reported a ${typeLabel} of ${qty} ${product.unit} of ${product.name}.`,
           },
         })
         .catch((e) => console.error('Staff activity alert creation failed:', e));
