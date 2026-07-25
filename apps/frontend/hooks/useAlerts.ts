@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
@@ -28,7 +28,7 @@ export function useAlerts(options?: { triggerCheck?: boolean }) {
 
   const { data, error, isLoading, mutate } = useSWR<Alert[]>(
     isLoaded && orgId ? [ALERTS_KEY, orgId] : null,
-    async ([, id]) => {
+    async ([_, id]: [string, string]) => {
       const token = await getToken();
       if (!token || !id) throw new Error('Not authenticated');
 
