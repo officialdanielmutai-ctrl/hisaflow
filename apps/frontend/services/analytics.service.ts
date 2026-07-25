@@ -40,9 +40,12 @@ export interface StaffDashboardData {
   kpis: {
     todaySalesCount: number;
     todaySalesTrend: number;
+    todaySalesTrendLabel: string;
     lowStockCount: number;
     totalInventory: number;
+    totalInventoryLabel: string;
     tasksDoneToday: number;
+    tasksLabel: string;
   };
   attentionFeed: Array<{
     id: string;

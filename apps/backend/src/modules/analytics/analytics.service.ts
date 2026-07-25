@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
@@ -90,12 +90,17 @@ export class AnalyticsService {
   async getStaffDashboardSummary(organizationId: string) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
 
-    const [todayTransactions, allItems, activeAlerts, recommendedActions, completedChecklists] =
+    const [todayTransactions, yesterdayTransactions, allItems, activeAlerts, recommendedActions, completedChecklists, pendingChecklists] =
       await Promise.all([
         this.prisma.db.inventoryTransaction.findMany({
           where: { organizationId, createdAt: { gte: todayStart } },
           include: { item: { select: { sellingPrice: true, costPrice: true } } },
+        }),
+        this.prisma.db.inventoryTransaction.findMany({
+          where: { organizationId, createdAt: { gte: yesterdayStart, lt: todayStart } },
         }),
         this.prisma.db.inventoryItem.findMany({
           where: { organizationId, isActive: true },
@@ -112,6 +117,9 @@ export class AnalyticsService {
         this.prisma.db.checklistItem.count({
           where: { note: { organizationId }, isCompleted: true, createdAt: { gte: todayStart } },
         }),
+        this.prisma.db.checklistItem.count({
+          where: { note: { organizationId }, isCompleted: false },
+        }),
       ]);
 
     const businessType = recommendedActions?.businessType ?? 'DUKA';
@@ -122,6 +130,20 @@ export class AnalyticsService {
       if (tx.type === 'SALE') {
         todaySalesCount += Math.abs(Number(tx.quantityChange));
       }
+    }
+
+    let yesterdaySalesCount = 0;
+    for (const tx of yesterdayTransactions) {
+      if (tx.type === 'SALE') {
+        yesterdaySalesCount += Math.abs(Number(tx.quantityChange));
+      }
+    }
+
+    let todaySalesTrend = 0;
+    if (yesterdaySalesCount === 0 && todaySalesCount > 0) {
+      todaySalesTrend = 100;
+    } else if (yesterdaySalesCount > 0) {
+      todaySalesTrend = Math.round(((todaySalesCount - yesterdaySalesCount) / yesterdaySalesCount) * 100);
     }
 
     const lowStockCount = allItems.filter(
@@ -139,14 +161,19 @@ export class AnalyticsService {
         unit: item.unit
       }));
 
+    const categoryCount = new Set(allItems.map(i => i.category || 'Other')).size;
+
     return {
       greeting: { timeOfDay: now.getHours() < 12 ? 'morning' : now.getHours() < 17 ? 'afternoon' : 'evening' },
       kpis: {
         todaySalesCount,
-        todaySalesTrend: 18,
+        todaySalesTrend,
+        todaySalesTrendLabel: todaySalesTrend > 0 ? `+${todaySalesTrend}% vs yesterday` : todaySalesTrend < 0 ? `${todaySalesTrend}% vs yesterday` : 'Same as yesterday',
         lowStockCount,
         totalInventory: allItems.length,
+        totalInventoryLabel: `Across ${categoryCount} categor${categoryCount === 1 ? 'y' : 'ies'}`,
         tasksDoneToday: completedChecklists,
+        tasksLabel: pendingChecklists > 0 ? `${pendingChecklists} tasks pending` : 'All caught up!',
       },
       attentionFeed: activeAlerts.map((a) => ({
         id: a.id,
@@ -163,7 +190,7 @@ export class AnalyticsService {
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    // Fetch all active items then filter in JS — avoids invalid column-to-column Prisma where
+    // Fetch all active items then filter in JS â€” avoids invalid column-to-column Prisma where
     const allItems = await this.prisma.db.inventoryItem.findMany({
       where: { organizationId, isActive: true },
       select: { id: true, name: true, quantity: true, reorderThreshold: true },

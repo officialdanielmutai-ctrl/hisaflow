@@ -81,7 +81,7 @@ function StaffDashboard() {
               </div>
             </div>
           </div>
-          <span className="text-[10px] font-semibold text-green-600">+{data.kpis.todaySalesTrend}% vs yesterday</span>
+          <span className={`text-[10px] font-semibold ${data.kpis.todaySalesTrend >= 0 ? 'text-green-600' : 'text-red-500'}`}>{data.kpis.todaySalesTrendLabel}</span>
         </div>
 
         <Link href="/inventory?filter=LOW_STOCK" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-base)] transition-colors p-4 shadow-sm">
@@ -115,7 +115,7 @@ function StaffDashboard() {
               </div>
             </div>
           </div>
-          <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">Across all categories</span>
+          <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">{data.kpis.totalInventoryLabel}</span>
         </Link>
 
         <Link href="/notes" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-base)] transition-colors p-4 shadow-sm">
@@ -131,7 +131,7 @@ function StaffDashboard() {
               </div>
             </div>
           </div>
-          <span className="text-[10px] font-semibold text-green-600">Great progress!</span>
+          <span className={`text-[10px] font-semibold ${data.kpis.tasksLabel === 'All caught up!' ? 'text-green-600' : 'text-orange-500'}`}>{data.kpis.tasksLabel}</span>
         </Link>
       </div>
 
