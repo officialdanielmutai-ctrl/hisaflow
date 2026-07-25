@@ -139,7 +139,6 @@ function StaffDashboard() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="text-orange-500 font-bold text-lg leading-none mt-0.5">⚡</div>
             <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Active Alerts</h2>
           </div>
           <Link href="/alerts" className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center">
@@ -188,8 +187,7 @@ function StaffDashboard() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-[#C19A6B]" />
-            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Low Stock — Watch List</h2>
+            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Low Stock Watch List</h2>
           </div>
           <Link href="/inventory" className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center">
             View all items <span className="ml-1 text-lg leading-none mt-0.5">›</span>
@@ -209,7 +207,7 @@ function StaffDashboard() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100">
-                    <span className="text-xs">📦</span>
+                    <Package className="h-4 w-4 text-gray-500" />
                   </div>
                   <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-yellow-500" />
                   <span className="text-sm font-bold text-[var(--color-text-primary)] truncate">{item.name}</span>
