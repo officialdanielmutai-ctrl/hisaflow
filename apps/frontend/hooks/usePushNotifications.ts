@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useMyOrganization } from "./useMyOrganization";
 import { subscribeToPushNotifications } from "@/services/notifications.service";
@@ -91,7 +91,7 @@ export function usePushNotifications() {
       // 4. Subscribe via PushManager
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey,
+        applicationServerKey: applicationServerKey as any,
       });
 
       // 5. Register subscription with backend
