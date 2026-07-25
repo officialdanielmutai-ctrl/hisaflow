@@ -1,4 +1,4 @@
-/// <reference lib="webworker" />
+﻿/// <reference lib="webworker" />
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
@@ -19,7 +19,7 @@ const serwist = new Serwist({
   runtimeCaching: defaultCache,
 });
 
-// Push notification listener
+// ── Push Notification Handler ──────────────────────────────────────────────
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
@@ -30,33 +30,40 @@ self.addEventListener("push", (event) => {
       body: data.body || "You have a new alert.",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
-      vibrate: [100, 50, 100],
-      data: data.url || "/",
+      vibrate: [200, 100, 200],
+      tag: "hisaflow-alert",   // replaces previous notification instead of stacking
+      renotify: true,
+      requireInteraction: false,
+      data: { url: data.url || "/alerts" },
     };
 
     event.waitUntil(self.registration.showNotification(title, options));
   } catch (error) {
-    console.error("Error handling push event:", error);
+    console.error("[SW] Error handling push event:", error);
   }
 });
 
+// ── Notification Click Handler ─────────────────────────────────────────────
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const urlToOpen = event.notification.data;
-  
+  const urlToOpen = event.notification.data?.url || "/alerts";
+
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // If the app is already open, focus it
-      for (const client of clientList) {
-        if (client.url.includes(urlToOpen) && "focus" in client) {
-          return client.focus();
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        // Focus existing window if already open
+        for (const client of clientList) {
+          if ("focus" in client) {
+            client.focus();
+            return;
+          }
         }
-      }
-      // If not, open a new window
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(urlToOpen);
-      }
-    })
+        // Otherwise open a new tab
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(urlToOpen);
+        }
+      })
   );
 });
 
