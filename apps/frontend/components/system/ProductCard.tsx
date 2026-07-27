@@ -24,6 +24,15 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
     return sum;
   }, 0);
   const volumeUnit = product.variants.find(v => v.measureUnit)?.measureUnit || '';
+  // Use the first variant's unit if all variants share the same unit, otherwise show generic
+  const allSameUnit = product.variants.every(v => v.unit === product.variants[0]?.unit);
+  const displayUnit = allSameUnit ? (product.variants[0]?.unit || 'units') : 'units';
+  // Pluralise only if the unit doesn't already end in s/es
+  const pluralUnit = (qty: number, unit: string) => {
+    if (qty === 1) return unit;
+    if (unit.endsWith('s') || unit.endsWith('es')) return unit;
+    return unit + 's';
+  };
 
   const hasLowStock = product.variants.some(v => v.status === 'LOW' || v.status === 'OUT_OF_STOCK');
 
@@ -52,7 +61,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-end">
             <span className="text-sm font-bold">
-              {totalQuantity.toLocaleString()} {totalQuantity === 1 ? 'unit' : 'units'}
+              {totalQuantity.toLocaleString()} {pluralUnit(totalQuantity, displayUnit)}
             </span>
             {totalVolume > 0 && volumeUnit && (
               <span className="text-xs text-[var(--color-text-secondary)]">
@@ -91,7 +100,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
                   <span className={`text-sm font-bold ${
                     variant.status === 'HEALTHY' ? 'text-emerald-600' : 'text-rose-600'
                   }`}>
-                    {Number(variant.quantity).toLocaleString()} {variant.unit}s
+                    {Number(variant.quantity).toLocaleString()} {pluralUnit(Number(variant.quantity), variant.unit)}
                   </span>
                   {!isStaff && variant.sellingPrice && (
                     <span className="text-xs text-[var(--color-text-secondary)]">

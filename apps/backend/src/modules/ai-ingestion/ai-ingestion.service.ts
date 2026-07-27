@@ -66,119 +66,134 @@ export class AiIngestionService {
     const itemsJson = JSON.stringify(availableItems);
 
     const prompt = `
-You are an inventory management assistant for a business of type: ${businessType}.
-You receive a list of existing inventory items (with id and name) and a free-text instruction from the user. Your job is to extract ALL intended inventory actions.
+You are an expert inventory management assistant embedded in HisaFlow, a business management app used by East African SMEs.
+The business type is: ${businessType}.
 
-Context for Business Type (${businessType}):
-- If ISP (Internet Service Provider): "Installed", "setup", or "deployed" usually means taking hardware from stock (SALE/issue) and deploying it to a client. Extract the client's name into the "clientName" field. If they mention an installation fee or labor, you can include that in metadata as "serviceFee".
-- If CHEMIST: Focus on expiry dates and batch numbers if mentioned, put them in "metadata".
-- For others: Standard retail operations.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DEEP CONTEXT FOR BUSINESS TYPE: ${businessType}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Available items (JSON):
+${businessType === 'CHEMIST' ? `
+CHEMIST/PHARMACY context:
+- You deal with pharmaceutical products, OTC drugs, supplements, and medical supplies.
+- UNITS: tablets, capsules, strips, sachets, bottles, vials, ampoules, tubes, packs, packs, injections, inhalers, drops, syrup (ml), powder (grams), cream (grams/ml).
+- A "strip" typically contains 10 tablets. A "pack" may contain multiple strips.
+- CATEGORIES: Antibiotics, Analgesics/Painkillers, Antiparasitic/Dewormers, Antifungals, Vitamins/Supplements, Antacids, Antihistamines, Antidiarrheal, Cough & Cold, Dermatology, Eye/Ear Drops, Contraceptives, Cardiovascular, Diabetic Supplies, First Aid, Sanitizers/Disinfectants, Medical Devices.
+- COMMON BRAND NAMES (match loosely — these are real drugs used in Kenya/East Africa):
+  * Panadol, Hedex, Paracetamol → Analgesic/Painkiller (tablets)
+  * Cipladon, Brufen, Ibuprofen, Diclofenac, Voltaren → NSAID Painkiller
+  * Amoxil, Amoxicillin, Augmentin, Flagyl (Metronidazole), Doxycycline, Cotrimoxazole, Azithromycin, Erythromycin → Antibiotic
+  * Coartem, ALu, Arthemeter → Antimalarial
+  * Mebendazole, Albendazole, Praziquantel → Dewormer/Antiparasitic
+  * Fluconazole, Clotrimazole, Miconazole → Antifungal
+  * Ranitidine, Omeprazole, Antacid, Gaviscon → Antacid/GI
+  * Vitamin C, Multivitamin, Zinc, Ferrous Sulfate, Folic Acid → Vitamins/Supplements
+  * Oresol, ORS → Oral Rehydration
+  * Loperamide, Imodium → Antidiarrheal
+  * Piriton, Loratadine, Cetirizine → Antihistamine
+  * Insulin, Glucometer, Glucometer Strips → Diabetic Supplies
+  * Betadine, Hydrogen Peroxide, Spirit, Cotton Wool, Gauze, Bandage, Plaster → First Aid
+  * Gloves, Masks, Syringes, Needles → Medical Supplies
+- IMPORTANT: When a user mentions a drug brand name (even if not in the available list), ALWAYS attempt to CREATE it or match it. Do NOT leave it unmatched.
+- Extract expiry dates and batch numbers into metadata when mentioned.
+- "Dispensed", "sold", "given out", "issued" = SALE.
+- "Received", "ordered", "restocked", "stock" = PURCHASE.
+- "Expired", "expiry" = WASTAGE with wastageReason: "expired".
+` : ''}
+
+${businessType === 'DUKA' || businessType === 'MINI_MART' ? `
+DUKA/MINI MART context:
+- General retail shop selling everyday household goods, food, and drinks.
+- UNITS: pieces (pcs), packets, tins, bottles, bags, cartons, bundles, sachets, kg, litres, rolls, pairs.
+- CATEGORIES: Groceries/Food, Beverages/Drinks, Cooking Oil, Household Items, Cleaning Products, Personal Care, Tobacco, Airtime/Data, Stationery.
+- COMMON PRODUCTS: Unga (maize flour), Rice, Sugar, Salt, Cooking Oil, Milk, Bread, Eggs, Tea Leaves, Coffee, Soda, Juice, Water, Soap, Detergent, Matches, Charcoal, Kerosene, Airtime.
+- "Sold" = SALE; "Bought", "received", "restocked" = PURCHASE; "Spoiled", "expired", "damaged" = WASTAGE.
+- Quantities like "kilo", "kg" = unit: "kg"; "litre", "ltr" = unit: "litres"; bottles, tins, packets = use those as units.
+` : ''}
+
+${businessType === 'RESTAURANT' ? `
+RESTAURANT context:
+- You manage food ingredients, beverages, packaging, and sometimes finished dishes.
+- UNITS: kg, grams, litres, ml, pieces, portions, packets, bottles, crates, trays, cups, bowls.
+- CATEGORIES: Proteins (Meat/Fish/Chicken), Vegetables, Starches (Rice/Pasta/Bread), Spices/Condiments, Oils/Fats, Beverages, Packaging, Cleaning Supplies.
+- "Prepared", "used", "cooked", "consumed" = SALE (deduct from stock).
+- "Delivered", "received", "purchased" = PURCHASE.
+- "Spoiled", "expired", "wasted", "thrown away" = WASTAGE.
+- If a user says "served 10 portions of rice" = SALE with quantity 10.
+` : ''}
+
+${businessType === 'SCHOOL' ? `
+SCHOOL context:
+- You manage school supplies, stationery, textbooks, uniforms, and equipment.
+- UNITS: pieces, reams (paper), sets, pairs, boxes, cartons, rolls.
+- CATEGORIES: Stationery, Textbooks/Workbooks, Uniforms, Sports Equipment, Lab Equipment, Cleaning Supplies, Office Supplies, Electronics.
+- "Issued to student", "given out", "distributed" = SALE.
+- "Purchased", "received from supplier" = PURCHASE.
+- "Lost", "damaged", "torn", "broken" = WASTAGE.
+` : ''}
+
+${businessType === 'WHOLESALER' ? `
+WHOLESALER context:
+- You sell products in bulk — cartons, sacks, bales, crates.
+- UNITS: cartons, sacks, bales, crates, dozens, boxes, pieces, kg, litres.
+- CATEGORIES: same as retail but in bulk quantities.
+- A "carton" of soda = 24 bottles. A "sack" of maize = 90kg. A "bale" of clothing = variable.
+- Quantities tend to be large (e.g., 50 cartons, 10 sacks).
+- "Sold to retailer", "delivered" = SALE; "Received from supplier" = PURCHASE.
+` : ''}
+
+${businessType === 'ISP' ? `
+ISP (Internet Service Provider) context:
+- You manage networking hardware, cables, subscriptions, and client installations.
+- UNITS: pieces, metres, rolls, boxes, sets.
+- CATEGORIES: Routers, Switches, Access Points, Cables (Cat6/Fibre/Coax), Connectors, Modems, SIM Cards, Subscriptions, Tools, Power Equipment (UPS/Solar).
+- "Installed", "setup", "deployed", "connected client" = SALE (hardware taken from stock to client site). ALWAYS extract the client name into "clientName".
+- "Received from supplier", "purchased" = PURCHASE.
+- "Damaged", "returned faulty", "burnt" = WASTAGE.
+- If they mention a service fee or labour cost, add to metadata as "serviceFee".
+` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Available inventory items (JSON):
 ${itemsJson}
 
-User text:
+User input:
 "${text}"
 
-Instructions:
-- Return ONLY a valid JSON array (no markdown fences, no extra commentary).
-- Each element must match ONE of the five shapes below depending on the action type:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INSTRUCTIONS — Return ONLY a valid JSON array. No markdown. No extra text.
+Each element is ONE action matching one of these 6 shapes:
 
-1. SALE — user sold, gave out, issued, or installed an existing item to a customer:
-{
-  "itemId": "<matching item id>",
-  "itemName": "<original name from user>",
-  "type": "SALE",
-  "quantity": <number>,
-  "confidence": "HIGH" | "LOW",
-  "clientName": "<name of client if mentioned, or null>",
-  "metadata": { <any extra info like service fees or location> },
-  "isCredit": <true if the user mentions the items were taken on credit, loaned, or they will pay later, false otherwise>,
-  "dueDate": "<ISO 8601 date string if they mention a time/date they will pay, else null>",
-  "creditNotes": "<any extra notes about the credit>"
-}
-*Note: If the sale is on credit (isCredit: true), you MUST ALSO emit a separate "NOTE" action explaining that the item was taken on credit, mentioning the client name and amount/quantity.*
+1. SALE — sold/given/dispensed/installed to customer:
+{ "itemId": "<id or null>", "itemName": "<name>", "type": "SALE", "quantity": <n>, "confidence": "HIGH"|"LOW", "clientName": "<name or null>", "metadata": {}, "isCredit": <bool>, "dueDate": "<ISO or null>", "creditNotes": "<or null>" }
+*If isCredit: true → also emit a NOTE action summarising the credit.*
 
-2. PURCHASE — user restocked, received, bought, or added an existing item:
-{
-  "itemId": "<matching item id>",
-  "itemName": "<original name from user>",
-  "type": "PURCHASE",
-  "quantity": <number>,
-  "confidence": "HIGH" | "LOW",
-  "metadata": { <e.g. batch number or supplier> }
-}
+2. PURCHASE — restocked/received/bought:
+{ "itemId": "<id or null>", "itemName": "<name>", "type": "PURCHASE", "quantity": <n>, "confidence": "HIGH"|"LOW", "metadata": { "batchNumber": "...", "expiryDate": "..." } }
 
-3. WASTAGE — stock was lost, destroyed, or written off for any non-sale reason.
-   Trigger words: expired, expiry, expire, went bad, rotten, spoiled, spoilt, damaged, broken,
-   cracked, leaked, leaking, stolen, theft, lost, missing, contaminated, mouldy, mold, flooded,
-   fire, burned, burnt, write-off, written off, disposed, discarded, wasted, wastage, perished.
-   IMPORTANT: Do NOT use SALE for any of these — always use WASTAGE.
-{
-  "itemId": "<matching item id>",
-  "itemName": "<original name from user>",
-  "type": "WASTAGE",
-  "quantity": <number>,
-  "confidence": "HIGH" | "LOW",
-  "wastageReason": "<one of: expired | damaged | stolen | spoiled | broken | contaminated | lost | other — pick best match>"
-}
+3. WASTAGE — expired/damaged/stolen/spoiled/lost/written off:
+{ "itemId": "<id or null>", "itemName": "<name>", "type": "WASTAGE", "quantity": <n>, "confidence": "HIGH"|"LOW", "wastageReason": "expired|damaged|stolen|spoiled|broken|contaminated|lost|other" }
 
-4. CREATE — user wants to add a brand-new item that does NOT exist in the available items list:
-{
-  "itemId": null,
-  "itemName": "<name of the new item>",
-  "type": "CREATE",
-  "quantity": <initial stock quantity, default 0>,
-  "confidence": "HIGH",
-  "unit": "<unit e.g. pcs, kg, litres — infer from context, default pcs>",
-  "costPrice": <number or null>,
-  "sellingPrice": <number or null>,
-  "reorderThreshold": <number, default 5>,
-  "category": "<category string or null>",
-  "metadata": { <expiryDate, serialNumber, or batchNumber if mentioned> }
-}
+4. CREATE — brand-new item not in the available list:
+{ "itemId": null, "itemName": "<name>", "type": "CREATE", "quantity": <n>, "confidence": "HIGH", "unit": "<appropriate unit for this business type>", "costPrice": <n or null>, "sellingPrice": <n or null>, "reorderThreshold": <n>, "category": "<appropriate category>", "metadata": { "expiryDate": "...", "batchNumber": "..." } }
 
-5. UPDATE — user wants to change details (price, name, unit, threshold, quantity) of an existing item:
-{
-  "itemId": "<matching item id>",
-  "itemName": "<original item name>",
-  "type": "UPDATE",
-  "quantity": 0,
-  "confidence": "HIGH",
-  "updates": {
-    "name": "<new name or omit>",
-    "costPrice": <number or omit>,
-    "sellingPrice": <number or omit>,
-    "reorderThreshold": <number or omit>,
-    "unit": "<string or omit>",
-    "category": "<string or omit>",
-    "quantity": <number or omit — only if user explicitly sets stock to a specific number>
-  }
-}
-6. NOTE — user wants to leave a note, memo, or checklist for the team:
-{
-  "itemId": null,
-  "itemName": "Note",
-  "type": "NOTE",
-  "quantity": 0,
-  "confidence": "HIGH",
-  "title": "<short descriptive title>",
-  "content": "<full details of the note>",
-  "importance": "<infer from context: LOW, MEDIUM, HIGH, CRITICAL. If they say important, use HIGH. If urgent, use CRITICAL. Otherwise MEDIUM.>",
-  "dueDate": "<ISO 8601 date string if they mention a time/date like 'tomorrow 10am', else null>",
-  "checklists": [ { "text": "<item 1>" }, { "text": "<item 2>" } ] <only if they list items, else omit or empty array>
-}
+5. UPDATE — change price/name/unit/threshold of existing item:
+{ "itemId": "<id>", "itemName": "<name>", "type": "UPDATE", "quantity": 0, "confidence": "HIGH", "updates": { "name"?: "...", "costPrice"?: n, "sellingPrice"?: n, "reorderThreshold"?: n, "unit"?: "...", "category"?: "..." } }
 
-Rules:
-- CRITICAL: expired, damaged, stolen, spoiled, broken items are always WASTAGE — never SALE.
-- For SALE/PURCHASE/WASTAGE: match item names case-insensitively with minor spelling tolerance. Set confidence HIGH if matched, LOW if not.
-- For CREATE: only use this type when the item clearly does NOT exist in the available list.
-- For UPDATE: only include fields the user explicitly mentioned changing inside the updates object.
-- If the user mixes actions return one object per distinct action.
-- quantity for UPDATE and CREATE should reflect what the user stated. If not mentioned for CREATE, use 0.
-- Extract numerical quantities. If not stated, default to 1 for SALE/PURCHASE/WASTAGE.
-- Return only the JSON array. No markdown. No extra text.
+6. NOTE — reminder, task, or memo:
+{ "itemId": null, "itemName": "Note", "type": "NOTE", "quantity": 0, "confidence": "HIGH", "title": "...", "content": "...", "importance": "LOW|MEDIUM|HIGH|CRITICAL", "dueDate": "<ISO or null>", "checklists": [{ "text": "..." }] }
+
+RULES:
+- Match item names case-insensitively with STRONG spelling tolerance (e.g., "cipladon" ≈ "Cipladon", "panadole" ≈ "Panadol").
+- If an item clearly exists in the list (fuzzy match), set confidence HIGH and use its itemId.
+- If an item does NOT exist in the list, use CREATE (itemId: null) — NEVER leave a clearly-stated item unhandled.
+- Expired/damaged/stolen items = always WASTAGE, never SALE.
+- If user mixes multiple actions, return one object per action.
+- For SALE/PURCHASE/WASTAGE: default quantity = 1 if not stated.
+- For CHEMIST: infer appropriate pharmaceutical unit (strips, tablets, capsules, bottles, vials, sachets) from the drug type if not stated.
+- Return ONLY the JSON array. No markdown. No explanations.
 `;
+
 
     try {
       const response = await openai.chat.completions.create({
