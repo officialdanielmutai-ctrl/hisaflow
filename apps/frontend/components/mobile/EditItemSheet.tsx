@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
@@ -22,6 +22,8 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
 
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('');
+  const [measureValue, setMeasureValue] = useState('');
+  const [measureUnit, setMeasureUnit] = useState('');
   const [quantity, setQuantity] = useState('');
   const [reorderThreshold, setReorderThreshold] = useState('');
   const [costPrice, setCostPrice] = useState('');
@@ -34,6 +36,8 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
   if (item && !name && !unit) {
     setName(item.name);
     setUnit(item.unit);
+    setMeasureValue(item.measureValue != null ? String(item.measureValue) : '');
+    setMeasureUnit(item.measureUnit || '');
     setQuantity(String(item.quantity));
     setReorderThreshold(String(item.reorderThreshold));
     setCostPrice(item.costPrice != null ? String(item.costPrice) : '');
@@ -45,6 +49,8 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
   const handleClose = () => {
     setName('');
     setUnit('');
+    setMeasureValue('');
+    setMeasureUnit('');
     setQuantity('');
     setReorderThreshold('');
     setCostPrice('');
@@ -71,6 +77,9 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
         quantity: parseFloat(quantity),
         reorderThreshold: parseFloat(reorderThreshold),
       };
+      
+      if (measureValue !== '') payload.measureValue = parseFloat(measureValue);
+      if (measureUnit.trim() !== '') payload.measureUnit = measureUnit.trim();
       
       if (!isStaff) {
         if (costPrice !== '') payload.costPrice = parseFloat(costPrice);
@@ -124,6 +133,27 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
                   placeholder="can, bottle, piece..."
+                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold">Measure Val (e.g. 500)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={measureValue}
+                  onChange={(e) => setMeasureValue(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold">Measure Unit (e.g. ml)</label>
+                <input
+                  value={measureUnit}
+                  onChange={(e) => setMeasureUnit(e.target.value)}
                   className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
