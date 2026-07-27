@@ -21,6 +21,7 @@ model Organization {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   users                 OrgMembership[]
+  products              Product[]
   inventoryItems        InventoryItem[]
   transactions          InventoryTransaction[]
   alerts                Alert[]
@@ -79,12 +80,31 @@ enum StockStatus {
   OUT_OF_STOCK
 }
 
+model Product {
+  id               String          @id @default(cuid())
+  organizationId   String          @map("organization_id")
+  name             String
+  category         String?
+  description      String?
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  organization     Organization    @relation(fields: [organizationId], references: [id])
+  variants         InventoryItem[]
+
+  @@index([organizationId])
+  @@map("products")
+}
+
 model InventoryItem {
   id               String      @id @default(cuid())
   organizationId   String      @map("organization_id")
+  productId        String?     @map("product_id")
   name             String
   category         String?
   unit             String      @default("units")
+  measureValue     Decimal?    @map("measure_value") @db.Decimal(12, 3)
+  measureUnit      String?     @map("measure_unit")
   quantity         Decimal     @default(0) @db.Decimal(12, 3)
   reorderThreshold Decimal?    @map("reorder_threshold") @db.Decimal(12, 3)
   costPrice        Decimal?    @map("cost_price") @db.Decimal(12, 2)
@@ -101,11 +121,30 @@ model InventoryItem {
   updatedAt        DateTime    @updatedAt @map("updated_at")
 
   organization Organization          @relation(fields: [organizationId], references: [id])
+  product      Product?              @relation(fields: [productId], references: [id])
   transactions InventoryTransaction[]
   alerts       Alert[]               // <-- added
+  packaging    PackagingUnit[]
+
   @@index([organizationId])
+  @@index([productId])
   @@index([organizationId, status])
   @@map("inventory_items")
+}
+
+model PackagingUnit {
+  id               String      @id @default(cuid())
+  variantId        String      @map("variant_id")
+  name             String      // E.g., "Box of 100"
+  quantityPerUnit  Int         @map("quantity_per_unit") // e.g., 100
+  barcode          String?
+  costPrice        Decimal?    @map("cost_price") @db.Decimal(12, 2)
+  sellingPrice     Decimal?    @map("selling_price") @db.Decimal(12, 2)
+
+  variant          InventoryItem @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId])
+  @@map("packaging_units")
 }
 
 // ── Inventory Transactions (append-only ledger) ─────────────────

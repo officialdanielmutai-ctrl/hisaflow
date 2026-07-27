@@ -1,37 +1,57 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import type { InventoryItem, UpdateProductPayload } from '@/services/inventory.service';
-import { updateInventoryItem } from '@/services/inventory.service';
+import type { InventoryItem } from '@/services/inventory.service';
+import { apiPatch } from '@/lib/api-client';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
 
 interface EditItemSheetProps {
-  item: InventoryItem;
-  onClose: () => void;
-  onUpdated: () => void;
+  item: InventoryItem | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
 }
 
-export default function EditItemSheet({ item, onClose, onUpdated }: EditItemSheetProps) {
+export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: EditItemSheetProps) {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const { isStaff } = useRole();
 
-  const [name, setName] = useState(item.name);
-  const [unit, setUnit] = useState(item.unit);
-  const [category, setCategory] = useState(item.category ?? '');
-  const [quantity, setQuantity] = useState(String(item.quantity));
-  const [reorderThreshold, setReorderThreshold] = useState(String(item.reorderThreshold));
-  const [costPrice, setCostPrice] = useState(item.costPrice != null ? String(item.costPrice) : '');
-  const [sellingPrice, setSellingPrice] = useState(item.sellingPrice != null ? String(item.sellingPrice) : '');
-  const [expiryDate, setExpiryDate] = useState(
-    item.expiryDate ? new Date(item.expiryDate).toISOString().slice(0, 10) : ''
-  );
+  const [name, setName] = useState('');
+  const [unit, setUnit] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [reorderThreshold, setReorderThreshold] = useState('');
+  const [costPrice, setCostPrice] = useState('');
+  const [sellingPrice, setSellingPrice] = useState('');
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync state when item changes
+  if (item && !name && !unit) {
+    setName(item.name);
+    setUnit(item.unit);
+    setQuantity(String(item.quantity));
+    setReorderThreshold(String(item.reorderThreshold));
+    setCostPrice(item.costPrice != null ? String(item.costPrice) : '');
+    setSellingPrice(item.sellingPrice != null ? String(item.sellingPrice) : '');
+  }
+
+  if (!open || !item) return null;
+
+  const handleClose = () => {
+    setName('');
+    setUnit('');
+    setQuantity('');
+    setReorderThreshold('');
+    setCostPrice('');
+    setSellingPrice('');
+    setError(null);
+    onOpenChange(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,31 +65,22 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
 
-      const payload: UpdateProductPayload = {};
-      if (name.trim() !== item.name) payload.name = name.trim();
-      if (unit.trim() !== item.unit) payload.unit = unit.trim();
-      if (category.trim() !== (item.category ?? '')) payload.category = category.trim() || undefined;
-      const qty = parseFloat(quantity);
-      if (!isNaN(qty) && qty !== item.quantity) payload.quantity = qty;
-      const threshold = parseFloat(reorderThreshold);
-      if (!isNaN(threshold) && threshold !== item.reorderThreshold) payload.reorderThreshold = threshold;
-      // Only owners/managers can update prices
+      const payload: any = {
+        name: name.trim(),
+        unit: unit.trim(),
+        quantity: parseFloat(quantity),
+        reorderThreshold: parseFloat(reorderThreshold),
+      };
+      
       if (!isStaff) {
-        const cp = costPrice !== '' ? parseFloat(costPrice) : null;
-        if (cp !== null && !isNaN(cp) && cp !== item.costPrice) payload.costPrice = cp;
-        const sp = sellingPrice !== '' ? parseFloat(sellingPrice) : null;
-        if (sp !== null && !isNaN(sp) && sp !== item.sellingPrice) payload.sellingPrice = sp;
-      }
-      if (expiryDate) payload.expiryDate = new Date(expiryDate).toISOString();
-
-      if (Object.keys(payload).length === 0) {
-        onClose();
-        return;
+        if (costPrice !== '') payload.costPrice = parseFloat(costPrice);
+        if (sellingPrice !== '') payload.sellingPrice = parseFloat(sellingPrice);
       }
 
-      await updateInventoryItem(item.id, payload, token, orgId);
-      onUpdated();
-      onClose();
+      // Variants are updated via a dedicated endpoint: PATCH /inventory/variants/:variantId
+      await apiPatch(`/inventory/variants/${item.id}`, token, orgId, payload);
+      onSuccess();
+      handleClose();
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to update item.');
@@ -82,8 +93,11 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
       <div className="flex h-full w-full max-w-md flex-col bg-[var(--color-bg-base)] shadow-2xl animate-in slide-in-from-right duration-300">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
-          <h2 className="text-xl font-bold">Edit Item</h2>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-[var(--color-bg-surface)] transition-colors">
+          <div>
+            <h2 className="text-xl font-bold">Edit Variant</h2>
+            <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{item.name}</p>
+          </div>
+          <button onClick={handleClose} className="rounded-full p-2 hover:bg-[var(--color-bg-surface)] transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -94,7 +108,7 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
             {error && <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</div>}
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold">Name *</label>
+              <label className="mb-1.5 block text-sm font-semibold">Variant Name *</label>
               <input
                 required
                 value={name}
@@ -109,16 +123,7 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
                 <input
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                  placeholder="pcs, kg, litres…"
-                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold">Category</label>
-                <input
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="e.g. Groceries"
+                  placeholder="can, bottle, piece..."
                   className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
@@ -127,10 +132,10 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
             {/* Pricing — hidden from staff */}
             {!isStaff && (
               <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4">
-                <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-3">💰 Pricing</p>
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-3">Pricing</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold">Cost Price (KES)</label>
+                    <label className="mb-1.5 block text-sm font-semibold">Cost Price</label>
                     <input
                       type="number"
                       min="0"
@@ -142,7 +147,7 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
                     />
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-semibold">Selling Price (KES)</label>
+                    <label className="mb-1.5 block text-sm font-semibold">Selling Price</label>
                     <input
                       type="number"
                       min="0"
@@ -157,7 +162,7 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
                 {costPrice && sellingPrice && parseFloat(sellingPrice) > parseFloat(costPrice) && (
                   <p className="mt-2 text-xs text-emerald-600 font-medium">
                     Margin: {(((parseFloat(sellingPrice) - parseFloat(costPrice)) / parseFloat(sellingPrice)) * 100).toFixed(1)}%
-                    · Profit: KES {(parseFloat(sellingPrice) - parseFloat(costPrice)).toFixed(2)} per {unit || 'unit'}
+                    · Profit: {(parseFloat(sellingPrice) - parseFloat(costPrice)).toFixed(2)} per {unit || 'unit'}
                   </p>
                 )}
                 {costPrice && sellingPrice && parseFloat(sellingPrice) <= parseFloat(costPrice) && parseFloat(sellingPrice) > 0 && (
@@ -189,16 +194,6 @@ export default function EditItemSheet({ item, onClose, onUpdated }: EditItemShee
                   className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-semibold">Expiry Date</label>
-              <input
-                type="date"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              />
             </div>
           </form>
         </div>

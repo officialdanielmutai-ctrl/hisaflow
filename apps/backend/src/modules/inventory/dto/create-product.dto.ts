@@ -1,21 +1,46 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsPositive, Min } from 'class-validator';
+﻿import { IsString, IsNotEmpty, IsOptional, IsNumber, IsPositive, Min, ValidateNested, IsArray } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class CreateProductDto {
+export class CreatePackagingUnitDto {
   @IsString()
   @IsNotEmpty()
   name!: string;
 
-  @IsOptional()
-  @IsString()
-  sku?: string;
+  @IsNumber()
+  @Min(1)
+  quantityPerUnit!: number;
 
   @IsOptional()
   @IsString()
-  category?: string;
+  barcode?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  costPrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  sellingPrice?: number;
+}
+
+export class CreateProductVariantDto {
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
 
   @IsString()
   @IsNotEmpty()
   unit!: string;
+
+  @IsOptional()
+  @IsNumber()
+  measureValue?: number;
+
+  @IsOptional()
+  @IsString()
+  measureUnit?: string;
 
   @IsNumber()
   @Min(0)
@@ -35,16 +60,50 @@ export class CreateProductDto {
   @IsPositive()
   sellingPrice?: number;
 
-  // Business specific fields
   @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreatePackagingUnitDto)
+  packaging?: CreatePackagingUnitDto[];
+}
+
+export class CreateProductDto {
   @IsString()
-  expiryDate?: string;
+  @IsNotEmpty()
+  name!: string;
 
   @IsOptional()
   @IsString()
-  serialNumber?: string;
+  category?: string;
 
   @IsOptional()
   @IsString()
-  batchNumber?: string;
+  description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductVariantDto)
+  variants?: CreateProductVariantDto[];
+
+  // Fallbacks for legacy single-variant creation
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @IsOptional()
+  @IsNumber()
+  quantity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  reorderThreshold?: number;
+
+  @IsOptional()
+  @IsNumber()
+  costPrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  sellingPrice?: number;
 }

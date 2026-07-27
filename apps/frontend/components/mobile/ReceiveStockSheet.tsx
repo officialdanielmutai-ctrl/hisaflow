@@ -9,14 +9,16 @@ import { PackagePlus, X } from 'lucide-react';
 
 interface ReceiveStockSheetProps {
   item: InventoryItem | null;
-  onClose: () => void;
-  onCompleted: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
 }
 
 export default function ReceiveStockSheet({
   item,
-  onClose,
-  onCompleted,
+  open,
+  onOpenChange,
+  onSuccess,
 }: ReceiveStockSheetProps) {
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState('');
@@ -24,8 +26,6 @@ export default function ReceiveStockSheet({
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
-
-  const open = !!item;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -47,8 +47,8 @@ export default function ReceiveStockSheet({
       );
       setQuantity(1);
       setNote('');
-      onCompleted();
-      onClose();
+      onSuccess();
+      onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to log stock');
     } finally {
@@ -60,7 +60,7 @@ export default function ReceiveStockSheet({
     setQuantity(1);
     setNote('');
     setError(null);
-    onClose();
+    onOpenChange(false);
   };
 
   return (

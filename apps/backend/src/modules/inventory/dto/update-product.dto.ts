@@ -1,6 +1,20 @@
-import { IsString, IsOptional, IsNumber, IsPositive, Min } from 'class-validator';
+﻿import { IsString, IsOptional, IsNumber, IsPositive, Min } from 'class-validator';
 
 export class UpdateProductDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class UpdateVariantDto {
   @IsOptional()
   @IsString()
   name?: string;
@@ -10,8 +24,12 @@ export class UpdateProductDto {
   unit?: string;
 
   @IsOptional()
+  @IsNumber()
+  measureValue?: number;
+
+  @IsOptional()
   @IsString()
-  category?: string;
+  measureUnit?: string;
 
   @IsOptional()
   @IsNumber()
@@ -32,17 +50,4 @@ export class UpdateProductDto {
   @IsNumber()
   @Min(0)
   sellingPrice?: number;
-
-  // Business specific fields
-  @IsOptional()
-  @IsString()
-  expiryDate?: string;
-
-  @IsOptional()
-  @IsString()
-  serialNumber?: string;
-
-  @IsOptional()
-  @IsString()
-  batchNumber?: string;
 }

@@ -1,61 +1,90 @@
 import { apiGet, apiPost, apiPatch } from '@/lib/api-client';
 
+export interface PackagingUnit {
+  id: string;
+  name: string;
+  quantityPerUnit: number;
+  barcode?: string | null;
+  costPrice?: number | null;
+  sellingPrice?: number | null;
+}
+
 export interface InventoryItem {
   id: string;
   name: string;
-  sku: string | null;
-  category: string | null;
   unit: string;
+  measureValue?: number | null;
+  measureUnit?: string | null;
   quantity: number;
   reorderThreshold: number;
   costPrice: number | null;
   sellingPrice: number | null;
+  status: 'HEALTHY' | 'LOW' | 'OUT_OF_STOCK';
   isActive: boolean;
-  expiryDate?: string | null;
-  serialNumber?: string | null;
-  batchNumber?: string | null;
+  packaging: PackagingUnit[];
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  variants: InventoryItem[];
 }
 
 export async function getInventoryItems(
   token: string,
   organizationId: string,
-): Promise<InventoryItem[]> {
-  return apiGet<InventoryItem[]>('/inventory', token, organizationId);
+): Promise<Product[]> {
+  return apiGet<Product[]>('/inventory', token, organizationId);
 }
 
-export interface CreateProductPayload {
+export interface CreatePackagingUnitPayload {
   name: string;
-  sku?: string;
-  category?: string;
+  quantityPerUnit: number;
+  barcode?: string;
+  costPrice?: number;
+  sellingPrice?: number;
+}
+
+export interface CreateProductVariantPayload {
+  name: string;
   unit: string;
+  measureValue?: number;
+  measureUnit?: string;
   quantity: number;
   reorderThreshold: number;
   costPrice?: number;
   sellingPrice?: number;
-  expiryDate?: string;
-  serialNumber?: string;
-  batchNumber?: string;
+  packaging?: CreatePackagingUnitPayload[];
+}
+
+export interface CreateProductPayload {
+  name: string;
+  category?: string;
+  description?: string;
+  variants?: CreateProductVariantPayload[];
+
+  // Fallbacks for legacy creation
+  unit?: string;
+  quantity?: number;
+  reorderThreshold?: number;
+  costPrice?: number;
+  sellingPrice?: number;
 }
 
 export async function createInventoryItem(
   payload: CreateProductPayload,
   token: string,
   organizationId: string,
-): Promise<InventoryItem> {
-  return apiPost<InventoryItem>('/inventory', token, organizationId, payload);
+): Promise<Product> {
+  return apiPost<Product>('/inventory', token, organizationId, payload);
 }
 
 export interface UpdateProductPayload {
   name?: string;
-  unit?: string;
   category?: string;
-  quantity?: number;
-  reorderThreshold?: number;
-  costPrice?: number;
-  sellingPrice?: number;
-  expiryDate?: string;
-  serialNumber?: string;
-  batchNumber?: string;
+  description?: string;
 }
 
 export async function updateInventoryItem(
@@ -63,6 +92,6 @@ export async function updateInventoryItem(
   payload: UpdateProductPayload,
   token: string,
   organizationId: string,
-): Promise<InventoryItem> {
-  return apiPatch<InventoryItem>(`/inventory/${id}`, token, organizationId, payload);
+): Promise<Product> {
+  return apiPatch<Product>(`/inventory/${id}`, token, organizationId, payload);
 }

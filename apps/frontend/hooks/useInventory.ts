@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from './useMyOrganization';
-import { getInventoryItems, type InventoryItem } from '@/services/inventory.service';
+import { getInventoryItems, type Product } from '@/services/inventory.service';
 
 export function useInventory() {
   const { getToken } = useAuth();
@@ -17,7 +17,7 @@ export function useInventory() {
     return getInventoryItems(token, orgId);
   };
 
-  const { data: items = [], error, isLoading, mutate } = useSWR<InventoryItem[]>(
+  const { data: items = [], error, isLoading, mutate } = useSWR<Product[]>(
     orgId ? ['inventory', orgId] : null,
     fetcher
   );

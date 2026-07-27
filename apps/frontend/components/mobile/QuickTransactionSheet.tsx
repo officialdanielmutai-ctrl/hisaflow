@@ -1,8 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { useInventory } from '@/hooks/useInventory';
 import {
   logTransaction,
   type TransactionType,
@@ -10,16 +11,14 @@ import {
 
 interface QuickTransactionSheetProps {
   open: boolean;
-  onClose: () => void;
-  onCompleted: () => void;
-  items: Array<{ id: string; name: string; quantity: number; unit: string }>;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
 }
 
 export default function QuickTransactionSheet({
   open,
-  onClose,
-  onCompleted,
-  items,
+  onOpenChange,
+  onSuccess,
 }: QuickTransactionSheetProps) {
   const [selectedItemId, setSelectedItemId] = useState('');
   const [type, setType] = useState<TransactionType>('SALE');
@@ -28,6 +27,17 @@ export default function QuickTransactionSheet({
   const [loading, setLoading] = useState(false);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
+  const { items: products } = useInventory();
+
+  // Flatten all variants for the selector
+  const flatItems = products.flatMap((p) =>
+    p.variants.map((v) => ({
+      id: v.id,
+      name: `${p.name} — ${v.name}`,
+      quantity: v.quantity,
+      unit: v.unit,
+    }))
+  );
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -46,8 +56,11 @@ export default function QuickTransactionSheet({
         token,
         membership!.organization.id,
       );
-      onCompleted();
-      onClose();
+      onSuccess();
+      onOpenChange(false);
+      setSelectedItemId('');
+      setNote('');
+      setQuantity(1);
     } catch (error) {
       console.error('Transaction failed', error);
     } finally {
@@ -60,7 +73,7 @@ export default function QuickTransactionSheet({
       {open && (
         <div
           className="fixed inset-0 z-40 bg-black/40"
-          onClick={onClose}
+          onClick={() => onOpenChange(false)}
         />
       )}
       <div
@@ -69,7 +82,7 @@ export default function QuickTransactionSheet({
         }`}
       >
         <button
-          onClick={onClose}
+          onClick={() => onOpenChange(false)}
           className="absolute right-4 top-4 text-2xl leading-none"
           aria-label="Close"
         >
@@ -115,7 +128,7 @@ export default function QuickTransactionSheet({
               <option value="" disabled>
                 Select item
               </option>
-              {items.map((item) => (
+              {flatItems.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name} ({item.quantity} {item.unit})
                 </option>

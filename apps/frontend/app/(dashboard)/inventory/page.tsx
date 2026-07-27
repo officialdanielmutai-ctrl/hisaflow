@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useInventory } from '@/hooks/useInventory';
-import InventoryItemCard from '@/components/system/InventoryItemCard';
+import ProductCard from '@/components/system/ProductCard';
 import AddItemSheet from '@/components/mobile/AddItemSheet';
 import EditItemSheet from '@/components/mobile/EditItemSheet';
 import QuickTransactionSheet from '@/components/mobile/QuickTransactionSheet';
@@ -15,7 +15,7 @@ import type { InventoryItem } from '@/services/inventory.service';
 export default function InventoryPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { items, loading, error, mutate } = useInventory();
+  const { items, loading, error, mutate } = useInventory(); // items is now Product[]
   const [sheetOpen, setSheetOpen] = useState(false);
   const [txSheetOpen, setTxSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -25,8 +25,9 @@ export default function InventoryPage() {
   );
   const { canAddInventory, canEditInventory, isStaff } = useRole();
 
+  // Low stock check now looks inside variants
   const displayedItems = filter === 'LOW_STOCK' 
-    ? items.filter((i) => Number(i.quantity) <= Number(i.reorderThreshold) && Number(i.reorderThreshold) > 0) 
+    ? items.filter((p) => p.variants.some((v) => Number(v.quantity) <= Number(v.reorderThreshold) && Number(v.reorderThreshold) > 0)) 
     : items;
 
   useEffect(() => {
@@ -48,7 +49,6 @@ export default function InventoryPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Inventory</h1>
         <div className="flex gap-2">
-          {/* Quick transaction — owners/managers only */}
           {canEditInventory && (
             <button
               onClick={() => setTxSheetOpen(true)}
@@ -58,7 +58,6 @@ export default function InventoryPage() {
               ↕
             </button>
           )}
-          {/* Add item — all roles */}
           {canAddInventory && (
             <button
               onClick={() => setSheetOpen(true)}
@@ -95,88 +94,83 @@ export default function InventoryPage() {
         </button>
       </div>
 
-      {/* Loading skeleton */}
       {loading && (
         <div className="flex flex-col gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-20 w-full animate-pulse rounded-2xl bg-muted"
-            />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-[72px] w-full animate-pulse rounded-2xl bg-muted" />
           ))}
         </div>
       )}
 
-      {/* Error state */}
-      {!loading && error && (
-        <div className="py-12 text-center text-[var(--color-text-secondary)]">
-          Failed to load inventory
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          {error}
         </div>
       )}
 
-      {/* Empty state */}
       {!loading && !error && displayedItems.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <PackageOpen className="mb-4 h-12 w-12 text-[var(--color-text-muted)]" />
-          <p className="text-base font-semibold text-[var(--color-text-primary)]">
-            {filter === 'LOW_STOCK' ? 'No low stock items' : 'No items yet'}
-          </p>
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            {filter === 'LOW_STOCK' ? 'All items are well stocked' : 'Add your first product'}
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--color-border)] py-12 text-center">
+          <div className="mb-4 rounded-full bg-muted p-4">
+            <PackageOpen className="h-8 w-8 text-[var(--color-text-secondary)]" />
+          </div>
+          <h3 className="mb-1 font-semibold text-[var(--color-text-primary)]">
+            No items found
+          </h3>
+          <p className="max-w-[200px] text-sm text-[var(--color-text-secondary)]">
+            {filter === 'LOW_STOCK'
+              ? 'All your stock levels are healthy.'
+              : 'Start building your inventory to track your stock.'}
           </p>
         </div>
       )}
 
-      {/* Items list */}
       {!loading && !error && displayedItems.length > 0 && (
         <div className="flex flex-col gap-3">
-          {displayedItems.map((item) => (
-            <InventoryItemCard
-              key={item.id}
-              item={item}
-              onEdit={canEditInventory ? (i) => setEditingItem(i) : undefined}
-              onReceiveStock={isStaff ? (i) => setReceivingItem(i) : undefined}
+          {displayedItems.map((product) => (
+            <ProductCard 
+              key={product.id} 
+              product={product} 
+              onClick={(variant) => setEditingItem(variant)}
             />
           ))}
         </div>
       )}
 
-      {/* Add item sheet — all roles */}
-      {canAddInventory && (
-        <AddItemSheet
-          open={sheetOpen}
-          onClose={handleCloseSheet}
-          onCreated={() => mutate()}
-        />
-      )}
+      {/* Sheets */}
+      <AddItemSheet
+        open={sheetOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCloseSheet();
+          else setSheetOpen(true);
+        }}
+        onSuccess={() => mutate()}
+      />
 
-      {/* Quick transaction + Edit sheet — owners/managers only */}
-      {canEditInventory && (
-        <>
-          <QuickTransactionSheet
-            open={txSheetOpen}
-            onClose={() => setTxSheetOpen(false)}
-            onCompleted={() => mutate()}
-            items={items}
-          />
-        </>
-      )}
+      <EditItemSheet
+        item={editingItem}
+        open={!!editingItem}
+        onOpenChange={(open) => !open && setEditingItem(null)}
+        onSuccess={() => {
+          setEditingItem(null);
+          mutate();
+        }}
+      />
 
-      {editingItem && canEditInventory && (
-        <EditItemSheet
-          item={editingItem}
-          onClose={() => setEditingItem(null)}
-          onUpdated={() => { mutate(); setEditingItem(null); }}
-        />
-      )}
+      <QuickTransactionSheet
+        open={txSheetOpen}
+        onOpenChange={setTxSheetOpen}
+        onSuccess={() => mutate()}
+      />
 
-      {/* Receive stock sheet — staff only */}
       <ReceiveStockSheet
         item={receivingItem}
-        onClose={() => setReceivingItem(null)}
-        onCompleted={() => mutate()}
+        open={!!receivingItem}
+        onOpenChange={(open) => !open && setReceivingItem(null)}
+        onSuccess={() => {
+          setReceivingItem(null);
+          mutate();
+        }}
       />
     </div>
   );
 }
-

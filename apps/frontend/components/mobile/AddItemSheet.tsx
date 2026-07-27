@@ -1,40 +1,95 @@
-'use client';
+﻿'use client';
 
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
+import { Plus, Trash2, PackageOpen } from 'lucide-react';
 
 import {
   createInventoryItem,
   type CreateProductPayload,
+  type CreateProductVariantPayload,
+  type CreatePackagingUnitPayload,
 } from '@/services/inventory.service';
 
 interface AddItemSheetProps {
   open: boolean;
-  onClose: () => void;
-  onCreated: () => void;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
 }
 
 export default function AddItemSheet({
   open,
-  onClose,
-  onCreated,
+  onOpenChange,
+  onSuccess,
 }: AddItemSheetProps) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
-  const [unit, setUnit] = useState('');
-  const [quantity, setQuantity] = useState(0);
-  const [reorderThreshold, setReorderThreshold] = useState(0);
-  const [costPrice, setCostPrice] = useState<number | ''>('');
-  const [sellingPrice, setSellingPrice] = useState<number | ''>('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [serialNumber, setSerialNumber] = useState('');
-  const [batchNumber, setBatchNumber] = useState('');
+  const [description, setDescription] = useState('');
+  
+  const [variants, setVariants] = useState<CreateProductVariantPayload[]>([{
+    name: '',
+    unit: 'can',
+    measureValue: undefined,
+    measureUnit: '',
+    quantity: 0,
+    reorderThreshold: 10,
+    costPrice: undefined,
+    sellingPrice: undefined,
+    packaging: []
+  }]);
+
   const [loading, setLoading] = useState(false);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const { isStaff } = useRole();
+
+  const handleAddVariant = () => {
+    setVariants([...variants, {
+      name: '',
+      unit: 'can',
+      measureValue: undefined,
+      measureUnit: '',
+      quantity: 0,
+      reorderThreshold: 10,
+      packaging: []
+    }]);
+  };
+
+  const handleRemoveVariant = (index: number) => {
+    setVariants(variants.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateVariant = (index: number, field: string, value: any) => {
+    const newVariants = [...variants];
+    (newVariants[index] as any)[field] = value;
+    setVariants(newVariants);
+  };
+
+  const handleAddPackaging = (variantIndex: number) => {
+    const newVariants = [...variants];
+    if (!newVariants[variantIndex].packaging) {
+      newVariants[variantIndex].packaging = [];
+    }
+    newVariants[variantIndex].packaging!.push({
+      name: '',
+      quantityPerUnit: 1,
+    });
+    setVariants(newVariants);
+  };
+
+  const handleUpdatePackaging = (variantIndex: number, packIndex: number, field: string, value: any) => {
+    const newVariants = [...variants];
+    (newVariants[variantIndex].packaging![packIndex] as any)[field] = value;
+    setVariants(newVariants);
+  };
+
+  const handleRemovePackaging = (variantIndex: number, packIndex: number) => {
+    const newVariants = [...variants];
+    newVariants[variantIndex].packaging = newVariants[variantIndex].packaging!.filter((_, i) => i !== packIndex);
+    setVariants(newVariants);
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -43,21 +98,28 @@ export default function AddItemSheet({
     try {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
+      
       const payload: CreateProductPayload = {
         name,
         category: category || undefined,
-        unit,
-        quantity,
-        reorderThreshold,
-        ...(costPrice !== '' && !isStaff && { costPrice }),
-        ...(sellingPrice !== '' && !isStaff && { sellingPrice }),
-        ...(expiryDate && { expiryDate }),
-        ...(serialNumber && { serialNumber }),
-        ...(batchNumber && { batchNumber }),
+        description: description || undefined,
+        variants: variants.map(v => ({
+          ...v,
+          costPrice: isStaff ? undefined : v.costPrice,
+          sellingPrice: isStaff ? undefined : v.sellingPrice,
+        }))
       };
-      await createInventoryItem(payload, token, membership!.organization.id);
-      onCreated();
-      onClose();
+      
+      await createInventoryItem(payload, token, membership.organization.id);
+      
+      // Reset form
+      setName('');
+      setCategory('');
+      setDescription('');
+      setVariants([{ name: '', unit: 'can', quantity: 0, reorderThreshold: 10, packaging: [] }]);
+      
+      onSuccess();
+      onOpenChange(false);
     } catch (error) {
       console.error('Failed to create item', error);
     } finally {
@@ -65,158 +127,196 @@ export default function AddItemSheet({
     }
   };
 
+  if (!open) return null;
+
   return (
     <>
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40"
-          onClick={onClose}
-        />
-      )}
-      <div
-        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-[var(--color-bg-surface)] p-6 transition-transform duration-300 ${
-          open ? 'translate-y-0' : 'translate-y-full'
-        }`}
-      >
+      <div className="fixed inset-0 z-40 bg-black/40" onClick={() => onOpenChange(false)} />
+      <div className="fixed inset-x-0 bottom-0 z-50 max-h-[90vh] overflow-y-auto rounded-t-3xl bg-[var(--color-bg-surface)] p-6 shadow-xl">
         <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-2xl leading-none"
+          onClick={() => onOpenChange(false)}
+          className="absolute right-4 top-4 text-2xl leading-none text-gray-500 hover:text-black"
           aria-label="Close"
         >
           ×
         </button>
         <h2 className="mb-6 text-xl font-bold">Add Product</h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium">Name *</label>
-            <input
-              type="text"
-              className="w-full rounded-xl border px-3 py-2"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium">Category</label>
-            <input
-              type="text"
-              placeholder="e.g. Beverages"
-              className="w-full rounded-xl border px-3 py-2"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            />
-          </div>
-          <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium">Unit *</label>
-            <input
-              type="text"
-              placeholder="e.g. pieces, kg, litres"
-              className="w-full rounded-xl border px-3 py-2"
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium">Quantity *</label>
-            <input
-              type="number"
-              min={0}
-              className="w-full rounded-xl border px-3 py-2"
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium">
-              Reorder threshold *
-            </label>
-            <input
-              type="number"
-              min={0}
-              className="w-full rounded-xl border px-3 py-2"
-              value={reorderThreshold}
-              onChange={(e) => setReorderThreshold(Number(e.target.value))}
-              required
-            />
-          </div>
-
-          {/* Price fields — hidden from staff */}
-          {!isStaff && (
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium">Cost Price (KES)</label>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder="0.00"
-                  className="w-full rounded-xl border px-3 py-2"
-                  value={costPrice}
-                  onChange={(e) => setCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Selling Price (KES)</label>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder="0.00"
-                  className="w-full rounded-xl border px-3 py-2"
-                  value={sellingPrice}
-                  onChange={(e) => setSellingPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Conditional Business Fields */}
-          {membership?.organization.businessType === 'CHEMIST' && (
-            <>
-              <div className="mb-4">
-                <label className="mb-1 block text-sm font-medium">Expiry Date</label>
-                <input
-                  type="date"
-                  className="w-full rounded-xl border px-3 py-2"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                />
-              </div>
-              <div className="mb-4">
-                <label className="mb-1 block text-sm font-medium">Batch Number</label>
-                <input
-                  type="text"
-                  placeholder="e.g. BATCH-001"
-                  className="w-full rounded-xl border px-3 py-2"
-                  value={batchNumber}
-                  onChange={(e) => setBatchNumber(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-
-          {membership?.organization.businessType === 'ISP' && (
-            <div className="mb-4">
-              <label className="mb-1 block text-sm font-medium">Serial Number</label>
+        
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          {/* Product Basic Info */}
+          <div className="flex flex-col gap-4 p-4 bg-[var(--color-bg-base)] rounded-2xl border border-[var(--color-border)]">
+            <h3 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wider">Product Info</h3>
+            
+            <div>
+              <label className="mb-1 block text-sm font-medium">Name * (e.g. Margarine)</label>
               <input
                 type="text"
-                placeholder="e.g. SN-987654321"
-                className="w-full rounded-xl border px-3 py-2"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
+                className="w-full rounded-xl border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
               />
             </div>
-          )}
+            <div>
+              <label className="mb-1 block text-sm font-medium">Category</label>
+              <input
+                type="text"
+                className="w-full rounded-xl border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Variants */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wider">Variants</h3>
+            </div>
+            
+            {variants.map((variant, vIdx) => (
+              <div key={vIdx} className="p-4 bg-[var(--color-bg-base)] rounded-2xl border border-[var(--color-border)] relative">
+                {variants.length > 1 && (
+                  <button type="button" onClick={() => handleRemoveVariant(vIdx)} className="absolute right-4 top-4 text-rose-500">
+                    <Trash2 size={16} />
+                  </button>
+                )}
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="col-span-2">
+                    <label className="mb-1 block text-xs font-medium">Variant Name * (e.g. 1kg Can)</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                      value={variant.name}
+                      onChange={(e) => handleUpdateVariant(vIdx, 'name', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Base Unit *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="can, piece, bottle"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                      value={variant.unit}
+                      onChange={(e) => handleUpdateVariant(vIdx, 'unit', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Starting Qty</label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                      value={variant.quantity}
+                      onChange={(e) => handleUpdateVariant(vIdx, 'quantity', Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Measure Val (e.g. 1)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                      value={variant.measureValue || ''}
+                      onChange={(e) => handleUpdateVariant(vIdx, 'measureValue', Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Measure Unit (e.g. kg)</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                      value={variant.measureUnit || ''}
+                      onChange={(e) => handleUpdateVariant(vIdx, 'measureUnit', e.target.value)}
+                    />
+                  </div>
+                  
+                  {!isStaff && (
+                    <>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">Cost Price</label>
+                        <input
+                          type="number"
+                          className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                          value={variant.costPrice || ''}
+                          onChange={(e) => handleUpdateVariant(vIdx, 'costPrice', Number(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">Selling Price</label>
+                        <input
+                          type="number"
+                          className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                          value={variant.sellingPrice || ''}
+                          onChange={(e) => handleUpdateVariant(vIdx, 'sellingPrice', Number(e.target.value))}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Packaging for this variant */}
+                <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-medium text-[var(--color-text-secondary)]">Packaging Units (Optional)</span>
+                    <button type="button" onClick={() => handleAddPackaging(vIdx)} className="text-xs text-[var(--color-accent)] font-medium flex items-center gap-1">
+                      <Plus size={12} /> Add Packaging
+                    </button>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    {variant.packaging?.map((pack, pIdx) => (
+                      <div key={pIdx} className="flex items-center gap-2 bg-[var(--color-bg-surface)] p-2 rounded-xl border border-[var(--color-border)]">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            placeholder="Name (e.g. Box)"
+                            required
+                            className="w-full rounded-lg bg-transparent px-2 py-1 text-xs border-b border-[var(--color-border)] mb-1"
+                            value={pack.name}
+                            onChange={(e) => handleUpdatePackaging(vIdx, pIdx, 'name', e.target.value)}
+                          />
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-gray-500">Contains</span>
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              className="w-16 rounded-md bg-transparent px-1 py-0.5 border border-[var(--color-border)]"
+                              value={pack.quantityPerUnit}
+                              onChange={(e) => handleUpdatePackaging(vIdx, pIdx, 'quantityPerUnit', Number(e.target.value))}
+                            />
+                            <span className="text-gray-500">{variant.unit}s</span>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => handleRemovePackaging(vIdx, pIdx)} className="p-2 text-rose-500">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            <button
+              type="button"
+              onClick={handleAddVariant}
+              className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--color-border)] py-3 text-sm font-medium text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+            >
+              <Plus size={16} /> Add Another Variant
+            </button>
+          </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="h-12 w-full rounded-2xl bg-[var(--color-accent)] text-white font-semibold"
+            className="mt-4 w-full rounded-xl bg-[var(--color-accent)] py-3.5 font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? 'Adding...' : 'Add Product'}
+            {loading ? 'Creating...' : 'Create Product'}
           </button>
         </form>
       </div>

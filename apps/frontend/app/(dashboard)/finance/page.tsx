@@ -25,7 +25,7 @@ import {
   type BusinessOverview,
   type BusinessTransactionRecord,
 } from '@/services/business-finance.service';
-import { getInventoryItems } from '@/services/inventory.service';
+import { getInventoryItems, type InventoryItem } from '@/services/inventory.service';
 import dynamic from 'next/dynamic';
 import {
   TrendingUp, TrendingDown, Minus, AlertCircle, Tag,
@@ -434,10 +434,14 @@ function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
   const fetchLedger = async () => {
     const token = await getToken();
     if (!token) throw new Error('No token');
-    const [bizData, invItems] = await Promise.all([
+    const [bizData, products] = await Promise.all([
       getBusinessTransactions(token, orgId),
       getInventoryItems(token, orgId),
     ]);
+    // Flatten product->variant hierarchy into a list of variants (legacy InventoryItem shape)
+    const invItems: InventoryItem[] = products.flatMap((p) =>
+      p.variants.map((v) => ({ ...v, productName: p.name }))
+    );
     return { entries: bizData, items: invItems };
   };
 
