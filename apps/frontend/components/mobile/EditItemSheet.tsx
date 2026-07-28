@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2, Plus } from 'lucide-react';
 import type { InventoryItem } from '@/services/inventory.service';
 import { apiPatch } from '@/lib/api-client';
 import { useAuth } from '@clerk/nextjs';
@@ -29,11 +29,13 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
   const [costPrice, setCostPrice] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
 
+  const [packaging, setPackaging] = useState<{name: string, containsQty: number}[]>([]);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Sync state when item changes
-  if (item && !name && !unit) {
+  if (item && !name && !unit && quantity === '') {
     setName(item.name);
     setUnit(item.unit);
     setMeasureValue(item.measureValue != null ? String(item.measureValue) : '');
@@ -42,6 +44,19 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
     setReorderThreshold(String(item.reorderThreshold));
     setCostPrice(item.costPrice != null ? String(item.costPrice) : '');
     setSellingPrice(item.sellingPrice != null ? String(item.sellingPrice) : '');
+    
+    if (item.packaging && item.packaging.length > 0) {
+      const sortedPacks = [...item.packaging].sort((a, b) => a.quantityPerUnit - b.quantityPerUnit);
+      let prevQty = 1;
+      const uiPacks = sortedPacks.map(p => {
+        const containsQty = p.quantityPerUnit / prevQty;
+        prevQty = p.quantityPerUnit;
+        return { name: p.name, containsQty };
+      });
+      setPackaging(uiPacks);
+    } else {
+      setPackaging([]);
+    }
   }
 
   if (!open || !item) return null;
@@ -55,8 +70,23 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
     setReorderThreshold('');
     setCostPrice('');
     setSellingPrice('');
+    setPackaging([]);
     setError(null);
     onOpenChange(false);
+  };
+
+  const handleAddPackaging = () => {
+    setPackaging([...packaging, { name: '', containsQty: 1 }]);
+  };
+
+  const handleUpdatePackaging = (index: number, field: 'name' | 'containsQty', value: any) => {
+    const newPack = [...packaging];
+    newPack[index][field] = value as never;
+    setPackaging(newPack);
+  };
+
+  const handleRemovePackaging = (index: number) => {
+    setPackaging(packaging.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,6 +110,12 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
       
       if (measureValue !== '') payload.measureValue = parseFloat(measureValue);
       if (measureUnit.trim() !== '') payload.measureUnit = measureUnit.trim();
+      
+      let currentMultiplier = 1;
+      payload.packaging = packaging.map(p => {
+        currentMultiplier *= p.containsQty;
+        return { name: p.name.trim(), quantityPerUnit: currentMultiplier };
+      });
       
       if (!isStaff) {
         if (costPrice !== '') payload.costPrice = parseFloat(costPrice);
@@ -223,6 +259,50 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
                   onChange={(e) => setReorderThreshold(e.target.value)}
                   className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
+              </div>
+            </div>
+
+            {/* Packaging for this variant */}
+            <div className="mt-2 pt-4 border-t border-[var(--color-border)]">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold">Packaging Units (Optional)</span>
+                <button type="button" onClick={handleAddPackaging} className="text-xs text-[var(--color-accent)] font-medium flex items-center gap-1">
+                  <Plus size={12} /> Add Packaging
+                </button>
+              </div>
+              
+              <div className="flex flex-col gap-2">
+                {packaging.map((pack, pIdx) => (
+                  <div key={pIdx} className="flex items-center gap-2 bg-[var(--color-bg-base)] p-2 rounded-xl border border-[var(--color-border)]">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Name (e.g. Box)"
+                        required
+                        className="w-full rounded-lg bg-transparent px-2 py-1 text-sm border-b border-[var(--color-border)] mb-1"
+                        value={pack.name}
+                        onChange={(e) => handleUpdatePackaging(pIdx, 'name', e.target.value)}
+                      />
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-500">Contains</span>
+                        <input
+                          type="number"
+                          min="1"
+                          required
+                          className="w-16 rounded-md bg-transparent px-1 py-0.5 border border-[var(--color-border)]"
+                          value={pack.containsQty}
+                          onChange={(e) => handleUpdatePackaging(pIdx, 'containsQty', Number(e.target.value))}
+                        />
+                        <span className="text-gray-500 truncate max-w-[80px]">
+                          {pIdx === 0 ? (unit || 'unit') : (packaging[pIdx - 1].name || 'unit')}s
+                        </span>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => handleRemovePackaging(pIdx)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </form>

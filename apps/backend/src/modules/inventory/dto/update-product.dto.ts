@@ -1,4 +1,6 @@
-﻿import { IsString, IsOptional, IsNumber, IsPositive, Min } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsPositive, Min, ValidateNested, IsArray } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreatePackagingUnitDto } from './create-product.dto';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -50,4 +52,10 @@ export class UpdateVariantDto {
   @IsNumber()
   @Min(0)
   sellingPrice?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreatePackagingUnitDto)
+  packaging?: CreatePackagingUnitDto[];
 }

@@ -29,9 +29,33 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
   const displayUnit = allSameUnit ? (product.variants[0]?.unit || 'units') : 'units';
   // Pluralise only if the unit doesn't already end in s/es
   const pluralUnit = (qty: number, unit: string) => {
+    if (!unit) return '';
     if (qty === 1) return unit;
-    if (unit.endsWith('s') || unit.endsWith('es')) return unit;
+    if (unit.toLowerCase().endsWith('s')) return unit;
     return unit + 's';
+  };
+
+  const formatHierarchicalQty = (qty: number, baseUnit: string, packaging: { name: string, quantityPerUnit: number }[]) => {
+    if (!packaging || packaging.length === 0) return `${qty.toLocaleString()} ${pluralUnit(qty, baseUnit)}`;
+    
+    const sortedPacks = [...packaging].sort((a, b) => b.quantityPerUnit - a.quantityPerUnit);
+    let remaining = qty;
+    const parts = [];
+    
+    for (const pack of sortedPacks) {
+      if (pack.quantityPerUnit <= 0) continue;
+      const count = Math.floor(remaining / pack.quantityPerUnit);
+      if (count > 0) {
+        parts.push(`${count.toLocaleString()} ${pluralUnit(count, pack.name)}`);
+        remaining = remaining % pack.quantityPerUnit;
+      }
+    }
+    
+    if (remaining > 0 || parts.length === 0) {
+      parts.push(`${remaining.toLocaleString()} ${pluralUnit(remaining, baseUnit)}`);
+    }
+    
+    return parts.join(' • ');
   };
 
   const hasLowStock = product.variants.some(v => v.status === 'LOW' || v.status === 'OUT_OF_STOCK');
@@ -61,7 +85,10 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-end">
             <span className="text-sm font-bold">
-              {totalQuantity.toLocaleString()} {pluralUnit(totalQuantity, displayUnit)}
+              {product.variants.length === 1 
+                ? formatHierarchicalQty(totalQuantity, product.variants[0].unit, product.variants[0].packaging)
+                : `${totalQuantity.toLocaleString()} ${pluralUnit(totalQuantity, displayUnit)}`
+              }
             </span>
             {totalVolume > 0 && volumeUnit && (
               <span className="text-xs text-[var(--color-text-secondary)]">
@@ -100,7 +127,7 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
                   <span className={`text-sm font-bold ${
                     variant.status === 'HEALTHY' ? 'text-emerald-600' : 'text-rose-600'
                   }`}>
-                    {Number(variant.quantity).toLocaleString()} {pluralUnit(Number(variant.quantity), variant.unit)}
+                    {formatHierarchicalQty(Number(variant.quantity), variant.unit, variant.packaging)}
                   </span>
                   {!isStaff && variant.sellingPrice && (
                     <span className="text-xs text-[var(--color-text-secondary)]">

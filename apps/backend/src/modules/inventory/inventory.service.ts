@@ -129,6 +129,12 @@ export class InventoryService {
         costPrice: dto.costPrice,
         sellingPrice: dto.sellingPrice,
         status,
+        ...(dto.packaging && {
+          packaging: {
+            deleteMany: {},
+            create: dto.packaging,
+          },
+        }),
       },
       include: { packaging: true },
     });

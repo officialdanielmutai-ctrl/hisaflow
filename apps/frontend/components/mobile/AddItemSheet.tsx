@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
@@ -9,9 +9,23 @@ import { Plus, Trash2, PackageOpen } from 'lucide-react';
 import {
   createInventoryItem,
   type CreateProductPayload,
-  type CreateProductVariantPayload,
-  type CreatePackagingUnitPayload,
 } from '@/services/inventory.service';
+
+interface UIVariant {
+  name: string;
+  unit: string;
+  measureValue?: number;
+  measureUnit?: string;
+  inputQuantity: number;
+  inputUnitIndex: number;
+  reorderThreshold: number;
+  costPrice?: number;
+  sellingPrice?: number;
+  packaging: {
+    name: string;
+    containsQty: number;
+  }[];
+}
 
 interface AddItemSheetProps {
   open: boolean;
@@ -28,12 +42,13 @@ export default function AddItemSheet({
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   
-  const [variants, setVariants] = useState<CreateProductVariantPayload[]>([{
+  const [variants, setVariants] = useState<UIVariant[]>([{
     name: '',
     unit: 'can',
     measureValue: undefined,
     measureUnit: '',
-    quantity: 0,
+    inputQuantity: 0,
+    inputUnitIndex: 0,
     reorderThreshold: 10,
     costPrice: undefined,
     sellingPrice: undefined,
@@ -51,7 +66,8 @@ export default function AddItemSheet({
       unit: 'can',
       measureValue: undefined,
       measureUnit: '',
-      quantity: 0,
+      inputQuantity: 0,
+      inputUnitIndex: 0,
       reorderThreshold: 10,
       packaging: []
     }]);
@@ -72,22 +88,26 @@ export default function AddItemSheet({
     if (!newVariants[variantIndex].packaging) {
       newVariants[variantIndex].packaging = [];
     }
-    newVariants[variantIndex].packaging!.push({
+    newVariants[variantIndex].packaging.push({
       name: '',
-      quantityPerUnit: 1,
+      containsQty: 1,
     });
     setVariants(newVariants);
   };
 
-  const handleUpdatePackaging = (variantIndex: number, packIndex: number, field: string, value: any) => {
+  const handleUpdatePackaging = (variantIndex: number, packIndex: number, field: keyof UIVariant['packaging'][0], value: any) => {
     const newVariants = [...variants];
-    (newVariants[variantIndex].packaging![packIndex] as any)[field] = value;
+    (newVariants[variantIndex].packaging[packIndex] as any)[field] = value;
     setVariants(newVariants);
   };
 
   const handleRemovePackaging = (variantIndex: number, packIndex: number) => {
     const newVariants = [...variants];
-    newVariants[variantIndex].packaging = newVariants[variantIndex].packaging!.filter((_, i) => i !== packIndex);
+    newVariants[variantIndex].packaging = newVariants[variantIndex].packaging.filter((_, i) => i !== packIndex);
+    // Reset inputUnitIndex if it was pointing to a removed package
+    if (newVariants[variantIndex].inputUnitIndex > newVariants[variantIndex].packaging.length) {
+      newVariants[variantIndex].inputUnitIndex = newVariants[variantIndex].packaging.length;
+    }
     setVariants(newVariants);
   };
 
@@ -103,11 +123,30 @@ export default function AddItemSheet({
         name,
         category: category || undefined,
         description: description || undefined,
-        variants: variants.map(v => ({
-          ...v,
-          costPrice: isStaff ? undefined : v.costPrice,
-          sellingPrice: isStaff ? undefined : v.sellingPrice,
-        }))
+        variants: variants.map(v => {
+          const absoluteMultipliers = [1];
+          let currentMultiplier = 1;
+          const mappedPackaging = v.packaging.map(p => {
+             currentMultiplier *= p.containsQty;
+             absoluteMultipliers.push(currentMultiplier);
+             return { name: p.name, quantityPerUnit: currentMultiplier };
+          });
+
+          const selectedMultiplier = absoluteMultipliers[v.inputUnitIndex] || 1;
+          const absoluteQuantity = v.inputQuantity * selectedMultiplier;
+
+          return {
+            name: v.name,
+            unit: v.unit,
+            measureValue: v.measureValue,
+            measureUnit: v.measureUnit,
+            quantity: absoluteQuantity,
+            reorderThreshold: v.reorderThreshold,
+            costPrice: isStaff ? undefined : v.costPrice,
+            sellingPrice: isStaff ? undefined : v.sellingPrice,
+            packaging: mappedPackaging
+          };
+        })
       };
       
       await createInventoryItem(payload, token, membership.organization.id);
@@ -116,7 +155,7 @@ export default function AddItemSheet({
       setName('');
       setCategory('');
       setDescription('');
-      setVariants([{ name: '', unit: 'can', quantity: 0, reorderThreshold: 10, packaging: [] }]);
+      setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, packaging: [] }]);
       
       onSuccess();
       onOpenChange(false);
@@ -204,15 +243,27 @@ export default function AddItemSheet({
                       onChange={(e) => handleUpdateVariant(vIdx, 'unit', e.target.value)}
                     />
                   </div>
-                  <div>
+                  <div className="flex flex-col">
                     <label className="mb-1 block text-xs font-medium">Starting Qty</label>
-                    <input
-                      type="number"
-                      min="0"
-                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
-                      value={variant.quantity}
-                      onChange={(e) => handleUpdateVariant(vIdx, 'quantity', Number(e.target.value))}
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                        value={variant.inputQuantity}
+                        onChange={(e) => handleUpdateVariant(vIdx, 'inputQuantity', Number(e.target.value))}
+                      />
+                      <select 
+                        className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-base)] px-2 py-1.5 text-sm text-[var(--color-text-secondary)] w-32"
+                        value={variant.inputUnitIndex}
+                        onChange={(e) => handleUpdateVariant(vIdx, 'inputUnitIndex', Number(e.target.value))}
+                      >
+                        <option value={0}>{variant.unit ? variant.unit + 's' : 'Units'}</option>
+                        {variant.packaging.map((p, i) => (
+                          <option key={i} value={i + 1}>{p.name ? p.name + 's' : `Pack ${i+1}`}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium">Measure Val (e.g. 1)</label>
@@ -286,10 +337,12 @@ export default function AddItemSheet({
                               min="1"
                               required
                               className="w-16 rounded-md bg-transparent px-1 py-0.5 border border-[var(--color-border)]"
-                              value={pack.quantityPerUnit}
-                              onChange={(e) => handleUpdatePackaging(vIdx, pIdx, 'quantityPerUnit', Number(e.target.value))}
+                              value={pack.containsQty}
+                              onChange={(e) => handleUpdatePackaging(vIdx, pIdx, 'containsQty', Number(e.target.value))}
                             />
-                            <span className="text-gray-500">{variant.unit}s</span>
+                            <span className="text-gray-500 truncate max-w-[80px]">
+                              {pIdx === 0 ? (variant.unit || 'unit') : (variant.packaging[pIdx - 1].name || 'unit')}s
+                            </span>
                           </div>
                         </div>
                         <button type="button" onClick={() => handleRemovePackaging(vIdx, pIdx)} className="p-2 text-rose-500">
