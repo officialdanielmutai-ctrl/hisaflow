@@ -139,4 +139,19 @@ export class InventoryService {
       include: { packaging: true },
     });
   }
+
+  async deleteVariant(variantId: string, organizationId: string) {
+    const variant = await this.prisma.db.inventoryItem.findFirst({
+      where: { id: variantId, organizationId },
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Variant not found');
+    }
+
+    return this.prisma.db.inventoryItem.update({
+      where: { id: variantId },
+      data: { isActive: false },
+    });
+  }
 }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../infrastructure/prisma.service';
 import OpenAI from 'openai';
 
 export interface ParsedAction {
@@ -43,7 +44,71 @@ export interface ParsedAction {
 
 @Injectable()
 export class AiIngestionService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /**
+   * RETRIEVAL LAYER — Lightning-fast local search.
+   * Extracts candidate nouns from user text, then scores
+   * all inventory items locally using a trigram-like character
+   * overlap algorithm. Returns the top N matches only.
+   */
+  private extractNouns(text: string): string[] {
+    // Strip common stop words and return significant tokens (>2 chars)
+    const stopWords = new Set([
+      'i', 'a', 'an', 'the', 'and', 'or', 'of', 'to', 'in', 'on', 'at', 'for',
+      'with', 'have', 'has', 'had', 'is', 'are', 'was', 'were', 'be', 'been',
+      'sold', 'sell', 'buy', 'bought', 'received', 'receive', 'got', 'get',
+      'give', 'gave', 'used', 'use', 'took', 'take', 'put', 'added', 'add',
+      'some', 'out', 'from', 'by', 'this', 'that', 'it', 'me', 'my', 'we',
+      'damaged', 'expired', 'broken', 'stolen', 'lost', 'spoiled', 'created',
+    ]);
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !stopWords.has(w));
+  }
+
+  private trigramScore(a: string, b: string): number {
+    const ngrams = (s: string, n: number) => {
+      const padded = ' '.repeat(n - 1) + s.toLowerCase() + ' '.repeat(n - 1);
+      const result = new Set<string>();
+      for (let i = 0; i <= padded.length - n; i++) result.add(padded.slice(i, i + n));
+      return result;
+    };
+    const aG = ngrams(a, 3);
+    const bG = ngrams(b, 3);
+    const intersection = [...aG].filter(g => bG.has(g)).length;
+    const union = new Set([...aG, ...bG]).size;
+    return union === 0 ? 0 : intersection / union;
+  }
+
+  private retrieveRelevantItems(
+    text: string,
+    allItems: Array<{ id: string; name: string; unit?: string; packaging?: Array<{ name: string; quantityPerUnit: number }> }>,
+    topN = 20,
+  ) {
+    const nouns = this.extractNouns(text);
+    if (nouns.length === 0) return allItems.slice(0, topN);
+
+    const scored = allItems.map(item => {
+      const nameLower = item.name.toLowerCase();
+      // Direct substring match gets a big boost
+      const substringBoost = nouns.some(n => nameLower.includes(n) || n.includes(nameLower)) ? 0.6 : 0;
+      // Best trigram score across all extracted nouns
+      const trigramBest = Math.max(...nouns.map(n => this.trigramScore(n, item.name)));
+      return { item, score: substringBoost + trigramBest };
+    });
+
+    return scored
+      .filter(s => s.score > 0.1)   // Discard very poor matches
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topN)
+      .map(s => s.item);
+  }
 
   async parseInventoryText(
     text: string,
@@ -68,7 +133,12 @@ export class AiIngestionService {
       apiKey: apiKey,
     });
 
-    const itemsJson = JSON.stringify(availableItems);
+    // ── RETRIEVAL LAYER ────────────────────────────────────────────
+    // Filter the full inventory down to the top ~20 most relevant items
+    // using local trigram scoring. This is lightning fast (in-memory) and
+    // prevents the LLM from hallucinating new products when items exist.
+    const relevantItems = this.retrieveRelevantItems(text, availableItems);
+    const itemsJson = JSON.stringify(relevantItems);
 
     const prompt = `
 You are an expert inventory management assistant embedded in HisaFlow, a business management app used by East African SMEs.

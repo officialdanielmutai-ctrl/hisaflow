@@ -1,4 +1,4 @@
-﻿import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto, UpdateVariantDto } from './dto/update-product.dto';
@@ -44,5 +44,14 @@ export class InventoryController {
     @OrgContext() orgId: string,
   ) {
     return this.inventoryService.updateVariant(variantId, dto, orgId);
+  }
+
+  @Roles(AppRole.OWNER, AppRole.MANAGER)
+  @Delete('variants/:variantId')
+  deleteVariant(
+    @Param('variantId') variantId: string,
+    @OrgContext() orgId: string,
+  ) {
+    return this.inventoryService.deleteVariant(variantId, orgId);
   }
 }

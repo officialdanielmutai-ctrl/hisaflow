@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { X, Trash2, Plus } from 'lucide-react';
 import type { InventoryItem } from '@/services/inventory.service';
-import { apiPatch } from '@/lib/api-client';
+import { apiPatch, apiDelete } from '@/lib/api-client';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
@@ -25,6 +25,7 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
   const [measureValue, setMeasureValue] = useState('');
   const [measureUnit, setMeasureUnit] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [inputUnitIndex, setInputUnitIndex] = useState(0);
   const [reorderThreshold, setReorderThreshold] = useState('');
   const [costPrice, setCostPrice] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
@@ -71,8 +72,28 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
     setCostPrice('');
     setSellingPrice('');
     setPackaging([]);
+    setInputUnitIndex(0);
     setError(null);
     onOpenChange(false);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this variant?')) return;
+    const orgId = membership?.organization.id;
+    if (!orgId) return;
+
+    setSaving(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
+      await apiDelete(`/inventory/variants/${item.id}`, token, orgId);
+      onSuccess();
+      handleClose();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to delete variant.');
+      setSaving(false);
+    }
   };
 
   const handleAddPackaging = () => {
@@ -112,10 +133,15 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
       if (measureUnit.trim() !== '') payload.measureUnit = measureUnit.trim();
       
       let currentMultiplier = 1;
+      const absMultipliers = [1];
       payload.packaging = packaging.map(p => {
         currentMultiplier *= p.containsQty;
+        absMultipliers.push(currentMultiplier);
         return { name: p.name.trim(), quantityPerUnit: currentMultiplier };
       });
+
+      const qMultiplier = absMultipliers[inputUnitIndex] || 1;
+      payload.quantity = parseFloat(quantity) * qMultiplier;
       
       if (!isStaff) {
         if (costPrice !== '') payload.costPrice = parseFloat(costPrice);
@@ -238,18 +264,30 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              <div>
+              <div className="col-span-2">
                 <label className="mb-1.5 block text-sm font-semibold">Current Quantity</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  />
+                  <select
+                    className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-3 text-sm font-semibold w-32 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    value={inputUnitIndex}
+                    onChange={(e) => setInputUnitIndex(Number(e.target.value))}
+                  >
+                    <option value={0}>{unit ? unit + 's' : 'Units'}</option>
+                    {packaging.map((p, i) => (
+                      <option key={i} value={i + 1}>{p.name ? p.name + 's' : `Pack ${i+1}`}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
+              <div className="col-span-2">
                 <label className="mb-1.5 block text-sm font-semibold">Reorder At</label>
                 <input
                   type="number"
@@ -309,7 +347,7 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[var(--color-border)] p-6 bg-[var(--color-bg-surface)]">
+        <div className="border-t border-[var(--color-border)] p-6 bg-[var(--color-bg-surface)] flex flex-col gap-3">
           <button
             type="submit"
             form="edit-item-form"
@@ -317,6 +355,16 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
             className="w-full rounded-2xl bg-[var(--color-accent)] py-3.5 font-bold text-white shadow-md disabled:opacity-50 transition-opacity"
           >
             {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={saving}
+            className="w-full rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 py-3.5 font-bold hover:bg-rose-100 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <Trash2 size={18} />
+            Delete Item
           </button>
         </div>
       </div>
