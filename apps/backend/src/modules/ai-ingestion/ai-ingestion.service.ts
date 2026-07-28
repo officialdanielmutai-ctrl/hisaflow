@@ -49,38 +49,108 @@ export class AiIngestionService {
     private readonly prisma: PrismaService,
   ) {}
 
-  /**
-   * RETRIEVAL LAYER — Lightning-fast local search.
-   * Extracts candidate nouns from user text, then scores
-   * all inventory items locally using a trigram-like character
-   * overlap algorithm. Returns the top N matches only.
-   */
-  private extractNouns(text: string): string[] {
-    // Strip common stop words and return significant tokens (>2 chars)
-    const stopWords = new Set([
-      'i', 'a', 'an', 'the', 'and', 'or', 'of', 'to', 'in', 'on', 'at', 'for',
-      'with', 'have', 'has', 'had', 'is', 'are', 'was', 'were', 'be', 'been',
-      'sold', 'sell', 'buy', 'bought', 'received', 'receive', 'got', 'get',
-      'give', 'gave', 'used', 'use', 'took', 'take', 'put', 'added', 'add',
-      'some', 'out', 'from', 'by', 'this', 'that', 'it', 'me', 'my', 'we',
-      'damaged', 'expired', 'broken', 'stolen', 'lost', 'spoiled', 'created',
+  // ── In-memory inventory cache (per org, 90-second TTL) ────────────
+  private readonly inventoryCache = new Map<string, {
+    items: Array<{ id: string; name: string; unit?: string; packaging?: Array<{ name: string; quantityPerUnit: number }> }>;
+    businessType: string;
+    expiresAt: number;
+  }>();
+
+  private async getInventoryContext(orgId: string) {
+    const now = Date.now();
+    const cached = this.inventoryCache.get(orgId);
+    if (cached && cached.expiresAt > now) return cached;
+
+    // Cache miss — fetch from DB
+    const [items, org] = await Promise.all([
+      this.prisma.db.inventoryItem.findMany({
+        where: { organizationId: orgId, isActive: true },
+        select: {
+          id: true,
+          name: true,
+          unit: true,
+          packaging: { select: { name: true, quantityPerUnit: true } },
+        },
+      }),
+      this.prisma.db.organization.findUnique({
+        where: { id: orgId },
+        select: { businessType: true },
+      }),
     ]);
+
+    const entry = {
+      items,
+      businessType: org?.businessType ?? 'DUKA',
+      expiresAt: now + 90_000, // 90 second TTL
+    };
+    this.inventoryCache.set(orgId, entry);
+    return entry;
+  }
+
+  /** Invalidate cache for an org (call after inventory mutations) */
+  invalidateCache(orgId: string) {
+    this.inventoryCache.delete(orgId);
+  }
+
+  // ── RETRIEVAL LAYER ───────────────────────────────────────────────
+
+  private readonly UNIT_STOP_WORDS = new Set([
+    // Common containers / packaging
+    'bottle', 'bottles', 'can', 'cans', 'tin', 'tins', 'crate', 'crates',
+    'box', 'boxes', 'carton', 'cartons', 'packet', 'packets', 'pack', 'packs',
+    'bag', 'bags', 'sack', 'sacks', 'bale', 'bales', 'bundle', 'bundles',
+    'tray', 'trays', 'drum', 'drums', 'jerry', 'jerrycan', 'jerrycans',
+    'tube', 'tubes', 'sachet', 'sachets', 'pouch', 'pouches', 'roll', 'rolls',
+    'reel', 'reels', 'pair', 'pairs', 'set', 'sets',
+    // Measurement units
+    'kg', 'kgs', 'kilo', 'kilos', 'kilogram', 'kilograms',
+    'gram', 'grams', 'gm', 'mg', 'milligram', 'milligrams',
+    'litre', 'litres', 'liter', 'liters', 'ltr', 'ltrs', 'ml', 'millilitre', 'millilitres',
+    'piece', 'pieces', 'pcs', 'unit', 'units',
+    'metre', 'metres', 'meter', 'meters', 'cm', 'mm',
+    // Pharma-specific
+    'tablet', 'tablets', 'tab', 'tabs', 'capsule', 'capsules', 'cap', 'caps',
+    'strip', 'strips', 'vial', 'vials', 'ampoule', 'ampoules', 'injection', 'injections',
+    'syrup', 'cream', 'ointment', 'inhaler', 'inhalers', 'drop', 'drops',
+    // Filler verbs/adjectives that slip through
+    'new', 'old', 'big', 'small', 'large', 'many', 'few', 'each',
+    'today', 'yesterday', 'total', 'worth',
+  ]);
+
+  private readonly ACTION_STOP_WORDS = new Set([
+    'i', 'a', 'an', 'the', 'and', 'or', 'of', 'to', 'in', 'on', 'at', 'for',
+    'with', 'have', 'has', 'had', 'is', 'are', 'was', 'were', 'be', 'been',
+    'sold', 'sell', 'buy', 'bought', 'received', 'receive', 'got', 'get',
+    'give', 'gave', 'used', 'use', 'took', 'take', 'put', 'added', 'add',
+    'some', 'out', 'from', 'by', 'this', 'that', 'it', 'me', 'my', 'we',
+    'damaged', 'expired', 'broken', 'stolen', 'lost', 'spoiled', 'created',
+    'just', 'only', 'also', 'its', 'our', 'not', 'all', 'one', 'two', 'three',
+  ]);
+
+  private extractNouns(text: string): string[] {
     return text
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
-      .filter(w => w.length > 2 && !stopWords.has(w));
+      .filter(w => {
+        if (w.length < 3) return false;
+        if (this.ACTION_STOP_WORDS.has(w)) return false;
+        if (this.UNIT_STOP_WORDS.has(w)) return false;
+        // Skip pure numbers
+        if (/^\d+$/.test(w)) return false;
+        return true;
+      });
   }
 
-  private trigramScore(a: string, b: string): number {
-    const ngrams = (s: string, n: number) => {
-      const padded = ' '.repeat(n - 1) + s.toLowerCase() + ' '.repeat(n - 1);
+  private trigramScore(noun: string, itemName: string): number {
+    const ngrams = (s: string) => {
+      const padded = '  ' + s.toLowerCase() + '  ';
       const result = new Set<string>();
-      for (let i = 0; i <= padded.length - n; i++) result.add(padded.slice(i, i + n));
+      for (let i = 0; i <= padded.length - 3; i++) result.add(padded.slice(i, i + 3));
       return result;
     };
-    const aG = ngrams(a, 3);
-    const bG = ngrams(b, 3);
+    const aG = ngrams(noun);
+    const bG = ngrams(itemName);
     const intersection = [...aG].filter(g => bG.has(g)).length;
     const union = new Set([...aG, ...bG]).size;
     return union === 0 ? 0 : intersection / union;
@@ -92,19 +162,21 @@ export class AiIngestionService {
     topN = 20,
   ) {
     const nouns = this.extractNouns(text);
+    // If no meaningful product nouns found, return top items as fallback
     if (nouns.length === 0) return allItems.slice(0, topN);
 
     const scored = allItems.map(item => {
       const nameLower = item.name.toLowerCase();
-      // Direct substring match gets a big boost
-      const substringBoost = nouns.some(n => nameLower.includes(n) || n.includes(nameLower)) ? 0.6 : 0;
+      // Exact substring match (e.g. "alvaro" inside "alvaro malt") = very high score
+      const exactMatch = nouns.some(n => nameLower.includes(n) || n.includes(nameLower));
+      const substringBoost = exactMatch ? 0.7 : 0;
       // Best trigram score across all extracted nouns
       const trigramBest = Math.max(...nouns.map(n => this.trigramScore(n, item.name)));
       return { item, score: substringBoost + trigramBest };
     });
 
     return scored
-      .filter(s => s.score > 0.1)   // Discard very poor matches
+      .filter(s => s.score > 0.15)
       .sort((a, b) => b.score - a.score)
       .slice(0, topN)
       .map(s => s.item);
@@ -112,14 +184,10 @@ export class AiIngestionService {
 
   async parseInventoryText(
     text: string,
-    availableItems: Array<{ 
-      id: string; 
-      name: string; 
-      unit?: string; 
-      packaging?: Array<{ name: string; quantityPerUnit: number }> 
-    }>,
-    businessType: string = 'DUKA',
+    orgId: string,
   ): Promise<ParsedAction[]> {
+    const { items: availableItems, businessType } = await this.getInventoryContext(orgId);
+
     const baseUrl = this.configService.get<string>('litellm.baseUrl');
     const apiKey = this.configService.get<string>('litellm.masterKey');
 
@@ -134,9 +202,8 @@ export class AiIngestionService {
     });
 
     // ── RETRIEVAL LAYER ────────────────────────────────────────────
-    // Filter the full inventory down to the top ~20 most relevant items
-    // using local trigram scoring. This is lightning fast (in-memory) and
-    // prevents the LLM from hallucinating new products when items exist.
+    // Filter inventory down to the top ~20 most relevant items in-memory.
+    // Lightning fast — no extra DB call, uses the 90s cache.
     const relevantItems = this.retrieveRelevantItems(text, availableItems);
     const itemsJson = JSON.stringify(relevantItems);
 
