@@ -21,7 +21,14 @@ export class AiIngestionController {
     const [items, org] = await Promise.all([
       this.prisma.db.inventoryItem.findMany({
         where: { organizationId: orgId, isActive: true },
-        select: { id: true, name: true },
+        select: { 
+          id: true, 
+          name: true,
+          unit: true,
+          packaging: {
+            select: { name: true, quantityPerUnit: true }
+          }
+        },
       }),
       this.prisma.db.organization.findUnique({
         where: { id: orgId },

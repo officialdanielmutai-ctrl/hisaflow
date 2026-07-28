@@ -47,7 +47,12 @@ export class AiIngestionService {
 
   async parseInventoryText(
     text: string,
-    availableItems: Array<{ id: string; name: string }>,
+    availableItems: Array<{ 
+      id: string; 
+      name: string; 
+      unit?: string; 
+      packaging?: Array<{ name: string; quantityPerUnit: number }> 
+    }>,
     businessType: string = 'DUKA',
   ): Promise<ParsedAction[]> {
     const baseUrl = this.configService.get<string>('litellm.baseUrl');
@@ -191,6 +196,7 @@ RULES:
 - If user mixes multiple actions, return one object per action.
 - For SALE/PURCHASE/WASTAGE: default quantity = 1 if not stated.
 - For CHEMIST: infer appropriate pharmaceutical unit (strips, tablets, capsules, bottles, vials, sachets) from the drug type if not stated.
+- CRITICAL PACKAGING MULTIPLICATION RULE: The \`itemsJson\` contains \`packaging\` arrays indicating bulk sizes (e.g. { name: "Crate", quantityPerUnit: 14 }). If the user specifies a quantity in a bulk/packaging unit (e.g., "sold 5 crates of soda"), you MUST multiply the user's quantity by the \`quantityPerUnit\` of that packaging unit and output ONLY the absolute base unit quantity. Example: 5 Crates * 14 = 70. You output \`quantity: 70\`. DO NOT output the packaging unit name.
 - Return ONLY the JSON array. No markdown. No explanations.
 `;
 

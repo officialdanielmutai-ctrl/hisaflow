@@ -21,6 +21,7 @@ export default function ReceiveStockSheet({
   onSuccess,
 }: ReceiveStockSheetProps) {
   const [quantity, setQuantity] = useState(1);
+  const [selectedPackIndex, setSelectedPackIndex] = useState(0);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,17 +36,25 @@ export default function ReceiveStockSheet({
     try {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
+      let multiplier = 1;
+      if (item.packaging && selectedPackIndex > 0) {
+        const pack = item.packaging[selectedPackIndex - 1];
+        if (pack) multiplier = pack.quantityPerUnit;
+      }
+      const absoluteQuantity = quantity * multiplier;
+
       await logTransaction(
         {
           itemId: item.id,
           type: 'PURCHASE',
-          quantity,
+          quantity: absoluteQuantity,
           note: note.trim() || `Stock received for ${item.name}`,
         },
         token,
         membership.organization.id,
       );
       setQuantity(1);
+      setSelectedPackIndex(0);
       setNote('');
       onSuccess();
       onOpenChange(false);
@@ -58,6 +67,7 @@ export default function ReceiveStockSheet({
 
   const handleClose = () => {
     setQuantity(1);
+    setSelectedPackIndex(0);
     setNote('');
     setError(null);
     onOpenChange(false);
@@ -133,9 +143,19 @@ export default function ReceiveStockSheet({
                   min={1}
                   value={quantity}
                   onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
-                  className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className="w-full rounded-xl border border-[var(--color-border)] bg-transparent px-4 py-3 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   required
                 />
+                <select
+                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-2 py-3 text-sm font-semibold w-32 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  value={selectedPackIndex}
+                  onChange={(e) => setSelectedPackIndex(Number(e.target.value))}
+                >
+                  <option value={0}>{item?.unit ? item.unit + 's' : 'Units'}</option>
+                  {item?.packaging?.map((p, i) => (
+                    <option key={i} value={i + 1}>{p.name ? p.name + 's' : `Pack ${i+1}`}</option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={() => setQuantity(quantity + 1)}
@@ -146,7 +166,7 @@ export default function ReceiveStockSheet({
               </div>
               {item && (
                 <p className="mt-1.5 text-xs text-[var(--color-text-secondary)]">
-                  New total will be: <strong>{item.quantity + quantity} {item.unit}</strong>
+                  New total will be: <strong>{item.quantity + (quantity * (selectedPackIndex > 0 ? (item.packaging?.[selectedPackIndex - 1]?.quantityPerUnit || 1) : 1))} {item.unit}</strong>
                 </p>
               )}
             </div>

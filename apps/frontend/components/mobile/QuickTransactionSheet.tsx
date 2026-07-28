@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
@@ -23,6 +23,7 @@ export default function QuickTransactionSheet({
   const [selectedItemId, setSelectedItemId] = useState('');
   const [type, setType] = useState<TransactionType>('SALE');
   const [quantity, setQuantity] = useState(1);
+  const [selectedPackIndex, setSelectedPackIndex] = useState(0);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const { getToken } = useAuth();
@@ -36,8 +37,11 @@ export default function QuickTransactionSheet({
       name: `${p.name} — ${v.name}`,
       quantity: v.quantity,
       unit: v.unit,
+      packaging: v.packaging || [],
     }))
   );
+
+  const selectedItem = flatItems.find((i) => i.id === selectedItemId);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -46,11 +50,18 @@ export default function QuickTransactionSheet({
     try {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
+      let multiplier = 1;
+      if (selectedItem && selectedPackIndex > 0) {
+        const pack = selectedItem.packaging[selectedPackIndex - 1];
+        if (pack) multiplier = pack.quantityPerUnit;
+      }
+      const absoluteQuantity = quantity * multiplier;
+
       await logTransaction(
         {
           itemId: selectedItemId,
           type,
-          quantity,
+          quantity: absoluteQuantity,
           note: note || undefined,
         },
         token,
@@ -61,6 +72,7 @@ export default function QuickTransactionSheet({
       setSelectedItemId('');
       setNote('');
       setQuantity(1);
+      setSelectedPackIndex(0);
     } catch (error) {
       console.error('Transaction failed', error);
     } finally {
@@ -120,9 +132,12 @@ export default function QuickTransactionSheet({
           <div className="mb-4">
             <label className="mb-1 block text-sm font-medium">Item</label>
             <select
-              className="w-full rounded-xl border px-3 py-2"
+              className="w-full rounded-xl border px-3 py-2 bg-transparent"
               value={selectedItemId}
-              onChange={(e) => setSelectedItemId(e.target.value)}
+              onChange={(e) => {
+                setSelectedItemId(e.target.value);
+                setSelectedPackIndex(0);
+              }}
               required
             >
               <option value="" disabled>
@@ -141,14 +156,33 @@ export default function QuickTransactionSheet({
             <label className="mb-1 block text-sm font-medium">
               Quantity *
             </label>
-            <input
-              type="number"
-              min={1}
-              className="w-full rounded-xl border px-3 py-2"
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              required
-            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min={1}
+                className="w-full rounded-xl border px-3 py-2 bg-transparent"
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                required
+              />
+              <select
+                className="rounded-xl border px-3 py-2 bg-[var(--color-bg-base)] text-sm w-32"
+                value={selectedPackIndex}
+                onChange={(e) => setSelectedPackIndex(Number(e.target.value))}
+                disabled={!selectedItem}
+              >
+                {selectedItem ? (
+                  <>
+                    <option value={0}>{selectedItem.unit ? selectedItem.unit + 's' : 'Units'}</option>
+                    {selectedItem.packaging.map((p: any, i: number) => (
+                      <option key={i} value={i + 1}>{p.name ? p.name + 's' : `Pack ${i+1}`}</option>
+                    ))}
+                  </>
+                ) : (
+                  <option value={0}>Units</option>
+                )}
+              </select>
+            </div>
           </div>
 
           {/* Note */}
