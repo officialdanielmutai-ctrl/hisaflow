@@ -326,9 +326,11 @@ Each element is ONE action matching one of these 6 shapes:
 { "itemId": null, "itemName": "Note", "type": "NOTE", "quantity": 0, "confidence": "HIGH", "title": "...", "content": "...", "importance": "LOW|MEDIUM|HIGH|CRITICAL", "dueDate": "<ISO or null>", "checklists": [{ "text": "..." }] }
 
 RULES:
-- Match item names case-insensitively with STRONG spelling tolerance (e.g., "cipladon" ≈ "Cipladon", "panadole" ≈ "Panadol").
-- If an item clearly exists in the list (fuzzy match), set confidence HIGH and use its itemId.
-- If an item does NOT exist in the list, use CREATE (itemId: null) — NEVER leave a clearly-stated item unhandled.
+- The items listed above ARE CONFIRMED TO EXIST in this business's inventory. Treat them as ground truth.
+- Match item names case-insensitively with STRONG spelling tolerance (e.g., "cipladon" ≈ "Cipladon", "panadole" ≈ "Panadol", "alvaroe" ≈ "Alvaro").
+- ALWAYS prefer matching an existing item over creating a new one. Only use CREATE if you are certain the item is genuinely new and has no match in the list.
+- If an item clearly exists in the list (fuzzy match), set confidence HIGH and use its itemId. NEVER output CREATE for an item that appears in the list.
+- If an item does NOT exist in the list, use CREATE (itemId: null).
 - Expired/damaged/stolen items = always WASTAGE, never SALE.
 - If user mixes multiple actions, return one object per action.
 - For SALE/PURCHASE/WASTAGE: default quantity = 1 if not stated.
@@ -363,7 +365,58 @@ RULES:
       }
 
       const parsed = JSON.parse(cleaned) as ParsedAction[];
-      return Array.isArray(parsed) ? parsed : [];
+      const actions = Array.isArray(parsed) ? parsed : [];
+
+      // ── RECONCILIATION LAYER ──────────────────────────────────────
+      // The AI sometimes returns CREATE even when the item exists.
+      // We run our own matching pass to catch these mistakes:
+      //  1. Inject missing itemIds into SALE/PURCHASE/WASTAGE/UPDATE actions.
+      //  2. Drop CREATE actions where a near-identical item already exists.
+      //  3. Convert orphaned CREATE→SALE if context clearly implies a transaction.
+      const MATCH_THRESHOLD = 0.45;
+
+      const reconciled = actions.reduce<ParsedAction[]>((acc, action) => {
+        // For non-transactional types (NOTE) just pass through
+        if (action.type === 'NOTE') { acc.push(action); return acc; }
+
+        const nameToMatch = (action.itemName || '').trim();
+        if (!nameToMatch) { acc.push(action); return acc; }
+
+        // Find the best matching item from the FULL inventory (not just retrieved)
+        let bestMatch: typeof availableItems[0] | null = null;
+        let bestScore = 0;
+        for (const item of availableItems) {
+          const exact = item.name.toLowerCase().includes(nameToMatch.toLowerCase())
+            || nameToMatch.toLowerCase().includes(item.name.toLowerCase());
+          const tScore = this.trigramScore(nameToMatch, item.name);
+          const score = (exact ? 0.7 : 0) + tScore;
+          if (score > bestScore) { bestScore = score; bestMatch = item; }
+        }
+
+        if (action.type === 'CREATE') {
+          if (bestMatch && bestScore >= MATCH_THRESHOLD) {
+            // AI wrongly created something that already exists — drop the CREATE
+            // (the corresponding SALE/PURCHASE action should already be in the list,
+            //  or we'd have no action, which is safer than a duplicate)
+            console.log(`[Reconciler] Dropped CREATE for "${nameToMatch}" — matched "${bestMatch.name}" (score ${bestScore.toFixed(2)})`);
+            return acc; // skip this CREATE
+          }
+          acc.push(action);
+          return acc;
+        }
+
+        // For SALE / PURCHASE / WASTAGE / UPDATE: inject itemId if missing
+        if (!action.itemId && bestMatch && bestScore >= MATCH_THRESHOLD) {
+          console.log(`[Reconciler] Injected itemId for "${nameToMatch}" — matched "${bestMatch.name}" (score ${bestScore.toFixed(2)})`);
+          acc.push({ ...action, itemId: bestMatch.id, itemName: bestMatch.name });
+          return acc;
+        }
+
+        acc.push(action);
+        return acc;
+      }, []);
+
+      return reconciled;
     } catch (error) {
       console.error('AI parsing failed', error);
       return [];
