@@ -5,11 +5,12 @@ import Link from 'next/link';
 import {
   LayoutDashboard,
   Package,
-  ArrowLeftRight,
   Sparkles,
   TrendingUp,
   Plus,
-  LayoutGrid
+  Bed,
+  CalendarDays,
+  Users
 } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 
@@ -29,11 +30,30 @@ const staffTabs = [
   { href: '/ai', label: 'AI', icon: Sparkles },
 ];
 
+const guestHouseOwnerTabs = [
+  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/rooms', label: 'Rooms', icon: Bed },
+  { href: '/bookings/new', label: 'Booking', icon: Plus, isFab: true },
+  { href: '/bookings', label: 'Bookings', icon: CalendarDays },
+  { href: '/guests', label: 'Guests', icon: Users },
+];
+
+const guestHouseStaffTabs = [
+  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/rooms', label: 'Rooms', icon: Bed },
+  { href: '/bookings/new', label: 'Booking', icon: Plus, isFab: true },
+  { href: '/bookings', label: 'Bookings', icon: CalendarDays },
+  { href: '/guests', label: 'Guests', icon: Users },
+];
+
 export default function BottomNav() {
   const pathname = usePathname();
-  const { isStaff } = useRole();
+  const { isStaff, isGuestHouse } = useRole();
 
-  const visibleTabs = isStaff ? staffTabs : ownerTabs;
+  let visibleTabs = isStaff ? staffTabs : ownerTabs;
+  if (isGuestHouse) {
+    visibleTabs = isStaff ? guestHouseStaffTabs : guestHouseOwnerTabs;
+  }
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-100 pb-safe shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] rounded-t-3xl pb-4">

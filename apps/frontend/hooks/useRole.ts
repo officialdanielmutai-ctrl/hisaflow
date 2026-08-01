@@ -9,12 +9,14 @@ export function useRole() {
   const isOwner = role === 'OWNER';
   const isManager = role === 'MANAGER';
   const isStaff = role === 'STAFF';
+  const isGuestHouse = membership?.organization?.businessType === 'GUEST_HOUSE';
 
   return {
     role,
     isOwner,
     isManager,
     isStaff,
+    isGuestHouse,
     canViewAnalytics: isOwner || isManager,
     // All roles can add new stock items
     canAddInventory: true,
