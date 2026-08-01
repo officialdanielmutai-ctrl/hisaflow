@@ -7,6 +7,7 @@ import { parseInventoryText, type ParsedAction } from '@/services/ai-ingestion.s
 import { logTransaction } from '@/services/transactions.service';
 import { createInventoryItem, updateInventoryItem } from '@/services/inventory.service';
 import { createNote } from '@/services/notes.service';
+import { useRouter } from 'next/navigation';
 
 interface AiIngestionPanelProps {
   onCompleted: () => void;
@@ -20,6 +21,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
+  const router = useRouter();
 
   const handleParse = async () => {
     if (!membership?.organization.id || !text.trim()) return;
@@ -106,6 +108,17 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
       setActions([]);
       setText('');
       onCompleted();
+
+      // If there's a BOOKING action, redirect the user to the booking form
+      const bookingAction = actions.find((a) => a.type === 'BOOKING');
+      if (bookingAction) {
+        const params = new URLSearchParams();
+        if (bookingAction.guestName) params.set('guestName', bookingAction.guestName);
+        if (bookingAction.roomName) params.set('roomName', bookingAction.roomName);
+        if (bookingAction.checkInDate) params.set('checkIn', bookingAction.checkInDate);
+        if (bookingAction.checkOutDate) params.set('checkOut', bookingAction.checkOutDate);
+        router.push(`/bookings/new?${params.toString()}`);
+      }
     } catch (err) {
       console.error('Confirmation failed', err);
       setError('Something went wrong. Some actions may not have been applied.');
@@ -121,6 +134,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     if (action.type === 'CREATE') return 'New Item';
     if (action.type === 'UPDATE') return 'Update';
     if (action.type === 'NOTE') return 'Note';
+    if (action.type === 'BOOKING') return 'Booking';
     return action.type;
   };
 
@@ -131,6 +145,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     if (action.type === 'CREATE') return 'bg-blue-100 text-blue-700';
     if (action.type === 'UPDATE') return 'bg-yellow-100 text-yellow-700';
     if (action.type === 'NOTE') return 'bg-purple-100 text-purple-700';
+    if (action.type === 'BOOKING') return 'bg-indigo-100 text-indigo-700';
     return 'bg-gray-100 text-gray-700';
   };
 
@@ -141,6 +156,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
       (a.type === 'WASTAGE' && a.itemId) ||
       a.type === 'CREATE' ||
       a.type === 'NOTE' ||
+      a.type === 'BOOKING' ||
       (a.type === 'UPDATE' && a.itemId && a.updates),
   );
 
@@ -215,6 +231,11 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
                     {action.type === 'NOTE' && (
                       <span className="text-xs text-purple-600">
                         {action.importance} Priority {action.dueDate ? `· Due: ${action.dueDate}` : ''}
+                      </span>
+                    )}
+                    {action.type === 'BOOKING' && (
+                      <span className="text-xs text-indigo-600">
+                        {action.guestName ?? 'Unknown Guest'} → {action.roomName ?? 'Unknown Room'}
                       </span>
                     )}
                     {action.confidence === 'LOW' && (

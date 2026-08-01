@@ -46,6 +46,50 @@ export default function NewBookingPage() {
     }
   );
 
+  React.useEffect(() => {
+    if (!rooms || !guests) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const guestName = params.get('guestName');
+    const roomName = params.get('roomName');
+    const checkIn = params.get('checkIn');
+    const checkOut = params.get('checkOut');
+
+    let matchedRoom = selectedRoom;
+    let matchedGuest = selectedGuest;
+
+    if (roomName && !selectedRoom) {
+      const found = rooms.find(r => r.name.toLowerCase() === roomName.toLowerCase());
+      if (found) {
+        setSelectedRoom(found);
+        matchedRoom = found;
+      }
+    }
+
+    if (guestName && !selectedGuest) {
+      const found = guests.find(g => g.name.toLowerCase() === guestName.toLowerCase());
+      if (found) {
+        setSelectedGuest(found);
+        matchedGuest = found;
+      }
+    }
+
+    if ((checkIn || checkOut) && !dates.checkIn && !dates.checkOut) {
+      setDates(prev => ({
+        ...prev,
+        checkIn: checkIn || prev.checkIn,
+        checkOut: checkOut || prev.checkOut,
+      }));
+    }
+
+    if (matchedRoom && matchedGuest) {
+      setStep('dates');
+    } else if (matchedRoom) {
+      setStep('guest');
+    }
+  }, [rooms, guests]);
+
+
   const steps: Step[] = ['room', 'guest', 'dates'];
   const stepIndex = steps.indexOf(step);
 

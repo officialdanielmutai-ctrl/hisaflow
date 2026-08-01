@@ -7,11 +7,16 @@ export interface ParsedAction {
   // ── Transaction actions ──────────────────────────────────────────
   itemId: string | null;
   itemName: string;
-  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE' | 'NOTE';
+  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE' | 'NOTE' | 'BOOKING';
   quantity: number;
   confidence: 'HIGH' | 'LOW';
   // ── Fields used only for WASTAGE ─────────────────────────────────
   wastageReason?: string; // e.g. 'expired', 'damaged', 'stolen', 'spoiled', 'broken'
+  // ── Fields used only for BOOKING ─────────────────────────────────
+  guestName?: string;
+  roomName?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
   // ── Business Specific Fields (Optional) ──────────────────────────
   clientName?: string; // For ISP installs, etc.
   metadata?: any;
@@ -264,6 +269,16 @@ RESTAURANT context:
 - If a user says "served 10 portions of rice" = SALE with quantity 10.
 ` : ''}
 
+${businessType === 'GUEST_HOUSE' || businessType === 'LODGE' || businessType === 'HOTEL' ? `
+GUEST_HOUSE/LODGE context:
+- You manage rooms, guests, and consumption items (drinks, food, toiletries).
+- "Check in", "booked", "room X" = BOOKING action. Always extract guest name, room name, and dates if mentioned.
+- If dates are not mentioned, default to checkInDate: today, checkOutDate: tomorrow.
+- "Consumed", "drank", "used by guest" = SALE (deduct from stock).
+- "Received", "purchased" = PURCHASE.
+- If a user says "John checked into Room 3 for 2 nights", return a BOOKING action with guestName="John", roomName="Room 3".
+` : ''}
+
 ${businessType === 'SCHOOL' ? `
 SCHOOL context:
 - You manage school supplies, stationery, textbooks, uniforms, and equipment.
@@ -304,7 +319,7 @@ User input:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 INSTRUCTIONS — Return ONLY a valid JSON array. No markdown. No extra text.
-Each element is ONE action matching one of these 6 shapes:
+Each element is ONE action matching one of these 7 shapes:
 
 1. SALE — sold/given/dispensed/installed to customer:
 { "itemId": "<id or null>", "itemName": "<name>", "type": "SALE", "quantity": <n>, "confidence": "HIGH"|"LOW", "clientName": "<name or null>", "metadata": {}, "isCredit": <bool>, "dueDate": "<ISO or null>", "creditNotes": "<or null>" }
@@ -324,6 +339,9 @@ Each element is ONE action matching one of these 6 shapes:
 
 6. NOTE — reminder, task, or memo:
 { "itemId": null, "itemName": "Note", "type": "NOTE", "quantity": 0, "confidence": "HIGH", "title": "...", "content": "...", "importance": "LOW|MEDIUM|HIGH|CRITICAL", "dueDate": "<ISO or null>", "checklists": [{ "text": "..." }] }
+
+7. BOOKING — Guest checked into a room:
+{ "itemId": null, "itemName": "Booking", "type": "BOOKING", "quantity": 1, "confidence": "HIGH", "guestName": "<extracted name>", "roomName": "<extracted room>", "checkInDate": "<ISO date or null>", "checkOutDate": "<ISO date or null>" }
 
 RULES:
 - The items listed above ARE CONFIRMED TO EXIST in this business's inventory. Treat them as ground truth.
