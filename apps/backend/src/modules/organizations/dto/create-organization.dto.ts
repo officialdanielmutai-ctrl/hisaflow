@@ -8,6 +8,7 @@ export enum BusinessType {
   SCHOOL = 'SCHOOL',
   WHOLESALER = 'WHOLESALER',
   ISP = 'ISP',
+  GUEST_HOUSE = 'GUEST_HOUSE',
 }
 
 export class CreateOrganizationDto {
