@@ -10,19 +10,19 @@ export interface Guest {
 }
 
 export const guestsService = {
-  async getAll(): Promise<Guest[]> {
-    return apiGet('/guests');
+  async getAll(token: string, orgId: string): Promise<Guest[]> {
+    return apiGet('/guests', token, orgId);
   },
 
-  async getById(id: string): Promise<Guest> {
-    return apiGet(`/guests/${id}`);
+  async getById(id: string, token: string, orgId: string): Promise<Guest> {
+    return apiGet(`/guests/${id}`, token, orgId);
   },
 
-  async create(data: Partial<Guest>): Promise<Guest> {
-    return apiPost('/guests', data);
+  async create(data: Partial<Guest>, token: string, orgId: string): Promise<Guest> {
+    return apiPost('/guests', token, orgId, data);
   },
 
-  async update(id: string, data: Partial<Guest>): Promise<Guest> {
-    return apiPatch(`/guests/${id}`, data);
+  async update(id: string, data: Partial<Guest>, token: string, orgId: string): Promise<Guest> {
+    return apiPatch(`/guests/${id}`, token, orgId, data);
   },
 };

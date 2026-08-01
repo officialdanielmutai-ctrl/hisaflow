@@ -30,23 +30,23 @@ export interface Invoice {
 }
 
 export const invoicesService = {
-  async getDraft(bookingId: string): Promise<Invoice> {
-    return apiGet(`/invoices/booking/${bookingId}`);
+  async getDraft(bookingId: string, token: string, orgId: string): Promise<Invoice> {
+    return apiGet(`/invoices/booking/${bookingId}`, token, orgId);
   },
 
-  async issue(bookingId: string): Promise<Invoice> {
-    return apiPost(`/invoices/booking/${bookingId}/issue`);
+  async issue(bookingId: string, token: string, orgId: string): Promise<Invoice> {
+    return apiPost(`/invoices/booking/${bookingId}/issue`, token, orgId, {});
   },
 
-  async void(bookingId: string): Promise<Invoice> {
-    return apiPost(`/invoices/booking/${bookingId}/void`);
+  async void(bookingId: string, token: string, orgId: string): Promise<Invoice> {
+    return apiPost(`/invoices/booking/${bookingId}/void`, token, orgId, {});
   },
 
-  async addLineItem(bookingId: string, description: string, quantity: number, unitPrice: number): Promise<Invoice> {
-    return apiPost(`/invoices/booking/${bookingId}/line-items`, { description, quantity, unitPrice });
+  async addLineItem(bookingId: string, description: string, quantity: number, unitPrice: number, token: string, orgId: string): Promise<Invoice> {
+    return apiPost(`/invoices/booking/${bookingId}/line-items`, token, orgId, { description, quantity, unitPrice });
   },
 
-  async addPayment(bookingId: string, amount: number, method: string, note?: string): Promise<Invoice> {
-    return apiPost(`/invoices/booking/${bookingId}/payment`, { amount, method, note });
+  async addPayment(bookingId: string, amount: number, method: string, token: string, orgId: string, note?: string): Promise<Invoice> {
+    return apiPost(`/invoices/booking/${bookingId}/payment`, token, orgId, { amount, method, note });
   },
 };

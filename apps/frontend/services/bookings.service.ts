@@ -20,31 +20,31 @@ export interface Booking {
 }
 
 export const bookingsService = {
-  async getAll(): Promise<Booking[]> {
-    return apiGet('/bookings');
+  async getAll(token: string, orgId: string): Promise<Booking[]> {
+    return apiGet('/bookings', token, orgId);
   },
 
-  async getById(id: string): Promise<Booking> {
-    return apiGet(`/bookings/${id}`);
+  async getById(id: string, token: string, orgId: string): Promise<Booking> {
+    return apiGet(`/bookings/${id}`, token, orgId);
   },
 
-  async create(data: Partial<Booking>): Promise<Booking> {
-    return apiPost('/bookings', data);
+  async create(data: Partial<Booking>, token: string, orgId: string): Promise<Booking> {
+    return apiPost('/bookings', token, orgId, data);
   },
 
-  async checkIn(id: string): Promise<Booking> {
-    return apiPatch(`/bookings/${id}/check-in`);
+  async checkIn(id: string, token: string, orgId: string): Promise<Booking> {
+    return apiPatch(`/bookings/${id}/check-in`, token, orgId, {});
   },
 
-  async checkOut(id: string, force: boolean = false): Promise<Booking> {
-    return apiPatch(`/bookings/${id}/check-out${force ? '?force=true' : ''}`);
+  async checkOut(id: string, force: boolean = false, token: string, orgId: string): Promise<Booking> {
+    return apiPatch(`/bookings/${id}/check-out${force ? '?force=true' : ''}`, token, orgId, {});
   },
 
-  async cancel(id: string): Promise<Booking> {
-    return apiPatch(`/bookings/${id}/cancel`);
+  async cancel(id: string, token: string, orgId: string): Promise<Booking> {
+    return apiPatch(`/bookings/${id}/cancel`, token, orgId, {});
   },
 
-  async addConsumption(id: string, itemId: string, quantity: number): Promise<any> {
-    return apiPost(`/bookings/${id}/consumption`, { itemId, quantity });
+  async addConsumption(id: string, itemId: string, quantity: number, token: string, orgId: string): Promise<any> {
+    return apiPost(`/bookings/${id}/consumption`, token, orgId, { itemId, quantity });
   },
 };

@@ -11,23 +11,23 @@ export interface Room {
 }
 
 export const roomsService = {
-  async getAll(): Promise<Room[]> {
-    return apiGet('/rooms');
+  async getAll(token: string, orgId: string): Promise<Room[]> {
+    return apiGet('/rooms', token, orgId);
   },
 
-  async getById(id: string): Promise<Room> {
-    return apiGet(`/rooms/${id}`);
+  async getById(id: string, token: string, orgId: string): Promise<Room> {
+    return apiGet(`/rooms/${id}`, token, orgId);
   },
 
-  async create(data: Partial<Room>): Promise<Room> {
-    return apiPost('/rooms', data);
+  async create(data: Partial<Room>, token: string, orgId: string): Promise<Room> {
+    return apiPost('/rooms', token, orgId, data);
   },
 
-  async update(id: string, data: Partial<Room>): Promise<Room> {
-    return apiPatch(`/rooms/${id}`, data);
+  async update(id: string, data: Partial<Room>, token: string, orgId: string): Promise<Room> {
+    return apiPatch(`/rooms/${id}`, token, orgId, data);
   },
 
-  async deactivate(id: string): Promise<Room> {
-    return apiDelete(`/rooms/${id}`);
+  async deactivate(id: string, token: string, orgId: string): Promise<Room> {
+    return apiDelete(`/rooms/${id}`, token, orgId);
   },
 };
