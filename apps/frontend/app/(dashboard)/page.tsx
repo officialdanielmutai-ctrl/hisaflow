@@ -15,7 +15,7 @@ import { getNotes, type Note } from '@/services/notes.service';
 import { useInventory } from '@/hooks/useInventory';
 import { format } from 'date-fns';
 import DashboardLoading from './loading';
-import { RoomStatusWidget } from '@/components/guesthouse/RoomStatusWidget';
+import { GuestHouseDashboard } from '@/components/guesthouse/GuestHouseDashboard';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const importanceColors: Record<string, string> = {
@@ -255,11 +255,11 @@ function StaffDashboard() {
   );
 }
 
-export default function DashboardPage() {
+function RetailDashboard() {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const { user } = useUser();
-  const { canViewAnalytics, isGuestHouse } = useRole();
+  const { canViewAnalytics } = useRole();
 
   const orgId = membership?.organization.id;
 
@@ -310,9 +310,6 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
-
-      {/* Guest House specific widgets */}
-      {isGuestHouse && <RoomStatusWidget />}
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-3 mb-6">
@@ -447,4 +444,18 @@ export default function DashboardPage() {
 
     </div>
   );
+}
+
+export default function DashboardPage() {
+  const { canViewAnalytics, isGuestHouse } = useRole();
+
+  if (!canViewAnalytics) {
+    return <StaffDashboard />;
+  }
+
+  if (isGuestHouse) {
+    return <GuestHouseDashboard />;
+  }
+
+  return <RetailDashboard />;
 }
