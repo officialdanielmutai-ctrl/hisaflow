@@ -13,7 +13,10 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { NotesModule } from './modules/notes/notes.module';
-
+import { RoomsModule } from './modules/rooms/rooms.module';
+import { GuestsModule } from './modules/guests/guests.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
+import { InvoicesModule } from './modules/invoices/invoices.module';
 @Module({
   imports: [
     CoreModule,
@@ -28,6 +31,10 @@ import { NotesModule } from './modules/notes/notes.module';
     FinanceModule,
     NotificationsModule,
     NotesModule,
+    RoomsModule,
+    GuestsModule,
+    BookingsModule,
+    InvoicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
