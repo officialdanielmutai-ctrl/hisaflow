@@ -79,3 +79,48 @@ export async function getStaffDashboardData(
 ): Promise<StaffDashboardData> {
   return apiGet<StaffDashboardData>('/analytics/staff-dashboard', token, organizationId);
 }
+
+// ── Guest House Dashboard ──────────────────────────────────────────────────────
+
+export interface BookingSummary {
+  id: string;
+  guestName: string;
+  roomName: string;
+  checkOutDate: string;
+}
+
+export interface GuestHouseDashboardData {
+  occupiedRooms: number;
+  totalRooms: number;
+  occupancyRate: number;
+  revenueThisMonth: number;
+  costThisMonth: number;
+  profitThisMonth: number;
+  outstandingBalance: number;
+  departureAlerts: {
+    overdue: BookingSummary[];
+    today: BookingSummary[];
+    tomorrow: BookingSummary[];
+  };
+  fastMovingStock: Array<{
+    itemId: string;
+    name: string;
+    unit: string;
+    currentQty: number;
+    totalConsumed: number;
+  }>;
+  lowStockItems: Array<{
+    itemId: string;
+    name: string;
+    unit: string;
+    quantity: number;
+    reorderThreshold: number;
+  }>;
+}
+
+export async function getGuestHouseDashboardData(
+  token: string,
+  organizationId: string,
+): Promise<GuestHouseDashboardData> {
+  return apiGet<GuestHouseDashboardData>('/analytics/guesthouse-dashboard', token, organizationId);
+}

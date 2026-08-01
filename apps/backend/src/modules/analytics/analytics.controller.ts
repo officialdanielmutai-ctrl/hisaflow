@@ -20,4 +20,9 @@ export class AnalyticsController {
   getStaffDashboard(@OrgContext() organizationId: string) {
     return this.analyticsService.getStaffDashboardSummary(organizationId);
   }
+
+  @Get('guesthouse-dashboard')
+  getGuestHouseDashboard(@OrgContext() organizationId: string) {
+    return this.analyticsService.getGuestHouseDashboard(organizationId);
+  }
 }

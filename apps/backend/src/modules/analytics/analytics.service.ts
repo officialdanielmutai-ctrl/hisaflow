@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
@@ -78,7 +78,7 @@ export class AnalyticsService {
       kpis: { todaySales, todayExpenses, lowStockCount, profitEstimate },
       attentionFeed: activeAlerts.map((a) => ({
         id: a.id,
-        message: a.title,          // Alert has 'title', frontend expects 'message'
+        message: a.title,
         severity: a.severity,
         type: a.type,
       })),
@@ -158,7 +158,7 @@ export class AnalyticsService {
         id: item.id,
         name: item.name,
         quantity: Number(item.quantity),
-        unit: item.unit
+        unit: item.unit,
       }));
 
     const categoryCount = new Set(allItems.map(i => i.category || 'Other')).size;
@@ -186,11 +186,239 @@ export class AnalyticsService {
     };
   }
 
+  // ── EAT Day Boundary Helper ────────────────────────────────────────────────
+  // Returns UTC-stored Date boundaries for a given EAT (UTC+3) calendar day.
+  // offsetDays=0 = today in Nairobi, 1 = tomorrow, -1 = yesterday, etc.
+  private getEATDayBounds(offsetDays = 0): { start: Date; end: Date } {
+    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
+    // Midnight of the target EAT calendar day, expressed as a UTC timestamp
+    const startUTC = new Date(
+      Date.UTC(
+        nowEAT.getUTCFullYear(),
+        nowEAT.getUTCMonth(),
+        nowEAT.getUTCDate() + offsetDays,
+      ) - EAT_OFFSET_MS,
+    );
+    const endUTC = new Date(startUTC.getTime() + 24 * 60 * 60 * 1000);
+    return { start: startUTC, end: endUTC };
+  }
+
+  // ── Guest House Dashboard ──────────────────────────────────────────────────
+  async getGuestHouseDashboard(organizationId: string) {
+    const todayBounds = this.getEATDayBounds(0);
+    const tomorrowBounds = this.getEATDayBounds(1);
+
+    // Month-to-date window in EAT
+    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
+    const monthStartUTC = new Date(
+      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth(), 1) - EAT_OFFSET_MS,
+    );
+    const nextMonthStartUTC = new Date(
+      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth() + 1, 1) - EAT_OFFSET_MS,
+    );
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      rooms,
+      checkedInCount,
+      overdueBookings,
+      todayBookings,
+      tomorrowBookings,
+      settledInvoices,
+      openInvoices,
+      consumptionTx,
+      fastMovingTx,
+      allItems,
+    ] = await Promise.all([
+      // All active rooms (for total room count)
+      this.prisma.db.room.findMany({
+        where: { organizationId, isActive: true },
+        select: { id: true, status: true },
+      }),
+
+      // Count of currently checked-in bookings
+      this.prisma.db.booking.count({
+        where: { organizationId, status: 'CHECKED_IN' },
+      }),
+
+      // Overdue: still CHECKED_IN but checkout date is before today (EAT)
+      this.prisma.db.booking.findMany({
+        where: {
+          organizationId,
+          status: 'CHECKED_IN',
+          checkOutDate: { lt: todayBounds.start },
+        },
+        include: { guest: { select: { name: true } }, room: { select: { name: true } } },
+        orderBy: { checkOutDate: 'asc' },
+      }),
+
+      // Departing today (EAT calendar day)
+      this.prisma.db.booking.findMany({
+        where: {
+          organizationId,
+          status: 'CHECKED_IN',
+          checkOutDate: { gte: todayBounds.start, lt: todayBounds.end },
+        },
+        include: { guest: { select: { name: true } }, room: { select: { name: true } } },
+        orderBy: { checkOutDate: 'asc' },
+      }),
+
+      // Departing tomorrow (EAT calendar day)
+      this.prisma.db.booking.findMany({
+        where: {
+          organizationId,
+          status: 'CHECKED_IN',
+          checkOutDate: { gte: tomorrowBounds.start, lt: tomorrowBounds.end },
+        },
+        include: { guest: { select: { name: true } }, room: { select: { name: true } } },
+        orderBy: { checkOutDate: 'asc' },
+      }),
+
+      // Revenue: invoices whose booking actualCheckOut falls this month (checkout-anchored)
+      this.prisma.db.invoice.findMany({
+        where: {
+          organizationId,
+          status: { in: ['PAID', 'PARTIAL'] },
+          booking: { actualCheckOut: { gte: monthStartUTC, lt: nextMonthStartUTC } },
+        },
+        select: { amountPaid: true },
+      }),
+
+      // Outstanding: open invoices (DRAFT, ISSUED, PARTIAL)
+      // grandTotal = roomTotal + consumptionTotal + adjustmentsTotal (no stored column — plan v3.2 Issue 3)
+      this.prisma.db.invoice.findMany({
+        where: { organizationId, status: { notIn: ['PAID', 'VOIDED'] } },
+        select: { roomTotal: true, consumptionTotal: true, adjustmentsTotal: true, amountPaid: true },
+      }),
+
+      // Cost: booking-linked SALE/WASTAGE where that booking checked out this month
+      // quantityChange is negative for these types — ABS() required (plan v3.2 Issue 2)
+      this.prisma.db.inventoryTransaction.findMany({
+        where: {
+          organizationId,
+          type: { in: ['SALE', 'WASTAGE'] },
+          bookingId: { not: null },
+          booking: { actualCheckOut: { gte: monthStartUTC, lt: nextMonthStartUTC } },
+        },
+        select: { quantityChange: true, item: { select: { costPrice: true } } },
+      }),
+
+      // Fast moving: ALL SALE+WASTAGE in last 7 days, no bookingId filter
+      // Intentionally unscoped — answers "what's moving overall" (plan v3.2 Issue 4)
+      this.prisma.db.inventoryTransaction.findMany({
+        where: {
+          organizationId,
+          type: { in: ['SALE', 'WASTAGE'] },
+          createdAt: { gte: sevenDaysAgo },
+        },
+        select: {
+          itemId: true,
+          quantityChange: true,
+          item: { select: { name: true, unit: true, quantity: true } },
+        },
+      }),
+
+      // All active items for low-stock calculation
+      this.prisma.db.inventoryItem.findMany({
+        where: { organizationId, isActive: true },
+        select: { id: true, name: true, unit: true, quantity: true, reorderThreshold: true },
+      }),
+    ]);
+
+    // ── KPIs ─────────────────────────────────────────────────────────────────
+    const totalRooms = rooms.length;
+    const occupiedRooms = checkedInCount;
+    // Zero-guard: returns 0 (not NaN) for new orgs with no rooms yet (plan v3.2 Issue 1)
+    const occupancyRate = totalRooms === 0 ? 0 : Math.round((occupiedRooms / totalRooms) * 100);
+
+    const revenueThisMonth = settledInvoices.reduce(
+      (sum, inv) => sum + Number(inv.amountPaid), 0,
+    );
+
+    // ABS() because SALE/WASTAGE store quantityChange as negative (confirmed sign convention)
+    const costThisMonth = consumptionTx.reduce(
+      (sum, tx) => sum + Math.abs(Number(tx.quantityChange)) * Number(tx.item.costPrice ?? 0), 0,
+    );
+
+    const profitThisMonth = revenueThisMonth - costThisMonth;
+
+    // grandTotal computed inline — no stored column
+    const outstandingBalance = openInvoices.reduce((sum, inv) => {
+      const grandTotal =
+        Number(inv.roomTotal) + Number(inv.consumptionTotal) + Number(inv.adjustmentsTotal);
+      return sum + Math.max(0, grandTotal - Number(inv.amountPaid));
+    }, 0);
+
+    // ── Fast Moving (top 5 by volume consumed, last 7 days) ──────────────────
+    const fastMovingMap = new Map<string, { name: string; unit: string; currentQty: number; totalConsumed: number }>();
+    for (const tx of fastMovingTx) {
+      const consumed = Math.abs(Number(tx.quantityChange));
+      const existing = fastMovingMap.get(tx.itemId);
+      if (existing) {
+        existing.totalConsumed += consumed;
+      } else {
+        fastMovingMap.set(tx.itemId, {
+          name: tx.item.name,
+          unit: tx.item.unit,
+          currentQty: Number(tx.item.quantity),
+          totalConsumed: consumed,
+        });
+      }
+    }
+    const fastMovingStock = [...fastMovingMap.entries()]
+      .sort((a, b) => b[1].totalConsumed - a[1].totalConsumed)
+      .slice(0, 5)
+      .map(([itemId, v]) => ({ itemId, ...v }));
+
+    // ── Low Stock ─────────────────────────────────────────────────────────────
+    const lowStockItems = allItems
+      .filter(
+        (i) => Number(i.reorderThreshold) > 0 && Number(i.quantity) <= Number(i.reorderThreshold),
+      )
+      .sort((a, b) => Number(a.quantity) - Number(b.quantity))
+      .map((i) => ({
+        itemId: i.id,
+        name: i.name,
+        unit: i.unit,
+        quantity: Number(i.quantity),
+        reorderThreshold: Number(i.reorderThreshold),
+      }));
+
+    // ── Shape departure summaries ─────────────────────────────────────────────
+    type BookingRow = typeof overdueBookings[0];
+    const mapBooking = (b: BookingRow) => ({
+      id: b.id,
+      guestName: b.guest.name,
+      roomName: b.room.name,
+      checkOutDate: b.checkOutDate,
+    });
+
+    return {
+      occupiedRooms,
+      totalRooms,
+      occupancyRate,
+      revenueThisMonth,
+      costThisMonth,
+      profitThisMonth,
+      outstandingBalance,
+      departureAlerts: {
+        overdue: overdueBookings.map(mapBooking),
+        today: todayBookings.map(mapBooking),
+        tomorrow: tomorrowBookings.map(mapBooking),
+      },
+      fastMovingStock,
+      lowStockItems,
+    };
+  }
+
+  // ── Recommended Actions (AI) ───────────────────────────────────────────────
   private async getRecommendedActions(organizationId: string, businessType: string) {
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    // Fetch all active items then filter in JS â€” avoids invalid column-to-column Prisma where
+    // Fetch all active items then filter in JS — avoids invalid column-to-column Prisma where
     const allItems = await this.prisma.db.inventoryItem.findMany({
       where: { organizationId, isActive: true },
       select: { id: true, name: true, quantity: true, reorderThreshold: true },
@@ -287,4 +515,3 @@ Return ONLY the JSON array, no markdown fences.`;
     ];
   }
 }
-
