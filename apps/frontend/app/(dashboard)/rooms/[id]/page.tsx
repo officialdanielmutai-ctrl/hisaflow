@@ -11,7 +11,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EditRoomSheet } from '@/components/guesthouse/EditRoomSheet';
 
-export default function RoomDetailPage({ params }: { params: { id: string } }) {
+export default function RoomDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const router = useRouter();
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
@@ -22,11 +23,11 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState('');
 
   const { data: room, isLoading } = useSWR<Room>(
-    membership ? `room-${params.id}` : null,
+    membership ? `room-${id}` : null,
     async () => {
       const token = await getToken();
       if (!token || !membership) throw new Error('Not authenticated');
-      return roomsService.getById(params.id, token, membership.organization.id);
+      return roomsService.getById(id, token, membership.organization.id);
     }
   );
 
@@ -38,7 +39,7 @@ export default function RoomDetailPage({ params }: { params: { id: string } }) {
     try {
       const token = await getToken();
       if (!token || !membership) throw new Error('Not authenticated');
-      await roomsService.deactivate(params.id, token, membership.organization.id);
+      await roomsService.deactivate(id, token, membership.organization.id);
       router.push('/rooms');
     } catch (err: any) {
       setError(err.message || 'Failed to delete room');

@@ -9,18 +9,19 @@ import { ArrowLeft, User, Phone, Mail, Edit3, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { EditGuestSheet } from '@/components/guesthouse/EditGuestSheet';
 
-export default function GuestDetailPage({ params }: { params: { id: string } }) {
+export default function GuestDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
 
   const [showEdit, setShowEdit] = useState(false);
 
   const { data: guest, isLoading } = useSWR<Guest>(
-    membership ? `guest-${params.id}` : null,
+    membership ? `guest-${id}` : null,
     async () => {
       const token = await getToken();
       if (!token || !membership) throw new Error('Not authenticated');
-      return guestsService.getById(params.id, token, membership.organization.id);
+      return guestsService.getById(id, token, membership.organization.id);
     }
   );
 

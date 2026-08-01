@@ -214,7 +214,8 @@ function AddPaymentModal({
   );
 }
 
-export default function BookingDetailPage({ params }: { params: { id: string } }) {
+export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const router = useRouter();
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
@@ -230,23 +231,23 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
   const currency = membership?.organization?.currency || 'KES';
 
   const { data: booking, mutate: mutateBooking, isLoading } = useSWR<Booking>(
-    membership ? `booking-${params.id}` : null,
+    membership ? `booking-${id}` : null,
     async () => {
       const token = await getToken();
       if (!token || !membership) throw new Error('Not authenticated');
       setTokenCache(token);
-      return bookingsService.getById(params.id, token, membership.organization.id);
+      return bookingsService.getById(id, token, membership.organization.id);
     }
   );
 
   const { data: invoice, mutate: mutateInvoice } = useSWR<Invoice>(
     booking && ['CHECKED_IN', 'CHECKED_OUT'].includes(booking.status)
-      ? `invoice-${params.id}`
+      ? `invoice-${id}`
       : null,
     async () => {
       const token = await getToken();
       if (!token || !membership) throw new Error('Not authenticated');
-      return invoicesService.getDraft(params.id, token, membership.organization.id);
+      return invoicesService.getDraft(id, token, membership.organization.id);
     }
   );
 
@@ -360,7 +361,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
           <div className="grid grid-cols-2 gap-3">
             {canCheckIn && (
               <button
-                onClick={() => doAction('check-in', (t) => bookingsService.checkIn(params.id, t, orgId).then(() => {}))}
+                onClick={() => doAction('check-in', (t) => bookingsService.checkIn(id, t, orgId).then(() => {}))}
                 disabled={actionLoading === 'check-in'}
                 className="col-span-2 flex items-center justify-center gap-2 py-3 rounded-2xl bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors disabled:opacity-50"
               >
@@ -370,7 +371,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
             )}
             {canCheckOut && (
               <button
-                onClick={() => doAction('check-out', (t) => bookingsService.checkOut(params.id, false, t, orgId).then(() => {}))}
+                onClick={() => doAction('check-out', (t) => bookingsService.checkOut(id, false, t, orgId).then(() => {}))}
                 disabled={actionLoading === 'check-out'}
                 className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50"
               >
@@ -389,7 +390,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
             )}
             {!isCheckedIn && canCheckIn && (isOwner || isManager) && (
               <button
-                onClick={() => doAction('cancel', (t) => bookingsService.cancel(params.id, t, orgId).then(() => {}))}
+                onClick={() => doAction('cancel', (t) => bookingsService.cancel(id, t, orgId).then(() => {}))}
                 disabled={!!actionLoading}
                 className="flex items-center justify-center gap-2 py-3 rounded-2xl bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
               >
@@ -477,7 +478,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
               )}
               {(isOwner || isManager) && invoice.status === 'DRAFT' && (
                 <button
-                  onClick={() => doAction('issue', (t) => invoicesService.issue(params.id, t, orgId).then(() => {}))}
+                  onClick={() => doAction('issue', (t) => invoicesService.issue(id, t, orgId).then(() => {}))}
                   disabled={!!actionLoading}
                   className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
                 >
@@ -500,7 +501,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
 
       {showConsumption && tokenCache && (
         <AddConsumptionModal
-          bookingId={params.id}
+          bookingId={id}
           token={tokenCache}
           orgId={orgId}
           onClose={() => setShowConsumption(false)}
@@ -514,7 +515,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
 
       {showPayment && tokenCache && (
         <AddPaymentModal
-          bookingId={params.id}
+          bookingId={id}
           token={tokenCache}
           orgId={orgId}
           onClose={() => setShowPayment(false)}
