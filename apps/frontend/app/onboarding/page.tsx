@@ -17,6 +17,7 @@ const BUSINESS_TYPES = [
   { value: 'SCHOOL',     label: 'School' },
   { value: 'WHOLESALER', label: 'Wholesaler' },
   { value: 'ISP',        label: 'Internet Service Provider (ISP)' },
+  { value: 'GUEST_HOUSE', label: 'Guest House / Lodge' },
 ];
 
 export default function OnboardingPage() {
