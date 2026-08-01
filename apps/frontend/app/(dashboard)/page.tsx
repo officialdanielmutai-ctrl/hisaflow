@@ -15,6 +15,7 @@ import { getNotes, type Note } from '@/services/notes.service';
 import { useInventory } from '@/hooks/useInventory';
 import { format } from 'date-fns';
 import DashboardLoading from './loading';
+import { RoomStatusWidget } from '@/components/guesthouse/RoomStatusWidget';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const importanceColors: Record<string, string> = {
@@ -258,7 +259,7 @@ export default function DashboardPage() {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const { user } = useUser();
-  const { canViewAnalytics } = useRole();
+  const { canViewAnalytics, isGuestHouse } = useRole();
 
   const orgId = membership?.organization.id;
 
@@ -309,6 +310,9 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* Guest House specific widgets */}
+      {isGuestHouse && <RoomStatusWidget />}
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-3 mb-6">
