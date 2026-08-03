@@ -64,7 +64,7 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity">
-      <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="w-full max-w-md bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2 text-[var(--color-primary)]">
             <User className="h-5 w-5" />
@@ -146,22 +146,21 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               />
             </div>
-          </form>
-        </div>
 
-        <div className="p-6 border-t border-gray-100 bg-gray-50">
-          <button
-            type="submit"
-            form="add-guest-form"
-            disabled={loading}
-            className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white font-medium bg-[var(--color-primary)] hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              'Save Guest'
-            )}
-          </button>
+            <div className="pt-6 border-t border-gray-100 mt-6">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white font-medium bg-[var(--color-primary)] hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  'Save Guest'
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
