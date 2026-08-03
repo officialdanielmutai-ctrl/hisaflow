@@ -3,7 +3,7 @@ import { apiPost } from '@/lib/api-client';
 export interface ParsedAction {
   itemId: string | null;
   itemName: string;
-  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE' | 'NOTE' | 'BOOKING';
+  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE' | 'NOTE' | 'BOOKING' | 'GUEST' | 'ROOM';
   quantity: number;
   confidence: 'HIGH' | 'LOW';
   // WASTAGE fields
@@ -13,6 +13,13 @@ export interface ParsedAction {
   roomName?: string;
   checkInDate?: string;
   checkOutDate?: string;
+  // GUEST fields
+  phone?: string;
+  email?: string;
+  idNumber?: string;
+  // ROOM fields
+  roomType?: string;
+  baseRate?: number;
   // Business Specific Fields
   clientName?: string;
   metadata?: any;
