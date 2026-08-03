@@ -7,22 +7,29 @@ export interface ParsedAction {
   // ── Transaction actions ──────────────────────────────────────────
   itemId: string | null;
   itemName: string;
-  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE' | 'NOTE' | 'BOOKING';
+  type: 'SALE' | 'PURCHASE' | 'WASTAGE' | 'CREATE' | 'UPDATE' | 'NOTE' | 'BOOKING' | 'GUEST' | 'ROOM';
   quantity: number;
   confidence: 'HIGH' | 'LOW';
   // ── Fields used only for WASTAGE ─────────────────────────────────
-  wastageReason?: string; // e.g. 'expired', 'damaged', 'stolen', 'spoiled', 'broken'
+  wastageReason?: string;
   // ── Fields used only for BOOKING ─────────────────────────────────
   guestName?: string;
   roomName?: string;
   checkInDate?: string;
   checkOutDate?: string;
+  // ── Fields used only for GUEST ───────────────────────────────────
+  phone?: string;
+  email?: string;
+  idNumber?: string;
+  // ── Fields used only for ROOM ────────────────────────────────────
+  roomType?: string;
+  baseRate?: number;
   // ── Business Specific Fields (Optional) ──────────────────────────
-  clientName?: string; // For ISP installs, etc.
+  clientName?: string;
   metadata?: any;
   // ── Credit Fields ────────────────────────────────────────────────
   isCredit?: boolean;
-  dueDate?: string; // ISO string
+  dueDate?: string;
   creditNotes?: string;
   // ── Fields used only for CREATE ──────────────────────────────────
   unit?: string;
@@ -343,6 +350,12 @@ Each element is ONE action matching one of these 7 shapes:
 7. BOOKING — Guest checked into a room:
 { "itemId": null, "itemName": "Booking", "type": "BOOKING", "quantity": 1, "confidence": "HIGH", "guestName": "<extracted name>", "roomName": "<extracted room>", "checkInDate": "<ISO date or null>", "checkOutDate": "<ISO date or null>" }
 
+8. GUEST — Add a new guest to the directory (when user says "add guest", "register guest", "new guest"):
+{ "itemId": null, "itemName": "<guest full name>", "type": "GUEST", "quantity": 1, "confidence": "HIGH", "guestName": "<full name>", "phone": "<phone or null>", "email": "<email or null>", "idNumber": "<id or null>" }
+
+9. ROOM — Add a new room to the property (when user says "add room", "new room", "create room"):
+{ "itemId": null, "itemName": "<room name>", "type": "ROOM", "quantity": 1, "confidence": "HIGH", "roomName": "<room name or number>", "roomType": "Single|Double|Standard|Suite|Deluxe", "baseRate": <number per night> }
+
 RULES:
 - The items listed above ARE CONFIRMED TO EXIST in this business's inventory. Treat them as ground truth.
 - Match item names case-insensitively with STRONG spelling tolerance (e.g., "cipladon" ≈ "Cipladon", "panadole" ≈ "Panadol", "alvaroe" ≈ "Alvaro").
@@ -394,8 +407,11 @@ RULES:
       const MATCH_THRESHOLD = 0.45;
 
       const reconciled = actions.reduce<ParsedAction[]>((acc, action) => {
-        // For non-transactional types (NOTE) just pass through
-        if (action.type === 'NOTE') { acc.push(action); return acc; }
+        // Pass through non-inventory action types directly
+        if (action.type === 'NOTE' || action.type === 'BOOKING' || action.type === 'GUEST' || action.type === 'ROOM') {
+          acc.push(action);
+          return acc;
+        }
 
         const nameToMatch = (action.itemName || '').trim();
         if (!nameToMatch) { acc.push(action); return acc; }
