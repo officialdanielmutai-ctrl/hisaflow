@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { X, Loader2, User } from 'lucide-react';
@@ -16,10 +17,10 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const { mutate } = useSWRConfig();
+  const [mounted, setMounted] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -28,7 +29,7 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
     notes: '',
   });
 
-  if (!isOpen) return null;
+  useEffect(() => { setMounted(true); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +55,7 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
       );
 
       mutate('guests-list');
+      setFormData({ name: '', phone: '', idNumber: '', email: '', notes: '' });
       onClose();
     } catch (err: any) {
       setError(err.message || 'Failed to add guest');
@@ -62,15 +64,27 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity">
-      <div className="w-full max-w-md bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+  if (!mounted || !isOpen) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center sm:justify-end"
+      style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        style={{ height: '100dvh', maxHeight: '100dvh' }}
+        className="w-full sm:max-w-md bg-white shadow-2xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2 text-[var(--color-primary)]">
             <User className="h-5 w-5" />
             <h2 className="text-lg font-semibold">Add New Guest</h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-50 transition-colors"
           >
@@ -78,8 +92,10 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Form — takes remaining space */}
+        <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          {/* Scrollable fields */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }} className="space-y-5">
             {error && (
               <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl">
                 {error}
@@ -87,9 +103,7 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
               <input
                 type="text"
                 required
@@ -100,9 +114,7 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number (Optional)
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number (Optional)</label>
               <input
                 type="tel"
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
@@ -112,9 +124,7 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                ID / Passport Number (Optional)
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ID / Passport Number (Optional)</label>
               <input
                 type="text"
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
@@ -124,9 +134,7 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address (Optional)
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address (Optional)</label>
               <input
                 type="email"
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
@@ -136,9 +144,7 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes (Optional)
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
               <textarea
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all resize-none"
                 rows={3}
@@ -148,21 +154,33 @@ export function AddGuestSheet({ isOpen, onClose }: AddGuestSheetProps) {
             </div>
           </div>
 
-          <div className="p-6 border-t border-gray-100 bg-gray-50 shrink-0 pb-safe pb-8">
+          {/* Sticky submit footer */}
+          <div style={{ padding: '20px 24px', borderTop: '1px solid #f3f4f6', background: '#f9fafb', flexShrink: 0 }}>
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white font-medium bg-[var(--color-primary)] hover:opacity-90 transition-opacity disabled:opacity-50"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '14px',
+                borderRadius: '12px',
+                background: 'var(--color-primary)',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: '15px',
+                opacity: loading ? 0.6 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                border: 'none',
+              }}
             >
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                'Save Guest'
-              )}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Save Guest'}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
