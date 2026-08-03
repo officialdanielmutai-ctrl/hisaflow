@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, IsDateString, IsOptional, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateBookingDto {
   @IsString()
@@ -19,6 +20,7 @@ export class CreateBookingDto {
 
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   ratePerNight?: number;
 
   @IsString()

@@ -8,6 +8,8 @@
     --color-bg-base: #F7F8FA;
     --color-bg-surface: #FFFFFF;
     --color-bg-elevated: #F0F2F5;
+    --color-bg-secondary: #EBF5F0;
+    --color-bg-surface-hover: #F3F4F6;
     --color-text-primary: #111827;
     --color-text-secondary: #6B7280;
     --color-text-muted: #9CA3AF;
@@ -15,6 +17,9 @@
     --color-accent: #1F7A5A;
     --color-accent-hover: #195F47;
     --color-accent-blue: #2563EB;
+    /* --color-primary is the same green — used throughout the UI */
+    --color-primary: #1F7A5A;
+    --color-primary-hover: #195F47;
     --color-status-success: #15803D;
     --color-status-warning: #D97706;
     --color-status-critical: #DC2626;

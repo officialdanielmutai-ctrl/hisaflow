@@ -108,7 +108,7 @@ export default function NewBookingPage() {
           guestId: selectedGuest.id,
           checkInDate: new Date(dates.checkIn).toISOString(),
           checkOutDate: new Date(dates.checkOut).toISOString(),
-          ratePerNight: selectedRoom.baseRate,
+          ratePerNight: Number(selectedRoom.baseRate),
           notes: dates.notes || undefined,
         },
         token,
