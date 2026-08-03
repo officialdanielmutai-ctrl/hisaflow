@@ -38,7 +38,7 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
     dynamicItems.unshift(
       { href: '/finance', label: 'Finance', icon: TrendingUp },
       { href: '/inventory', label: 'Inventory', icon: Package },
-      { href: '/ai-ingestion', label: 'AI Actions', icon: Sparkles }
+      { href: '/ai', label: 'AI Actions', icon: Sparkles }
     );
   }
 

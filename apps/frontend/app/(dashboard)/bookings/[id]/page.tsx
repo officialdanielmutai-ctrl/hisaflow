@@ -329,7 +329,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   );
 
   const { data: invoice, mutate: mutateInvoice } = useSWR<Invoice>(
-    booking && ['CHECKED_IN', 'CHECKED_OUT'].includes(booking.status)
+    booking && booking.status !== 'CANCELLED'
       ? `invoice-${id}`
       : null,
     async () => {
