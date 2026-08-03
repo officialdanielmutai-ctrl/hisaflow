@@ -121,6 +121,93 @@ function AddConsumptionModal({
   );
 }
 
+function AddChargeModal({
+  bookingId, token, orgId, onClose, onSuccess
+}: {
+  bookingId: string; token: string; orgId: string;
+  onClose: () => void; onSuccess: () => void;
+}) {
+  const [description, setDescription] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [unitPrice, setUnitPrice] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleAdd = async () => {
+    if (!description || !unitPrice) return;
+    setLoading(true);
+    setError('');
+    try {
+      await invoicesService.addLineItem(bookingId, description, Number(quantity), Number(unitPrice), token, orgId);
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Failed to add charge');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-bold text-gray-900 text-lg">Add Custom Charge</h3>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100">
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+        {error && <div className="mb-4 p-3 text-sm text-red-600 bg-red-50 rounded-xl">{error}</div>}
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <input
+              type="text"
+              placeholder="e.g. Laundry, Airport Transfer, Damages..."
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-sm"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-sm"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price</label>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="0.00"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-sm"
+                value={unitPrice}
+                onChange={(e) => setUnitPrice(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={handleAdd}
+            disabled={loading || !description || !unitPrice}
+            className="w-full py-3 rounded-xl text-white font-medium bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-40 flex items-center justify-center"
+          >
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Add Charge'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddPaymentModal({
   bookingId, token, orgId, onClose, onSuccess
 }: {
@@ -225,6 +312,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const [error, setError] = useState('');
   const [showConsumption, setShowConsumption] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showCharge, setShowCharge] = useState(false);
   const [tokenCache, setTokenCache] = useState<string | null>(null);
 
   const orgId = membership?.organization?.id ?? '';
@@ -476,6 +564,15 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   Record Payment
                 </button>
               )}
+              {(isOwner || isManager) && invoice.status !== 'VOIDED' && invoice.status !== 'PAID' && (
+                <button
+                  onClick={() => setShowCharge(true)}
+                  className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Charge
+                </button>
+              )}
               {(isOwner || isManager) && invoice.status === 'DRAFT' && (
                 <button
                   onClick={() => doAction('issue', (t) => invoicesService.issue(id, t, orgId).then(() => {}))}
@@ -485,6 +582,15 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   {actionLoading === 'issue' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
                   Issue Invoice
                 </button>
+              )}
+              {invoice.status !== 'DRAFT' && (
+                <Link
+                  href={`/bookings/${id}/invoice`}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors ${!(isOwner || isManager) ? 'col-span-2' : ''}`}
+                >
+                  <FileText className="h-4 w-4" />
+                  View Receipt
+                </Link>
               )}
             </div>
           </div>
@@ -521,6 +627,20 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           onClose={() => setShowPayment(false)}
           onSuccess={() => {
             setShowPayment(false);
+            mutateBooking();
+            mutateInvoice();
+          }}
+        />
+      )}
+
+      {showCharge && tokenCache && (
+        <AddChargeModal
+          bookingId={id}
+          token={tokenCache}
+          orgId={orgId}
+          onClose={() => setShowCharge(false)}
+          onSuccess={() => {
+            setShowCharge(false);
             mutateBooking();
             mutateInvoice();
           }}

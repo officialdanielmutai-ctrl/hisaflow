@@ -16,43 +16,43 @@ export class RoomsController {
   @Post()
   @Roles(AppRole.OWNER, AppRole.MANAGER)
   create(
-    @OrgContext() org: Organization,
+    @OrgContext() orgId: string,
     @Body() createRoomDto: CreateRoomDto
   ) {
-    return this.roomsService.create(org.id, createRoomDto);
+    return this.roomsService.create(orgId, createRoomDto);
   }
 
   @Get()
   @Roles(AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF)
-  findAll(@OrgContext() org: Organization) {
-    return this.roomsService.findAll(org.id);
+  findAll(@OrgContext() orgId: string) {
+    return this.roomsService.findAll(orgId);
   }
 
   @Get(':id')
   @Roles(AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF)
   findOne(
-    @OrgContext() org: Organization,
+    @OrgContext() orgId: string,
     @Param('id') id: string
   ) {
-    return this.roomsService.findOne(org.id, id);
+    return this.roomsService.findOne(orgId, id);
   }
 
   @Patch(':id')
   @Roles(AppRole.OWNER, AppRole.MANAGER)
   update(
-    @OrgContext() org: Organization,
+    @OrgContext() orgId: string,
     @Param('id') id: string,
     @Body() updateRoomDto: UpdateRoomDto
   ) {
-    return this.roomsService.update(org.id, id, updateRoomDto);
+    return this.roomsService.update(orgId, id, updateRoomDto);
   }
 
   @Delete(':id')
   @Roles(AppRole.OWNER)
   remove(
-    @OrgContext() org: Organization,
+    @OrgContext() orgId: string,
     @Param('id') id: string
   ) {
-    return this.roomsService.deactivate(org.id, id);
+    return this.roomsService.deactivate(orgId, id);
   }
 }

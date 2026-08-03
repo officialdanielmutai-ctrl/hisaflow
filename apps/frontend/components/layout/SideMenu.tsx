@@ -3,8 +3,9 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, Bell, ListTodo, LogOut } from 'lucide-react';
+import { Settings, Bell, ListTodo, LogOut, TrendingUp, Package, Sparkles } from 'lucide-react';
 import { SignOutButton, useUser } from '@clerk/nextjs';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
 import {
   Sheet,
   SheetContent,
@@ -28,6 +29,18 @@ const sideNavItems = [
 export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
   const pathname = usePathname();
   const { user } = useUser();
+  const { membership } = useMyOrganization();
+  const isHospitality = ['GUEST_HOUSE', 'HOTEL', 'LODGE'].includes(membership?.organization?.businessType || '');
+
+  const dynamicItems = [...sideNavItems];
+  if (isHospitality) {
+    // Add the missing hospitality tabs that couldn't fit in the BottomNav
+    dynamicItems.unshift(
+      { href: '/finance', label: 'Finance', icon: TrendingUp },
+      { href: '/inventory', label: 'Inventory', icon: Package },
+      { href: '/ai-ingestion', label: 'AI Actions', icon: Sparkles }
+    );
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -45,7 +58,7 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
 
         <div className="flex-1 overflow-y-auto py-4">
           <div className="flex flex-col gap-1 px-3">
-            {sideNavItems.map((item) => {
+            {dynamicItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link

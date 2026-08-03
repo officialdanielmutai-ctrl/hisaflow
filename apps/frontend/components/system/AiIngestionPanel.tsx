@@ -166,6 +166,10 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
         return 'e.g. "Installed 1 router for John Doe" or "Note: Team meeting tomorrow at 9am"';
       case 'CHEMIST':
         return 'e.g. "Sold 2 Panadol" or "Important: Order more Amoxil urgently"';
+      case 'GUEST_HOUSE':
+      case 'HOTEL':
+      case 'LODGE':
+        return 'e.g. "John checked into Room 5 for 2 nights" or "Sold 3 sodas"';
       default:
         return 'e.g. "sold 3 unga" or "Remind team about stock count on Friday"';
     }
