@@ -94,8 +94,8 @@ export class InvoicesService {
   async addLineItem(organizationId: string, bookingId: string, dto: CreateInvoiceLineItemDto) {
     const invoice = await this.getDraftForBooking(organizationId, bookingId);
     
-    if (invoice.status !== InvoiceStatus.DRAFT) {
-      throw new BadRequestException('Can only add line items to DRAFT invoices');
+    if (invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOIDED) {
+      throw new BadRequestException(`Cannot add line items to a ${invoice.status} invoice`);
     }
 
     const qty = new Prisma.Decimal(dto.quantity);
