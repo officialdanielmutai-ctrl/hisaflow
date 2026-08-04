@@ -100,18 +100,18 @@ export default function RoomsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredRooms.map((room) => (
               <Link
                 key={room.id}
                 href={`/rooms/${room.id}`}
                 className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all flex flex-col group"
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="bg-[var(--color-primary)]/10 p-2 rounded-lg text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors">
+                <div className="flex justify-between items-start mb-3 gap-2">
+                  <div className="bg-[var(--color-primary)]/10 p-2 rounded-lg text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors shrink-0">
                     <Bed className="h-5 w-5" />
                   </div>
-                  <div className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${STATUS_COLORS[room.status]}`}>
+                  <div className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider text-center ${STATUS_COLORS[room.status]}`}>
                     {STATUS_LABELS[room.status]}
                   </div>
                 </div>
