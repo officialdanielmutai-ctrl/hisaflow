@@ -122,11 +122,12 @@ function AddConsumptionModal({
 }
 
 function AddChargeModal({
-  bookingId, token, orgId, onClose, onSuccess
+  bookingId, orgId, onClose, onSuccess
 }: {
-  bookingId: string; token: string; orgId: string;
+  bookingId: string; orgId: string;
   onClose: () => void; onSuccess: () => void;
 }) {
+  const { getToken } = useAuth();
   const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [unitPrice, setUnitPrice] = useState('');
@@ -138,6 +139,8 @@ function AddChargeModal({
     setLoading(true);
     setError('');
     try {
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
       await invoicesService.addLineItem(bookingId, description, Number(quantity), Number(unitPrice), token, orgId);
       onSuccess();
     } catch (err: any) {
@@ -209,11 +212,12 @@ function AddChargeModal({
 }
 
 function AddPaymentModal({
-  bookingId, token, orgId, onClose, onSuccess
+  bookingId, orgId, onClose, onSuccess
 }: {
-  bookingId: string; token: string; orgId: string;
+  bookingId: string; orgId: string;
   onClose: () => void; onSuccess: () => void;
 }) {
+  const { getToken } = useAuth();
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('CASH');
   const [note, setNote] = useState('');
@@ -225,6 +229,8 @@ function AddPaymentModal({
     setLoading(true);
     setError('');
     try {
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
       await invoicesService.addPayment(bookingId, Number(amount), method, token, orgId, note || undefined);
       onSuccess();
     } catch (err: any) {
@@ -628,10 +634,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         />
       )}
 
-      {showPayment && tokenCache && (
+      {showPayment && (
         <AddPaymentModal
           bookingId={id}
-          token={tokenCache}
           orgId={orgId}
           onClose={() => setShowPayment(false)}
           onSuccess={() => {
@@ -642,10 +647,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         />
       )}
 
-      {showCharge && tokenCache && (
+      {showCharge && (
         <AddChargeModal
           bookingId={id}
-          token={tokenCache}
           orgId={orgId}
           onClose={() => setShowCharge(false)}
           onSuccess={() => {
