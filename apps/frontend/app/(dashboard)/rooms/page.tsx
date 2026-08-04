@@ -100,28 +100,38 @@ export default function RoomsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: '1rem',
+            }}
+          >
             {filteredRooms.map((room) => (
               <Link
                 key={room.id}
                 href={`/rooms/${room.id}`}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all flex flex-col group"
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all flex flex-col group"
+                style={{ padding: '1rem', minWidth: 0 }}
               >
-                <div className="flex justify-between items-start mb-3 gap-2">
-                  <div className="bg-[var(--color-primary)]/10 p-2 rounded-lg text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors shrink-0">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '0.5rem' }}>
+                  <div className="bg-[var(--color-primary)]/10 p-2 rounded-lg text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors" style={{ flexShrink: 0 }}>
                     <Bed className="h-5 w-5" />
                   </div>
-                  <div className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider text-center ${STATUS_COLORS[room.status]}`}>
+                  <div
+                    className={`text-[10px] font-bold rounded-md uppercase tracking-wider text-center ${STATUS_COLORS[room.status]}`}
+                    style={{ padding: '2px 8px', flexShrink: 0, whiteSpace: 'nowrap' }}
+                  >
                     {STATUS_LABELS[room.status]}
                   </div>
                 </div>
-                
-                <h3 className="text-base font-bold text-gray-900 mb-1">{room.name}</h3>
+
+                <h3 className="text-base font-bold text-gray-900 mb-1" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{room.name}</h3>
                 <p className="text-xs text-gray-500 font-medium mb-3">{room.type}</p>
-                
-                <div className="mt-auto pt-3 border-t border-gray-50 flex items-center justify-between">
+
+                <div className="mt-auto pt-3 border-t border-gray-50" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.25rem' }}>
                   <div className="text-xs text-gray-500">Rate</div>
-                  <div className="text-sm font-semibold text-gray-900">
+                  <div className="text-sm font-semibold text-gray-900" style={{ textAlign: 'right' }}>
                     {membership?.organization?.currency} {Number(room.baseRate).toLocaleString()}
                   </div>
                 </div>

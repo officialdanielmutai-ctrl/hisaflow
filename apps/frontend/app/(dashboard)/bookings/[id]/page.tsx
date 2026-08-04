@@ -507,15 +507,24 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <span className="text-gray-500">Room Charges</span>
                 <span className="font-medium">{currency} {Number(invoice.roomTotal).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Consumption</span>
-                <span className="font-medium">{currency} {Number(invoice.consumptionTotal).toLocaleString()}</span>
-              </div>
-              {Number(invoice.adjustmentsTotal) > 0 && (
+              {Number(invoice.consumptionTotal) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Adjustments</span>
-                  <span className="font-medium">{currency} {Number(invoice.adjustmentsTotal).toLocaleString()}</span>
+                  <span className="text-gray-500">Consumption</span>
+                  <span className="font-medium">{currency} {Number(invoice.consumptionTotal).toLocaleString()}</span>
                 </div>
+              )}
+              {invoice.lineItems?.length > 0 && (
+                <>
+                  <div className="pt-1 pb-0.5">
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Additional Charges</span>
+                  </div>
+                  {invoice.lineItems.map((item) => (
+                    <div key={item.id} className="flex justify-between pl-2">
+                      <span className="text-gray-600">{item.description}</span>
+                      <span className="font-medium">{currency} {Number(item.total).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
 
