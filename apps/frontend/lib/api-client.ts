@@ -14,7 +14,12 @@ export async function apiGet<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    let message = `API error: ${response.status}`;
+    try {
+      const errBody = await response.json();
+      message = errBody?.message || message;
+    } catch {}
+    throw new Error(message);
   }
 
   return response.json() as T;
@@ -37,7 +42,12 @@ export async function apiPost<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    let message = `API error: ${response.status}`;
+    try {
+      const errBody = await response.json();
+      message = errBody?.message || message;
+    } catch {}
+    throw new Error(message);
   }
 
   return response.json() as T;
@@ -60,7 +70,12 @@ export async function apiPatch<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    let message = `API error: ${response.status}`;
+    try {
+      const errBody = await response.json();
+      message = errBody?.message || message;
+    } catch {}
+    throw new Error(message);
   }
 
   return response.json() as T;
