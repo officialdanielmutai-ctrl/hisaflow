@@ -65,21 +65,36 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
     let animationFrameId: number;
 
     const startScanner = async () => {
-      if (!open || !videoRef.current) return;
+      if (!open) return;
       
       try {
         setScanning(true);
         setError(null);
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Camera not supported (HTTPS required).');
+        }
 
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' }
         });
         
         setHasCamera(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+
+        // Wait for video element to mount if it hasn't yet (due to Drawer animations)
+        let retries = 0;
+        while (!videoRef.current && retries < 20) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          retries++;
         }
+
+        if (!videoRef.current) {
+          throw new Error('Video container failed to initialize.');
+        }
+
+        videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute('playsinline', 'true');
+        await videoRef.current.play();
 
         if ('BarcodeDetector' in window) {
           try {
