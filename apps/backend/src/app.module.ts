@@ -17,6 +17,7 @@ import { RoomsModule } from './modules/rooms/rooms.module';
 import { GuestsModule } from './modules/guests/guests.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
+import { OcrModule } from './modules/ocr/ocr.module';
 @Module({
   imports: [
     CoreModule,
@@ -35,6 +36,7 @@ import { InvoicesModule } from './modules/invoices/invoices.module';
     GuestsModule,
     BookingsModule,
     InvoicesModule,
+    OcrModule,
   ],
   controllers: [AppController],
   providers: [AppService],

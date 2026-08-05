@@ -23,6 +23,25 @@ export class InventoryService {
     });
   }
 
+  async findByBarcode(barcode: string, organizationId: string) {
+    const item = await this.prisma.db.inventoryItem.findFirst({
+      where: {
+        organizationId,
+        barcode,
+        isActive: true,
+      },
+      include: {
+        product: true,
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Item with this barcode not found');
+    }
+
+    return item;
+  }
+
   async create(dto: CreateProductDto, organizationId: string) {
     let variantsData: any[] = [];
     if (dto.variants && dto.variants.length > 0) {
@@ -61,6 +80,7 @@ export class InventoryService {
                 : (v.quantity || 0) > 0
                 ? StockStatus.LOW
                 : StockStatus.OUT_OF_STOCK,
+            barcode: v.barcode,
             packaging: {
               create:
                 v.packaging?.map((p: any) => ({
@@ -128,6 +148,7 @@ export class InventoryService {
         reorderThreshold: dto.reorderThreshold,
         costPrice: dto.costPrice,
         sellingPrice: dto.sellingPrice,
+        barcode: dto.barcode,
         status,
         ...(dto.packaging && {
           packaging: {

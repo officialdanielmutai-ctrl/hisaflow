@@ -10,7 +10,8 @@ import { createNote } from '@/services/notes.service';
 import { guestsService } from '@/services/guests.service';
 import { roomsService } from '@/services/rooms.service';
 import { useRouter } from 'next/navigation';
-import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp, Camera } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 
 interface AiIngestionPanelProps {
   onCompleted: () => void;
@@ -44,6 +45,63 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
       setError('Could not parse. Try again.');
     } finally {
       setParsing(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !membership?.organization.id) return;
+    
+    setActions([]);
+    setError(null);
+    setParsing(true);
+    
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
+
+      // 1. Compress image client-side
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      });
+
+      // 2. Upload to OCR endpoint
+      const formData = new FormData();
+      formData.append('image', compressedFile);
+
+      const ocrRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/ocr/receipt`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-organization-id': membership.organization.id,
+        },
+        body: formData,
+      });
+
+      if (!ocrRes.ok) {
+        throw new Error('Failed to process receipt image');
+      }
+
+      const { text: extractedText } = await ocrRes.json();
+      
+      if (!extractedText.trim()) {
+        throw new Error('No text found in the image');
+      }
+
+      // 3. Feed extracted text (with confidence flags) to AI
+      setText(extractedText);
+      const result = await parseInventoryText(extractedText, token, membership.organization.id, 'RECEIPT_OCR');
+      setActions(result.map(a => ({ ...a, _removed: false, _expanded: false })));
+
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Could not process receipt. Try again.');
+    } finally {
+      setParsing(false);
+      // Reset input
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -232,13 +290,32 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
-      <button
-        onClick={handleParse}
-        disabled={parsing || !text.trim()}
-        className="h-12 w-full rounded-2xl bg-[var(--color-accent)] font-semibold text-white disabled:opacity-50"
-      >
-        {parsing ? 'Parsing...' : 'Parse with AI'}
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={handleParse}
+          disabled={parsing || !text.trim()}
+          className="h-12 flex-1 rounded-2xl bg-[var(--color-accent)] font-semibold text-white disabled:opacity-50"
+        >
+          {parsing ? 'Parsing...' : 'Parse with AI'}
+        </button>
+        <div className="relative">
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            onChange={handleImageUpload}
+            disabled={parsing}
+          />
+          <button
+            type="button"
+            disabled={parsing}
+            className="h-12 px-4 rounded-2xl border-2 border-[var(--color-accent)] font-semibold text-[var(--color-accent)] flex items-center justify-center disabled:opacity-50 hover:bg-[var(--color-accent)] hover:text-white transition-colors"
+          >
+            <Camera className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -280,7 +357,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
                         }
                       </span>
                       {action.confidence === 'LOW' && (
-                        <span style={{ fontSize: 11, color: '#d97706' }}>⚠ Unmatched — will be skipped unless you fix it</span>
+                        <span style={{ fontSize: 12, color: '#d97706', fontWeight: 600 }}>⚠ Low confidence scan — please verify carefully</span>
                       )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

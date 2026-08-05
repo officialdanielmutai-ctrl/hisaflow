@@ -197,6 +197,7 @@ export class AiIngestionService {
   async parseInventoryText(
     text: string,
     orgId: string,
+    source: 'TEXT' | 'RECEIPT_OCR' = 'TEXT'
   ): Promise<ParsedAction[]> {
     const { items: availableItems, businessType } = await this.getInventoryContext(orgId);
 
@@ -219,10 +220,22 @@ export class AiIngestionService {
     const relevantItems = this.retrieveRelevantItems(text, availableItems);
     const itemsJson = JSON.stringify(relevantItems);
 
+    const ocrInstructions = source === 'RECEIPT_OCR' ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RECEIPT OCR MODE ACTIVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- The input text comes from a scanned receipt via OCR.
+- Expect typical OCR typos (e.g., '0' instead of 'O', '1' instead of 'l', misaligned columns).
+- The text blocks may contain explicit labels like [CONFIDENCE: HIGH] or [CONFIDENCE: LOW].
+- If a line item has a [CONFIDENCE: LOW] label next to it, you MUST set the output action's \`confidence\` field to "LOW".
+- DO NOT derive your own confidence threshold; purely pass through the [CONFIDENCE: LOW/HIGH] label attached to the text.
+- If there are no confidence labels, default to "HIGH".
+` : '';
+
     const prompt = `
 You are an expert inventory management assistant embedded in HisaFlow, a business management app used by East African SMEs.
 The business type is: ${businessType}.
-
+${ocrInstructions}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DEEP CONTEXT FOR BUSINESS TYPE: ${businessType}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

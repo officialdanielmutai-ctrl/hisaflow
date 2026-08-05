@@ -58,4 +58,8 @@ export class UpdateVariantDto {
   @ValidateNested({ each: true })
   @Type(() => CreatePackagingUnitDto)
   packaging?: CreatePackagingUnitDto[];
+
+  @IsOptional()
+  @IsString()
+  barcode?: string;
 }

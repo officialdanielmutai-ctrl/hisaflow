@@ -1,15 +1,17 @@
 'use client';
 
 import * as React from 'react';
-import { Menu, Bell } from 'lucide-react';
+import { Menu, Bell, ScanLine } from 'lucide-react';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useAlerts } from '@/hooks/useAlerts';
 import SideMenu from './SideMenu';
+import BarcodeScannerSheet from '../system/BarcodeScannerSheet';
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [scannerOpen, setScannerOpen] = React.useState(false);
   const { membership } = useMyOrganization();
   const { data: alerts } = useAlerts();
 
@@ -38,6 +40,13 @@ export default function TopBar() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setScannerOpen(true)}
+            className="relative p-2 text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] rounded-full transition-colors"
+            aria-label="Scan Barcode"
+          >
+            <ScanLine className="h-5 w-5" />
+          </button>
           <Link href="/alerts" className="relative p-2 text-[var(--color-text-primary)]">
             <Bell className="h-6 w-6" />
             {(alerts ?? []).length > 0 && (
@@ -57,6 +66,7 @@ export default function TopBar() {
       </header>
 
       <SideMenu open={menuOpen} onOpenChange={setMenuOpen} />
+      <BarcodeScannerSheet open={scannerOpen} onOpenChange={setScannerOpen} />
     </>
   );
 }

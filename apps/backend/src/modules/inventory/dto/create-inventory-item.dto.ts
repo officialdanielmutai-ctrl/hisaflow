@@ -49,4 +49,8 @@ export class CreateInventoryItemDto {
   @IsOptional()
   @IsString()
   batchNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  barcode?: string;
 }

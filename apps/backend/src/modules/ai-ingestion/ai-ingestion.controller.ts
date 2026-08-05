@@ -19,6 +19,7 @@ export class AiIngestionController {
     const result = await this.aiIngestionService.parseInventoryText(
       dto.text,
       orgId,
+      dto.source ?? 'TEXT',
     );
 
     return { actions: result };

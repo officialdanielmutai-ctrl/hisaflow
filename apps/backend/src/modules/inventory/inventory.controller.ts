@@ -17,6 +17,14 @@ export class InventoryController {
     return this.inventoryService.findAll(orgId);
   }
 
+  @Get('barcode/:code')
+  findByBarcode(
+    @Param('code') code: string,
+    @OrgContext() orgId: string,
+  ) {
+    return this.inventoryService.findByBarcode(code, orgId);
+  }
+
   // Any authenticated org member can create a new stock item
   @Post()
   create(
