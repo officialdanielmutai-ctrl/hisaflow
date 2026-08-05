@@ -126,8 +126,8 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
 
     return () => {
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      if (reader) reader.reset();
       
+
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
