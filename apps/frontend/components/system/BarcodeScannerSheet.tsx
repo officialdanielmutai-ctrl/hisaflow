@@ -7,7 +7,6 @@ import { BrowserMultiFormatReader } from '@zxing/browser';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api-client';
 
 interface BarcodeScannerSheetProps {
   open: boolean;
