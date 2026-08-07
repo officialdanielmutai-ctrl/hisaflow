@@ -61,6 +61,10 @@ export class CreateProductVariantDto {
   sellingPrice?: number;
 
   @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreatePackagingUnitDto)
