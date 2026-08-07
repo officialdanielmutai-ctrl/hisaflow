@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
@@ -21,6 +21,7 @@ interface UIVariant {
   reorderThreshold: number;
   costPrice?: number;
   sellingPrice?: number;
+  barcode?: string;
   packaging: {
     name: string;
     containsQty: number;
@@ -31,12 +32,15 @@ interface AddItemSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  /** Pre-fills the first variant's barcode, e.g. when arriving from a barcode scan that found no match. */
+  initialBarcode?: string;
 }
 
 export default function AddItemSheet({
   open,
   onOpenChange,
   onSuccess,
+  initialBarcode,
 }: AddItemSheetProps) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
@@ -52,8 +56,20 @@ export default function AddItemSheet({
     reorderThreshold: 10,
     costPrice: undefined,
     sellingPrice: undefined,
+    barcode: undefined,
     packaging: []
   }]);
+
+  // When the sheet opens with a scanned barcode, attach it to the first variant.
+  useEffect(() => {
+    if (open && initialBarcode) {
+      setVariants((prev) => {
+        if (prev.length === 0) return prev;
+        const [first, ...rest] = prev;
+        return [{ ...first, barcode: initialBarcode }, ...rest];
+      });
+    }
+  }, [open, initialBarcode]);
 
   const [loading, setLoading] = useState(false);
   const { getToken } = useAuth();
@@ -144,6 +160,7 @@ export default function AddItemSheet({
             reorderThreshold: v.reorderThreshold,
             costPrice: isStaff ? undefined : v.costPrice,
             sellingPrice: isStaff ? undefined : v.sellingPrice,
+            barcode: v.barcode || undefined,
             packaging: mappedPackaging
           };
         })
@@ -155,7 +172,7 @@ export default function AddItemSheet({
       setName('');
       setCategory('');
       setDescription('');
-      setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, packaging: [] }]);
+      setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, barcode: undefined, packaging: [] }]);
       
       onSuccess();
       onOpenChange(false);
@@ -282,6 +299,17 @@ export default function AddItemSheet({
                       className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
                       value={variant.measureUnit || ''}
                       onChange={(e) => handleUpdateVariant(vIdx, 'measureUnit', e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="mb-1 block text-xs font-medium">
+                      Barcode {vIdx === 0 && initialBarcode ? '(from scan)' : '(optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                      value={variant.barcode || ''}
+                      onChange={(e) => handleUpdateVariant(vIdx, 'barcode', e.target.value)}
                     />
                   </div>
                   

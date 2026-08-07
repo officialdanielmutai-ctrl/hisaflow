@@ -19,6 +19,7 @@ export interface InventoryItem {
   reorderThreshold: number;
   costPrice: number | null;
   sellingPrice: number | null;
+  barcode?: string | null;
   status: 'HEALTHY' | 'LOW' | 'OUT_OF_STOCK';
   isActive: boolean;
   packaging: PackagingUnit[];
@@ -56,6 +57,7 @@ export interface CreateProductVariantPayload {
   reorderThreshold: number;
   costPrice?: number;
   sellingPrice?: number;
+  barcode?: string;
   packaging?: CreatePackagingUnitPayload[];
 }
 

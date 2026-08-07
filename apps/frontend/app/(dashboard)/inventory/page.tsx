@@ -20,10 +20,13 @@ export default function InventoryPage() {
   const [txSheetOpen, setTxSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [receivingItem, setReceivingItem] = useState<InventoryItem | null>(null);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'LOW_STOCK'>(
     searchParams.get('filter') === 'LOW_STOCK' ? 'LOW_STOCK' : 'ALL'
   );
   const { canAddInventory, canEditInventory, isStaff } = useRole();
+
+  const scannedBarcode = searchParams.get('action') === 'add' ? searchParams.get('barcode') : null;
 
   // Low stock check now looks inside variants
   const displayedItems = filter === 'LOW_STOCK' 
@@ -35,6 +38,26 @@ export default function InventoryPage() {
       setSheetOpen(true);
     }
   }, [searchParams]);
+
+  // Handles the redirect from the barcode scanner (see BarcodeScannerSheet).
+  // A matched item lands here as `?scannedItemId=<variantId>`; we look it up
+  // in the already-loaded inventory list so EditItemSheet gets a fully
+  // populated item (packaging included) rather than a partial API response.
+  useEffect(() => {
+    const scannedItemId = searchParams.get('scannedItemId');
+    if (!scannedItemId || loading) return;
+
+    const matchedVariant = items
+      .flatMap((product) => product.variants)
+      .find((variant) => variant.id === scannedItemId);
+
+    if (matchedVariant) {
+      setEditingItem(matchedVariant);
+    } else {
+      setScanNotice('Scanned item could not be found. It may have been removed.');
+    }
+    router.replace('/inventory');
+  }, [searchParams, items, loading, router]);
 
   const handleCloseSheet = () => {
     setSheetOpen(false);
@@ -108,6 +131,19 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {scanNotice && (
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+          <span>{scanNotice}</span>
+          <button
+            onClick={() => setScanNotice(null)}
+            className="shrink-0 font-medium text-amber-700 hover:text-amber-900"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {!loading && !error && displayedItems.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--color-border)] py-12 text-center">
           <div className="mb-4 rounded-full bg-muted p-4">
@@ -139,6 +175,7 @@ export default function InventoryPage() {
       {/* Sheets */}
       <AddItemSheet
         open={sheetOpen}
+        initialBarcode={scannedBarcode || undefined}
         onOpenChange={(open) => {
           if (!open) handleCloseSheet();
           else setSheetOpen(true);

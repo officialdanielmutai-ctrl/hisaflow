@@ -18,22 +18,38 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasCamera, setHasCamera] = useState<boolean | null>(null);
-  
+
+  // Mirrors `scanning` state but is readable synchronously inside the
+  // requestAnimationFrame detection loop, which otherwise closes over a
+  // stale value of `scanning` from the render that started the effect.
+  const scanningRef = useRef(false);
+  // Guards against handling the same scan twice (native detector can fire
+  // on consecutive frames before the lookup request resolves).
+  const handledRef = useRef(false);
+
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const router = useRouter();
 
+  const setScanningState = (value: boolean) => {
+    scanningRef.current = value;
+    setScanning(value);
+  };
+
   const handleScan = async (code: string) => {
     if (!membership?.organization.id) return;
-    setScanning(false);
+    if (handledRef.current) return;
+    handledRef.current = true;
+
+    setScanningState(false);
     setError(null);
-    
+
     try {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
 
       const orgId = membership.organization.id;
-      
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/inventory/barcode/${encodeURIComponent(code)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -41,21 +57,26 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
         },
       });
 
+      // Both branches route to the existing `/inventory` page (the only
+      // inventory route this app has) and pass query params that page.tsx
+      // reads to open the right sheet. There is no `/inventory/[id]` or
+      // `/inventory/new` route, so pushing to those 404s.
       if (response.ok) {
         const item = await response.json();
         onOpenChange(false);
-        router.push(`/inventory/${item.product?.id || ''}`);
+        router.push(`/inventory?scannedItemId=${encodeURIComponent(item.id)}`);
       } else if (response.status === 404) {
         onOpenChange(false);
-        router.push(`/inventory/new?barcode=${encodeURIComponent(code)}`);
+        router.push(`/inventory?action=add&barcode=${encodeURIComponent(code)}`);
       } else {
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
         throw new Error(data.message || 'Lookup failed');
       }
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Error processing barcode');
-      setScanning(true);
+      handledRef.current = false;
+      setScanningState(true);
     }
   };
 
@@ -66,9 +87,11 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
 
     const startScanner = async () => {
       if (!open) return;
-      
+
+      handledRef.current = false;
+
       try {
-        setScanning(true);
+        setScanningState(true);
         setError(null);
 
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -102,7 +125,7 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
             nativeDetector = new window.BarcodeDetector({ formats: ['qr_code', 'ean_13', 'upc_a', 'code_128', 'code_39'] });
             
             const scanNative = async () => {
-              if (!scanning || !videoRef.current || !nativeDetector) return;
+              if (!scanningRef.current || !videoRef.current || !nativeDetector) return;
               try {
                 const barcodes = await nativeDetector.detect(videoRef.current);
                 if (barcodes.length > 0) {
@@ -131,17 +154,23 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
         console.error('Camera error:', err);
         setHasCamera(false);
         setError('Could not access camera. Please ensure camera permissions are granted.');
-        setScanning(false);
+        setScanningState(false);
       }
     };
 
     if (open) {
       startScanner();
+    } else {
+      // Sheet closed: make sure a stray detection loop can't keep running.
+      scanningRef.current = false;
+      handledRef.current = false;
+      setError(null);
+      setHasCamera(null);
     }
 
     return () => {
+      scanningRef.current = false;
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      
 
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
