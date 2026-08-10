@@ -42,6 +42,53 @@ export class InventoryService {
     return item;
   }
 
+  /**
+   * Best-effort lookup against Open Food Facts for a barcode this org has
+   * never entered before. Returns null (never throws) on any miss - not
+   * found, malformed response, network failure, or timeout - so a failed
+   * external lookup never blocks the manual-entry fallback the frontend
+   * already has. Coverage of non-food / local Kenyan retail goods will be
+   * partial; this is a convenience prefill, not a source of truth.
+   */
+  async lookupExternalProduct(barcode: string): Promise<{
+    name: string | null;
+    brand: string | null;
+    category: string | null;
+    imageUrl: string | null;
+  } | null> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+
+      const response = await fetch(
+        `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=product_name,brands,categories,image_front_url`,
+        { signal: controller.signal },
+      );
+      clearTimeout(timeout);
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      if (data.status !== 1 || !data.product) return null;
+
+      const product = data.product;
+      const name: string | null = product.product_name || null;
+
+      // A "found" record with no usable name isn't worth prefilling.
+      if (!name) return null;
+
+      return {
+        name,
+        brand: product.brands ? product.brands.split(',')[0].trim() : null,
+        category: product.categories ? product.categories.split(',')[0].trim() : null,
+        imageUrl: product.image_front_url || null,
+      };
+    } catch (error) {
+      console.error('External barcode lookup failed:', error);
+      return null;
+    }
+  }
+
   async create(dto: CreateProductDto, organizationId: string) {
     let variantsData: any[] = [];
     if (dto.variants && dto.variants.length > 0) {
