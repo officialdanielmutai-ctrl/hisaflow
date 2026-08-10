@@ -8,6 +8,7 @@ import { Plus, Trash2, PackageOpen } from 'lucide-react';
 
 import {
   createInventoryItem,
+  lookupExternalProductByBarcode,
   type CreateProductPayload,
 } from '@/services/inventory.service';
 
@@ -75,6 +76,55 @@ export default function AddItemSheet({
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const { isStaff } = useRole();
+
+  const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
+
+  // Best-effort prefill from Open Food Facts for a barcode this org hasn't
+  // seen before. Only fills fields the user hasn't already typed into, and
+  // never blocks manual entry - a miss (common for local/non-food goods)
+  // just leaves the form as-is.
+  useEffect(() => {
+    if (!open || !initialBarcode || !membership?.organization.id) {
+      setLookupStatus('idle');
+      return;
+    }
+
+    let cancelled = false;
+    setLookupStatus('loading');
+
+    (async () => {
+      const token = await getToken();
+      if (!token || cancelled) return;
+
+      const result = await lookupExternalProductByBarcode(
+        initialBarcode,
+        token,
+        membership.organization.id,
+      );
+
+      if (cancelled) return;
+
+      if (!result || !result.name) {
+        setLookupStatus('not_found');
+        return;
+      }
+
+      setName((prev) => (prev ? prev : result.name!));
+      if (result.category) {
+        setCategory((prev) => (prev ? prev : result.category!));
+      }
+      setVariants((prev) => {
+        if (prev.length === 0 || prev[0].name) return prev;
+        const [first, ...rest] = prev;
+        return [{ ...first, name: result.brand || result.name! }, ...rest];
+      });
+      setLookupStatus('found');
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, initialBarcode, membership?.organization.id, getToken]);
 
   const handleAddVariant = () => {
     setVariants([...variants, {
@@ -173,6 +223,7 @@ export default function AddItemSheet({
       setCategory('');
       setDescription('');
       setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, barcode: undefined, packaging: [] }]);
+      setLookupStatus('idle');
       
       onSuccess();
       onOpenChange(false);
@@ -199,6 +250,22 @@ export default function AddItemSheet({
         <h2 className="mb-6 text-xl font-bold">Add Product</h2>
         
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          {initialBarcode && lookupStatus === 'loading' && (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+              Looking up product details for this barcode…
+            </div>
+          )}
+          {initialBarcode && lookupStatus === 'found' && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              Details found via Open Food Facts — please verify before saving.
+            </div>
+          )}
+          {initialBarcode && lookupStatus === 'not_found' && (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+              No match found for this barcode in the product database — enter the details manually.
+            </div>
+          )}
+
           {/* Product Basic Info */}
           <div className="flex flex-col gap-4 p-4 bg-[var(--color-bg-base)] rounded-2xl border border-[var(--color-border)]">
             <h3 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wider">Product Info</h3>

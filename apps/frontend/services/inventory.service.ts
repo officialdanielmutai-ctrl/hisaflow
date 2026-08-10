@@ -40,6 +40,35 @@ export async function getInventoryItems(
   return apiGet<Product[]>('/inventory', token, organizationId);
 }
 
+export interface ExternalProductLookupResult {
+  name: string | null;
+  brand: string | null;
+  category: string | null;
+  imageUrl: string | null;
+}
+
+/**
+ * Best-effort external product data for a barcode with no match in this
+ * org's inventory yet. Always resolves - null on any miss (not found,
+ * network error, timeout) - so callers can treat it as an optional
+ * prefill, not a failable operation. Never throws.
+ */
+export async function lookupExternalProductByBarcode(
+  barcode: string,
+  token: string,
+  organizationId: string,
+): Promise<ExternalProductLookupResult | null> {
+  try {
+    return await apiGet<ExternalProductLookupResult | null>(
+      `/inventory/barcode/${encodeURIComponent(barcode)}/external`,
+      token,
+      organizationId,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export interface CreatePackagingUnitPayload {
   name: string;
   quantityPerUnit: number;

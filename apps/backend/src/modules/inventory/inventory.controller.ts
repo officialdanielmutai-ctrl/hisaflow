@@ -25,6 +25,15 @@ export class InventoryController {
     return this.inventoryService.findByBarcode(code, orgId);
   }
 
+  // Best-effort external product data (name/brand/category) for a barcode
+  // not found in this org's own inventory. Always returns 200 with either
+  // a result or null - never 404/500 - so the frontend can treat "no match"
+  // as a normal, expected outcome rather than an error to handle.
+  @Get('barcode/:code/external')
+  lookupExternalBarcode(@Param('code') code: string) {
+    return this.inventoryService.lookupExternalProduct(code);
+  }
+
   // Any authenticated org member can create a new stock item
   @Post()
   create(
