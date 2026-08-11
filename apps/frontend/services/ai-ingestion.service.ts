@@ -54,7 +54,7 @@ export async function parseInventoryText(
   text: string,
   token: string,
   organizationId: string,
-  source: 'TEXT' | 'RECEIPT_OCR' = 'TEXT',
+  source: 'TEXT' | 'RECEIPT_OCR' | 'LABEL_OCR' = 'TEXT',
 ): Promise<ParsedAction[]> {
   const response = await apiPost<{ actions: ParsedAction[] }>(
     '/ai-ingestion/parse',

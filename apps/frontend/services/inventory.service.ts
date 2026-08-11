@@ -20,6 +20,8 @@ export interface InventoryItem {
   costPrice: number | null;
   sellingPrice: number | null;
   barcode?: string | null;
+  expiryDate?: string | null;
+  batchNumber?: string | null;
   status: 'HEALTHY' | 'LOW' | 'OUT_OF_STOCK';
   isActive: boolean;
   packaging: PackagingUnit[];
@@ -44,7 +46,9 @@ export interface ExternalProductLookupResult {
   name: string | null;
   brand: string | null;
   category: string | null;
+  unit: string | null;
   imageUrl: string | null;
+  source: 'CATALOG' | 'OPEN_FOOD_FACTS';
 }
 
 /**
@@ -87,6 +91,9 @@ export interface CreateProductVariantPayload {
   costPrice?: number;
   sellingPrice?: number;
   barcode?: string;
+  expiryDate?: string;
+  batchNumber?: string;
+  catalogSource?: 'MANUAL' | 'OCR';
   packaging?: CreatePackagingUnitPayload[];
 }
 

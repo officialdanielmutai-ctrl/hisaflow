@@ -3,20 +3,40 @@
 import * as React from 'react';
 import { Menu, Bell, ScanLine } from 'lucide-react';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { useLabelOcrCapture, OCR_DRAFT_STORAGE_KEY } from '@/hooks/useLabelOcrCapture';
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAlerts } from '@/hooks/useAlerts';
 import SideMenu from './SideMenu';
 import BarcodeScannerSheet from '../system/BarcodeScannerSheet';
+import ScanModeSheet from '../system/ScanModeSheet';
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [scanModeOpen, setScanModeOpen] = React.useState(false);
   const [scannerOpen, setScannerOpen] = React.useState(false);
   const { membership } = useMyOrganization();
   const { data: alerts } = useAlerts();
+  const { captureLabel, inputProps: ocrInputProps } = useLabelOcrCapture();
+  const router = useRouter();
+
+  const handleSelectLabel = async () => {
+    const result = await captureLabel();
+    if (!result) return;
+
+    try {
+      sessionStorage.setItem(OCR_DRAFT_STORAGE_KEY, JSON.stringify(result));
+    } catch (error) {
+      console.error('Could not stash OCR draft:', error);
+      return;
+    }
+    router.push('/inventory?action=add&fromOcr=1');
+  };
 
   return (
     <>
+      <input {...ocrInputProps} />
       <header className="fixed top-0 inset-x-0 z-30 flex h-16 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4">
         <div className="flex items-center gap-3">
           <button
@@ -41,9 +61,9 @@ export default function TopBar() {
         </div>
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setScannerOpen(true)}
+            onClick={() => setScanModeOpen(true)}
             className="relative p-2 text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] rounded-full transition-colors"
-            aria-label="Scan Barcode"
+            aria-label="Scan"
           >
             <ScanLine className="h-5 w-5" />
           </button>
@@ -66,7 +86,14 @@ export default function TopBar() {
       </header>
 
       <SideMenu open={menuOpen} onOpenChange={setMenuOpen} />
+      <ScanModeSheet
+        open={scanModeOpen}
+        onOpenChange={setScanModeOpen}
+        onSelectBarcode={() => setScannerOpen(true)}
+        onSelectLabel={handleSelectLabel}
+      />
       <BarcodeScannerSheet open={scannerOpen} onOpenChange={setScannerOpen} />
     </>
   );
 }
+

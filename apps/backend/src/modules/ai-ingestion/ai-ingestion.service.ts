@@ -197,7 +197,7 @@ export class AiIngestionService {
   async parseInventoryText(
     text: string,
     orgId: string,
-    source: 'TEXT' | 'RECEIPT_OCR' = 'TEXT'
+    source: 'TEXT' | 'RECEIPT_OCR' | 'LABEL_OCR' = 'TEXT'
   ): Promise<ParsedAction[]> {
     const { items: availableItems, businessType } = await this.getInventoryContext(orgId);
 
@@ -230,6 +230,31 @@ RECEIPT OCR MODE ACTIVE
 - If a line item has a [CONFIDENCE: LOW] label next to it, you MUST set the output action's \`confidence\` field to "LOW".
 - DO NOT derive your own confidence threshold; purely pass through the [CONFIDENCE: LOW/HIGH] label attached to the text.
 - If there are no confidence labels, default to "HIGH".
+` : source === 'LABEL_OCR' ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRODUCT LABEL OCR MODE ACTIVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- The input text comes from a photo of a SINGLE product's packaging or
+  label (a box, bottle, sachet, etc.) via OCR - this is NOT a receipt
+  with multiple purchased line items. Output exactly ONE action, with
+  type "CREATE", describing this one product.
+- Expect typical OCR typos and noisy/irrelevant text (barcodes rendered
+  as digit strings, regulatory boilerplate, nutritional tables). Focus
+  on the product/brand name, which is usually the largest or most
+  prominent text block.
+- \`itemName\` should be the product name as printed (brand + variant if
+  both appear, e.g. "Coca-Cola 500ml").
+- Infer \`unit\` and \`category\` from context using the business-type
+  guidance below, same as any other CREATE action.
+- If the text contains a batch number (often labelled "Batch", "Lot",
+  "B.No", or similar), include it as \`metadata.batchNumber\`.
+- If the text contains an expiry or "best before" date, include it as
+  \`metadata.expiryDate\`, AS PRINTED (do not attempt to reformat or
+  validate it - the app will parse it). If no expiry text appears,
+  omit it entirely - do not guess or fabricate one.
+- The text blocks may contain [CONFIDENCE: HIGH]/[CONFIDENCE: LOW]
+  labels; if the block containing the product name is LOW confidence,
+  set the action's \`confidence\` field to "LOW". Otherwise "HIGH".
 ` : '';
 
     const prompt = `

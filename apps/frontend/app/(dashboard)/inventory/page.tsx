@@ -11,6 +11,7 @@ import ReceiveStockSheet from '@/components/mobile/ReceiveStockSheet';
 import { PackageOpen } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import type { InventoryItem } from '@/services/inventory.service';
+import { OCR_DRAFT_STORAGE_KEY, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
 
 export default function InventoryPage() {
   const searchParams = useSearchParams();
@@ -21,6 +22,7 @@ export default function InventoryPage() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [receivingItem, setReceivingItem] = useState<InventoryItem | null>(null);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const [ocrDraft, setOcrDraft] = useState<LabelOcrResult | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'LOW_STOCK'>(
     searchParams.get('filter') === 'LOW_STOCK' ? 'LOW_STOCK' : 'ALL'
   );
@@ -38,6 +40,26 @@ export default function InventoryPage() {
       setSheetOpen(true);
     }
   }, [searchParams]);
+
+  // Handles the redirect from TopBar's "Scan Label" flow (see
+  // useLabelOcrCapture): the result was stashed in sessionStorage since
+  // TopBar has no direct access to this page's component tree. Read it
+  // once, hand it to AddItemSheet, then clear it so a page refresh
+  // doesn't re-apply a stale draft.
+  useEffect(() => {
+    if (searchParams.get('fromOcr') !== '1') return;
+
+    try {
+      const raw = sessionStorage.getItem(OCR_DRAFT_STORAGE_KEY);
+      if (raw) {
+        setOcrDraft(JSON.parse(raw));
+      }
+      sessionStorage.removeItem(OCR_DRAFT_STORAGE_KEY);
+    } catch (error) {
+      console.error('Could not read OCR draft:', error);
+    }
+    router.replace('/inventory?action=add');
+  }, [searchParams, router]);
 
   // Handles the redirect from the barcode scanner (see BarcodeScannerSheet).
   // A matched item lands here as `?scannedItemId=<variantId>`; we look it up
@@ -61,6 +83,7 @@ export default function InventoryPage() {
 
   const handleCloseSheet = () => {
     setSheetOpen(false);
+    setOcrDraft(null);
     if (searchParams.get('action') === 'add') {
       router.replace('/inventory');
     }
@@ -176,6 +199,7 @@ export default function InventoryPage() {
       <AddItemSheet
         open={sheetOpen}
         initialBarcode={scannedBarcode || undefined}
+        initialOcrDraft={ocrDraft || undefined}
         onOpenChange={(open) => {
           if (!open) handleCloseSheet();
           else setSheetOpen(true);

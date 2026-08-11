@@ -86,6 +86,34 @@ enum StockStatus {
   OUT_OF_STOCK
 }
 
+enum CatalogSource {
+  MANUAL
+  OCR
+  OPEN_FOOD_FACTS
+}
+
+// Cross-org shared product lookup table. Deliberately has no relation to
+// Organization: entries are anonymous, aggregate knowledge ("this barcode
+// = this product") contributed by whichever org first records it, so any
+// other org scanning the same barcode later gets an instant match without
+// an external API call. Not a source of per-org data like pricing.
+model ProductCatalogEntry {
+  id            String        @id @default(cuid())
+  barcode       String        @unique
+  name          String
+  brand         String?
+  category      String?
+  unit          String?
+  imageUrl      String?       @map("image_url")
+  source        CatalogSource @default(MANUAL)
+  confirmations Int           @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("product_catalog_entries")
+}
+
 model Product {
   id               String          @id @default(cuid())
   organizationId   String          @map("organization_id")

@@ -4,7 +4,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
-import { Plus, Trash2, PackageOpen } from 'lucide-react';
+import { useLabelOcrCapture, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
+import { Plus, Trash2, PackageOpen, ScanLine } from 'lucide-react';
 
 import {
   createInventoryItem,
@@ -23,6 +24,8 @@ interface UIVariant {
   costPrice?: number;
   sellingPrice?: number;
   barcode?: string;
+  expiryDate?: string;
+  batchNumber?: string;
   packaging: {
     name: string;
     containsQty: number;
@@ -35,6 +38,8 @@ interface AddItemSheetProps {
   onSuccess: () => void;
   /** Pre-fills the first variant's barcode, e.g. when arriving from a barcode scan that found no match. */
   initialBarcode?: string;
+  /** Pre-fills fields from a label OCR capture done outside this sheet (e.g. TopBar's scan-mode picker). */
+  initialOcrDraft?: LabelOcrResult;
 }
 
 export default function AddItemSheet({
@@ -42,6 +47,7 @@ export default function AddItemSheet({
   onOpenChange,
   onSuccess,
   initialBarcode,
+  initialOcrDraft,
 }: AddItemSheetProps) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
@@ -78,6 +84,10 @@ export default function AddItemSheet({
   const { isStaff } = useRole();
 
   const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
+  const [lookupSource, setLookupSource] = useState<'CATALOG' | 'OPEN_FOOD_FACTS' | null>(null);
+  const { captureLabel, status: ocrStatus, inputProps: ocrInputProps } = useLabelOcrCapture();
+  const [ocrApplied, setOcrApplied] = useState(false);
+  const [usedOcrSource, setUsedOcrSource] = useState(false);
 
   // Best-effort prefill from Open Food Facts for a barcode this org hasn't
   // seen before. Only fills fields the user hasn't already typed into, and
@@ -118,6 +128,7 @@ export default function AddItemSheet({
         const [first, ...rest] = prev;
         return [{ ...first, name: result.brand || result.name! }, ...rest];
       });
+      setLookupSource(result.source);
       setLookupStatus('found');
     })();
 
@@ -125,6 +136,64 @@ export default function AddItemSheet({
       cancelled = true;
     };
   }, [open, initialBarcode, membership?.organization.id, getToken]);
+
+  const applyOcrResult = (result: LabelOcrResult) => {
+    let applied = false;
+
+    if (result.name && !name) {
+      setName(result.name);
+      applied = true;
+    }
+    if (result.category && !category) {
+      setCategory(result.category);
+      applied = true;
+    }
+
+    setVariants((prev) => {
+      if (prev.length === 0) return prev;
+      const [first, ...rest] = prev;
+      const next = { ...first };
+      if (!next.name && result.name) {
+        next.name = result.name;
+        applied = true;
+      }
+      if ((!next.unit || next.unit === 'can') && result.unit) {
+        next.unit = result.unit;
+        applied = true;
+      }
+      if (!next.expiryDate && result.expiryDate) {
+        next.expiryDate = result.expiryDate;
+        applied = true;
+      }
+      if (!next.batchNumber && result.batchNumber) {
+        next.batchNumber = result.batchNumber;
+        applied = true;
+      }
+      return [next, ...rest];
+    });
+
+    if (applied) {
+      setOcrApplied(true);
+      setUsedOcrSource(true);
+    }
+  };
+
+  // A label OCR capture done from outside this sheet (TopBar's scan-mode
+  // picker) arrives as a prop rather than through the in-sheet button.
+  useEffect(() => {
+    if (open && initialOcrDraft) {
+      applyOcrResult(initialOcrDraft);
+    }
+    // Only re-run when the sheet opens with a (possibly new) draft, not on
+    // every keystroke that changes name/category (which applyOcrResult reads).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialOcrDraft]);
+
+  const handleScanLabel = async () => {
+    const result = await captureLabel();
+    if (!result) return;
+    applyOcrResult(result);
+  };
 
   const handleAddVariant = () => {
     setVariants([...variants, {
@@ -189,7 +258,7 @@ export default function AddItemSheet({
         name,
         category: category || undefined,
         description: description || undefined,
-        variants: variants.map(v => {
+        variants: variants.map((v, vIdx) => {
           const absoluteMultipliers = [1];
           let currentMultiplier = 1;
           const mappedPackaging = v.packaging.map(p => {
@@ -211,6 +280,9 @@ export default function AddItemSheet({
             costPrice: isStaff ? undefined : v.costPrice,
             sellingPrice: isStaff ? undefined : v.sellingPrice,
             barcode: v.barcode || undefined,
+            expiryDate: v.expiryDate || undefined,
+            batchNumber: v.batchNumber || undefined,
+            catalogSource: vIdx === 0 && usedOcrSource ? 'OCR' : undefined,
             packaging: mappedPackaging
           };
         })
@@ -224,6 +296,9 @@ export default function AddItemSheet({
       setDescription('');
       setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, barcode: undefined, packaging: [] }]);
       setLookupStatus('idle');
+      setLookupSource(null);
+      setOcrApplied(false);
+      setUsedOcrSource(false);
       
       onSuccess();
       onOpenChange(false);
@@ -257,7 +332,9 @@ export default function AddItemSheet({
           )}
           {initialBarcode && lookupStatus === 'found' && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-              Details found via Open Food Facts — please verify before saving.
+              {lookupSource === 'CATALOG'
+                ? 'Details found — another HisaFlow user has scanned this barcode before. Please verify before saving.'
+                : 'Details found via Open Food Facts — please verify before saving.'}
             </div>
           )}
           {initialBarcode && lookupStatus === 'not_found' && (
@@ -265,6 +342,26 @@ export default function AddItemSheet({
               No match found for this barcode in the product database — enter the details manually.
             </div>
           )}
+
+          <input {...ocrInputProps} />
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2">
+            <span className="text-xs text-[var(--color-text-secondary)]">
+              {ocrStatus === 'processing'
+                ? 'Reading the label…'
+                : ocrApplied
+                ? 'Details applied from label scan — please verify.'
+                : 'No barcode match? Scan the packaging/label instead.'}
+            </span>
+            <button
+              type="button"
+              onClick={handleScanLabel}
+              disabled={ocrStatus === 'processing'}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+            >
+              <ScanLine className="h-3.5 w-3.5" />
+              Scan Label
+            </button>
+          </div>
 
           {/* Product Basic Info */}
           <div className="flex flex-col gap-4 p-4 bg-[var(--color-bg-base)] rounded-2xl border border-[var(--color-border)]">
@@ -377,6 +474,24 @@ export default function AddItemSheet({
                       className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
                       value={variant.barcode || ''}
                       onChange={(e) => handleUpdateVariant(vIdx, 'barcode', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Expiry Date (optional)</label>
+                    <input
+                      type="date"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                      value={variant.expiryDate || ''}
+                      onChange={(e) => handleUpdateVariant(vIdx, 'expiryDate', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Batch Number (optional)</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
+                      value={variant.batchNumber || ''}
+                      onChange={(e) => handleUpdateVariant(vIdx, 'batchNumber', e.target.value)}
                     />
                   </div>
                   
