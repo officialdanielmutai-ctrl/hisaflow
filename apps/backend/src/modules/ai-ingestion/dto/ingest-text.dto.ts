@@ -7,6 +7,6 @@ export class IngestTextDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['TEXT', 'RECEIPT_OCR'])
-  source?: 'TEXT' | 'RECEIPT_OCR';
+  @IsIn(['TEXT', 'RECEIPT_OCR', 'LABEL_OCR'])
+  source?: 'TEXT' | 'RECEIPT_OCR' | 'LABEL_OCR';
 }

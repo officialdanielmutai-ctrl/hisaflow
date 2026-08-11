@@ -1,4 +1,4 @@
-﻿import { IsString, IsNotEmpty, IsOptional, IsNumber, IsPositive, Min, ValidateNested, IsArray } from 'class-validator';
+﻿import { IsString, IsNotEmpty, IsOptional, IsNumber, IsPositive, Min, ValidateNested, IsArray, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreatePackagingUnitDto {
@@ -63,6 +63,18 @@ export class CreateProductVariantDto {
   @IsOptional()
   @IsString()
   barcode?: string;
+
+  @IsOptional()
+  @IsString()
+  expiryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
+
+  @IsOptional()
+  @IsIn(['MANUAL', 'OCR'])
+  catalogSource?: 'MANUAL' | 'OCR';
 
   @IsOptional()
   @IsArray()
