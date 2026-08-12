@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Menu, Bell, ScanLine } from 'lucide-react';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
-import { useLabelOcrCapture, OCR_DRAFT_STORAGE_KEY } from '@/hooks/useLabelOcrCapture';
+import { OCR_DRAFT_STORAGE_KEY, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -11,20 +11,18 @@ import { useAlerts } from '@/hooks/useAlerts';
 import SideMenu from './SideMenu';
 import BarcodeScannerSheet from '../system/BarcodeScannerSheet';
 import ScanModeSheet from '../system/ScanModeSheet';
+import LabelCaptureSheet from '../system/LabelCaptureSheet';
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [scanModeOpen, setScanModeOpen] = React.useState(false);
   const [scannerOpen, setScannerOpen] = React.useState(false);
+  const [labelCaptureOpen, setLabelCaptureOpen] = React.useState(false);
   const { membership } = useMyOrganization();
   const { data: alerts } = useAlerts();
-  const { captureLabel, inputProps: ocrInputProps } = useLabelOcrCapture();
   const router = useRouter();
 
-  const handleSelectLabel = async () => {
-    const result = await captureLabel();
-    if (!result) return;
-
+  const handleLabelCapture = (result: LabelOcrResult) => {
     try {
       sessionStorage.setItem(OCR_DRAFT_STORAGE_KEY, JSON.stringify(result));
     } catch (error) {
@@ -36,7 +34,6 @@ export default function TopBar() {
 
   return (
     <>
-      <input {...ocrInputProps} />
       <header className="fixed top-0 inset-x-0 z-30 flex h-16 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4">
         <div className="flex items-center gap-3">
           <button
@@ -90,9 +87,14 @@ export default function TopBar() {
         open={scanModeOpen}
         onOpenChange={setScanModeOpen}
         onSelectBarcode={() => setScannerOpen(true)}
-        onSelectLabel={handleSelectLabel}
+        onSelectLabel={() => setLabelCaptureOpen(true)}
       />
       <BarcodeScannerSheet open={scannerOpen} onOpenChange={setScannerOpen} />
+      <LabelCaptureSheet
+        open={labelCaptureOpen}
+        onOpenChange={setLabelCaptureOpen}
+        onCapture={handleLabelCapture}
+      />
     </>
   );
 }

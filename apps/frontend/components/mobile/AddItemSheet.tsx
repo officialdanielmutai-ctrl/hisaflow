@@ -4,8 +4,9 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
-import { useLabelOcrCapture, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
+import { type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
 import { Plus, Trash2, PackageOpen, ScanLine } from 'lucide-react';
+import LabelCaptureSheet from '@/components/system/LabelCaptureSheet';
 
 import {
   createInventoryItem,
@@ -85,7 +86,7 @@ export default function AddItemSheet({
 
   const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
   const [lookupSource, setLookupSource] = useState<'CATALOG' | 'OPEN_FOOD_FACTS' | null>(null);
-  const { captureLabel, status: ocrStatus, inputProps: ocrInputProps } = useLabelOcrCapture();
+  const [labelCaptureOpen, setLabelCaptureOpen] = useState(false);
   const [ocrApplied, setOcrApplied] = useState(false);
   const [usedOcrSource, setUsedOcrSource] = useState(false);
 
@@ -189,10 +190,8 @@ export default function AddItemSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialOcrDraft]);
 
-  const handleScanLabel = async () => {
-    const result = await captureLabel();
-    if (!result) return;
-    applyOcrResult(result);
+  const handleScanLabel = () => {
+    setLabelCaptureOpen(true);
   };
 
   const handleAddVariant = () => {
@@ -343,20 +342,16 @@ export default function AddItemSheet({
             </div>
           )}
 
-          <input {...ocrInputProps} />
           <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2">
             <span className="text-xs text-[var(--color-text-secondary)]">
-              {ocrStatus === 'processing'
-                ? 'Reading the label…'
-                : ocrApplied
+              {ocrApplied
                 ? 'Details applied from label scan — please verify.'
                 : 'No barcode match? Scan the packaging/label instead.'}
             </span>
             <button
               type="button"
               onClick={handleScanLabel}
-              disabled={ocrStatus === 'processing'}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium"
             >
               <ScanLine className="h-3.5 w-3.5" />
               Scan Label
@@ -583,6 +578,12 @@ export default function AddItemSheet({
           </button>
         </form>
       </div>
+
+      <LabelCaptureSheet
+        open={labelCaptureOpen}
+        onOpenChange={setLabelCaptureOpen}
+        onCapture={applyOcrResult}
+      />
     </>
   );
 }

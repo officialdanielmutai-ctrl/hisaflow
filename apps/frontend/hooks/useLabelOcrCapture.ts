@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import imageCompression from 'browser-image-compression';
 import { useMyOrganization } from './useMyOrganization';
@@ -32,60 +32,47 @@ function normalizeDateForInput(raw: unknown): string | null {
   if (!raw || typeof raw !== 'string') return null;
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) return null;
-  // Sanity bound: reject anything wildly outside a plausible product-expiry
-  // window, in case the model hallucinates a nonsense year.
   const year = parsed.getFullYear();
   if (year < 2000 || year > 2100) return null;
   return parsed.toISOString().split('T')[0];
 }
 
 /**
- * Captures a single photo of a product's packaging/label via the device
- * camera, runs it through the existing receipt-OCR text extraction
- * endpoint, then through the AI ingestion parser (LABEL_OCR mode) to pull
- * out structured product details.
+ * Runs a captured product-label photo through the existing receipt-OCR
+ * text extraction endpoint, then through the AI ingestion parser
+ * (LABEL_OCR mode) to pull out structured product details.
  *
- * Renders no UI itself - spread `inputProps` onto a hidden <input>, then
- * call `captureLabel()` (returns a Promise that resolves to a result or
- * null on any failure/cancel - never throws, so callers can treat this as
- * an optional prefill exactly like the barcode/Open Food Facts lookup).
+ * Deliberately does NOT use `<input type="file" capture="environment">`
+ * to trigger the OS camera app: handing off to a separate native camera
+ * app and back is unreliable inside an installed PWA - iOS in particular
+ * will often fully reload the page on return to free memory, which wipes
+ * all JS state (including this capture) and drops the user back at the
+ * app's start URL. Capture happens in-page instead (see LabelCaptureSheet,
+ * which uses the same getUserMedia approach as BarcodeScannerSheet), so
+ * the browser never actually leaves the app.
  */
 export function useLabelOcrCapture() {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const resolverRef = useRef<((result: LabelOcrResult | null) => void) | null>(null);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const [status, setStatus] = useState<'idle' | 'processing'>('idle');
 
-  const handleFileChange = useCallback(
-    async (e: ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      e.target.value = '';
-
-      const resolve = resolverRef.current;
-      resolverRef.current = null;
-
-      if (!file || !membership?.organization.id) {
-        resolve?.(null);
-        return;
-      }
+  const processImage = useCallback(
+    async (imageBlob: Blob): Promise<LabelOcrResult | null> => {
+      if (!membership?.organization.id) return null;
 
       setStatus('processing');
       try {
         const token = await getToken();
-        if (!token) {
-          resolve?.(null);
-          return;
-        }
+        if (!token) return null;
 
-        const compressed = await imageCompression(file, {
+        const compressed = await imageCompression(imageBlob as File, {
           maxSizeMB: 1,
           maxWidthOrHeight: 1920,
           useWebWorker: true,
         });
 
         const formData = new FormData();
-        formData.append('image', compressed);
+        formData.append('image', compressed, 'label.jpg');
 
         const ocrRes = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/ocr/receipt`,
@@ -99,16 +86,10 @@ export function useLabelOcrCapture() {
           },
         );
 
-        if (!ocrRes.ok) {
-          resolve?.(null);
-          return;
-        }
+        if (!ocrRes.ok) return null;
 
         const { text } = await ocrRes.json();
-        if (!text?.trim()) {
-          resolve?.(null);
-          return;
-        }
+        if (!text?.trim()) return null;
 
         const actions = await parseInventoryText(
           text,
@@ -117,21 +98,18 @@ export function useLabelOcrCapture() {
           'LABEL_OCR',
         );
         const createAction = actions.find((a) => a.type === 'CREATE');
-        if (!createAction) {
-          resolve?.(null);
-          return;
-        }
+        if (!createAction) return null;
 
-        resolve?.({
+        return {
           name: createAction.itemName || null,
           category: createAction.category || null,
           unit: createAction.unit || null,
           expiryDate: normalizeDateForInput(createAction.metadata?.expiryDate),
           batchNumber: createAction.metadata?.batchNumber || null,
-        });
+        };
       } catch (err) {
         console.error('Label OCR capture failed:', err);
-        resolve?.(null);
+        return null;
       } finally {
         setStatus('idle');
       }
@@ -139,25 +117,5 @@ export function useLabelOcrCapture() {
     [getToken, membership?.organization.id],
   );
 
-  const captureLabel = useCallback((): Promise<LabelOcrResult | null> => {
-    return new Promise((resolve) => {
-      if (!inputRef.current) {
-        resolve(null);
-        return;
-      }
-      resolverRef.current = resolve;
-      inputRef.current.click();
-    });
-  }, []);
-
-  const inputProps = {
-    ref: inputRef,
-    type: 'file' as const,
-    accept: 'image/*',
-    capture: 'environment' as const,
-    onChange: handleFileChange,
-    style: { display: 'none' },
-  };
-
-  return { captureLabel, status, inputProps };
+  return { processImage, status };
 }
