@@ -16,6 +16,7 @@ interface BarcodeScannerSheetProps {
 export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScannerSheetProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [scanning, setScanning] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasCamera, setHasCamera] = useState<boolean | null>(null);
 
@@ -23,9 +24,13 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
   // requestAnimationFrame detection loop, which otherwise closes over a
   // stale value of `scanning` from the render that started the effect.
   const scanningRef = useRef(false);
-  // Guards against handling the same scan twice (native detector can fire
-  // on consecutive frames before the lookup request resolves).
+  // Guards against handling the same scan twice.
   const handledRef = useRef(false);
+  // Multi-frame confirmation: require the same code N times in a row.
+  const lastCodeRef = useRef<string>('');
+  const streakRef = useRef<number>(0);
+  const CONFIRMATION_STREAK = 3;
+  const MIN_CODE_LENGTH = 6;
 
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
@@ -36,13 +41,32 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
     setScanning(value);
   };
 
+  // Validate + debounce: only fire handleScan once the same code
+  // appears CONFIRMATION_STREAK frames in a row.
+  const tryConfirmCode = (rawValue: string) => {
+    if (rawValue.length < MIN_CODE_LENGTH) return; // ignore garbage partial reads
+    if (rawValue === lastCodeRef.current) {
+      streakRef.current += 1;
+    } else {
+      lastCodeRef.current = rawValue;
+      streakRef.current = 1;
+      setConfirming(true);
+    }
+    if (streakRef.current >= CONFIRMATION_STREAK) {
+      handleScan(rawValue);
+    }
+  };
+
   const handleScan = async (code: string) => {
     if (!membership?.organization.id) return;
     if (handledRef.current) return;
     handledRef.current = true;
 
     setScanningState(false);
+    setConfirming(false);
     setError(null);
+    streakRef.current = 0;
+    lastCodeRef.current = '';
 
     try {
       const token = await getToken();
@@ -76,6 +100,8 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
       console.error(err);
       setError(err.message || 'Error processing barcode');
       handledRef.current = false;
+      streakRef.current = 0;
+      lastCodeRef.current = '';
       setScanningState(true);
     }
   };
@@ -122,15 +148,14 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
         if ('BarcodeDetector' in window) {
           try {
             // @ts-ignore
-            nativeDetector = new window.BarcodeDetector({ formats: ['qr_code', 'ean_13', 'upc_a', 'code_128', 'code_39'] });
+            nativeDetector = new window.BarcodeDetector({ formats: ['qr_code', 'ean_13', 'upc_a', 'code_128', 'data_matrix'] });
             
             const scanNative = async () => {
               if (!scanningRef.current || !videoRef.current || !nativeDetector) return;
               try {
                 const barcodes = await nativeDetector.detect(videoRef.current);
                 if (barcodes.length > 0) {
-                  handleScan(barcodes[0].rawValue);
-                  return;
+                  tryConfirmCode(barcodes[0].rawValue);
                 }
               } catch (e) {
               }
@@ -144,9 +169,9 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
         }
 
         reader = new BrowserMultiFormatReader();
-        reader.decodeFromVideoElement(videoRef.current, (result, error) => {
+        reader.decodeFromVideoElement(videoRef.current, (result, _error) => {
           if (result) {
-            handleScan(result.getText());
+            tryConfirmCode(result.getText());
           }
         });
 
@@ -164,12 +189,17 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
       // Sheet closed: make sure a stray detection loop can't keep running.
       scanningRef.current = false;
       handledRef.current = false;
+      streakRef.current = 0;
+      lastCodeRef.current = '';
+      setConfirming(false);
       setError(null);
       setHasCamera(null);
     }
 
     return () => {
       scanningRef.current = false;
+      streakRef.current = 0;
+      lastCodeRef.current = '';
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
       if (videoRef.current && videoRef.current.srcObject) {
@@ -219,7 +249,7 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
               <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none" />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-[70%] h-[70%] border-2 border-[var(--color-primary)] rounded-xl relative">
-                  {scanning && (
+                  {scanning && !confirming && (
                     <div className="absolute left-0 right-0 h-0.5 bg-[var(--color-primary)] shadow-[0_0_8px_var(--color-primary)] animate-pulse" 
                          style={{
                            animation: 'scan-line 2s infinite linear',
@@ -242,7 +272,14 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
               </p>
             </div>
             
-            {!scanning && !error && hasCamera !== false && (
+            {confirming && !error && (
+              <div className="mt-6 flex items-center gap-2 text-[var(--color-primary)]">  
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm font-medium">Confirming scan...</span>
+              </div>
+            )}
+
+            {!scanning && !confirming && !error && hasCamera !== false && (
               <div className="mt-6 flex items-center gap-2 text-gray-400">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="text-sm">Initializing camera...</span>

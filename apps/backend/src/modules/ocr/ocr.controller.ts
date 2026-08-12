@@ -40,6 +40,6 @@ export class OcrController {
       throw new BadRequestException('Image file is required');
     }
 
-    return this.ocrService.extractTextFromImage(file.buffer);
+    return this.ocrService.extractTextFromImage(file.buffer, file.mimetype);
   }
 }

@@ -2,87 +2,81 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 
 @Injectable()
 export class OcrService {
-  private readonly VISION_API_KEY = process.env.CLOUD_VISION_API_KEY;
+  private readonly GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  private readonly GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
-  async extractTextFromImage(imageBuffer: Buffer): Promise<{ text: string }> {
-    if (!this.VISION_API_KEY || this.VISION_API_KEY === 'your_vision_key_here') {
-      throw new InternalServerErrorException('Google Cloud Vision API key is not configured.');
+  async extractTextFromImage(
+    imageBuffer: Buffer,
+    mimeType: string = 'image/jpeg',
+  ): Promise<{ text: string }> {
+    if (!this.GEMINI_API_KEY) {
+      throw new InternalServerErrorException('Gemini API key is not configured.');
     }
 
     const base64Image = imageBuffer.toString('base64');
-    
+
+    const prompt = `You are an OCR assistant. Extract all text from this receipt or invoice image exactly as printed.
+
+Instructions:
+- Preserve line breaks and the original layout as closely as possible.
+- For each line or block of text you extract:
+    - If you are confident in the reading, prefix it with [CONFIDENCE: HIGH]
+    - If the text is blurry, partially obscured, or you are uncertain about any characters, prefix it with [CONFIDENCE: LOW]
+- Do NOT summarise, interpret, or add any commentary — only the raw extracted text with confidence labels.
+- If the image contains no readable text at all, respond with exactly the single word: NO_TEXT_FOUND`;
+
     try {
       const response = await fetch(
-        `https://vision.googleapis.com/v1/images:annotate?key=${this.VISION_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.GEMINI_MODEL}:generateContent?key=${this.GEMINI_API_KEY}`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            requests: [
+            contents: [
               {
-                image: {
-                  content: base64Image,
-                },
-                features: [
+                parts: [
                   {
-                    type: 'TEXT_DETECTION',
+                    inlineData: {
+                      mimeType,
+                      data: base64Image,
+                    },
                   },
+                  { text: prompt },
                 ],
               },
             ],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 4096,
+            },
           }),
         },
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Vision API Error:', errorData);
-        throw new InternalServerErrorException('Failed to process image with Vision API.');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Gemini Vision API Error:', errorData);
+        throw new InternalServerErrorException(
+          `Gemini Vision API returned ${response.status}: ${JSON.stringify(errorData)}`,
+        );
       }
 
       const data = await response.json();
-      const annotation = data.responses?.[0]?.fullTextAnnotation;
+      const extractedText: string =
+        data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-      if (!annotation || !annotation.pages || annotation.pages.length === 0) {
+      if (!extractedText || extractedText.trim() === 'NO_TEXT_FOUND') {
         return { text: '' };
       }
 
-      const CONFIDENCE_THRESHOLD = 0.75;
-      let combinedText = '';
-
-      // Parse blocks to extract text and attach deterministic confidence labels
-      for (const page of annotation.pages) {
-        if (!page.blocks) continue;
-        
-        for (const block of page.blocks) {
-          let blockText = '';
-          const blockConfidence = block.confidence || 0;
-          const confidenceLabel = blockConfidence < CONFIDENCE_THRESHOLD ? '[CONFIDENCE: LOW]' : '[CONFIDENCE: HIGH]';
-
-          if (block.paragraphs) {
-            for (const paragraph of block.paragraphs) {
-              if (paragraph.words) {
-                for (const word of paragraph.words) {
-                  const wordText = word.symbols ? word.symbols.map((s: any) => s.text).join('') : '';
-                  blockText += wordText + ' ';
-                }
-              }
-              blockText += '\n';
-            }
-          }
-          
-          if (blockText.trim()) {
-            combinedText += `${confidenceLabel} ${blockText.trim()}\n\n`;
-          }
-        }
-      }
-
-      return { text: combinedText.trim() };
+      return { text: extractedText.trim() };
     } catch (error: any) {
+      if (error instanceof InternalServerErrorException) throw error;
       console.error('OCR Service Error:', error);
-      throw new InternalServerErrorException(error.message || 'Error processing OCR request.');
+      throw new InternalServerErrorException(
+        error.message || 'Error processing OCR request.',
+      );
     }
   }
 }
+

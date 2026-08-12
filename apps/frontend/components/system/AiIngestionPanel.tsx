@@ -62,8 +62,8 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
 
       // 1. Compress image client-side
       const compressedFile = await imageCompression(file, {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
+        maxSizeMB: 3,
+        maxWidthOrHeight: 2560,
         useWebWorker: true,
       });
 
@@ -81,13 +81,18 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
       });
 
       if (!ocrRes.ok) {
-        throw new Error('Failed to process receipt image');
+        let errMsg = 'Failed to process receipt image';
+        try {
+          const errBody = await ocrRes.json();
+          errMsg = errBody?.message || errMsg;
+        } catch {}
+        throw new Error(errMsg);
       }
 
       const { text: extractedText } = await ocrRes.json();
       
       if (!extractedText.trim()) {
-        throw new Error('No text found in the image');
+        throw new Error('No text detected in this image. Try better lighting, hold the camera steady, and make sure the receipt fills the frame.');
       }
 
       // 3. Feed extracted text (with confidence flags) to AI
