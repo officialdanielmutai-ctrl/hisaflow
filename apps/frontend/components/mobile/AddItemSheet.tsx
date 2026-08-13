@@ -333,6 +333,8 @@ export default function AddItemSheet({
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
               {lookupSource === 'CATALOG'
                 ? 'Details found — another HisaFlow user has scanned this barcode before. Please verify before saving.'
+                : lookupSource === 'UPC_ITEM_DB'
+                ? 'Details found via UPCitemdb — please verify before saving.'
                 : 'Details found via Open Food Facts — please verify before saving.'}
             </div>
           )}

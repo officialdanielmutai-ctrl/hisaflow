@@ -48,7 +48,7 @@ export interface ExternalProductLookupResult {
   category: string | null;
   unit: string | null;
   imageUrl: string | null;
-  source: 'CATALOG' | 'OPEN_FOOD_FACTS';
+  source: 'CATALOG' | 'OPEN_FOOD_FACTS' | 'UPC_ITEM_DB';
 }
 
 /**
