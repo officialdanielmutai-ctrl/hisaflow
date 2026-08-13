@@ -62,7 +62,7 @@ export class InventoryService {
     category: string | null;
     unit: string | null;
     imageUrl: string | null;
-    source: 'CATALOG' | 'OPEN_FOOD_FACTS';
+    source: 'CATALOG' | 'OPEN_FOOD_FACTS' | 'UPC_ITEM_DB';
   } | null> {
     const catalogEntry = await this.prisma.db.productCatalogEntry.findUnique({
       where: { barcode },
@@ -88,21 +88,35 @@ export class InventoryService {
     }
 
     const offResult = await this.lookupOpenFoodFacts(barcode);
-    if (!offResult) return null;
+    if (offResult) {
+      // First hit for this barcode anywhere in HisaFlow - seed the catalog
+      // so the next org (or this one, on a different item) skips the
+      // external call entirely.
+      await this.upsertCatalogEntry(barcode, {
+        name: offResult.name!,
+        brand: offResult.brand,
+        category: offResult.category,
+        unit: null,
+        imageUrl: offResult.imageUrl,
+        source: CatalogSource.OPEN_FOOD_FACTS,
+      }).catch((error) => console.error('Catalog seed from Open Food Facts failed:', error));
 
-    // First hit for this barcode anywhere in HisaFlow - seed the catalog
-    // so the next org (or this one, on a different item) skips the
-    // external call entirely.
+      return { ...offResult, unit: null, source: 'OPEN_FOOD_FACTS' };
+    }
+
+    const upcResult = await this.lookupUPCitemdb(barcode);
+    if (!upcResult) return null;
+
     await this.upsertCatalogEntry(barcode, {
-      name: offResult.name!,
-      brand: offResult.brand,
-      category: offResult.category,
+      name: upcResult.name!,
+      brand: upcResult.brand,
+      category: upcResult.category,
       unit: null,
-      imageUrl: offResult.imageUrl,
-      source: CatalogSource.OPEN_FOOD_FACTS,
-    }).catch((error) => console.error('Catalog seed from Open Food Facts failed:', error));
+      imageUrl: upcResult.imageUrl,
+      source: CatalogSource.UPC_ITEM_DB,
+    }).catch((error) => console.error('Catalog seed from UPCitemdb failed:', error));
 
-    return { ...offResult, unit: null, source: 'OPEN_FOOD_FACTS' };
+    return { ...upcResult, unit: null, source: 'UPC_ITEM_DB' };
   }
 
   private async lookupOpenFoodFacts(barcode: string): Promise<{
@@ -138,6 +152,43 @@ export class InventoryService {
       };
     } catch (error) {
       console.error('Open Food Facts lookup failed:', error);
+      return null;
+    }
+  }
+
+  private async lookupUPCitemdb(barcode: string): Promise<{
+    name: string | null;
+    brand: string | null;
+    category: string | null;
+    imageUrl: string | null;
+  } | null> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+
+      const response = await fetch(
+        `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(barcode)}`,
+        { signal: controller.signal },
+      );
+      clearTimeout(timeout);
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      if (data.code !== 'OK' || !data.items || data.items.length === 0) return null;
+
+      const item = data.items[0];
+      const name: string | null = item.title || null;
+      if (!name) return null;
+
+      return {
+        name,
+        brand: item.brand || null,
+        category: item.category || null,
+        imageUrl: (item.images && item.images.length > 0) ? item.images[0] : null,
+      };
+    } catch (error) {
+      console.error('UPCitemdb lookup failed:', error);
       return null;
     }
   }
@@ -179,7 +230,7 @@ export class InventoryService {
       });
     }
 
-    if (data.source === CatalogSource.OPEN_FOOD_FACTS) {
+    if (data.source === CatalogSource.OPEN_FOOD_FACTS || data.source === CatalogSource.UPC_ITEM_DB) {
       return this.prisma.db.productCatalogEntry.update({
         where: { barcode },
         data: { confirmations: { increment: 1 } },

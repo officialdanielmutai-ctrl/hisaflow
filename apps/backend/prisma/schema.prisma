@@ -90,6 +90,7 @@ enum CatalogSource {
   MANUAL
   OCR
   OPEN_FOOD_FACTS
+  UPC_ITEM_DB
 }
 
 // Cross-org shared product lookup table. Deliberately has no relation to
