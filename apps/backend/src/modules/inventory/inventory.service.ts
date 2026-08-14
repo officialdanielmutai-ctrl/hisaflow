@@ -291,6 +291,13 @@ export class InventoryService {
             barcode: v.barcode,
             expiryDate: this.parseExpiryDate(v.expiryDate),
             batchNumber: v.batchNumber,
+            isComposite: v.isComposite || false,
+            recipeLines: {
+              create: v.recipeLines?.map((rl: any) => ({
+                ingredientId: rl.ingredientId,
+                quantityUsed: rl.quantityUsed,
+              })) || [],
+            },
             packaging: {
               create:
                 v.packaging?.map((p: any) => ({

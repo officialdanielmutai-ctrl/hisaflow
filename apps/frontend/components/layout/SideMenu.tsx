@@ -30,11 +30,15 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
   const pathname = usePathname();
   const { user } = useUser();
   const { membership } = useMyOrganization();
-  const isHospitality = ['GUEST_HOUSE', 'HOTEL', 'LODGE'].includes(membership?.organization?.businessType || '');
+  const businessType = membership?.organization?.businessType || '';
+  
+  const isHospitality = ['GUEST_HOUSE', 'HOTEL', 'LODGE'].includes(businessType);
+  const isRestaurant = businessType === 'RESTAURANT';
+  const isSchool = businessType === 'SCHOOL';
 
   const dynamicItems = [...sideNavItems];
-  if (isHospitality) {
-    // Add the missing hospitality tabs that couldn't fit in the BottomNav
+  if (isHospitality || isRestaurant || isSchool) {
+    // Add the missing core tabs that couldn't fit in the BottomNav
     dynamicItems.unshift(
       { href: '/finance', label: 'Finance', icon: TrendingUp },
       { href: '/inventory', label: 'Inventory', icon: Package },

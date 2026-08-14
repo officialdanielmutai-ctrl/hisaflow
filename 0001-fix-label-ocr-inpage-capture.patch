@@ -1,0 +1,580 @@
+From 3a792516ba6381c1578b7585e33f8e093608c09f Mon Sep 17 00:00:00 2001
+From: Daniel Mutai <official.daniel.mutai@gmail.com>
+Date: Wed, 12 Aug 2026 08:58:46 +0000
+Subject: [PATCH] fix(label-ocr): capture in-page instead of handing off to OS
+ camera
+
+Symptom: on the installed PWA, tapping the confirm/tick button after
+taking a label photo returned to the homepage with no result applied.
+
+Root cause: label capture used <input type="file" capture="environment">,
+which hands off to the OS's native camera app and back. Installed PWAs
+(especially iOS Safari standalone) frequently get fully reloaded by the
+OS on that handoff to free memory, wiping all JS state - including the
+in-flight promise waiting on the photo - and dropping the user back at
+the app's start_url. This is a structural issue with that capture
+method inside a PWA, not something fixable by patching the handler.
+
+Fix: capture the photo in-page instead, the same way BarcodeScannerSheet
+already does reliably - getUserMedia for a live camera feed, a shutter
+button, and a canvas snapshot on tap. The browser never leaves the app,
+so there's no OS handoff and no reload risk.
+
+- useLabelOcrCapture: reworked from 'trigger a hidden file input' to
+  'process an already-captured image blob' (processImage()). The OCR +
+  AI-parse pipeline itself is unchanged.
+- New LabelCaptureSheet: in-page camera capture UI, mirrors
+  BarcodeScannerSheet's camera setup/teardown almost exactly. Shows a
+  preview + 'reading the label' state while processing, and a retry
+  option if nothing useful was extracted.
+- TopBar and AddItemSheet both now open LabelCaptureSheet instead of
+  triggering a hidden input; the onCapture callback wiring (sessionStorage
+  handoff for TopBar, direct form state for AddItemSheet) is unchanged
+  from the previous implementation.
+
+Verified with tsc --noEmit on the frontend workspace (0 errors).
+---
+ apps/frontend/components/layout/TopBar.tsx    |  18 +-
+ .../components/mobile/AddItemSheet.tsx        |  25 +-
+ .../components/system/LabelCaptureSheet.tsx   | 232 ++++++++++++++++++
+ apps/frontend/hooks/useLabelOcrCapture.ts     |  92 ++-----
+ 4 files changed, 280 insertions(+), 87 deletions(-)
+ create mode 100644 apps/frontend/components/system/LabelCaptureSheet.tsx
+
+diff --git a/apps/frontend/components/layout/TopBar.tsx b/apps/frontend/components/layout/TopBar.tsx
+index 95049d8..25bedff 100644
+--- a/apps/frontend/components/layout/TopBar.tsx
++++ b/apps/frontend/components/layout/TopBar.tsx
+@@ -3,7 +3,7 @@
+ import * as React from 'react';
+ import { Menu, Bell, ScanLine } from 'lucide-react';
+ import { useMyOrganization } from '@/hooks/useMyOrganization';
+-import { useLabelOcrCapture, OCR_DRAFT_STORAGE_KEY } from '@/hooks/useLabelOcrCapture';
++import { OCR_DRAFT_STORAGE_KEY, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
+ import { UserButton } from '@clerk/nextjs';
+ import Link from 'next/link';
+ import { useRouter } from 'next/navigation';
+@@ -11,20 +11,18 @@ import { useAlerts } from '@/hooks/useAlerts';
+ import SideMenu from './SideMenu';
+ import BarcodeScannerSheet from '../system/BarcodeScannerSheet';
+ import ScanModeSheet from '../system/ScanModeSheet';
++import LabelCaptureSheet from '../system/LabelCaptureSheet';
+ 
+ export default function TopBar() {
+   const [menuOpen, setMenuOpen] = React.useState(false);
+   const [scanModeOpen, setScanModeOpen] = React.useState(false);
+   const [scannerOpen, setScannerOpen] = React.useState(false);
++  const [labelCaptureOpen, setLabelCaptureOpen] = React.useState(false);
+   const { membership } = useMyOrganization();
+   const { data: alerts } = useAlerts();
+-  const { captureLabel, inputProps: ocrInputProps } = useLabelOcrCapture();
+   const router = useRouter();
+ 
+-  const handleSelectLabel = async () => {
+-    const result = await captureLabel();
+-    if (!result) return;
+-
++  const handleLabelCapture = (result: LabelOcrResult) => {
+     try {
+       sessionStorage.setItem(OCR_DRAFT_STORAGE_KEY, JSON.stringify(result));
+     } catch (error) {
+@@ -36,7 +34,6 @@ export default function TopBar() {
+ 
+   return (
+     <>
+-      <input {...ocrInputProps} />
+       <header className="fixed top-0 inset-x-0 z-30 flex h-16 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4">
+         <div className="flex items-center gap-3">
+           <button
+@@ -90,9 +87,14 @@ export default function TopBar() {
+         open={scanModeOpen}
+         onOpenChange={setScanModeOpen}
+         onSelectBarcode={() => setScannerOpen(true)}
+-        onSelectLabel={handleSelectLabel}
++        onSelectLabel={() => setLabelCaptureOpen(true)}
+       />
+       <BarcodeScannerSheet open={scannerOpen} onOpenChange={setScannerOpen} />
++      <LabelCaptureSheet
++        open={labelCaptureOpen}
++        onOpenChange={setLabelCaptureOpen}
++        onCapture={handleLabelCapture}
++      />
+     </>
+   );
+ }
+diff --git a/apps/frontend/components/mobile/AddItemSheet.tsx b/apps/frontend/components/mobile/AddItemSheet.tsx
+index 98d02f9..87bd83d 100644
+--- a/apps/frontend/components/mobile/AddItemSheet.tsx
++++ b/apps/frontend/components/mobile/AddItemSheet.tsx
+@@ -4,8 +4,9 @@ import { useEffect, useState, type FormEvent } from 'react';
+ import { useAuth } from '@clerk/nextjs';
+ import { useMyOrganization } from '@/hooks/useMyOrganization';
+ import { useRole } from '@/hooks/useRole';
+-import { useLabelOcrCapture, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
++import { type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
+ import { Plus, Trash2, PackageOpen, ScanLine } from 'lucide-react';
++import LabelCaptureSheet from '@/components/system/LabelCaptureSheet';
+ 
+ import {
+   createInventoryItem,
+@@ -85,7 +86,7 @@ export default function AddItemSheet({
+ 
+   const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
+   const [lookupSource, setLookupSource] = useState<'CATALOG' | 'OPEN_FOOD_FACTS' | null>(null);
+-  const { captureLabel, status: ocrStatus, inputProps: ocrInputProps } = useLabelOcrCapture();
++  const [labelCaptureOpen, setLabelCaptureOpen] = useState(false);
+   const [ocrApplied, setOcrApplied] = useState(false);
+   const [usedOcrSource, setUsedOcrSource] = useState(false);
+ 
+@@ -189,10 +190,8 @@ export default function AddItemSheet({
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [open, initialOcrDraft]);
+ 
+-  const handleScanLabel = async () => {
+-    const result = await captureLabel();
+-    if (!result) return;
+-    applyOcrResult(result);
++  const handleScanLabel = () => {
++    setLabelCaptureOpen(true);
+   };
+ 
+   const handleAddVariant = () => {
+@@ -343,20 +342,16 @@ export default function AddItemSheet({
+             </div>
+           )}
+ 
+-          <input {...ocrInputProps} />
+           <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2">
+             <span className="text-xs text-[var(--color-text-secondary)]">
+-              {ocrStatus === 'processing'
+-                ? 'Reading the label…'
+-                : ocrApplied
++              {ocrApplied
+                 ? 'Details applied from label scan — please verify.'
+                 : 'No barcode match? Scan the packaging/label instead.'}
+             </span>
+             <button
+               type="button"
+               onClick={handleScanLabel}
+-              disabled={ocrStatus === 'processing'}
+-              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium disabled:opacity-50"
++              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium"
+             >
+               <ScanLine className="h-3.5 w-3.5" />
+               Scan Label
+@@ -583,6 +578,12 @@ export default function AddItemSheet({
+           </button>
+         </form>
+       </div>
++
++      <LabelCaptureSheet
++        open={labelCaptureOpen}
++        onOpenChange={setLabelCaptureOpen}
++        onCapture={applyOcrResult}
++      />
+     </>
+   );
+ }
+diff --git a/apps/frontend/components/system/LabelCaptureSheet.tsx b/apps/frontend/components/system/LabelCaptureSheet.tsx
+new file mode 100644
+index 0000000..b7ea6f0
+--- /dev/null
++++ b/apps/frontend/components/system/LabelCaptureSheet.tsx
+@@ -0,0 +1,232 @@
++'use client';
++
++import React, { useEffect, useRef, useState } from 'react';
++import { Drawer } from 'vaul';
++import { X, Loader2, Camera, AlertCircle, RotateCcw } from 'lucide-react';
++import { useLabelOcrCapture, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
++
++interface LabelCaptureSheetProps {
++  open: boolean;
++  onOpenChange: (open: boolean) => void;
++  onCapture: (result: LabelOcrResult) => void;
++}
++
++/**
++ * Captures a product label/packaging photo entirely in-page (getUserMedia
++ * + canvas snapshot), the same approach BarcodeScannerSheet uses. This is
++ * deliberate: an <input capture="environment"> that hands off to the OS
++ * camera app is unreliable in an installed PWA - see useLabelOcrCapture's
++ * doc comment for why.
++ */
++export default function LabelCaptureSheet({ open, onOpenChange, onCapture }: LabelCaptureSheetProps) {
++  const videoRef = useRef<HTMLVideoElement>(null);
++  const [ready, setReady] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [preview, setPreview] = useState<string | null>(null);
++  const [notFoundMessage, setNotFoundMessage] = useState<string | null>(null);
++
++  const { processImage, status } = useLabelOcrCapture();
++
++  useEffect(() => {
++    let stream: MediaStream | null = null;
++
++    const startCamera = async () => {
++      if (!open) return;
++
++      setReady(false);
++      setError(null);
++      setPreview(null);
++      setNotFoundMessage(null);
++
++      try {
++        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
++          throw new Error('Camera not supported (HTTPS required).');
++        }
++
++        stream = await navigator.mediaDevices.getUserMedia({
++          video: { facingMode: 'environment' },
++        });
++
++        let retries = 0;
++        while (!videoRef.current && retries < 20) {
++          await new Promise((resolve) => setTimeout(resolve, 50));
++          retries++;
++        }
++
++        if (!videoRef.current) {
++          throw new Error('Video container failed to initialize.');
++        }
++
++        videoRef.current.srcObject = stream;
++        videoRef.current.setAttribute('playsinline', 'true');
++        await videoRef.current.play();
++
++        setReady(true);
++      } catch (err: any) {
++        console.error('Camera error:', err);
++        setError('Could not access camera. Please ensure camera permissions are granted.');
++      }
++    };
++
++    startCamera();
++
++    return () => {
++      if (stream) {
++        stream.getTracks().forEach((track) => track.stop());
++      }
++      if (videoRef.current) {
++        videoRef.current.srcObject = null;
++      }
++    };
++  }, [open]);
++
++  const handleShutter = () => {
++    if (!videoRef.current || !ready) return;
++
++    const video = videoRef.current;
++    const canvas = document.createElement('canvas');
++    canvas.width = video.videoWidth;
++    canvas.height = video.videoHeight;
++    const ctx = canvas.getContext('2d');
++    if (!ctx) return;
++
++    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
++    setPreview(canvas.toDataURL('image/jpeg', 0.9));
++
++    canvas.toBlob(
++      async (blob) => {
++        if (!blob) {
++          setError('Could not capture photo. Please try again.');
++          setPreview(null);
++          return;
++        }
++
++        const result = await processImage(blob);
++
++        if (!result || (!result.name && !result.category && !result.expiryDate && !result.batchNumber)) {
++          setNotFoundMessage("Couldn't read any details from that photo — try getting closer to the product name, or enter details manually.");
++          setPreview(null);
++          return;
++        }
++
++        onCapture(result);
++        onOpenChange(false);
++      },
++      'image/jpeg',
++      0.9,
++    );
++  };
++
++  const handleRetry = () => {
++    setPreview(null);
++    setNotFoundMessage(null);
++  };
++
++  return (
++    <Drawer.Root open={open} onOpenChange={onOpenChange}>
++      <Drawer.Portal>
++        <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
++        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex flex-col rounded-t-[32px] bg-white h-[85vh] max-h-[800px] outline-none border border-gray-200">
++          <div className="p-4 bg-white rounded-t-[32px] flex flex-col items-center border-b border-gray-100 flex-shrink-0">
++            <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-200 mb-6" />
++            <div className="flex w-full justify-between items-center px-2">
++              <div className="flex items-center gap-2">
++                <div className="bg-[var(--color-primary)]/10 p-2 rounded-lg">
++                  <Camera className="h-5 w-5 text-[var(--color-primary)]" />
++                </div>
++                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Scan Label</h2>
++              </div>
++              <Drawer.Close className="p-2 rounded-full hover:bg-gray-100 transition-colors">
++                <X className="h-5 w-5 text-gray-500" />
++              </Drawer.Close>
++            </div>
++          </div>
++
++          <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 flex flex-col items-center">
++            {error && (
++              <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl flex items-start gap-3 w-full max-w-md">
++                <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
++                <p className="text-sm font-medium">{error}</p>
++              </div>
++            )}
++
++            {notFoundMessage && (
++              <div className="mb-6 p-4 bg-amber-50 text-amber-700 rounded-xl flex items-start gap-3 w-full max-w-md">
++                <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
++                <p className="text-sm font-medium">{notFoundMessage}</p>
++              </div>
++            )}
++
++            <div className="relative w-full max-w-md aspect-square rounded-3xl overflow-hidden bg-black shadow-inner">
++              {preview ? (
++                // eslint-disable-next-line @next/next/no-img-element
++                <img src={preview} alt="Captured label" className="absolute inset-0 w-full h-full object-cover" />
++              ) : (
++                <video
++                  ref={videoRef}
++                  className="absolute inset-0 w-full h-full object-cover"
++                  playsInline
++                  muted
++                />
++              )}
++
++              {status === 'processing' && (
++                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50">
++                  <Loader2 className="h-8 w-8 animate-spin text-white" />
++                  <span className="text-sm font-medium text-white">Reading the label…</span>
++                </div>
++              )}
++
++              {!preview && (
++                <div className="absolute inset-0 border-[40px] border-black/40 pointer-events-none" />
++              )}
++            </div>
++
++            <div className="mt-8 text-center max-w-sm">
++              <h3 className="font-semibold text-gray-900 mb-2">
++                {preview ? 'Reading details from this photo' : 'Frame the product name clearly'}
++              </h3>
++              <p className="text-sm text-gray-500 leading-relaxed">
++                {preview
++                  ? "This can take a few seconds."
++                  : "Point the camera at the packaging or label, then tap the shutter."}
++              </p>
++            </div>
++
++            {!ready && !error && !preview && (
++              <div className="mt-6 flex items-center gap-2 text-gray-400">
++                <Loader2 className="h-4 w-4 animate-spin" />
++                <span className="text-sm">Initializing camera...</span>
++              </div>
++            )}
++
++            {notFoundMessage && (
++              <button
++                type="button"
++                onClick={handleRetry}
++                className="mt-6 flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-4 py-2 text-sm font-medium"
++              >
++                <RotateCcw className="h-4 w-4" />
++                Try Again
++              </button>
++            )}
++          </div>
++
++          {ready && !preview && !error && (
++            <div className="flex-shrink-0 flex items-center justify-center p-6 bg-white border-t border-gray-100">
++              <button
++                type="button"
++                onClick={handleShutter}
++                disabled={status === 'processing'}
++                aria-label="Capture photo"
++                className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-[var(--color-primary)] bg-white disabled:opacity-50"
++              >
++                <div className="h-12 w-12 rounded-full bg-[var(--color-primary)]" />
++              </button>
++            </div>
++          )}
++        </Drawer.Content>
++      </Drawer.Portal>
++    </Drawer.Root>
++  );
++}
+diff --git a/apps/frontend/hooks/useLabelOcrCapture.ts b/apps/frontend/hooks/useLabelOcrCapture.ts
+index e7c51dd..84cf516 100644
+--- a/apps/frontend/hooks/useLabelOcrCapture.ts
++++ b/apps/frontend/hooks/useLabelOcrCapture.ts
+@@ -1,6 +1,6 @@
+ 'use client';
+ 
+-import { useCallback, useRef, useState, type ChangeEvent } from 'react';
++import { useCallback, useState } from 'react';
+ import { useAuth } from '@clerk/nextjs';
+ import imageCompression from 'browser-image-compression';
+ import { useMyOrganization } from './useMyOrganization';
+@@ -32,60 +32,47 @@ function normalizeDateForInput(raw: unknown): string | null {
+   if (!raw || typeof raw !== 'string') return null;
+   const parsed = new Date(raw);
+   if (Number.isNaN(parsed.getTime())) return null;
+-  // Sanity bound: reject anything wildly outside a plausible product-expiry
+-  // window, in case the model hallucinates a nonsense year.
+   const year = parsed.getFullYear();
+   if (year < 2000 || year > 2100) return null;
+   return parsed.toISOString().split('T')[0];
+ }
+ 
+ /**
+- * Captures a single photo of a product's packaging/label via the device
+- * camera, runs it through the existing receipt-OCR text extraction
+- * endpoint, then through the AI ingestion parser (LABEL_OCR mode) to pull
+- * out structured product details.
++ * Runs a captured product-label photo through the existing receipt-OCR
++ * text extraction endpoint, then through the AI ingestion parser
++ * (LABEL_OCR mode) to pull out structured product details.
+  *
+- * Renders no UI itself - spread `inputProps` onto a hidden <input>, then
+- * call `captureLabel()` (returns a Promise that resolves to a result or
+- * null on any failure/cancel - never throws, so callers can treat this as
+- * an optional prefill exactly like the barcode/Open Food Facts lookup).
++ * Deliberately does NOT use `<input type="file" capture="environment">`
++ * to trigger the OS camera app: handing off to a separate native camera
++ * app and back is unreliable inside an installed PWA - iOS in particular
++ * will often fully reload the page on return to free memory, which wipes
++ * all JS state (including this capture) and drops the user back at the
++ * app's start URL. Capture happens in-page instead (see LabelCaptureSheet,
++ * which uses the same getUserMedia approach as BarcodeScannerSheet), so
++ * the browser never actually leaves the app.
+  */
+ export function useLabelOcrCapture() {
+-  const inputRef = useRef<HTMLInputElement>(null);
+-  const resolverRef = useRef<((result: LabelOcrResult | null) => void) | null>(null);
+   const { getToken } = useAuth();
+   const { membership } = useMyOrganization();
+   const [status, setStatus] = useState<'idle' | 'processing'>('idle');
+ 
+-  const handleFileChange = useCallback(
+-    async (e: ChangeEvent<HTMLInputElement>) => {
+-      const file = e.target.files?.[0];
+-      e.target.value = '';
+-
+-      const resolve = resolverRef.current;
+-      resolverRef.current = null;
+-
+-      if (!file || !membership?.organization.id) {
+-        resolve?.(null);
+-        return;
+-      }
++  const processImage = useCallback(
++    async (imageBlob: Blob): Promise<LabelOcrResult | null> => {
++      if (!membership?.organization.id) return null;
+ 
+       setStatus('processing');
+       try {
+         const token = await getToken();
+-        if (!token) {
+-          resolve?.(null);
+-          return;
+-        }
++        if (!token) return null;
+ 
+-        const compressed = await imageCompression(file, {
++        const compressed = await imageCompression(imageBlob as File, {
+           maxSizeMB: 1,
+           maxWidthOrHeight: 1920,
+           useWebWorker: true,
+         });
+ 
+         const formData = new FormData();
+-        formData.append('image', compressed);
++        formData.append('image', compressed, 'label.jpg');
+ 
+         const ocrRes = await fetch(
+           `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/ocr/receipt`,
+@@ -99,16 +86,10 @@ export function useLabelOcrCapture() {
+           },
+         );
+ 
+-        if (!ocrRes.ok) {
+-          resolve?.(null);
+-          return;
+-        }
++        if (!ocrRes.ok) return null;
+ 
+         const { text } = await ocrRes.json();
+-        if (!text?.trim()) {
+-          resolve?.(null);
+-          return;
+-        }
++        if (!text?.trim()) return null;
+ 
+         const actions = await parseInventoryText(
+           text,
+@@ -117,21 +98,18 @@ export function useLabelOcrCapture() {
+           'LABEL_OCR',
+         );
+         const createAction = actions.find((a) => a.type === 'CREATE');
+-        if (!createAction) {
+-          resolve?.(null);
+-          return;
+-        }
++        if (!createAction) return null;
+ 
+-        resolve?.({
++        return {
+           name: createAction.itemName || null,
+           category: createAction.category || null,
+           unit: createAction.unit || null,
+           expiryDate: normalizeDateForInput(createAction.metadata?.expiryDate),
+           batchNumber: createAction.metadata?.batchNumber || null,
+-        });
++        };
+       } catch (err) {
+         console.error('Label OCR capture failed:', err);
+-        resolve?.(null);
++        return null;
+       } finally {
+         setStatus('idle');
+       }
+@@ -139,25 +117,5 @@ export function useLabelOcrCapture() {
+     [getToken, membership?.organization.id],
+   );
+ 
+-  const captureLabel = useCallback((): Promise<LabelOcrResult | null> => {
+-    return new Promise((resolve) => {
+-      if (!inputRef.current) {
+-        resolve(null);
+-        return;
+-      }
+-      resolverRef.current = resolve;
+-      inputRef.current.click();
+-    });
+-  }, []);
+-
+-  const inputProps = {
+-    ref: inputRef,
+-    type: 'file' as const,
+-    accept: 'image/*',
+-    capture: 'environment' as const,
+-    onChange: handleFileChange,
+-    style: { display: 'none' },
+-  };
+-
+-  return { captureLabel, status, inputProps };
++  return { processImage, status };
+ }
+-- 
+2.43.0
+

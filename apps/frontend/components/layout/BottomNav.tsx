@@ -46,13 +46,33 @@ const guestHouseStaffTabs = [
   { href: '/guests', label: 'Guests', icon: Users },
 ];
 
+const restaurantTabs = [
+  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/table-orders', label: 'Orders', icon: CalendarDays },
+  { href: '/table-orders/new', label: 'New', icon: Plus, isFab: true },
+  { href: '/inventory', label: 'Menu', icon: Package },
+  { href: '/finance', label: 'Sales', icon: TrendingUp },
+];
+
+const schoolTabs = [
+  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/school-classes', label: 'Classes', icon: Users },
+  { href: '/students/new', label: 'Student', icon: Plus, isFab: true },
+  { href: '/school-fees', label: 'Fees', icon: TrendingUp },
+  { href: '/students', label: 'Students', icon: Users },
+];
+
 export default function BottomNav() {
   const pathname = usePathname();
-  const { isStaff, isGuestHouse } = useRole();
+  const { isStaff, isGuestHouse, isRestaurant, isSchool } = useRole();
 
   let visibleTabs = isStaff ? staffTabs : ownerTabs;
   if (isGuestHouse) {
     visibleTabs = isStaff ? guestHouseStaffTabs : guestHouseOwnerTabs;
+  } else if (isRestaurant) {
+    visibleTabs = restaurantTabs;
+  } else if (isSchool) {
+    visibleTabs = schoolTabs;
   }
 
   return (

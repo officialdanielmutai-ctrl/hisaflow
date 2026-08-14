@@ -31,6 +31,13 @@ interface UIVariant {
     name: string;
     containsQty: number;
   }[];
+  isComposite?: boolean;
+  recipeLines?: {
+    ingredientId: string;
+    ingredientName?: string;
+    ingredientUnit?: string;
+    quantityUsed: number;
+  }[];
 }
 
 interface AddItemSheetProps {
@@ -65,7 +72,9 @@ export default function AddItemSheet({
     costPrice: undefined,
     sellingPrice: undefined,
     barcode: undefined,
-    packaging: []
+    packaging: [],
+    isComposite: false,
+    recipeLines: []
   }]);
 
   // When the sheet opens with a scanned barcode, attach it to the first variant.
@@ -282,7 +291,12 @@ export default function AddItemSheet({
             expiryDate: v.expiryDate || undefined,
             batchNumber: v.batchNumber || undefined,
             catalogSource: vIdx === 0 && usedOcrSource ? 'OCR' : undefined,
-            packaging: mappedPackaging
+            packaging: mappedPackaging,
+            isComposite: v.isComposite,
+            recipeLines: v.recipeLines?.map(rl => ({
+              ingredientId: rl.ingredientId,
+              quantityUsed: rl.quantityUsed
+            }))
           };
         })
       };
@@ -293,7 +307,7 @@ export default function AddItemSheet({
       setName('');
       setCategory('');
       setDescription('');
-      setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, barcode: undefined, packaging: [] }]);
+      setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, barcode: undefined, packaging: [], isComposite: false, recipeLines: [] }]);
       setLookupStatus('idle');
       setLookupSource(null);
       setOcrApplied(false);

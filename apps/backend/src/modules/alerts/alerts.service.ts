@@ -19,6 +19,7 @@ export class AlertsService {
       this.checkDeadStock(organizationId),
       this.checkWastageSpike(organizationId),
       this.checkDailyInsights(organizationId),
+      this.checkExpiryRisk(organizationId),
     ]);
     return { ok: true };
   }
@@ -365,5 +366,61 @@ export class AlertsService {
   // Keep for backwards-compat — just delegates to runAllChecks
   async checkLowStock(organizationId: string) {
     return this.runAllChecks(organizationId);
+  }
+
+  // ── Expiry Risk (Chemist / batch-tracked stock) ───────────────────────────
+  private async checkExpiryRisk(organizationId: string) {
+    // Check whether the org has any StockBatch records at all.
+    // If not (non-Chemist org), skip silently — zero cost.
+    const batchCount = await this.prisma.db.stockBatch.count({
+      where: { organizationId },
+    });
+    if (batchCount === 0) return;
+
+    const now = new Date();
+    const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+    const expiringBatches = await this.prisma.db.stockBatch.findMany({
+      where: {
+        organizationId,
+        expiryDate: { lte: in90Days },
+        quantity: { gt: 0 },
+      },
+      include: {
+        inventoryItem: { select: { id: true, name: true, unit: true } },
+      },
+      orderBy: { expiryDate: 'asc' },
+    });
+
+    // Group by inventory item — fire one alert per item, referencing the
+    // nearest-expiring batch.
+    const byItem = new Map<string, typeof expiringBatches>();
+    for (const batch of expiringBatches) {
+      const key = batch.inventoryItemId;
+      if (!byItem.has(key)) byItem.set(key, []);
+      byItem.get(key)!.push(batch);
+    }
+
+    for (const [itemId, batches] of byItem) {
+      const nearest = batches[0];
+      const daysLeft = Math.ceil(
+        (nearest.expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      const severity =
+        daysLeft <= 30
+          ? AlertSeverity.CRITICAL
+          : daysLeft <= 60
+          ? AlertSeverity.WARNING
+          : AlertSeverity.INFO;
+
+      await this.upsertAlert({
+        organizationId,
+        itemId,
+        type: AlertType.EXPIRY_RISK,
+        severity,
+        title: `${nearest.inventoryItem.name} expiring in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
+        description: `Batch ${nearest.batchNumber} of ${nearest.inventoryItem.name} (qty: ${nearest.quantity} ${nearest.inventoryItem.unit}) expires on ${nearest.expiryDate.toLocaleDateString()}. Dispense FIFO to minimise write-off risk.`,
+      });
+    }
   }
 }

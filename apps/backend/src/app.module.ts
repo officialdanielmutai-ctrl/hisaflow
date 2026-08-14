@@ -18,6 +18,18 @@ import { GuestsModule } from './modules/guests/guests.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { OcrModule } from './modules/ocr/ocr.module';
+// ── Phase 1: Retail / Wholesale ──────────────────────────────────────────────
+import { TieredPricingModule } from './modules/tiered-pricing/tiered-pricing.module';
+// ── Phase 2: Chemist ─────────────────────────────────────────────────────────
+import { StockBatchesModule } from './modules/stock-batches/stock-batches.module';
+// ── Phase 3: Restaurant ──────────────────────────────────────────────────────
+import { TableOrdersModule } from './modules/table-orders/table-orders.module';
+// ── Phase 4: School ──────────────────────────────────────────────────────────
+import { SchoolClassesModule } from './modules/school-classes/school-classes.module';
+import { StudentsModule } from './modules/students/students.module';
+import { AcademicTermsModule } from './modules/academic-terms/academic-terms.module';
+import { SchoolFeesModule } from './modules/school-fees/school-fees.module';
+
 @Module({
   imports: [
     CoreModule,
@@ -37,8 +49,17 @@ import { OcrModule } from './modules/ocr/ocr.module';
     BookingsModule,
     InvoicesModule,
     OcrModule,
+    // Industry-specific modules
+    TieredPricingModule,
+    StockBatchesModule,
+    TableOrdersModule,
+    SchoolClassesModule,
+    StudentsModule,
+    AcademicTermsModule,
+    SchoolFeesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+

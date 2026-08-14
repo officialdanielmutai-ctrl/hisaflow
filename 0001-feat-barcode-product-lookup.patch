@@ -1,0 +1,274 @@
+From 6dd18ae4aee5fb103a99293088a9e9ccbc908726 Mon Sep 17 00:00:00 2001
+From: Daniel Mutai <official.daniel.mutai@gmail.com>
+Date: Mon, 10 Aug 2026 09:56:25 +0000
+Subject: [PATCH] feat(inventory): auto-fill product details on unmatched
+ barcode scan
+
+When a scanned barcode has no match in the org's own inventory, the
+Add Product sheet now makes a best-effort lookup against Open Food
+Facts (free, no API key) to prefill name/brand/category. Expiry date
+is intentionally NOT part of this - standard EAN-13/UPC-A barcodes
+(what's on typical duka/kiosk goods) don't encode expiry or batch
+data, only a product ID; that would require GS1-128/DataMatrix
+encoding, which is out of scope here. See hisaflow-ocr-scanning-plan.md
+Section 0 for the original analysis this builds on.
+
+Backend:
+- InventoryService.lookupExternalProduct(): calls Open Food Facts,
+  4s timeout via AbortController, never throws - any miss (not
+  found, malformed response, network error, timeout) resolves to
+  null so the frontend can treat 'no match' as a normal outcome.
+- GET /inventory/barcode/:code/external - authenticated (any org
+  member), no org-scoping needed since it queries a public dataset,
+  not org data.
+
+Frontend:
+- lookupExternalProductByBarcode() in inventory.service.ts, mirrors
+  the apiGet pattern used elsewhere.
+- AddItemSheet: on open with a scanned barcode, fires the lookup and
+  prefills name/category/variant name only if those fields are still
+  empty (never overwrites something the user already typed). Shows a
+  status banner: loading / 'found via Open Food Facts, please verify'
+  / 'no match, enter manually'. Lookup runs alongside the existing
+  barcode-prefill effect and is fully non-blocking - a failed or slow
+  lookup never prevents manual entry.
+
+Coverage caveat (documented in code + will need to be understood by
+the user): Open Food Facts skews toward US/EU packaged food products,
+so many local Kenyan/duka goods will simply miss and fall back to
+today's manual-entry behavior. This is a convenience prefill, not a
+data source to trust blindly - UI copy says 'please verify'.
+
+Verified with tsc --noEmit on the frontend workspace (0 errors).
+Backend change could not be tsc-verified in the dev sandbox (Prisma
+engine binaries blocked by sandbox network policy, pre-existing
+limitation unrelated to this change) - reviewed manually; mirrors the
+existing ocr.service.ts fetch() pattern exactly, no Prisma or schema
+changes.
+---
+ .../modules/inventory/inventory.controller.ts |  9 +++
+ .../modules/inventory/inventory.service.ts    | 47 +++++++++++++
+ .../components/mobile/AddItemSheet.tsx        | 67 +++++++++++++++++++
+ apps/frontend/services/inventory.service.ts   | 29 ++++++++
+ 4 files changed, 152 insertions(+)
+
+diff --git a/apps/backend/src/modules/inventory/inventory.controller.ts b/apps/backend/src/modules/inventory/inventory.controller.ts
+index 11e7661..c4452c6 100644
+--- a/apps/backend/src/modules/inventory/inventory.controller.ts
++++ b/apps/backend/src/modules/inventory/inventory.controller.ts
+@@ -25,6 +25,15 @@ export class InventoryController {
+     return this.inventoryService.findByBarcode(code, orgId);
+   }
+ 
++  // Best-effort external product data (name/brand/category) for a barcode
++  // not found in this org's own inventory. Always returns 200 with either
++  // a result or null - never 404/500 - so the frontend can treat "no match"
++  // as a normal, expected outcome rather than an error to handle.
++  @Get('barcode/:code/external')
++  lookupExternalBarcode(@Param('code') code: string) {
++    return this.inventoryService.lookupExternalProduct(code);
++  }
++
+   // Any authenticated org member can create a new stock item
+   @Post()
+   create(
+diff --git a/apps/backend/src/modules/inventory/inventory.service.ts b/apps/backend/src/modules/inventory/inventory.service.ts
+index 361bd98..005e16e 100644
+--- a/apps/backend/src/modules/inventory/inventory.service.ts
++++ b/apps/backend/src/modules/inventory/inventory.service.ts
+@@ -42,6 +42,53 @@ export class InventoryService {
+     return item;
+   }
+ 
++  /**
++   * Best-effort lookup against Open Food Facts for a barcode this org has
++   * never entered before. Returns null (never throws) on any miss - not
++   * found, malformed response, network failure, or timeout - so a failed
++   * external lookup never blocks the manual-entry fallback the frontend
++   * already has. Coverage of non-food / local Kenyan retail goods will be
++   * partial; this is a convenience prefill, not a source of truth.
++   */
++  async lookupExternalProduct(barcode: string): Promise<{
++    name: string | null;
++    brand: string | null;
++    category: string | null;
++    imageUrl: string | null;
++  } | null> {
++    try {
++      const controller = new AbortController();
++      const timeout = setTimeout(() => controller.abort(), 4000);
++
++      const response = await fetch(
++        `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=product_name,brands,categories,image_front_url`,
++        { signal: controller.signal },
++      );
++      clearTimeout(timeout);
++
++      if (!response.ok) return null;
++
++      const data = await response.json();
++      if (data.status !== 1 || !data.product) return null;
++
++      const product = data.product;
++      const name: string | null = product.product_name || null;
++
++      // A "found" record with no usable name isn't worth prefilling.
++      if (!name) return null;
++
++      return {
++        name,
++        brand: product.brands ? product.brands.split(',')[0].trim() : null,
++        category: product.categories ? product.categories.split(',')[0].trim() : null,
++        imageUrl: product.image_front_url || null,
++      };
++    } catch (error) {
++      console.error('External barcode lookup failed:', error);
++      return null;
++    }
++  }
++
+   async create(dto: CreateProductDto, organizationId: string) {
+     let variantsData: any[] = [];
+     if (dto.variants && dto.variants.length > 0) {
+diff --git a/apps/frontend/components/mobile/AddItemSheet.tsx b/apps/frontend/components/mobile/AddItemSheet.tsx
+index c821ec0..d806b42 100644
+--- a/apps/frontend/components/mobile/AddItemSheet.tsx
++++ b/apps/frontend/components/mobile/AddItemSheet.tsx
+@@ -8,6 +8,7 @@ import { Plus, Trash2, PackageOpen } from 'lucide-react';
+ 
+ import {
+   createInventoryItem,
++  lookupExternalProductByBarcode,
+   type CreateProductPayload,
+ } from '@/services/inventory.service';
+ 
+@@ -76,6 +77,55 @@ export default function AddItemSheet({
+   const { membership } = useMyOrganization();
+   const { isStaff } = useRole();
+ 
++  const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
++
++  // Best-effort prefill from Open Food Facts for a barcode this org hasn't
++  // seen before. Only fills fields the user hasn't already typed into, and
++  // never blocks manual entry - a miss (common for local/non-food goods)
++  // just leaves the form as-is.
++  useEffect(() => {
++    if (!open || !initialBarcode || !membership?.organization.id) {
++      setLookupStatus('idle');
++      return;
++    }
++
++    let cancelled = false;
++    setLookupStatus('loading');
++
++    (async () => {
++      const token = await getToken();
++      if (!token || cancelled) return;
++
++      const result = await lookupExternalProductByBarcode(
++        initialBarcode,
++        token,
++        membership.organization.id,
++      );
++
++      if (cancelled) return;
++
++      if (!result || !result.name) {
++        setLookupStatus('not_found');
++        return;
++      }
++
++      setName((prev) => (prev ? prev : result.name!));
++      if (result.category) {
++        setCategory((prev) => (prev ? prev : result.category!));
++      }
++      setVariants((prev) => {
++        if (prev.length === 0 || prev[0].name) return prev;
++        const [first, ...rest] = prev;
++        return [{ ...first, name: result.brand || result.name! }, ...rest];
++      });
++      setLookupStatus('found');
++    })();
++
++    return () => {
++      cancelled = true;
++    };
++  }, [open, initialBarcode, membership?.organization.id, getToken]);
++
+   const handleAddVariant = () => {
+     setVariants([...variants, {
+       name: '',
+@@ -173,6 +223,7 @@ export default function AddItemSheet({
+       setCategory('');
+       setDescription('');
+       setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, barcode: undefined, packaging: [] }]);
++      setLookupStatus('idle');
+       
+       onSuccess();
+       onOpenChange(false);
+@@ -199,6 +250,22 @@ export default function AddItemSheet({
+         <h2 className="mb-6 text-xl font-bold">Add Product</h2>
+         
+         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
++          {initialBarcode && lookupStatus === 'loading' && (
++            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
++              Looking up product details for this barcode…
++            </div>
++          )}
++          {initialBarcode && lookupStatus === 'found' && (
++            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
++              Details found via Open Food Facts — please verify before saving.
++            </div>
++          )}
++          {initialBarcode && lookupStatus === 'not_found' && (
++            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
++              No match found for this barcode in the product database — enter the details manually.
++            </div>
++          )}
++
+           {/* Product Basic Info */}
+           <div className="flex flex-col gap-4 p-4 bg-[var(--color-bg-base)] rounded-2xl border border-[var(--color-border)]">
+             <h3 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wider">Product Info</h3>
+diff --git a/apps/frontend/services/inventory.service.ts b/apps/frontend/services/inventory.service.ts
+index bfdef04..818d471 100644
+--- a/apps/frontend/services/inventory.service.ts
++++ b/apps/frontend/services/inventory.service.ts
+@@ -40,6 +40,35 @@ export async function getInventoryItems(
+   return apiGet<Product[]>('/inventory', token, organizationId);
+ }
+ 
++export interface ExternalProductLookupResult {
++  name: string | null;
++  brand: string | null;
++  category: string | null;
++  imageUrl: string | null;
++}
++
++/**
++ * Best-effort external product data for a barcode with no match in this
++ * org's inventory yet. Always resolves - null on any miss (not found,
++ * network error, timeout) - so callers can treat it as an optional
++ * prefill, not a failable operation. Never throws.
++ */
++export async function lookupExternalProductByBarcode(
++  barcode: string,
++  token: string,
++  organizationId: string,
++): Promise<ExternalProductLookupResult | null> {
++  try {
++    return await apiGet<ExternalProductLookupResult | null>(
++      `/inventory/barcode/${encodeURIComponent(barcode)}/external`,
++      token,
++      organizationId,
++    );
++  } catch {
++    return null;
++  }
++}
++
+ export interface CreatePackagingUnitPayload {
+   name: string;
+   quantityPerUnit: number;
+-- 
+2.43.0
+

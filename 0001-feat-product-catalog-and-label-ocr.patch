@@ -1,0 +1,1095 @@
+From c3146a10def4c452e2e8caab5c884ca7750c9a2b Mon Sep 17 00:00:00 2001
+From: Daniel Mutai <official.daniel.mutai@gmail.com>
+Date: Tue, 11 Aug 2026 09:50:35 +0000
+Subject: [PATCH] feat(inventory): shared product catalog + label OCR scanning
+
+Two related additions:
+
+1. Shared cross-org product catalog
+   - New ProductCatalogEntry model (barcode unique, name/brand/category/
+     unit/imageUrl, source MANUAL|OCR|OPEN_FOOD_FACTS, confirmations
+     counter). Deliberately has no relation to Organization - it's
+     anonymous aggregate knowledge (barcode -> product), not per-org data.
+   - lookupExternalProduct() now checks the catalog before Open Food
+     Facts, and seeds the catalog whenever Open Food Facts resolves a
+     barcode for the first time.
+   - create() now contributes every barcode+name it creates back into
+     the catalog (fire-and-forget, never blocks the actual save). This
+     is what makes it improve over time: a barcode manually entered (or
+     OCR-confirmed) by one org becomes an instant match for any other
+     org that scans it later, addressing the coverage gap general
+     product databases have for local/regional goods.
+   - Migration written by hand (prisma generate can't reach
+     binaries.prisma.sh from this sandbox - pre-existing limitation,
+     see prior commits); matches the project's existing migration.sql
+     format exactly.
+
+2. Label/packaging OCR scanning
+   - expiryDate/batchNumber (already on the InventoryItem Prisma model,
+     never wired up) are now accepted end-to-end: DTO -> service
+     (server-side date validation, so a malformed date can't reach the
+     DB) -> AddItemSheet form fields.
+   - New LABEL_OCR source mode on the existing ai-ingestion parser
+     (reuses the same engine that already turns receipt OCR text into
+     structured actions - no new AI plumbing). Extracts one CREATE
+     action per label photo: name, category, unit, and, if present,
+     expiry/batch via the same metadata.expiryDate/batchNumber
+     convention the CHEMIST prompt already uses.
+   - New useLabelOcrCapture hook: triggers the device camera (same
+     capture="environment" file-input pattern the existing receipt
+     upload flow uses), uploads to the existing /ocr/receipt text
+     extraction endpoint, feeds the result through LABEL_OCR parsing,
+     and normalizes/validates any extracted date before it's usable
+     (defends against the AI returning an unparseable or implausible
+     date - reachable defense-in-depth also added server-side).
+   - Two entry points, sharing the same hook: a "Scan Label" button
+     inside AddItemSheet (fills the currently-open form), and a new
+     mode picker on TopBar's scan button ("Scan Barcode" vs "Scan
+     Label/Packaging") for starting fresh - since TopBar is global and
+     has no direct access to the inventory page's state, that path
+     hands off via a short-lived sessionStorage key
+     (OCR_DRAFT_STORAGE_KEY) read once by the inventory page.
+   - All prefills (catalog/Open Food Facts and OCR) are strictly
+     non-destructive: existing user input is never overwritten, and a
+     failed/empty lookup just leaves manual entry as today's fallback.
+
+Verified with tsc --noEmit on the frontend workspace (0 errors).
+Backend changes reviewed manually, not tsc-verified - Prisma engine
+binaries are blocked by this sandbox's network policy (pre-existing,
+unrelated to this change); mirrors established patterns exactly
+(fetch() like ocr.service.ts, Prisma calls like existing service
+methods, migration.sql format matching prior migrations byte-for-byte
+in structure).
+---
+ .../migration.sql                             |  22 +++
+ apps/backend/prisma/schema.prisma             |  28 +++
+ .../ai-ingestion/ai-ingestion.service.ts      |  27 ++-
+ .../ai-ingestion/dto/ingest-text.dto.ts       |   4 +-
+ .../inventory/dto/create-product.dto.ts       |  14 +-
+ .../modules/inventory/inventory.service.ts    | 149 ++++++++++++++--
+ .../app/(dashboard)/inventory/page.tsx        |  24 +++
+ apps/frontend/components/layout/TopBar.tsx    |  31 +++-
+ .../components/mobile/AddItemSheet.tsx        | 121 ++++++++++++-
+ .../components/system/ScanModeSheet.tsx       |  70 ++++++++
+ apps/frontend/hooks/useLabelOcrCapture.ts     | 163 ++++++++++++++++++
+ .../frontend/services/ai-ingestion.service.ts |   2 +-
+ apps/frontend/services/inventory.service.ts   |   7 +
+ 13 files changed, 641 insertions(+), 21 deletions(-)
+ create mode 100644 apps/backend/prisma/migrations/20260810120000_add_product_catalog_entry/migration.sql
+ create mode 100644 apps/frontend/components/system/ScanModeSheet.tsx
+ create mode 100644 apps/frontend/hooks/useLabelOcrCapture.ts
+
+diff --git a/apps/backend/prisma/migrations/20260810120000_add_product_catalog_entry/migration.sql b/apps/backend/prisma/migrations/20260810120000_add_product_catalog_entry/migration.sql
+new file mode 100644
+index 0000000..c3ad60c
+--- /dev/null
++++ b/apps/backend/prisma/migrations/20260810120000_add_product_catalog_entry/migration.sql
+@@ -0,0 +1,22 @@
++-- CreateEnum
++CREATE TYPE "CatalogSource" AS ENUM ('MANUAL', 'OCR', 'OPEN_FOOD_FACTS');
++
++-- CreateTable
++CREATE TABLE "product_catalog_entries" (
++    "id" TEXT NOT NULL,
++    "barcode" TEXT NOT NULL,
++    "name" TEXT NOT NULL,
++    "brand" TEXT,
++    "category" TEXT,
++    "unit" TEXT,
++    "image_url" TEXT,
++    "source" "CatalogSource" NOT NULL DEFAULT 'MANUAL',
++    "confirmations" INTEGER NOT NULL DEFAULT 1,
++    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++    "updated_at" TIMESTAMP(3) NOT NULL,
++
++    CONSTRAINT "product_catalog_entries_pkey" PRIMARY KEY ("id")
++);
++
++-- CreateIndex
++CREATE UNIQUE INDEX "product_catalog_entries_barcode_key" ON "product_catalog_entries"("barcode");
+diff --git a/apps/backend/prisma/schema.prisma b/apps/backend/prisma/schema.prisma
+index 343e440..d66dad6 100644
+--- a/apps/backend/prisma/schema.prisma
++++ b/apps/backend/prisma/schema.prisma
+@@ -86,6 +86,34 @@ enum StockStatus {
+   OUT_OF_STOCK
+ }
+ 
++enum CatalogSource {
++  MANUAL
++  OCR
++  OPEN_FOOD_FACTS
++}
++
++// Cross-org shared product lookup table. Deliberately has no relation to
++// Organization: entries are anonymous, aggregate knowledge ("this barcode
++// = this product") contributed by whichever org first records it, so any
++// other org scanning the same barcode later gets an instant match without
++// an external API call. Not a source of per-org data like pricing.
++model ProductCatalogEntry {
++  id            String        @id @default(cuid())
++  barcode       String        @unique
++  name          String
++  brand         String?
++  category      String?
++  unit          String?
++  imageUrl      String?       @map("image_url")
++  source        CatalogSource @default(MANUAL)
++  confirmations Int           @default(1)
++
++  createdAt DateTime @default(now()) @map("created_at")
++  updatedAt DateTime @updatedAt @map("updated_at")
++
++  @@map("product_catalog_entries")
++}
++
+ model Product {
+   id               String          @id @default(cuid())
+   organizationId   String          @map("organization_id")
+diff --git a/apps/backend/src/modules/ai-ingestion/ai-ingestion.service.ts b/apps/backend/src/modules/ai-ingestion/ai-ingestion.service.ts
+index ff38651..82a496d 100644
+--- a/apps/backend/src/modules/ai-ingestion/ai-ingestion.service.ts
++++ b/apps/backend/src/modules/ai-ingestion/ai-ingestion.service.ts
+@@ -197,7 +197,7 @@ export class AiIngestionService {
+   async parseInventoryText(
+     text: string,
+     orgId: string,
+-    source: 'TEXT' | 'RECEIPT_OCR' = 'TEXT'
++    source: 'TEXT' | 'RECEIPT_OCR' | 'LABEL_OCR' = 'TEXT'
+   ): Promise<ParsedAction[]> {
+     const { items: availableItems, businessType } = await this.getInventoryContext(orgId);
+ 
+@@ -230,6 +230,31 @@ RECEIPT OCR MODE ACTIVE
+ - If a line item has a [CONFIDENCE: LOW] label next to it, you MUST set the output action's \`confidence\` field to "LOW".
+ - DO NOT derive your own confidence threshold; purely pass through the [CONFIDENCE: LOW/HIGH] label attached to the text.
+ - If there are no confidence labels, default to "HIGH".
++` : source === 'LABEL_OCR' ? `
++━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
++PRODUCT LABEL OCR MODE ACTIVE
++━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
++- The input text comes from a photo of a SINGLE product's packaging or
++  label (a box, bottle, sachet, etc.) via OCR - this is NOT a receipt
++  with multiple purchased line items. Output exactly ONE action, with
++  type "CREATE", describing this one product.
++- Expect typical OCR typos and noisy/irrelevant text (barcodes rendered
++  as digit strings, regulatory boilerplate, nutritional tables). Focus
++  on the product/brand name, which is usually the largest or most
++  prominent text block.
++- \`itemName\` should be the product name as printed (brand + variant if
++  both appear, e.g. "Coca-Cola 500ml").
++- Infer \`unit\` and \`category\` from context using the business-type
++  guidance below, same as any other CREATE action.
++- If the text contains a batch number (often labelled "Batch", "Lot",
++  "B.No", or similar), include it as \`metadata.batchNumber\`.
++- If the text contains an expiry or "best before" date, include it as
++  \`metadata.expiryDate\`, AS PRINTED (do not attempt to reformat or
++  validate it - the app will parse it). If no expiry text appears,
++  omit it entirely - do not guess or fabricate one.
++- The text blocks may contain [CONFIDENCE: HIGH]/[CONFIDENCE: LOW]
++  labels; if the block containing the product name is LOW confidence,
++  set the action's \`confidence\` field to "LOW". Otherwise "HIGH".
+ ` : '';
+ 
+     const prompt = `
+diff --git a/apps/backend/src/modules/ai-ingestion/dto/ingest-text.dto.ts b/apps/backend/src/modules/ai-ingestion/dto/ingest-text.dto.ts
+index fc0ce04..2acc2e0 100644
+--- a/apps/backend/src/modules/ai-ingestion/dto/ingest-text.dto.ts
++++ b/apps/backend/src/modules/ai-ingestion/dto/ingest-text.dto.ts
+@@ -7,6 +7,6 @@ export class IngestTextDto {
+ 
+   @IsOptional()
+   @IsString()
+-  @IsIn(['TEXT', 'RECEIPT_OCR'])
+-  source?: 'TEXT' | 'RECEIPT_OCR';
++  @IsIn(['TEXT', 'RECEIPT_OCR', 'LABEL_OCR'])
++  source?: 'TEXT' | 'RECEIPT_OCR' | 'LABEL_OCR';
+ }
+diff --git a/apps/backend/src/modules/inventory/dto/create-product.dto.ts b/apps/backend/src/modules/inventory/dto/create-product.dto.ts
+index 400f74a..0e3fee2 100644
+--- a/apps/backend/src/modules/inventory/dto/create-product.dto.ts
++++ b/apps/backend/src/modules/inventory/dto/create-product.dto.ts
+@@ -1,4 +1,4 @@
+-﻿import { IsString, IsNotEmpty, IsOptional, IsNumber, IsPositive, Min, ValidateNested, IsArray } from 'class-validator';
++﻿import { IsString, IsNotEmpty, IsOptional, IsNumber, IsPositive, Min, ValidateNested, IsArray, IsIn } from 'class-validator';
+ import { Type } from 'class-transformer';
+ 
+ export class CreatePackagingUnitDto {
+@@ -64,6 +64,18 @@ export class CreateProductVariantDto {
+   @IsString()
+   barcode?: string;
+ 
++  @IsOptional()
++  @IsString()
++  expiryDate?: string;
++
++  @IsOptional()
++  @IsString()
++  batchNumber?: string;
++
++  @IsOptional()
++  @IsIn(['MANUAL', 'OCR'])
++  catalogSource?: 'MANUAL' | 'OCR';
++
+   @IsOptional()
+   @IsArray()
+   @ValidateNested({ each: true })
+diff --git a/apps/backend/src/modules/inventory/inventory.service.ts b/apps/backend/src/modules/inventory/inventory.service.ts
+index 005e16e..482f8e9 100644
+--- a/apps/backend/src/modules/inventory/inventory.service.ts
++++ b/apps/backend/src/modules/inventory/inventory.service.ts
+@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
+ import { PrismaService } from '../../infrastructure/prisma.service';
+ import { CreateProductDto } from './dto/create-product.dto';
+ import { UpdateProductDto, UpdateVariantDto } from './dto/update-product.dto';
+-import { StockStatus } from '../../../generated/prisma/client';
++import { StockStatus, CatalogSource } from '../../../generated/prisma/client';
+ 
+ @Injectable()
+ export class InventoryService {
+@@ -23,6 +23,12 @@ export class InventoryService {
+     });
+   }
+ 
++  private parseExpiryDate(raw: string | undefined): Date | undefined {
++    if (!raw) return undefined;
++    const parsed = new Date(raw);
++    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
++  }
++
+   async findByBarcode(barcode: string, organizationId: string) {
+     const item = await this.prisma.db.inventoryItem.findFirst({
+       where: {
+@@ -43,14 +49,63 @@ export class InventoryService {
+   }
+ 
+   /**
+-   * Best-effort lookup against Open Food Facts for a barcode this org has
+-   * never entered before. Returns null (never throws) on any miss - not
+-   * found, malformed response, network failure, or timeout - so a failed
+-   * external lookup never blocks the manual-entry fallback the frontend
+-   * already has. Coverage of non-food / local Kenyan retail goods will be
+-   * partial; this is a convenience prefill, not a source of truth.
++   * Looks up a barcode this org hasn't seen before, in priority order:
++   *   1. Our own cross-org catalog (fast, free, improves over time as any
++   *      org creates products with barcodes - see upsertCatalogEntry).
++   *   2. Open Food Facts (free, no key, food-focused, partial coverage).
++   * Never throws - any miss at any stage resolves to null, so the caller
++   * can always fall back to manual entry.
+    */
+   async lookupExternalProduct(barcode: string): Promise<{
++    name: string | null;
++    brand: string | null;
++    category: string | null;
++    unit: string | null;
++    imageUrl: string | null;
++    source: 'CATALOG' | 'OPEN_FOOD_FACTS';
++  } | null> {
++    const catalogEntry = await this.prisma.db.productCatalogEntry.findUnique({
++      where: { barcode },
++    });
++
++    if (catalogEntry) {
++      // Fire-and-forget: another org's scan corroborates this entry.
++      this.prisma.db.productCatalogEntry
++        .update({
++          where: { barcode },
++          data: { confirmations: { increment: 1 } },
++        })
++        .catch((error) => console.error('Catalog confirmation bump failed:', error));
++
++      return {
++        name: catalogEntry.name,
++        brand: catalogEntry.brand,
++        category: catalogEntry.category,
++        unit: catalogEntry.unit,
++        imageUrl: catalogEntry.imageUrl,
++        source: 'CATALOG',
++      };
++    }
++
++    const offResult = await this.lookupOpenFoodFacts(barcode);
++    if (!offResult) return null;
++
++    // First hit for this barcode anywhere in HisaFlow - seed the catalog
++    // so the next org (or this one, on a different item) skips the
++    // external call entirely.
++    await this.upsertCatalogEntry(barcode, {
++      name: offResult.name!,
++      brand: offResult.brand,
++      category: offResult.category,
++      unit: null,
++      imageUrl: offResult.imageUrl,
++      source: CatalogSource.OPEN_FOOD_FACTS,
++    }).catch((error) => console.error('Catalog seed from Open Food Facts failed:', error));
++
++    return { ...offResult, unit: null, source: 'OPEN_FOOD_FACTS' };
++  }
++
++  private async lookupOpenFoodFacts(barcode: string): Promise<{
+     name: string | null;
+     brand: string | null;
+     category: string | null;
+@@ -73,8 +128,6 @@ export class InventoryService {
+ 
+       const product = data.product;
+       const name: string | null = product.product_name || null;
+-
+-      // A "found" record with no usable name isn't worth prefilling.
+       if (!name) return null;
+ 
+       return {
+@@ -84,11 +137,68 @@ export class InventoryService {
+         imageUrl: product.image_front_url || null,
+       };
+     } catch (error) {
+-      console.error('External barcode lookup failed:', error);
++      console.error('Open Food Facts lookup failed:', error);
+       return null;
+     }
+   }
+ 
++  /**
++   * Records or corroborates a barcode -> product mapping in the shared
++   * catalog. Called both when Open Food Facts resolves a barcode (see
++   * above) and whenever this org creates a product with a barcode (see
++   * create() below) - the latter is how manually-entered and OCR-derived
++   * details end up helping every other org on a future scan. A human
++   * (MANUAL/OCR) contribution overwrites an existing entry's details,
++   * since it's more trustworthy than an unconfirmed external-API guess;
++   * an OPEN_FOOD_FACTS contribution never overwrites an existing entry.
++   */
++  async upsertCatalogEntry(
++    barcode: string,
++    data: {
++      name: string;
++      brand?: string | null;
++      category?: string | null;
++      unit?: string | null;
++      imageUrl?: string | null;
++      source: CatalogSource;
++    },
++  ) {
++    const existing = await this.prisma.db.productCatalogEntry.findUnique({ where: { barcode } });
++
++    if (!existing) {
++      return this.prisma.db.productCatalogEntry.create({
++        data: {
++          barcode,
++          name: data.name,
++          brand: data.brand ?? null,
++          category: data.category ?? null,
++          unit: data.unit ?? null,
++          imageUrl: data.imageUrl ?? null,
++          source: data.source,
++        },
++      });
++    }
++
++    if (data.source === CatalogSource.OPEN_FOOD_FACTS) {
++      return this.prisma.db.productCatalogEntry.update({
++        where: { barcode },
++        data: { confirmations: { increment: 1 } },
++      });
++    }
++
++    return this.prisma.db.productCatalogEntry.update({
++      where: { barcode },
++      data: {
++        name: data.name,
++        brand: data.brand ?? existing.brand,
++        category: data.category ?? existing.category,
++        unit: data.unit ?? existing.unit,
++        source: data.source,
++        confirmations: { increment: 1 },
++      },
++    });
++  }
++
+   async create(dto: CreateProductDto, organizationId: string) {
+     let variantsData: any[] = [];
+     if (dto.variants && dto.variants.length > 0) {
+@@ -104,7 +214,7 @@ export class InventoryService {
+       }];
+     }
+ 
+-    return this.prisma.db.product.create({
++    const product = await this.prisma.db.product.create({
+       data: {
+         organizationId,
+         name: dto.name,
+@@ -128,6 +238,8 @@ export class InventoryService {
+                 ? StockStatus.LOW
+                 : StockStatus.OUT_OF_STOCK,
+             barcode: v.barcode,
++            expiryDate: this.parseExpiryDate(v.expiryDate),
++            batchNumber: v.batchNumber,
+             packaging: {
+               create:
+                 v.packaging?.map((p: any) => ({
+@@ -143,6 +255,21 @@ export class InventoryService {
+       },
+       include: { variants: { include: { packaging: true } } },
+     });
++
++    // Contribute barcode->product mappings to the shared catalog so other
++    // orgs (or this org, on a different item) get an instant match later.
++    // Fire-and-forget: never let a catalog write fail the actual create.
++    for (const v of variantsData) {
++      if (!v.barcode || !v.name) continue;
++      this.upsertCatalogEntry(v.barcode, {
++        name: v.name,
++        category: dto.category ?? null,
++        unit: v.unit ?? null,
++        source: v.catalogSource === 'OCR' ? CatalogSource.OCR : CatalogSource.MANUAL,
++      }).catch((error) => console.error('Catalog contribution failed:', error));
++    }
++
++    return product;
+   }
+ 
+   async update(id: string, dto: UpdateProductDto, organizationId: string) {
+diff --git a/apps/frontend/app/(dashboard)/inventory/page.tsx b/apps/frontend/app/(dashboard)/inventory/page.tsx
+index f4f55c3..1d1028d 100644
+--- a/apps/frontend/app/(dashboard)/inventory/page.tsx
++++ b/apps/frontend/app/(dashboard)/inventory/page.tsx
+@@ -11,6 +11,7 @@ import ReceiveStockSheet from '@/components/mobile/ReceiveStockSheet';
+ import { PackageOpen } from 'lucide-react';
+ import { useRole } from '@/hooks/useRole';
+ import type { InventoryItem } from '@/services/inventory.service';
++import { OCR_DRAFT_STORAGE_KEY, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
+ 
+ export default function InventoryPage() {
+   const searchParams = useSearchParams();
+@@ -21,6 +22,7 @@ export default function InventoryPage() {
+   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+   const [receivingItem, setReceivingItem] = useState<InventoryItem | null>(null);
+   const [scanNotice, setScanNotice] = useState<string | null>(null);
++  const [ocrDraft, setOcrDraft] = useState<LabelOcrResult | null>(null);
+   const [filter, setFilter] = useState<'ALL' | 'LOW_STOCK'>(
+     searchParams.get('filter') === 'LOW_STOCK' ? 'LOW_STOCK' : 'ALL'
+   );
+@@ -39,6 +41,26 @@ export default function InventoryPage() {
+     }
+   }, [searchParams]);
+ 
++  // Handles the redirect from TopBar's "Scan Label" flow (see
++  // useLabelOcrCapture): the result was stashed in sessionStorage since
++  // TopBar has no direct access to this page's component tree. Read it
++  // once, hand it to AddItemSheet, then clear it so a page refresh
++  // doesn't re-apply a stale draft.
++  useEffect(() => {
++    if (searchParams.get('fromOcr') !== '1') return;
++
++    try {
++      const raw = sessionStorage.getItem(OCR_DRAFT_STORAGE_KEY);
++      if (raw) {
++        setOcrDraft(JSON.parse(raw));
++      }
++      sessionStorage.removeItem(OCR_DRAFT_STORAGE_KEY);
++    } catch (error) {
++      console.error('Could not read OCR draft:', error);
++    }
++    router.replace('/inventory?action=add');
++  }, [searchParams, router]);
++
+   // Handles the redirect from the barcode scanner (see BarcodeScannerSheet).
+   // A matched item lands here as `?scannedItemId=<variantId>`; we look it up
+   // in the already-loaded inventory list so EditItemSheet gets a fully
+@@ -61,6 +83,7 @@ export default function InventoryPage() {
+ 
+   const handleCloseSheet = () => {
+     setSheetOpen(false);
++    setOcrDraft(null);
+     if (searchParams.get('action') === 'add') {
+       router.replace('/inventory');
+     }
+@@ -176,6 +199,7 @@ export default function InventoryPage() {
+       <AddItemSheet
+         open={sheetOpen}
+         initialBarcode={scannedBarcode || undefined}
++        initialOcrDraft={ocrDraft || undefined}
+         onOpenChange={(open) => {
+           if (!open) handleCloseSheet();
+           else setSheetOpen(true);
+diff --git a/apps/frontend/components/layout/TopBar.tsx b/apps/frontend/components/layout/TopBar.tsx
+index 119d918..95049d8 100644
+--- a/apps/frontend/components/layout/TopBar.tsx
++++ b/apps/frontend/components/layout/TopBar.tsx
+@@ -3,20 +3,40 @@
+ import * as React from 'react';
+ import { Menu, Bell, ScanLine } from 'lucide-react';
+ import { useMyOrganization } from '@/hooks/useMyOrganization';
++import { useLabelOcrCapture, OCR_DRAFT_STORAGE_KEY } from '@/hooks/useLabelOcrCapture';
+ import { UserButton } from '@clerk/nextjs';
+ import Link from 'next/link';
++import { useRouter } from 'next/navigation';
+ import { useAlerts } from '@/hooks/useAlerts';
+ import SideMenu from './SideMenu';
+ import BarcodeScannerSheet from '../system/BarcodeScannerSheet';
++import ScanModeSheet from '../system/ScanModeSheet';
+ 
+ export default function TopBar() {
+   const [menuOpen, setMenuOpen] = React.useState(false);
++  const [scanModeOpen, setScanModeOpen] = React.useState(false);
+   const [scannerOpen, setScannerOpen] = React.useState(false);
+   const { membership } = useMyOrganization();
+   const { data: alerts } = useAlerts();
++  const { captureLabel, inputProps: ocrInputProps } = useLabelOcrCapture();
++  const router = useRouter();
++
++  const handleSelectLabel = async () => {
++    const result = await captureLabel();
++    if (!result) return;
++
++    try {
++      sessionStorage.setItem(OCR_DRAFT_STORAGE_KEY, JSON.stringify(result));
++    } catch (error) {
++      console.error('Could not stash OCR draft:', error);
++      return;
++    }
++    router.push('/inventory?action=add&fromOcr=1');
++  };
+ 
+   return (
+     <>
++      <input {...ocrInputProps} />
+       <header className="fixed top-0 inset-x-0 z-30 flex h-16 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4">
+         <div className="flex items-center gap-3">
+           <button
+@@ -41,9 +61,9 @@ export default function TopBar() {
+         </div>
+         <div className="flex items-center gap-4">
+           <button
+-            onClick={() => setScannerOpen(true)}
++            onClick={() => setScanModeOpen(true)}
+             className="relative p-2 text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] rounded-full transition-colors"
+-            aria-label="Scan Barcode"
++            aria-label="Scan"
+           >
+             <ScanLine className="h-5 w-5" />
+           </button>
+@@ -66,7 +86,14 @@ export default function TopBar() {
+       </header>
+ 
+       <SideMenu open={menuOpen} onOpenChange={setMenuOpen} />
++      <ScanModeSheet
++        open={scanModeOpen}
++        onOpenChange={setScanModeOpen}
++        onSelectBarcode={() => setScannerOpen(true)}
++        onSelectLabel={handleSelectLabel}
++      />
+       <BarcodeScannerSheet open={scannerOpen} onOpenChange={setScannerOpen} />
+     </>
+   );
+ }
++
+diff --git a/apps/frontend/components/mobile/AddItemSheet.tsx b/apps/frontend/components/mobile/AddItemSheet.tsx
+index d806b42..98d02f9 100644
+--- a/apps/frontend/components/mobile/AddItemSheet.tsx
++++ b/apps/frontend/components/mobile/AddItemSheet.tsx
+@@ -4,7 +4,8 @@ import { useEffect, useState, type FormEvent } from 'react';
+ import { useAuth } from '@clerk/nextjs';
+ import { useMyOrganization } from '@/hooks/useMyOrganization';
+ import { useRole } from '@/hooks/useRole';
+-import { Plus, Trash2, PackageOpen } from 'lucide-react';
++import { useLabelOcrCapture, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
++import { Plus, Trash2, PackageOpen, ScanLine } from 'lucide-react';
+ 
+ import {
+   createInventoryItem,
+@@ -23,6 +24,8 @@ interface UIVariant {
+   costPrice?: number;
+   sellingPrice?: number;
+   barcode?: string;
++  expiryDate?: string;
++  batchNumber?: string;
+   packaging: {
+     name: string;
+     containsQty: number;
+@@ -35,6 +38,8 @@ interface AddItemSheetProps {
+   onSuccess: () => void;
+   /** Pre-fills the first variant's barcode, e.g. when arriving from a barcode scan that found no match. */
+   initialBarcode?: string;
++  /** Pre-fills fields from a label OCR capture done outside this sheet (e.g. TopBar's scan-mode picker). */
++  initialOcrDraft?: LabelOcrResult;
+ }
+ 
+ export default function AddItemSheet({
+@@ -42,6 +47,7 @@ export default function AddItemSheet({
+   onOpenChange,
+   onSuccess,
+   initialBarcode,
++  initialOcrDraft,
+ }: AddItemSheetProps) {
+   const [name, setName] = useState('');
+   const [category, setCategory] = useState('');
+@@ -78,6 +84,10 @@ export default function AddItemSheet({
+   const { isStaff } = useRole();
+ 
+   const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
++  const [lookupSource, setLookupSource] = useState<'CATALOG' | 'OPEN_FOOD_FACTS' | null>(null);
++  const { captureLabel, status: ocrStatus, inputProps: ocrInputProps } = useLabelOcrCapture();
++  const [ocrApplied, setOcrApplied] = useState(false);
++  const [usedOcrSource, setUsedOcrSource] = useState(false);
+ 
+   // Best-effort prefill from Open Food Facts for a barcode this org hasn't
+   // seen before. Only fills fields the user hasn't already typed into, and
+@@ -118,6 +128,7 @@ export default function AddItemSheet({
+         const [first, ...rest] = prev;
+         return [{ ...first, name: result.brand || result.name! }, ...rest];
+       });
++      setLookupSource(result.source);
+       setLookupStatus('found');
+     })();
+ 
+@@ -126,6 +137,64 @@ export default function AddItemSheet({
+     };
+   }, [open, initialBarcode, membership?.organization.id, getToken]);
+ 
++  const applyOcrResult = (result: LabelOcrResult) => {
++    let applied = false;
++
++    if (result.name && !name) {
++      setName(result.name);
++      applied = true;
++    }
++    if (result.category && !category) {
++      setCategory(result.category);
++      applied = true;
++    }
++
++    setVariants((prev) => {
++      if (prev.length === 0) return prev;
++      const [first, ...rest] = prev;
++      const next = { ...first };
++      if (!next.name && result.name) {
++        next.name = result.name;
++        applied = true;
++      }
++      if ((!next.unit || next.unit === 'can') && result.unit) {
++        next.unit = result.unit;
++        applied = true;
++      }
++      if (!next.expiryDate && result.expiryDate) {
++        next.expiryDate = result.expiryDate;
++        applied = true;
++      }
++      if (!next.batchNumber && result.batchNumber) {
++        next.batchNumber = result.batchNumber;
++        applied = true;
++      }
++      return [next, ...rest];
++    });
++
++    if (applied) {
++      setOcrApplied(true);
++      setUsedOcrSource(true);
++    }
++  };
++
++  // A label OCR capture done from outside this sheet (TopBar's scan-mode
++  // picker) arrives as a prop rather than through the in-sheet button.
++  useEffect(() => {
++    if (open && initialOcrDraft) {
++      applyOcrResult(initialOcrDraft);
++    }
++    // Only re-run when the sheet opens with a (possibly new) draft, not on
++    // every keystroke that changes name/category (which applyOcrResult reads).
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [open, initialOcrDraft]);
++
++  const handleScanLabel = async () => {
++    const result = await captureLabel();
++    if (!result) return;
++    applyOcrResult(result);
++  };
++
+   const handleAddVariant = () => {
+     setVariants([...variants, {
+       name: '',
+@@ -189,7 +258,7 @@ export default function AddItemSheet({
+         name,
+         category: category || undefined,
+         description: description || undefined,
+-        variants: variants.map(v => {
++        variants: variants.map((v, vIdx) => {
+           const absoluteMultipliers = [1];
+           let currentMultiplier = 1;
+           const mappedPackaging = v.packaging.map(p => {
+@@ -211,6 +280,9 @@ export default function AddItemSheet({
+             costPrice: isStaff ? undefined : v.costPrice,
+             sellingPrice: isStaff ? undefined : v.sellingPrice,
+             barcode: v.barcode || undefined,
++            expiryDate: v.expiryDate || undefined,
++            batchNumber: v.batchNumber || undefined,
++            catalogSource: vIdx === 0 && usedOcrSource ? 'OCR' : undefined,
+             packaging: mappedPackaging
+           };
+         })
+@@ -224,6 +296,9 @@ export default function AddItemSheet({
+       setDescription('');
+       setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, barcode: undefined, packaging: [] }]);
+       setLookupStatus('idle');
++      setLookupSource(null);
++      setOcrApplied(false);
++      setUsedOcrSource(false);
+       
+       onSuccess();
+       onOpenChange(false);
+@@ -257,7 +332,9 @@ export default function AddItemSheet({
+           )}
+           {initialBarcode && lookupStatus === 'found' && (
+             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+-              Details found via Open Food Facts — please verify before saving.
++              {lookupSource === 'CATALOG'
++                ? 'Details found — another HisaFlow user has scanned this barcode before. Please verify before saving.'
++                : 'Details found via Open Food Facts — please verify before saving.'}
+             </div>
+           )}
+           {initialBarcode && lookupStatus === 'not_found' && (
+@@ -266,6 +343,26 @@ export default function AddItemSheet({
+             </div>
+           )}
+ 
++          <input {...ocrInputProps} />
++          <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2">
++            <span className="text-xs text-[var(--color-text-secondary)]">
++              {ocrStatus === 'processing'
++                ? 'Reading the label…'
++                : ocrApplied
++                ? 'Details applied from label scan — please verify.'
++                : 'No barcode match? Scan the packaging/label instead.'}
++            </span>
++            <button
++              type="button"
++              onClick={handleScanLabel}
++              disabled={ocrStatus === 'processing'}
++              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium disabled:opacity-50"
++            >
++              <ScanLine className="h-3.5 w-3.5" />
++              Scan Label
++            </button>
++          </div>
++
+           {/* Product Basic Info */}
+           <div className="flex flex-col gap-4 p-4 bg-[var(--color-bg-base)] rounded-2xl border border-[var(--color-border)]">
+             <h3 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wider">Product Info</h3>
+@@ -379,6 +476,24 @@ export default function AddItemSheet({
+                       onChange={(e) => handleUpdateVariant(vIdx, 'barcode', e.target.value)}
+                     />
+                   </div>
++                  <div>
++                    <label className="mb-1 block text-xs font-medium">Expiry Date (optional)</label>
++                    <input
++                      type="date"
++                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
++                      value={variant.expiryDate || ''}
++                      onChange={(e) => handleUpdateVariant(vIdx, 'expiryDate', e.target.value)}
++                    />
++                  </div>
++                  <div>
++                    <label className="mb-1 block text-xs font-medium">Batch Number (optional)</label>
++                    <input
++                      type="text"
++                      className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-1.5 text-sm"
++                      value={variant.batchNumber || ''}
++                      onChange={(e) => handleUpdateVariant(vIdx, 'batchNumber', e.target.value)}
++                    />
++                  </div>
+                   
+                   {!isStaff && (
+                     <>
+diff --git a/apps/frontend/components/system/ScanModeSheet.tsx b/apps/frontend/components/system/ScanModeSheet.tsx
+new file mode 100644
+index 0000000..2259448
+--- /dev/null
++++ b/apps/frontend/components/system/ScanModeSheet.tsx
+@@ -0,0 +1,70 @@
++'use client';
++
++import { Drawer } from 'vaul';
++import { ScanLine, Camera } from 'lucide-react';
++
++interface ScanModeSheetProps {
++  open: boolean;
++  onOpenChange: (open: boolean) => void;
++  onSelectBarcode: () => void;
++  onSelectLabel: () => void;
++}
++
++export default function ScanModeSheet({
++  open,
++  onOpenChange,
++  onSelectBarcode,
++  onSelectLabel,
++}: ScanModeSheetProps) {
++  return (
++    <Drawer.Root open={open} onOpenChange={onOpenChange}>
++      <Drawer.Portal>
++        <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
++        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[32px] bg-white outline-none border border-gray-200 p-4 pb-8">
++          <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-gray-300" />
++          <Drawer.Title className="mb-4 text-center text-base font-bold">
++            What do you want to scan?
++          </Drawer.Title>
++
++          <button
++            type="button"
++            onClick={() => {
++              onOpenChange(false);
++              onSelectBarcode();
++            }}
++            className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] p-4 text-left transition-colors hover:bg-[var(--color-bg-secondary)]"
++          >
++            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-bg-secondary)]">
++              <ScanLine className="h-5 w-5" />
++            </div>
++            <div>
++              <p className="text-sm font-semibold">Scan Barcode</p>
++              <p className="text-xs text-[var(--color-text-secondary)]">
++                Look up or add an item by its barcode
++              </p>
++            </div>
++          </button>
++
++          <button
++            type="button"
++            onClick={() => {
++              onOpenChange(false);
++              onSelectLabel();
++            }}
++            className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--color-border)] p-4 text-left transition-colors hover:bg-[var(--color-bg-secondary)]"
++          >
++            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-bg-secondary)]">
++              <Camera className="h-5 w-5" />
++            </div>
++            <div>
++              <p className="text-sm font-semibold">Scan Label / Packaging</p>
++              <p className="text-xs text-[var(--color-text-secondary)]">
++                Photograph the product to read its name, category and expiry
++              </p>
++            </div>
++          </button>
++        </Drawer.Content>
++      </Drawer.Portal>
++    </Drawer.Root>
++  );
++}
+diff --git a/apps/frontend/hooks/useLabelOcrCapture.ts b/apps/frontend/hooks/useLabelOcrCapture.ts
+new file mode 100644
+index 0000000..e7c51dd
+--- /dev/null
++++ b/apps/frontend/hooks/useLabelOcrCapture.ts
+@@ -0,0 +1,163 @@
++'use client';
++
++import { useCallback, useRef, useState, type ChangeEvent } from 'react';
++import { useAuth } from '@clerk/nextjs';
++import imageCompression from 'browser-image-compression';
++import { useMyOrganization } from './useMyOrganization';
++import { parseInventoryText } from '@/services/ai-ingestion.service';
++
++export interface LabelOcrResult {
++  name: string | null;
++  category: string | null;
++  unit: string | null;
++  expiryDate: string | null;
++  batchNumber: string | null;
++}
++
++// Shared handoff key: TopBar's global scan trigger has no direct access to
++// the inventory page's component tree, so a label-OCR result captured from
++// there is stashed here and read once by app/(dashboard)/inventory/page.tsx
++// when it loads with ?fromOcr=1.
++export const OCR_DRAFT_STORAGE_KEY = 'hisaflow:ocrDraft';
++
++/**
++ * The AI extracts expiry dates "as printed" (e.g. "12/2027", "Dec 2027",
++ * "2027-12-31"), which isn't guaranteed to be a value <input type="date">
++ * or the backend's `new Date(...)` call can safely handle. This attempts
++ * a best-effort parse and returns a YYYY-MM-DD string only if it produces
++ * a genuinely valid date; otherwise null, so an unparseable date is
++ * silently dropped rather than risking a bad value reaching the backend.
++ */
++function normalizeDateForInput(raw: unknown): string | null {
++  if (!raw || typeof raw !== 'string') return null;
++  const parsed = new Date(raw);
++  if (Number.isNaN(parsed.getTime())) return null;
++  // Sanity bound: reject anything wildly outside a plausible product-expiry
++  // window, in case the model hallucinates a nonsense year.
++  const year = parsed.getFullYear();
++  if (year < 2000 || year > 2100) return null;
++  return parsed.toISOString().split('T')[0];
++}
++
++/**
++ * Captures a single photo of a product's packaging/label via the device
++ * camera, runs it through the existing receipt-OCR text extraction
++ * endpoint, then through the AI ingestion parser (LABEL_OCR mode) to pull
++ * out structured product details.
++ *
++ * Renders no UI itself - spread `inputProps` onto a hidden <input>, then
++ * call `captureLabel()` (returns a Promise that resolves to a result or
++ * null on any failure/cancel - never throws, so callers can treat this as
++ * an optional prefill exactly like the barcode/Open Food Facts lookup).
++ */
++export function useLabelOcrCapture() {
++  const inputRef = useRef<HTMLInputElement>(null);
++  const resolverRef = useRef<((result: LabelOcrResult | null) => void) | null>(null);
++  const { getToken } = useAuth();
++  const { membership } = useMyOrganization();
++  const [status, setStatus] = useState<'idle' | 'processing'>('idle');
++
++  const handleFileChange = useCallback(
++    async (e: ChangeEvent<HTMLInputElement>) => {
++      const file = e.target.files?.[0];
++      e.target.value = '';
++
++      const resolve = resolverRef.current;
++      resolverRef.current = null;
++
++      if (!file || !membership?.organization.id) {
++        resolve?.(null);
++        return;
++      }
++
++      setStatus('processing');
++      try {
++        const token = await getToken();
++        if (!token) {
++          resolve?.(null);
++          return;
++        }
++
++        const compressed = await imageCompression(file, {
++          maxSizeMB: 1,
++          maxWidthOrHeight: 1920,
++          useWebWorker: true,
++        });
++
++        const formData = new FormData();
++        formData.append('image', compressed);
++
++        const ocrRes = await fetch(
++          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/ocr/receipt`,
++          {
++            method: 'POST',
++            headers: {
++              Authorization: `Bearer ${token}`,
++              'x-organization-id': membership.organization.id,
++            },
++            body: formData,
++          },
++        );
++
++        if (!ocrRes.ok) {
++          resolve?.(null);
++          return;
++        }
++
++        const { text } = await ocrRes.json();
++        if (!text?.trim()) {
++          resolve?.(null);
++          return;
++        }
++
++        const actions = await parseInventoryText(
++          text,
++          token,
++          membership.organization.id,
++          'LABEL_OCR',
++        );
++        const createAction = actions.find((a) => a.type === 'CREATE');
++        if (!createAction) {
++          resolve?.(null);
++          return;
++        }
++
++        resolve?.({
++          name: createAction.itemName || null,
++          category: createAction.category || null,
++          unit: createAction.unit || null,
++          expiryDate: normalizeDateForInput(createAction.metadata?.expiryDate),
++          batchNumber: createAction.metadata?.batchNumber || null,
++        });
++      } catch (err) {
++        console.error('Label OCR capture failed:', err);
++        resolve?.(null);
++      } finally {
++        setStatus('idle');
++      }
++    },
++    [getToken, membership?.organization.id],
++  );
++
++  const captureLabel = useCallback((): Promise<LabelOcrResult | null> => {
++    return new Promise((resolve) => {
++      if (!inputRef.current) {
++        resolve(null);
++        return;
++      }
++      resolverRef.current = resolve;
++      inputRef.current.click();
++    });
++  }, []);
++
++  const inputProps = {
++    ref: inputRef,
++    type: 'file' as const,
++    accept: 'image/*',
++    capture: 'environment' as const,
++    onChange: handleFileChange,
++    style: { display: 'none' },
++  };
++
++  return { captureLabel, status, inputProps };
++}
+diff --git a/apps/frontend/services/ai-ingestion.service.ts b/apps/frontend/services/ai-ingestion.service.ts
+index b8d3565..66c6222 100644
+--- a/apps/frontend/services/ai-ingestion.service.ts
++++ b/apps/frontend/services/ai-ingestion.service.ts
+@@ -54,7 +54,7 @@ export async function parseInventoryText(
+   text: string,
+   token: string,
+   organizationId: string,
+-  source: 'TEXT' | 'RECEIPT_OCR' = 'TEXT',
++  source: 'TEXT' | 'RECEIPT_OCR' | 'LABEL_OCR' = 'TEXT',
+ ): Promise<ParsedAction[]> {
+   const response = await apiPost<{ actions: ParsedAction[] }>(
+     '/ai-ingestion/parse',
+diff --git a/apps/frontend/services/inventory.service.ts b/apps/frontend/services/inventory.service.ts
+index 818d471..be27f33 100644
+--- a/apps/frontend/services/inventory.service.ts
++++ b/apps/frontend/services/inventory.service.ts
+@@ -20,6 +20,8 @@ export interface InventoryItem {
+   costPrice: number | null;
+   sellingPrice: number | null;
+   barcode?: string | null;
++  expiryDate?: string | null;
++  batchNumber?: string | null;
+   status: 'HEALTHY' | 'LOW' | 'OUT_OF_STOCK';
+   isActive: boolean;
+   packaging: PackagingUnit[];
+@@ -44,7 +46,9 @@ export interface ExternalProductLookupResult {
+   name: string | null;
+   brand: string | null;
+   category: string | null;
++  unit: string | null;
+   imageUrl: string | null;
++  source: 'CATALOG' | 'OPEN_FOOD_FACTS';
+ }
+ 
+ /**
+@@ -87,6 +91,9 @@ export interface CreateProductVariantPayload {
+   costPrice?: number;
+   sellingPrice?: number;
+   barcode?: string;
++  expiryDate?: string;
++  batchNumber?: string;
++  catalogSource?: 'MANUAL' | 'OCR';
+   packaging?: CreatePackagingUnitPayload[];
+ }
+ 
+-- 
+2.43.0
+

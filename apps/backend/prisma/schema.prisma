@@ -34,6 +34,22 @@ model Organization {
   guests                Guest[]
   bookings              Booking[]
   invoices              Invoice[]
+
+  // ── Retail / Wholesale ──────────────────────────────────────
+  tieredPriceRules      TieredPriceRule[]
+
+  // ── Chemist ─────────────────────────────────────────────────
+  stockBatches          StockBatch[]
+
+  // ── Restaurant ──────────────────────────────────────────────
+  tableOrders           TableOrder[]
+
+  // ── School ──────────────────────────────────────────────────
+  schoolClasses         SchoolClass[]
+  students              Student[]
+  academicTerms         AcademicTerm[]
+  feeStructures         FeeStructure[]
+  feeInvoices           FeeInvoice[]
   @@map("organizations")
 }
 
@@ -147,20 +163,28 @@ model InventoryItem {
   barcode          String?     @map("barcode")
   status           StockStatus @default(HEALTHY)
   isActive         Boolean     @default(true) @map("is_active")
-  
+
   // Business specific fields
   expiryDate       DateTime?   @map("expiry_date")
   serialNumber     String?     @map("serial_number")
   batchNumber      String?     @map("batch_number")
 
+  // Restaurant: marks this item as a composite menu item backed by a recipe
+  isComposite      Boolean     @default(false) @map("is_composite")
+
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 
-  organization Organization          @relation(fields: [organizationId], references: [id])
-  product      Product?              @relation(fields: [productId], references: [id])
-  transactions InventoryTransaction[]
-  alerts       Alert[]               // <-- added
-  packaging    PackagingUnit[]
+  organization     Organization           @relation(fields: [organizationId], references: [id])
+  product          Product?               @relation(fields: [productId], references: [id])
+  transactions     InventoryTransaction[]
+  alerts           Alert[]
+  packaging        PackagingUnit[]
+  tieredPriceRules TieredPriceRule[]
+  stockBatches     StockBatch[]
+  recipeLines      RecipeIngredient[]     @relation("CompositeRecipes")
+  usedInRecipes    RecipeIngredient[]     @relation("UsedInRecipes")
+  tableOrderItems  TableOrderItem[]
 
   @@index([organizationId])
   @@index([productId])
@@ -182,6 +206,104 @@ model PackagingUnit {
 
   @@index([variantId])
   @@map("packaging_units")
+}
+
+// ── Tiered Pricing (Wholesale) ───────────────────────────────────────────────
+
+model TieredPriceRule {
+  id              String        @id @default(cuid())
+  organizationId  String        @map("organization_id")
+  inventoryItemId String        @map("inventory_item_id")
+  minQuantity     Decimal       @map("min_quantity") @db.Decimal(12, 3)
+  pricePerUnit    Decimal       @map("price_per_unit") @db.Decimal(12, 2)
+  label           String?       // e.g. "Bulk (10+ cartons)"
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId])
+  @@index([organizationId])
+  @@map("tiered_price_rules")
+}
+
+// ── Stock Batches (Chemist / Pharmacy) ──────────────────────────────────────
+
+model StockBatch {
+  id              String    @id @default(cuid())
+  organizationId  String    @map("organization_id")
+  inventoryItemId String    @map("inventory_item_id")
+  batchNumber     String    @map("batch_number")
+  expiryDate      DateTime  @map("expiry_date")
+  quantity        Decimal   @db.Decimal(12, 3)
+  costPrice       Decimal?  @map("cost_price") @db.Decimal(12, 2)
+  receivedAt      DateTime  @default(now()) @map("received_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryItemId, expiryDate])
+  @@index([organizationId])
+  @@map("stock_batches")
+}
+
+// ── Recipe / Bill of Materials (Restaurant) ──────────────────────────────────
+
+model RecipeIngredient {
+  id              String        @id @default(cuid())
+  compositeItemId String        @map("composite_item_id")
+  ingredientId    String        @map("ingredient_id")
+  quantityUsed    Decimal       @map("quantity_used") @db.Decimal(12, 4)
+
+  compositeItem   InventoryItem @relation("CompositeRecipes", fields: [compositeItemId], references: [id], onDelete: Cascade)
+  ingredient      InventoryItem @relation("UsedInRecipes", fields: [ingredientId], references: [id])
+
+  @@unique([compositeItemId, ingredientId])
+  @@index([compositeItemId])
+  @@map("recipe_ingredients")
+}
+
+enum TableOrderStatus {
+  OPEN
+  PAID
+  VOIDED
+}
+
+model TableOrder {
+  id             String           @id @default(cuid())
+  organizationId String           @map("organization_id")
+  tableLabel     String           @map("table_label")
+  status         TableOrderStatus @default(OPEN)
+  notes          String?          @db.Text
+  openedAt       DateTime         @default(now()) @map("opened_at")
+  closedAt       DateTime?        @map("closed_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  items        TableOrderItem[]
+
+  @@index([organizationId, status])
+  @@map("table_orders")
+}
+
+model TableOrderItem {
+  id          String        @id @default(cuid())
+  orderId     String        @map("order_id")
+  itemId      String        @map("item_id")
+  quantity    Decimal       @db.Decimal(12, 3)
+  unitPrice   Decimal       @map("unit_price") @db.Decimal(12, 2)
+  notes       String?
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  order TableOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item  InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([orderId])
+  @@map("table_order_items")
 }
 
 // ── Inventory Transactions (append-only ledger) ─────────────────
@@ -536,3 +658,150 @@ model Payment {
   @@index([invoiceId])
   @@map("payments")
 }
+
+// ── School ───────────────────────────────────────────────────────────────────
+
+model SchoolClass {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  name           String   // "Form 1", "Class 4 North", "PP2"
+  stream         String?  // "A", "B", or null if no streams
+  isActive       Boolean  @default(true) @map("is_active")
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  students      Student[]
+  feeStructures FeeStructure[]
+
+  @@index([organizationId])
+  @@map("school_classes")
+}
+
+model Student {
+  id               String    @id @default(cuid())
+  organizationId   String    @map("organization_id")
+  classId          String?   @map("class_id")
+  admissionNumber  String?   @map("admission_number")
+  name             String
+  dateOfBirth      DateTime? @map("date_of_birth")
+  guardianName     String?   @map("guardian_name")
+  guardianPhone    String?   @map("guardian_phone")
+  guardianEmail    String?   @map("guardian_email")
+  guardianRelation String?   @map("guardian_relation") // "Mother" | "Father" | "Guardian"
+  notes            String?   @db.Text
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  class        SchoolClass? @relation(fields: [classId], references: [id])
+  feeInvoices  FeeInvoice[]
+
+  @@index([organizationId])
+  @@index([organizationId, classId])
+  @@map("students")
+}
+
+model AcademicTerm {
+  id             String    @id @default(cuid())
+  organizationId String    @map("organization_id")
+  name           String    // "Term 1 2025"
+  startDate      DateTime  @map("start_date")
+  endDate        DateTime  @map("end_date")
+  dueDate        DateTime? @map("due_date")
+  isActive       Boolean   @default(false) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  feeStructures FeeStructure[]
+  feeInvoices   FeeInvoice[]
+
+  @@index([organizationId])
+  @@map("academic_terms")
+}
+
+model FeeStructure {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  termId         String   @map("term_id")
+  classId        String?  @map("class_id") // null = applies to all classes in term
+  name           String   // "Tuition Fee" | "Activity Fee" | "Exam Fee"
+  amount         Decimal  @db.Decimal(12, 2)
+  isOptional     Boolean  @default(false) @map("is_optional")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  term         AcademicTerm @relation(fields: [termId], references: [id], onDelete: Cascade)
+  class        SchoolClass? @relation(fields: [classId], references: [id])
+
+  @@index([termId, classId])
+  @@map("fee_structures")
+}
+
+enum FeeInvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIAL
+  PAID
+  VOIDED
+}
+
+model FeeInvoice {
+  id               String           @id @default(cuid())
+  organizationId   String           @map("organization_id")
+  studentId        String           @map("student_id")
+  termId           String           @map("term_id")
+  status           FeeInvoiceStatus @default(DRAFT)
+  totalExpected    Decimal          @map("total_expected") @db.Decimal(12, 2)
+  adjustmentsTotal Decimal          @default(0) @map("adjustments_total") @db.Decimal(12, 2)
+  amountPaid       Decimal          @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  issuedAt         DateTime?        @map("issued_at")
+  dueDate          DateTime?        @map("due_date")
+  notes            String?          @db.Text
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  student      Student       @relation(fields: [studentId], references: [id])
+  term         AcademicTerm  @relation(fields: [termId], references: [id])
+  lineItems    FeeLineItem[]
+  payments     FeePayment[]
+
+  @@unique([studentId, termId])
+  @@index([organizationId, status])
+  @@index([organizationId, termId])
+  @@map("fee_invoices")
+}
+
+model FeeLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String   @map("invoice_id")
+  description String
+  amount      Decimal  @db.Decimal(12, 2)
+  isWaived    Boolean  @default(false) @map("is_waived")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  invoice FeeInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("fee_line_items")
+}
+
+model FeePayment {
+  id          String   @id @default(cuid())
+  invoiceId   String   @map("invoice_id")
+  amount      Decimal  @db.Decimal(12, 2)
+  method      String   // CASH | MPESA | BANK
+  reference   String?  // M-Pesa confirmation code or bank ref
+  note        String?
+  recordedAt  DateTime @default(now()) @map("recorded_at")
+
+  invoice FeeInvoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@map("fee_payments")
+}
+

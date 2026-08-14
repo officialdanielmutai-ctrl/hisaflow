@@ -1,4 +1,4 @@
-﻿import { IsString, IsNotEmpty, IsOptional, IsNumber, IsPositive, Min, ValidateNested, IsArray, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsPositive, Min, ValidateNested, IsArray, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreatePackagingUnitDto {
@@ -23,6 +23,17 @@ export class CreatePackagingUnitDto {
   @IsNumber()
   @IsPositive()
   sellingPrice?: number;
+}
+
+export class RecipeIngredientDto {
+  @IsString()
+  @IsNotEmpty()
+  ingredientId!: string;
+
+  @IsNumber()
+  @Min(0.001)
+  @Type(() => Number)
+  quantityUsed!: number;
 }
 
 export class CreateProductVariantDto {
@@ -81,6 +92,16 @@ export class CreateProductVariantDto {
   @ValidateNested({ each: true })
   @Type(() => CreatePackagingUnitDto)
   packaging?: CreatePackagingUnitDto[];
+
+  @IsOptional()
+  @Type(() => Boolean)
+  isComposite?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RecipeIngredientDto)
+  recipeLines?: RecipeIngredientDto[];
 }
 
 export class CreateProductDto {
