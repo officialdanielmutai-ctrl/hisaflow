@@ -94,7 +94,7 @@ export default function AddItemSheet({
   const { isStaff } = useRole();
 
   const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
-  const [lookupSource, setLookupSource] = useState<'CATALOG' | 'OPEN_FOOD_FACTS' | null>(null);
+  const [lookupSource, setLookupSource] = useState<'CATALOG' | 'OPEN_FOOD_FACTS' | 'UPC_ITEM_DB' | null>(null);
   const [labelCaptureOpen, setLabelCaptureOpen] = useState(false);
   const [ocrApplied, setOcrApplied] = useState(false);
   const [usedOcrSource, setUsedOcrSource] = useState(false);
