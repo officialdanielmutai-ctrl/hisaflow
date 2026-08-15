@@ -16,6 +16,10 @@ import { useInventory } from '@/hooks/useInventory';
 import { format } from 'date-fns';
 import DashboardLoading from './loading';
 import { GuestHouseDashboard } from '@/components/guesthouse/GuestHouseDashboard';
+import { SchoolDashboard } from '@/components/school/SchoolDashboard';
+import { ChemistDashboard } from '@/components/chemist/ChemistDashboard';
+import { RestaurantDashboard } from '@/components/restaurant/RestaurantDashboard';
+import { WholesaleDashboard } from '@/components/wholesale/WholesaleDashboard';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const importanceColors: Record<string, string> = {
@@ -447,15 +451,17 @@ function RetailDashboard() {
 }
 
 export default function DashboardPage() {
-  const { canViewAnalytics, isGuestHouse } = useRole();
+  const { canViewAnalytics, isGuestHouse, isSchool, isChemist, isRestaurant, isWholesaler } = useRole();
 
   if (!canViewAnalytics) {
     return <StaffDashboard />;
   }
 
-  if (isGuestHouse) {
-    return <GuestHouseDashboard />;
-  }
+  if (isGuestHouse) return <GuestHouseDashboard />;
+  if (isSchool) return <SchoolDashboard />;
+  if (isChemist) return <ChemistDashboard />;
+  if (isRestaurant) return <RestaurantDashboard />;
+  if (isWholesaler) return <WholesaleDashboard />;
 
   return <RetailDashboard />;
 }

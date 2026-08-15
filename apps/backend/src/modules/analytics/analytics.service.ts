@@ -413,6 +413,380 @@ export class AnalyticsService {
     };
   }
 
+  // ── School Dashboard ──────────────────────────────────────────────────────
+  async getSchoolDashboard(organizationId: string) {
+    const now = new Date();
+    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
+    const monthStartUTC = new Date(
+      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth(), 1) - EAT_OFFSET_MS,
+    );
+
+    const [
+      totalStudents,
+      totalClasses,
+      activeTerm,
+      invoices,
+      overdueInvoices,
+      recentPayments,
+    ] = await Promise.all([
+      this.prisma.db.student.count({ where: { organizationId, isActive: true } }),
+      this.prisma.db.schoolClass.count({ where: { organizationId, isActive: true } }),
+      this.prisma.db.academicTerm.findFirst({
+        where: { organizationId, isActive: true },
+        select: { id: true, name: true, dueDate: true },
+      }),
+      this.prisma.db.feeInvoice.findMany({
+        where: { organizationId, status: { not: 'VOIDED' } },
+        select: { totalExpected: true, adjustmentsTotal: true, amountPaid: true, status: true },
+      }),
+      this.prisma.db.feeInvoice.findMany({
+        where: { organizationId, status: { in: ['ISSUED', 'PARTIAL'] } },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        include: {
+          student: { select: { name: true } },
+          term: { select: { name: true } },
+        },
+      }),
+      this.prisma.db.feePayment.findMany({
+        where: { invoice: { organizationId }, recordedAt: { gte: monthStartUTC } },
+        orderBy: { recordedAt: 'desc' },
+        take: 5,
+        include: {
+          invoice: {
+            include: { student: { select: { name: true } } },
+          },
+        },
+      }),
+    ]);
+
+    const totalExpected = invoices.reduce(
+      (s, i) => s + Number(i.totalExpected) - Number(i.adjustmentsTotal), 0,
+    );
+    const totalCollected = invoices.reduce((s, i) => s + Number(i.amountPaid), 0);
+    const outstanding = Math.max(0, totalExpected - totalCollected);
+    const collectionRate = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
+    const paidCount = invoices.filter(i => i.status === 'PAID').length;
+    const totalInvoices = invoices.length;
+
+    const hour = now.getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
+    return {
+      timeOfDay,
+      totalStudents,
+      totalClasses,
+      activeTerm: activeTerm ? { name: activeTerm.name, dueDate: activeTerm.dueDate } : null,
+      fees: { totalExpected, totalCollected, outstanding, collectionRate, paidCount, totalInvoices },
+      overdueInvoices: overdueInvoices.map(inv => ({
+        id: inv.id,
+        studentName: inv.student.name,
+        termName: inv.term.name,
+        amountDue: Number(inv.totalExpected) - Number(inv.adjustmentsTotal) - Number(inv.amountPaid),
+        status: inv.status,
+      })),
+      recentPayments: recentPayments
+        .filter(p => p.invoice)
+        .map(p => ({
+          id: p.id,
+          studentName: p.invoice!.student.name,
+          amount: Number(p.amount),
+          method: p.method,
+          recordedAt: p.recordedAt,
+        })),
+    };
+  }
+
+  // ── Chemist Dashboard ──────────────────────────────────────────────────────
+  async getChemistDashboard(organizationId: string) {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
+    const monthStartUTC = new Date(
+      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth(), 1) - EAT_OFFSET_MS,
+    );
+
+    const [
+      todayTx,
+      monthTx,
+      allItems,
+      expiringBatches,
+      expiredBatches,
+      fastMovingTx,
+      activeAlerts,
+    ] = await Promise.all([
+      this.prisma.db.inventoryTransaction.findMany({
+        where: { organizationId, type: 'SALE', createdAt: { gte: todayStart } },
+        include: { item: { select: { sellingPrice: true } } },
+      }),
+      this.prisma.db.inventoryTransaction.findMany({
+        where: { organizationId, type: 'SALE', createdAt: { gte: monthStartUTC } },
+        include: { item: { select: { sellingPrice: true } } },
+      }),
+      this.prisma.db.inventoryItem.findMany({
+        where: { organizationId, isActive: true },
+        select: { id: true, name: true, unit: true, quantity: true, reorderThreshold: true },
+      }),
+      this.prisma.db.stockBatch.findMany({
+        where: { organizationId, quantity: { gt: 0 }, expiryDate: { lte: in90Days, gt: in30Days } },
+        include: { inventoryItem: { select: { name: true } } },
+        orderBy: { expiryDate: 'asc' },
+        take: 10,
+      }),
+      this.prisma.db.stockBatch.findMany({
+        where: { organizationId, quantity: { gt: 0 }, expiryDate: { lte: in30Days } },
+        include: { inventoryItem: { select: { name: true } } },
+        orderBy: { expiryDate: 'asc' },
+        take: 10,
+      }),
+      this.prisma.db.inventoryTransaction.findMany({
+        where: { organizationId, type: 'SALE', createdAt: { gte: sevenDaysAgo } },
+        select: { itemId: true, quantityChange: true, item: { select: { name: true, unit: true } } },
+      }),
+      this.prisma.db.alert.findMany({
+        where: { organizationId, resolvedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      }),
+    ]);
+
+    const todaySales = todayTx.reduce(
+      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    );
+    const monthSales = monthTx.reduce(
+      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    );
+    const lowStockCount = allItems.filter(
+      i => Number(i.reorderThreshold) > 0 && Number(i.quantity) <= Number(i.reorderThreshold),
+    ).length;
+
+    const fastMovingMap = new Map<string, { name: string; unit: string; totalSold: number }>();
+    for (const tx of fastMovingTx) {
+      const sold = Math.abs(Number(tx.quantityChange));
+      const ex = fastMovingMap.get(tx.itemId);
+      if (ex) { ex.totalSold += sold; }
+      else { fastMovingMap.set(tx.itemId, { name: tx.item.name, unit: tx.item.unit, totalSold: sold }); }
+    }
+    const topSellers = [...fastMovingMap.entries()]
+      .sort((a, b) => b[1].totalSold - a[1].totalSold)
+      .slice(0, 5)
+      .map(([itemId, v]) => ({ itemId, ...v }));
+
+    const hour = now.getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
+    return {
+      timeOfDay,
+      todaySales,
+      monthSales,
+      lowStockCount,
+      totalItems: allItems.length,
+      expiringBatches: expiringBatches.map(b => ({
+        id: b.id,
+        productName: b.inventoryItem.name,
+        quantity: Number(b.quantity),
+        expiryDate: b.expiryDate,
+        daysLeft: Math.ceil((b.expiryDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+      })),
+      expiredBatches: expiredBatches.map(b => ({
+        id: b.id,
+        productName: b.inventoryItem.name,
+        quantity: Number(b.quantity),
+        expiryDate: b.expiryDate,
+        daysLeft: Math.ceil((b.expiryDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+      })),
+      topSellers,
+      alerts: activeAlerts.map(a => ({ id: a.id, message: a.title, severity: a.severity })),
+    };
+  }
+
+  // ── Restaurant Dashboard ───────────────────────────────────────────────────
+  async getRestaurantDashboard(organizationId: string) {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      openOrders,
+      paidOrders,
+      todayTx,
+      topComposites,
+      activeAlerts,
+    ] = await Promise.all([
+      this.prisma.db.tableOrder.findMany({
+        where: { organizationId, status: 'OPEN' },
+        include: { items: { include: { item: { select: { name: true, sellingPrice: true } } } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.db.tableOrder.count({
+        where: { organizationId, status: 'PAID', createdAt: { gte: todayStart } },
+      }),
+      this.prisma.db.inventoryTransaction.findMany({
+        where: { organizationId, type: 'SALE', createdAt: { gte: todayStart } },
+        include: { item: { select: { sellingPrice: true, isComposite: true } } },
+      }),
+      this.prisma.db.inventoryTransaction.groupBy({
+        by: ['itemId'],
+        where: { organizationId, type: 'SALE', createdAt: { gte: sevenDaysAgo } },
+        _sum: { quantityChange: true },
+        orderBy: { _sum: { quantityChange: 'asc' } },
+        take: 5,
+      }),
+      this.prisma.db.alert.findMany({
+        where: { organizationId, resolvedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      }),
+    ]);
+
+    const todayRevenue = todayTx.reduce(
+      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    );
+    const openOrdersCount = openOrders.length;
+    const openOrdersValue = openOrders.reduce((s, ord) =>
+      s + ord.items.reduce((si, item) =>
+        si + Number(item.quantity) * Number(item.item.sellingPrice ?? 0), 0), 0,
+    );
+
+    const topMenuItems = await Promise.all(
+      topComposites.map(async g => {
+        const item = await this.prisma.db.inventoryItem.findUnique({
+          where: { id: g.itemId },
+          select: { name: true, unit: true },
+        });
+        return {
+          itemId: g.itemId,
+          name: item?.name ?? 'Unknown',
+          unit: item?.unit ?? '',
+          totalSold: Math.abs(Number(g._sum.quantityChange ?? 0)),
+        };
+      }),
+    );
+
+    const hour = now.getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
+    return {
+      timeOfDay,
+      todayRevenue,
+      openOrdersCount,
+      openOrdersValue,
+      paidOrdersToday: paidOrders,
+      openOrders: openOrders.map(ord => ({
+        id: ord.id,
+        tableLabel: ord.tableLabel,
+        itemCount: ord.items.length,
+        orderValue: ord.items.reduce((s, i) => s + Number(i.quantity) * Number(i.item.sellingPrice ?? 0), 0),
+        createdAt: ord.createdAt,
+      })),
+      topMenuItems,
+      alerts: activeAlerts.map(a => ({ id: a.id, message: a.title, severity: a.severity })),
+    };
+  }
+
+  // ── Wholesale Dashboard ────────────────────────────────────────────────────
+  async getWholesaleDashboard(organizationId: string) {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
+    const monthStartUTC = new Date(
+      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth(), 1) - EAT_OFFSET_MS,
+    );
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      todayTx,
+      monthTx,
+      openCredits,
+      allItems,
+      topSellersTx,
+      activeAlerts,
+    ] = await Promise.all([
+      this.prisma.db.inventoryTransaction.findMany({
+        where: { organizationId, type: 'SALE', createdAt: { gte: todayStart } },
+        include: { item: { select: { sellingPrice: true } } },
+      }),
+      this.prisma.db.inventoryTransaction.findMany({
+        where: { organizationId, type: 'SALE', createdAt: { gte: monthStartUTC } },
+        include: { item: { select: { sellingPrice: true } } },
+      }),
+      this.prisma.db.creditRecord.findMany({
+        where: { organizationId, status: { in: ['UNPAID', 'PARTIAL'] } },
+        orderBy: { amountTotal: 'desc' },
+        take: 5,
+      }),
+      this.prisma.db.inventoryItem.findMany({
+        where: { organizationId, isActive: true },
+        select: { id: true, name: true, unit: true, quantity: true, reorderThreshold: true },
+      }),
+      this.prisma.db.inventoryTransaction.groupBy({
+        by: ['itemId'],
+        where: { organizationId, type: 'SALE', createdAt: { gte: sevenDaysAgo } },
+        _sum: { quantityChange: true },
+        orderBy: { _sum: { quantityChange: 'asc' } },
+        take: 5,
+      }),
+      this.prisma.db.alert.findMany({
+        where: { organizationId, resolvedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      }),
+    ]);
+
+    const todaySales = todayTx.reduce(
+      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    );
+    const monthSales = monthTx.reduce(
+      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    );
+    const totalOutstanding = openCredits.reduce((s, c) => s + Number(c.amountTotal) - Number(c.amountPaid), 0);
+    const lowStockCount = allItems.filter(
+      i => Number(i.reorderThreshold) > 0 && Number(i.quantity) <= Number(i.reorderThreshold),
+    ).length;
+
+    const topSellers = await Promise.all(
+      topSellersTx.map(async g => {
+        const item = await this.prisma.db.inventoryItem.findUnique({
+          where: { id: g.itemId },
+          select: { name: true, unit: true },
+        });
+        return {
+          itemId: g.itemId,
+          name: item?.name ?? 'Unknown',
+          unit: item?.unit ?? '',
+          totalSold: Math.abs(Number(g._sum.quantityChange ?? 0)),
+        };
+      }),
+    );
+
+    const hour = now.getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
+    return {
+      timeOfDay,
+      todaySales,
+      monthSales,
+      totalOutstanding,
+      openCreditCount: openCredits.length,
+      lowStockCount,
+      totalItems: allItems.length,
+      topDebtors: openCredits.map(c => ({
+        id: c.id,
+        clientName: c.clientName,
+        amountOwed: Number(c.amountTotal) - Number(c.amountPaid),
+        status: c.status,
+      })),
+      topSellers,
+      alerts: activeAlerts.map(a => ({ id: a.id, message: a.title, severity: a.severity })),
+    };
+  }
+
   // ── Recommended Actions (AI) ───────────────────────────────────────────────
   private async getRecommendedActions(organizationId: string, businessType: string) {
     const today = new Date();

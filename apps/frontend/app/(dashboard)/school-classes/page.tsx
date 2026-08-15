@@ -1,76 +1,143 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { AddClassSheet } from "@/components/school/AddClassSheet";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useState } from 'react';
+import useSWR from 'swr';
+import { useAuth } from '@clerk/nextjs';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { AddClassSheet } from '@/components/school/AddClassSheet';
+import Link from 'next/link';
+import { BookOpen, Users, ChevronRight, GraduationCap } from 'lucide-react';
 
 interface SchoolClass {
   id: string;
   name: string;
-  stream: string;
-  notes?: string;
-  studentCount?: number;
+  stream?: string | null;
+  notes?: string | null;
+  _count?: { students: number };
+}
+
+function classColorIndex(name: string) {
+  const colors = [
+    { bg: 'bg-indigo-100', text: 'text-indigo-600', icon: 'text-indigo-500' },
+    { bg: 'bg-teal-100', text: 'text-teal-600', icon: 'text-teal-500' },
+    { bg: 'bg-orange-100', text: 'text-orange-600', icon: 'text-orange-500' },
+    { bg: 'bg-purple-100', text: 'text-purple-600', icon: 'text-purple-500' },
+    { bg: 'bg-green-100', text: 'text-green-600', icon: 'text-green-500' },
+    { bg: 'bg-rose-100', text: 'text-rose-600', icon: 'text-rose-500' },
+    { bg: 'bg-blue-100', text: 'text-blue-600', icon: 'text-blue-500' },
+    { bg: 'bg-amber-100', text: 'text-amber-600', icon: 'text-amber-500' },
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
 }
 
 export default function SchoolClassesPage() {
-  const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { getToken } = useAuth();
+  const { membership } = useMyOrganization();
+  const orgId = membership?.organization.id;
 
-  useEffect(() => {
-    async function fetchClasses() {
-      try {
-        const res = await fetch("/api/school-classes");
-        if (res.ok) {
-          const data = await res.json();
-          setClasses(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch classes", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchClasses();
-  }, []);
+  const { data: classes, isLoading, mutate } = useSWR<SchoolClass[]>(
+    orgId ? ['school-classes', orgId] : null,
+    async () => {
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.hisaflow.com';
+      const res = await fetch(`${apiBase}/school-classes`, {
+        headers: { Authorization: `Bearer ${token}`, 'x-org-id': orgId! },
+      });
+      if (!res.ok) throw new Error('Failed to load classes');
+      return res.json();
+    },
+  );
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col gap-6 pb-24">
+      {/* Header */}
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">School Classes</h1>
-          <p className="text-muted-foreground">Manage your classes and streams.</p>
+          <h1 className="text-xl font-bold text-[var(--color-text-primary)]">School Classes</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">Manage your classes and streams</p>
         </div>
         <AddClassSheet />
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+      {/* Stats row */}
+      {!isLoading && classes && (
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-full bg-[var(--color-bg-surface)] border border-[var(--color-border)] px-4 py-2">
+            <BookOpen className="h-4 w-4 text-[var(--color-primary)]" />
+            <span className="text-sm font-bold text-[var(--color-text-primary)]">{classes.length}</span>
+            <span className="text-xs text-[var(--color-text-secondary)]">class{classes.length !== 1 ? 'es' : ''}</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-full bg-[var(--color-bg-surface)] border border-[var(--color-border)] px-4 py-2">
+            <Users className="h-4 w-4 text-indigo-500" />
+            <span className="text-sm font-bold text-[var(--color-text-primary)]">
+              {classes.reduce((s, c) => s + (c._count?.students ?? 0), 0)}
+            </span>
+            <span className="text-xs text-[var(--color-text-secondary)]">students</span>
+          </div>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="grid grid-cols-1 gap-3">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-24 w-full rounded-2xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] animate-pulse" />
           ))}
         </div>
-      ) : classes.length === 0 ? (
-        <div className="text-center p-12 border rounded-xl border-dashed">
-          <p className="text-muted-foreground">No classes found. Add one to get started.</p>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && (!classes || classes.length === 0) && (
+        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-[var(--color-border)] rounded-2xl bg-[var(--color-bg-surface)]">
+          <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center mb-4">
+            <GraduationCap className="h-8 w-8 text-indigo-500" />
+          </div>
+          <h3 className="text-base font-bold text-[var(--color-text-primary)] mb-1">No classes yet</h3>
+          <p className="text-sm text-[var(--color-text-secondary)] mb-4">Add your first class to get started</p>
+          <AddClassSheet />
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {classes.map((cls) => (
-            <Card key={cls.id}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xl">{cls.name} {cls.stream}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm text-muted-foreground mb-2">
-                  {cls.studentCount || 0} Students
+      )}
+
+      {/* Class cards */}
+      {!isLoading && classes && classes.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {classes.map(cls => {
+            const colors = classColorIndex(cls.name);
+            const studentCount = cls._count?.students ?? 0;
+            return (
+              <div
+                key={cls.id}
+                className="flex items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className={`h-12 w-12 rounded-xl ${colors.bg} flex items-center justify-center shrink-0`}>
+                  <BookOpen className={`h-6 w-6 ${colors.icon}`} />
                 </div>
-                {cls.notes && (
-                  <p className="text-sm border-t pt-2 mt-2">{cls.notes}</p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-[var(--color-text-primary)]">{cls.name}</h3>
+                    {cls.stream && (
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}>
+                        {cls.stream}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Users className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" />
+                    <span className="text-xs text-[var(--color-text-secondary)]">{studentCount} student{studentCount !== 1 ? 's' : ''}</span>
+                  </div>
+                  {cls.notes && (
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1 truncate">{cls.notes}</p>
+                  )}
+                </div>
+                <Link href={`/students?classId=${cls.id}`} className={`flex h-8 w-8 items-center justify-center rounded-full ${colors.bg} shrink-0 hover:opacity-80 transition-opacity`}>
+                  <ChevronRight className={`h-4 w-4 ${colors.icon}`} />
+                </Link>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

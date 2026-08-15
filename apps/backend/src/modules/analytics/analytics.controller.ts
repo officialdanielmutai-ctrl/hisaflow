@@ -25,4 +25,25 @@ export class AnalyticsController {
   getGuestHouseDashboard(@OrgContext() organizationId: string) {
     return this.analyticsService.getGuestHouseDashboard(organizationId);
   }
+
+  @Get('school-dashboard')
+  getSchoolDashboard(@OrgContext() organizationId: string) {
+    return this.analyticsService.getSchoolDashboard(organizationId);
+  }
+
+  @Get('chemist-dashboard')
+  getChemistDashboard(@OrgContext() organizationId: string) {
+    return this.analyticsService.getChemistDashboard(organizationId);
+  }
+
+  @Get('restaurant-dashboard')
+  getRestaurantDashboard(@OrgContext() organizationId: string) {
+    return this.analyticsService.getRestaurantDashboard(organizationId);
+  }
+
+  @Get('wholesale-dashboard')
+  getWholesaleDashboard(@OrgContext() organizationId: string) {
+    return this.analyticsService.getWholesaleDashboard(organizationId);
+  }
 }
+
