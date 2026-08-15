@@ -9,13 +9,13 @@ export class TableOrdersService {
   async create(dto: CreateTableOrderDto, orgId: string) {
     return this.prisma.db.tableOrder.create({
       data: {
-        orgId,
+        organizationId: orgId,
         tableLabel: dto.tableLabel,
         notes: dto.notes,
         status: 'OPEN',
         items: {
           create: dto.items?.map(item => ({
-            inventoryItemId: item.itemId,
+            itemId: item.itemId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             notes: item.notes,
@@ -26,21 +26,21 @@ export class TableOrdersService {
     });
   }
 
-  async findAll(orgId: string, status: string = 'OPEN') {
+  async findAll(orgId: string, status: any = 'OPEN') {
     return this.prisma.db.tableOrder.findMany({
-      where: { orgId, status },
+      where: { organizationId: orgId, status },
       include: { items: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findOne(id: string, orgId: string) {
-    return this.prisma.db.tableOrder.findUniqueOrThrow({
-      where: { id_orgId: { id, orgId } },
+    return this.prisma.db.tableOrder.findFirstOrThrow({
+      where: { id, organizationId: orgId },
       include: {
         items: {
           include: {
-            inventoryItem: true,
+            item: true,
           },
         },
       },
@@ -48,8 +48,8 @@ export class TableOrdersService {
   }
 
   async addItem(orderId: string, dto: AddOrderItemDto, orgId: string) {
-    const order = await this.prisma.db.tableOrder.findUniqueOrThrow({
-      where: { id_orgId: { id: orderId, orgId } },
+    const order = await this.prisma.db.tableOrder.findFirstOrThrow({
+      where: { id: orderId, organizationId: orgId },
     });
 
     if (order.status !== 'OPEN') {
@@ -59,7 +59,7 @@ export class TableOrdersService {
     return this.prisma.db.tableOrderItem.create({
       data: {
         orderId,
-        inventoryItemId: dto.itemId,
+        itemId: dto.itemId,
         quantity: dto.quantity,
         unitPrice: dto.unitPrice,
         notes: dto.notes,
@@ -68,12 +68,12 @@ export class TableOrdersService {
   }
 
   async removeItem(orderItemId: string, orgId: string) {
-    const item = await this.prisma.db.tableOrderItem.findUniqueOrThrow({
+    const tableItem = await this.prisma.db.tableOrderItem.findUniqueOrThrow({
       where: { id: orderItemId },
       include: { order: true },
     });
 
-    if (item.order.orgId !== orgId || item.order.status !== 'OPEN') {
+    if (tableItem.order.organizationId !== orgId || tableItem.order.status !== 'OPEN') {
       throw new BadRequestException('Cannot remove item or unauthorized');
     }
 
@@ -84,13 +84,13 @@ export class TableOrdersService {
 
   async closeOrder(orderId: string, orgId: string) {
     return this.prisma.db.$transaction(async (tx) => {
-      const order = await tx.tableOrder.findUniqueOrThrow({
-        where: { id_orgId: { id: orderId, orgId } },
+      const order = await tx.tableOrder.findFirstOrThrow({
+        where: { id: orderId, organizationId: orgId },
         include: {
           items: {
             include: {
-              inventoryItem: {
-                include: { recipeIngredients: true },
+              item: {
+                include: { recipeLines: true },
               },
             },
           },
@@ -101,33 +101,33 @@ export class TableOrdersService {
         throw new BadRequestException('Order is not OPEN');
       }
 
-      for (const item of order.items) {
-        if (item.inventoryItem.isComposite) {
-          for (const ingredient of item.inventoryItem.recipeIngredients) {
-            const deductionQuantity = ingredient.quantity * item.quantity;
+      for (const tableItem of order.items) {
+        if (tableItem.item.isComposite) {
+          for (const ingredient of tableItem.item.recipeLines) {
+            const deductionQuantity = ingredient.quantityUsed.toNumber() * tableItem.quantity.toNumber();
             await tx.inventoryItem.update({
-              where: { id_orgId: { id: ingredient.ingredientId, orgId } },
+              where: { id: ingredient.ingredientId },
               data: { quantity: { decrement: deductionQuantity } },
             });
           }
         } else {
           await tx.inventoryItem.update({
-            where: { id_orgId: { id: item.inventoryItem.id, orgId } },
-            data: { quantity: { decrement: item.quantity } },
+            where: { id: tableItem.item.id },
+            data: { quantity: { decrement: tableItem.quantity } },
           });
         }
       }
 
       return tx.tableOrder.update({
-        where: { id_orgId: { id: orderId, orgId } },
-        data: { status: 'PAID' },
+        where: { id: orderId },
+        data: { status: 'PAID', closedAt: new Date() },
       });
     });
   }
 
   async voidOrder(orderId: string, orgId: string) {
-    const order = await this.prisma.db.tableOrder.findUniqueOrThrow({
-      where: { id_orgId: { id: orderId, orgId } },
+    const order = await this.prisma.db.tableOrder.findFirstOrThrow({
+      where: { id: orderId, organizationId: orgId },
     });
 
     if (order.status !== 'OPEN') {
@@ -135,8 +135,8 @@ export class TableOrdersService {
     }
 
     return this.prisma.db.tableOrder.update({
-      where: { id_orgId: { id: orderId, orgId } },
-      data: { status: 'VOIDED' },
+      where: { id: orderId },
+      data: { status: 'VOIDED', closedAt: new Date() },
     });
   }
 }

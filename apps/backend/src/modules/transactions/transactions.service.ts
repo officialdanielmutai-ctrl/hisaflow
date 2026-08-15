@@ -67,8 +67,8 @@ export class TransactionsService {
     // Handle Restaurant composite deduction
     const isRestaurant = product.organization.businessType === 'RESTAURANT';
     if (isRestaurant && product.isComposite && isDeduction) {
-      const txs = [];
-      const ingredientNames = [];
+      const txs: any[] = [];
+      const ingredientNames: string[] = [];
       
       for (const recipeLine of product.recipeLines) {
         const qtyToDeduct = Number(recipeLine.quantityUsed) * dto.quantity;
@@ -149,7 +149,7 @@ export class TransactionsService {
       });
 
       let remainingToDeduct = dto.quantity;
-      let batchDeductions = [];
+      let batchDeductions: string[] = [];
 
       for (const batch of batches) {
         if (remainingToDeduct <= 0) break;

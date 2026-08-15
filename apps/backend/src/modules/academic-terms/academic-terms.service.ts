@@ -10,14 +10,14 @@ export class AcademicTermsService {
     return this.prisma.db.$transaction(async (tx) => {
       if (dto.isActive) {
         await tx.academicTerm.updateMany({
-          where: { orgId, isActive: true },
+          where: { organizationId: orgId, isActive: true },
           data: { isActive: false },
         });
       }
 
       const term = await tx.academicTerm.create({
         data: {
-          orgId,
+          organizationId: orgId,
           name: dto.name,
           startDate: new Date(dto.startDate),
           endDate: new Date(dto.endDate),
@@ -25,6 +25,7 @@ export class AcademicTermsService {
           isActive: dto.isActive ?? false,
           feeStructures: {
             create: dto.feeStructures?.map(fs => ({
+              organizationId: orgId,
               classId: fs.classId,
               name: fs.name,
               amount: fs.amount,
@@ -41,7 +42,7 @@ export class AcademicTermsService {
 
   async findAll(orgId: string) {
     return this.prisma.db.academicTerm.findMany({
-      where: { orgId },
+      where: { organizationId: orgId },
       include: {
         _count: {
           select: { feeStructures: true },
@@ -52,8 +53,8 @@ export class AcademicTermsService {
   }
 
   async findOne(id: string, orgId: string) {
-    return this.prisma.db.academicTerm.findUniqueOrThrow({
-      where: { id_orgId: { id, orgId } },
+    return this.prisma.db.academicTerm.findFirstOrThrow({
+      where: { id, organizationId: orgId },
       include: { feeStructures: true },
     });
   }
@@ -66,8 +67,9 @@ export class AcademicTermsService {
     };
     if (dto.dueDate) dataToUpdate.dueDate = new Date(dto.dueDate);
 
+    await this.prisma.db.academicTerm.findFirstOrThrow({ where: { id, organizationId: orgId } });
     return this.prisma.db.academicTerm.update({
-      where: { id_orgId: { id, orgId } },
+      where: { id },
       data: dataToUpdate,
     });
   }
@@ -75,24 +77,26 @@ export class AcademicTermsService {
   async activate(id: string, orgId: string) {
     return this.prisma.db.$transaction(async (tx) => {
       await tx.academicTerm.updateMany({
-        where: { orgId, isActive: true },
+        where: { organizationId: orgId, isActive: true },
         data: { isActive: false },
       });
 
+      await tx.academicTerm.findFirstOrThrow({ where: { id, organizationId: orgId } });
       return tx.academicTerm.update({
-        where: { id_orgId: { id, orgId } },
+        where: { id },
         data: { isActive: true },
       });
     });
   }
 
   async addFeeStructure(termId: string, dto: FeeStructureItemDto, orgId: string) {
-    const term = await this.prisma.db.academicTerm.findUniqueOrThrow({
-      where: { id_orgId: { id: termId, orgId } },
+    const term = await this.prisma.db.academicTerm.findFirstOrThrow({
+      where: { id: termId, organizationId: orgId },
     });
 
     return this.prisma.db.feeStructure.create({
       data: {
+        organizationId: orgId,
         termId: term.id,
         classId: dto.classId,
         name: dto.name,
@@ -108,7 +112,7 @@ export class AcademicTermsService {
       include: { term: true },
     });
 
-    if (fs.term.orgId !== orgId) {
+    if (fs.term.organizationId !== orgId) {
       throw new Error('Unauthorized');
     }
 

@@ -10,29 +10,29 @@ export class StudentsService {
     return this.prisma.db.student.create({
       data: {
         ...dto,
-        orgId,
+        organizationId: orgId,
       },
     });
   }
 
   async findAll(orgId: string, classId?: string) {
-    const where: any = { orgId, isActive: true };
+    const where: any = { organizationId: orgId, isActive: true };
     if (classId) {
       where.classId = classId;
     }
 
     return this.prisma.db.student.findMany({
       where,
-      include: { schoolClass: true },
+      include: { class: true },
       orderBy: { name: 'asc' },
     });
   }
 
   async findOne(id: string, orgId: string) {
-    return this.prisma.db.student.findUniqueOrThrow({
-      where: { id_orgId: { id, orgId } },
+    return this.prisma.db.student.findFirstOrThrow({
+      where: { id, organizationId: orgId },
       include: {
-        schoolClass: true,
+        class: true,
         feeInvoices: {
           include: { term: true },
           orderBy: { createdAt: 'desc' },
@@ -42,15 +42,17 @@ export class StudentsService {
   }
 
   async update(id: string, dto: CreateStudentDto, orgId: string) {
+    await this.prisma.db.student.findFirstOrThrow({ where: { id, organizationId: orgId } });
     return this.prisma.db.student.update({
-      where: { id_orgId: { id, orgId } },
+      where: { id },
       data: dto,
     });
   }
 
   async deactivate(id: string, orgId: string) {
+    await this.prisma.db.student.findFirstOrThrow({ where: { id, organizationId: orgId } });
     return this.prisma.db.student.update({
-      where: { id_orgId: { id, orgId } },
+      where: { id },
       data: { isActive: false },
     });
   }
@@ -58,14 +60,14 @@ export class StudentsService {
   async search(orgId: string, query: string) {
     return this.prisma.db.student.findMany({
       where: {
-        orgId,
+        organizationId: orgId,
         isActive: true,
         OR: [
           { name: { contains: query, mode: 'insensitive' } },
           { admissionNumber: { contains: query, mode: 'insensitive' } },
         ],
       },
-      include: { schoolClass: true },
+      include: { class: true },
       take: 20,
     });
   }

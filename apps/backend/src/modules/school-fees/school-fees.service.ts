@@ -7,17 +7,17 @@ export class SchoolFeesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async generateForTerm(termId: string, orgId: string) {
-    const term = await this.prisma.db.academicTerm.findUniqueOrThrow({
-      where: { id_orgId: { id: termId, orgId } },
+    const term = await this.prisma.db.academicTerm.findFirstOrThrow({
+      where: { id: termId, organizationId: orgId },
       include: { feeStructures: true },
     });
 
     const students = await this.prisma.db.student.findMany({
-      where: { orgId, isActive: true },
+      where: { organizationId: orgId, isActive: true },
     });
 
     const existingInvoices = await this.prisma.db.feeInvoice.findMany({
-      where: { termId, orgId },
+      where: { termId, organizationId: orgId },
       select: { studentId: true },
     });
 
@@ -41,11 +41,11 @@ export class SchoolFeesService {
         continue;
       }
 
-      const totalExpected = applicableStructures.reduce((sum, fs) => sum + fs.amount, 0);
+      const totalExpected = applicableStructures.reduce((sum, fs) => sum + fs.amount.toNumber(), 0);
 
       await this.prisma.db.feeInvoice.create({
         data: {
-          orgId,
+          organizationId: orgId,
           termId,
           studentId: student.id,
           totalExpected,
@@ -66,12 +66,12 @@ export class SchoolFeesService {
   }
 
   async findInvoice(invoiceId: string, orgId: string) {
-    return this.prisma.db.feeInvoice.findUniqueOrThrow({
-      where: { id_orgId: { id: invoiceId, orgId } },
+    return this.prisma.db.feeInvoice.findFirstOrThrow({
+      where: { id: invoiceId, organizationId: orgId },
       include: {
         lineItems: true,
-        payments: { orderBy: { paymentDate: 'desc' } },
-        student: { include: { schoolClass: true } },
+        payments: { orderBy: { recordedAt: 'desc' } },
+        student: { include: { class: true } },
         term: true,
       },
     });
@@ -79,14 +79,14 @@ export class SchoolFeesService {
 
   async findByStudent(studentId: string, orgId: string) {
     return this.prisma.db.feeInvoice.findMany({
-      where: { studentId, orgId },
+      where: { studentId, organizationId: orgId },
       include: { term: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findByTerm(termId: string, orgId: string, status?: string) {
-    const where: any = { termId, orgId };
+    const where: any = { termId, organizationId: orgId };
     if (status) {
       where.status = status;
     }
@@ -94,7 +94,7 @@ export class SchoolFeesService {
     return this.prisma.db.feeInvoice.findMany({
       where,
       include: {
-        student: { include: { schoolClass: true } },
+        student: { include: { class: true } },
       },
       orderBy: { student: { name: 'asc' } },
     });
@@ -102,8 +102,8 @@ export class SchoolFeesService {
 
   async recordPayment(invoiceId: string, dto: RecordFeePaymentDto, orgId: string) {
     return this.prisma.db.$transaction(async (tx) => {
-      const invoice = await tx.feeInvoice.findUniqueOrThrow({
-        where: { id_orgId: { id: invoiceId, orgId } },
+      const invoice = await tx.feeInvoice.findFirstOrThrow({
+        where: { id: invoiceId, organizationId: orgId },
       });
 
       if (invoice.status === 'VOIDED' || invoice.status === 'DRAFT') {
@@ -120,8 +120,8 @@ export class SchoolFeesService {
         },
       });
 
-      const newAmountPaid = invoice.amountPaid + dto.amount;
-      const balance = invoice.totalExpected - invoice.adjustmentsTotal - newAmountPaid;
+      const newAmountPaid = invoice.amountPaid.toNumber() + dto.amount;
+      const balance = invoice.totalExpected.toNumber() - invoice.adjustmentsTotal.toNumber() - newAmountPaid;
 
       let newStatus = invoice.status;
       if (balance <= 0) {
@@ -131,7 +131,7 @@ export class SchoolFeesService {
       }
 
       await tx.feeInvoice.update({
-        where: { id_orgId: { id: invoiceId, orgId } },
+        where: { id: invoiceId },
         data: {
           amountPaid: newAmountPaid,
           status: newStatus,
@@ -144,8 +144,8 @@ export class SchoolFeesService {
 
   async addAdjustment(invoiceId: string, description: string, amount: number, isWaived: boolean, orgId: string) {
     return this.prisma.db.$transaction(async (tx) => {
-      const invoice = await tx.feeInvoice.findUniqueOrThrow({
-        where: { id_orgId: { id: invoiceId, orgId } },
+      const invoice = await tx.feeInvoice.findFirstOrThrow({
+        where: { id: invoiceId, organizationId: orgId },
       });
 
       await tx.feeLineItem.create({
@@ -157,26 +157,26 @@ export class SchoolFeesService {
         },
       });
 
-      let adjustmentsTotal = invoice.adjustmentsTotal;
+      let adjustmentsTotal = invoice.adjustmentsTotal.toNumber();
       if (isWaived) {
         adjustmentsTotal += amount;
       }
 
-      let totalExpected = invoice.totalExpected;
+      let totalExpected = invoice.totalExpected.toNumber();
       if (!isWaived) {
         totalExpected += amount;
       }
 
-      const balance = totalExpected - adjustmentsTotal - invoice.amountPaid;
+      const balance = totalExpected - adjustmentsTotal - invoice.amountPaid.toNumber();
       let newStatus = invoice.status;
-      if (balance <= 0 && invoice.amountPaid > 0) {
+      if (balance <= 0 && invoice.amountPaid.toNumber() > 0) {
         newStatus = 'PAID';
-      } else if (invoice.amountPaid > 0) {
+      } else if (invoice.amountPaid.toNumber() > 0) {
         newStatus = 'PARTIAL';
       }
 
       return tx.feeInvoice.update({
-        where: { id_orgId: { id: invoiceId, orgId } },
+        where: { id: invoiceId },
         data: {
           totalExpected,
           adjustmentsTotal,
@@ -188,9 +188,9 @@ export class SchoolFeesService {
 
   async getTermSummary(termId: string, orgId: string) {
     const invoices = await this.prisma.db.feeInvoice.findMany({
-      where: { termId, orgId, status: { not: 'VOIDED' } },
+      where: { termId, organizationId: orgId, status: { not: 'VOIDED' } },
       include: {
-        student: { include: { schoolClass: true } },
+        student: { include: { class: true } },
       },
     });
 
@@ -199,18 +199,18 @@ export class SchoolFeesService {
     const byClassMap = new Map<string, { className: string, totalExpected: number, totalCollected: number, studentCount: number }>();
 
     for (const inv of invoices) {
-      const invExpected = inv.totalExpected - inv.adjustmentsTotal;
+      const invExpected = inv.totalExpected.toNumber() - inv.adjustmentsTotal.toNumber();
       totalExpected += invExpected;
-      totalCollected += inv.amountPaid;
+      totalCollected += inv.amountPaid.toNumber();
 
-      const className = inv.student?.schoolClass?.name || 'Unassigned';
+      const className = inv.student?.class?.name || 'Unassigned';
       if (!byClassMap.has(className)) {
         byClassMap.set(className, { className, totalExpected: 0, totalCollected: 0, studentCount: 0 });
       }
 
       const classStats = byClassMap.get(className)!;
       classStats.totalExpected += invExpected;
-      classStats.totalCollected += inv.amountPaid;
+      classStats.totalCollected += inv.amountPaid.toNumber();
       classStats.studentCount++;
     }
 
@@ -228,9 +228,9 @@ export class SchoolFeesService {
 
   async getDefaulters(termId: string, orgId: string) {
     const invoices = await this.prisma.db.feeInvoice.findMany({
-      where: { termId, orgId, status: { notIn: ['PAID', 'VOIDED'] } },
+      where: { termId, organizationId: orgId, status: { notIn: ['PAID', 'VOIDED'] } },
       include: {
-        student: { include: { schoolClass: true } },
+        student: { include: { class: true } },
       },
       orderBy: { student: { name: 'asc' } },
     });
@@ -238,35 +238,36 @@ export class SchoolFeesService {
     return invoices.map(inv => ({
       studentId: inv.studentId,
       studentName: inv.student.name,
-      className: inv.student.schoolClass?.name,
-      amountPaid: inv.amountPaid,
-      totalExpected: inv.totalExpected - inv.adjustmentsTotal,
-      balance: (inv.totalExpected - inv.adjustmentsTotal) - inv.amountPaid,
+      className: inv.student.class?.name,
+      amountPaid: inv.amountPaid.toNumber(),
+      totalExpected: inv.totalExpected.toNumber() - inv.adjustmentsTotal.toNumber(),
+      balance: (inv.totalExpected.toNumber() - inv.adjustmentsTotal.toNumber()) - inv.amountPaid.toNumber(),
       status: inv.status,
     }));
   }
 
   async issueInvoice(invoiceId: string, orgId: string) {
-    const invoice = await this.prisma.db.feeInvoice.findUniqueOrThrow({
-      where: { id_orgId: { id: invoiceId, orgId } },
+    const invoice = await this.prisma.db.feeInvoice.findFirstOrThrow({
+      where: { id: invoiceId, organizationId: orgId },
     });
 
     if (invoice.status !== 'DRAFT') {
       throw new BadRequestException('Can only issue DRAFT invoices');
     }
 
-    const balance = invoice.totalExpected - invoice.adjustmentsTotal - invoice.amountPaid;
-    const newStatus = balance <= 0 && invoice.amountPaid > 0 ? 'PAID' : 'ISSUED';
+    const balance = invoice.totalExpected.toNumber() - invoice.adjustmentsTotal.toNumber() - invoice.amountPaid.toNumber();
+    const newStatus = balance <= 0 && invoice.amountPaid.toNumber() > 0 ? 'PAID' : 'ISSUED';
 
     return this.prisma.db.feeInvoice.update({
-      where: { id_orgId: { id: invoiceId, orgId } },
+      where: { id: invoiceId },
       data: { status: newStatus },
     });
   }
 
   async voidInvoice(invoiceId: string, orgId: string) {
+    await this.prisma.db.feeInvoice.findFirstOrThrow({ where: { id: invoiceId, organizationId: orgId } });
     return this.prisma.db.feeInvoice.update({
-      where: { id_orgId: { id: invoiceId, orgId } },
+      where: { id: invoiceId },
       data: { status: 'VOIDED' },
     });
   }

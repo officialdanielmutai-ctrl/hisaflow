@@ -8,7 +8,7 @@ export class TieredPricingService {
 
   async findByItem(itemId: string, orgId: string) {
     return this.prisma.db.tieredPriceRule.findMany({
-      where: { orgId, inventoryItemId: itemId },
+      where: { organizationId: orgId, inventoryItemId: itemId },
       orderBy: { minQuantity: 'asc' },
     });
   }
@@ -16,20 +16,20 @@ export class TieredPricingService {
   async upsertRules(orgId: string, itemId: string, rules: CreateTieredPriceRuleDto[]) {
     return this.prisma.db.$transaction(async (tx) => {
       await tx.tieredPriceRule.deleteMany({
-        where: { orgId, inventoryItemId: itemId },
+        where: { organizationId: orgId, inventoryItemId: itemId },
       });
 
       if (rules.length > 0) {
         await tx.tieredPriceRule.createMany({
           data: rules.map(rule => ({
             ...rule,
-            orgId,
+            organizationId: orgId,
           })),
         });
       }
 
       return tx.tieredPriceRule.findMany({
-        where: { orgId, inventoryItemId: itemId },
+        where: { organizationId: orgId, inventoryItemId: itemId },
         orderBy: { minQuantity: 'asc' },
       });
     });
@@ -37,17 +37,18 @@ export class TieredPricingService {
 
   async resolvePrice(orgId: string, itemId: string, quantity: number) {
     const rules = await this.prisma.db.tieredPriceRule.findMany({
-      where: { orgId, inventoryItemId: itemId },
+      where: { organizationId: orgId, inventoryItemId: itemId },
       orderBy: { minQuantity: 'desc' },
     });
 
-    const matchedRule = rules.find((rule) => rule.minQuantity <= quantity);
+    const matchedRule = rules.find((rule) => rule.minQuantity.toNumber() <= quantity);
     return matchedRule ? matchedRule.pricePerUnit : null;
   }
 
   async deleteRule(id: string, orgId: string) {
+    await this.prisma.db.tieredPriceRule.findFirstOrThrow({ where: { id, organizationId: orgId } });
     return this.prisma.db.tieredPriceRule.delete({
-      where: { id_orgId: { id, orgId } },
+      where: { id },
     });
   }
 }

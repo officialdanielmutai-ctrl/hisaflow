@@ -10,34 +10,36 @@ export class SchoolClassesService {
     return this.prisma.db.schoolClass.create({
       data: {
         ...dto,
-        orgId,
+        organizationId: orgId,
       },
     });
   }
 
   async findAll(orgId: string) {
     return this.prisma.db.schoolClass.findMany({
-      where: { orgId, isActive: true },
+      where: { organizationId: orgId, isActive: true },
       orderBy: { name: 'asc' },
     });
   }
 
   async findOne(id: string, orgId: string) {
-    return this.prisma.db.schoolClass.findUniqueOrThrow({
-      where: { id_orgId: { id, orgId } },
+    return this.prisma.db.schoolClass.findFirstOrThrow({
+      where: { id, organizationId: orgId },
     });
   }
 
   async update(id: string, dto: CreateSchoolClassDto, orgId: string) {
+    await this.prisma.db.schoolClass.findFirstOrThrow({ where: { id, organizationId: orgId } });
     return this.prisma.db.schoolClass.update({
-      where: { id_orgId: { id, orgId } },
+      where: { id },
       data: dto,
     });
   }
 
   async deactivate(id: string, orgId: string) {
+    await this.prisma.db.schoolClass.findFirstOrThrow({ where: { id, organizationId: orgId } });
     return this.prisma.db.schoolClass.update({
-      where: { id_orgId: { id, orgId } },
+      where: { id },
       data: { isActive: false },
     });
   }
