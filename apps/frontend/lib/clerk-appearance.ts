@@ -58,7 +58,13 @@ export const clerkAppearance = {
     dividerText: { color: '#9CA3AF' },
     footerActionLink: { color: '#1F7A5A', fontWeight: '600' },
     footerAction: { display: 'flex', justifyContent: 'center', width: '100%' },
-    footer: { paddingBottom: '0' },
+    footer: {
+      background: 'transparent',
+      backgroundColor: 'transparent',
+      boxShadow: 'none',
+      border: 'none',
+      paddingBottom: '0',
+    },
     
     // Icons injected via CSS backgrounds
     formFieldInput__identifier: {

@@ -11,7 +11,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex flex-col min-h-screen bg-[var(--color-primary)]">
       {/* BRAND ZONE (Top ~42%) */}
-      <div className="relative flex-shrink-0 h-[40vh] md:h-[45vh] w-full overflow-hidden">
+      <div className="relative flex-shrink-0 h-[40vh] md:h-[45vh] w-full overflow-visible">
         {/* Wordmark (Pulled away from shapes, upper-left) */}
         <div className="absolute top-12 left-6 md:top-16 md:left-12 z-10">
           <h1 className="text-white text-2xl font-bold tracking-tight">HisaFlow</h1>
@@ -62,6 +62,15 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
                 padding: 0 !important;
                 max-width: 100% !important;
                 width: 100% !important;
+              }
+              /* Strip the dark footer bar Clerk renders under the sign-up form */
+              .clerk-auth-container .cl-footer,
+              .clerk-auth-container .cl-internal-b3fm6y,
+              .clerk-auth-container [data-localization-key="signUp.start.subtitle"] {
+                background: transparent !important;
+                background-color: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
               }
             `}} />
             {children}
