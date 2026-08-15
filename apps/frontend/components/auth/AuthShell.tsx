@@ -19,8 +19,8 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Motif (3 chevrons, anchored top-right) */}
-        <div className="absolute top-0 right-0 w-[240px] md:w-[320px] h-full translate-x-4 -translate-y-4 md:translate-x-12 md:-translate-y-8 pointer-events-none">
-          <HisaFlowMotif className="w-full h-full object-cover" />
+        <div className="absolute top-0 right-0 w-[240px] h-[240px] md:w-[320px] md:h-[320px] pointer-events-none">
+          <HisaFlowMotif className="w-full h-full" />
         </div>
       </div>
 
