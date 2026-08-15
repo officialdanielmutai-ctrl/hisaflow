@@ -18,8 +18,8 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           <div className="w-6 h-[3px] bg-white mt-1 opacity-90 rounded-full" />
         </div>
 
-        {/* Motif — fills full brand zone, chevrons are in the right half */}
-        <div className="absolute inset-0 pointer-events-none">
+        {/* Motif (3 chevrons, anchored top-right, perfectly diagonal) */}
+        <div className="absolute top-0 right-0 w-[240px] h-[240px] md:w-[320px] md:h-[320px] pointer-events-none overflow-visible">
           <HisaFlowMotif className="w-full h-full" />
         </div>
       </div>
