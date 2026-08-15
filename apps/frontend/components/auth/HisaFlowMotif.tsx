@@ -3,32 +3,32 @@ import React from 'react';
 interface HisaFlowMotifProps extends React.SVGProps<SVGSVGElement> {}
 
 /**
- * HisaFlow Motif — 3 upward-pointing chevrons arranged in a diagonal staircase
- * from bottom-left to top-right, each one larger and higher than the last.
+ * HisaFlow Motif — fills the full brand zone (landscape).
+ * viewBox 390×240 (matches typical phone width × ~40vh brand zone height).
+ * Wordmark lives in the upper-LEFT of the zone (handled in AuthShell markup).
+ * Chevrons live in the RIGHT HALF, stepping diagonally bottom→top.
  *
- * Geometry (all same angle, tan = height/half-span = 35/42 ≈ 0.83):
+ * All three use identical angle (height = half-span, i.e. 45°):
  *
- *   Chevron  | Peak       | Left       | Right      | Stroke
- *   ---------|------------|------------|------------|-------
- *   1 (sm)   | (55, 175)  | (13, 210)  | (97, 210)  | 18px  #1F7A5A
- *   2 (md)   | (120, 115) | (58, 167)  | (182, 167) | 20px  #2E8B62
- *   3 (lg)   | (195, 45)  | (111, 115) | (279, 115) | 22px  #52C48A  ← bleeds right
- *
- * Container: 240×240, anchored absolute top-right, overflow-visible lets C3 bleed.
+ *   #   Color    Peak         Left-base    Right-base   Stroke
+ *   1   #1F7A5A  (275, 205)   (240, 240)   (310, 240)   18px  ← smallest, lowest
+ *   2   #2E8B62  (325, 145)   (275, 195)   (375, 195)   20px  ← medium
+ *   3   #52C48A  (380,  75)   (315, 140)   (445, 140)   22px  ← largest, bleeds right
  */
 export function HisaFlowMotif({ className, ...props }: HisaFlowMotifProps) {
   return (
     <svg
-      viewBox="0 0 240 240"
+      viewBox="0 0 390 240"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid slice"
       className={className}
       overflow="visible"
       {...props}
     >
-      {/* Chevron 1 — Smallest, bottom-left of motif */}
+      {/* Chevron 1 — Smallest, lowest (darkest) */}
       <polyline
-        points="13,210 55,175 97,210"
+        points="240,240 275,205 310,240"
         stroke="#1F7A5A"
         strokeWidth="18"
         strokeLinecap="butt"
@@ -36,9 +36,9 @@ export function HisaFlowMotif({ className, ...props }: HisaFlowMotifProps) {
         fill="none"
       />
 
-      {/* Chevron 2 — Medium, middle of motif */}
+      {/* Chevron 2 — Medium */}
       <polyline
-        points="58,167 120,115 182,167"
+        points="275,195 325,145 375,195"
         stroke="#2E8B62"
         strokeWidth="20"
         strokeLinecap="butt"
@@ -46,9 +46,9 @@ export function HisaFlowMotif({ className, ...props }: HisaFlowMotifProps) {
         fill="none"
       />
 
-      {/* Chevron 3 — Largest, top-right, bleeds off edge */}
+      {/* Chevron 3 — Largest, top-right, bleeds off right edge */}
       <polyline
-        points="111,115 195,45 279,115"
+        points="315,140 380,75 445,140"
         stroke="#52C48A"
         strokeWidth="22"
         strokeLinecap="butt"
@@ -58,4 +58,5 @@ export function HisaFlowMotif({ className, ...props }: HisaFlowMotifProps) {
     </svg>
   );
 }
+
 
