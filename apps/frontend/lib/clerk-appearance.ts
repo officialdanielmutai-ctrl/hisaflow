@@ -6,7 +6,9 @@ export const clerkAppearance = {
     colorInputText: '#111827',
     colorText: '#111827',
     colorTextSecondary: '#6B7280',
-    borderRadius: '9999px', // pill inputs + buttons
+    // NOTE: borderRadius is NOT set here — setting it in variables applies it
+    // to the card container itself, creating the oval/blob frame.
+    // Instead, pill radius is applied per-element below.
     fontFamily: 'var(--font-sans)',
     fontSize: '15px',
   },

@@ -39,15 +39,29 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             </p>
           </div>
 
-          {/* Clerk Component Slot with scoped style override to eliminate the Clerk "blob" */}
+          {/* Scoped CSS to strip every Clerk wrapper background/shadow/frame */}
           <div className="clerk-auth-container">
             <style dangerouslySetInnerHTML={{ __html: `
-              .clerk-auth-container .cl-card,
+              /* Nuke ALL card/box chrome Clerk injects */
+              .clerk-auth-container [class^="cl-"],
+              .clerk-auth-container [class*=" cl-"] {
+                --cl-shadow-sm: none !important;
+                --cl-shadow: none !important;
+                --cl-shadow-md: none !important;
+                --cl-shadow-lg: none !important;
+              }
+              .clerk-auth-container .cl-rootBox,
               .clerk-auth-container .cl-cardBox,
-              .clerk-auth-container .cl-rootBox {
+              .clerk-auth-container .cl-card {
                 background: transparent !important;
+                background-color: transparent !important;
                 box-shadow: none !important;
                 border: none !important;
+                border-radius: 0 !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
               }
             `}} />
             {children}
