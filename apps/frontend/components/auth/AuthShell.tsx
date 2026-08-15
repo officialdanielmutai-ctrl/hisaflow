@@ -39,8 +39,19 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             </p>
           </div>
 
-          {/* Clerk Component Slot */}
-          {children}
+          {/* Clerk Component Slot with scoped style override to eliminate the Clerk "blob" */}
+          <div className="clerk-auth-container">
+            <style dangerouslySetInnerHTML={{ __html: `
+              .clerk-auth-container .cl-card,
+              .clerk-auth-container .cl-cardBox,
+              .clerk-auth-container .cl-rootBox {
+                background: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
+              }
+            `}} />
+            {children}
+          </div>
         </div>
       </div>
     </main>
