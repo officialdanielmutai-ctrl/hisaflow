@@ -29,7 +29,7 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
   // Multi-frame confirmation: require the same code N times in a row.
   const lastCodeRef = useRef<string>('');
   const streakRef = useRef<number>(0);
-  const CONFIRMATION_STREAK = 3;
+  const CONFIRMATION_STREAK = 5;
   const MIN_CODE_LENGTH = 6;
 
   const { getToken } = useAuth();
@@ -125,7 +125,11 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
         });
         
         setHasCamera(true);

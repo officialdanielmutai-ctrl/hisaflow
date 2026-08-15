@@ -44,7 +44,11 @@ export default function LabelCaptureSheet({ open, onOpenChange, onCapture }: Lab
         }
 
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
         });
 
         let retries = 0;
