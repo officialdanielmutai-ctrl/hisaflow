@@ -67,9 +67,9 @@ export function AddTermSheet() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button>Add Term</Button>
+        <Button className="bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white">Add Term</Button>
       </SheetTrigger>
-      <SheetContent className="overflow-y-auto sm:max-w-lg">
+      <SheetContent className="overflow-y-auto sm:max-w-lg bg-[#FAFAFA]">
         <SheetHeader>
           <SheetTitle>Add Academic Term</SheetTitle>
         </SheetHeader>
@@ -166,7 +166,7 @@ export function AddTermSheet() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Term
           </Button>

@@ -41,7 +41,7 @@ export function AddClassSheet() {
       <SheetTrigger asChild>
         <Button className="bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white">Add Class</Button>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="bg-[#FAFAFA]">
         <SheetHeader>
           <SheetTitle>Add New Class</SheetTitle>
         </SheetHeader>

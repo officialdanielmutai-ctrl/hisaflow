@@ -80,7 +80,7 @@ export function EditGuestSheet({ guest, isOpen, onClose }: EditGuestSheetProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity">
-      <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="w-full max-w-md bg-[#FAFAFA] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2 text-[var(--color-primary)]">
             <User className="h-5 w-5" />

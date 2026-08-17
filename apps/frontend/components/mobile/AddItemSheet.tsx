@@ -367,7 +367,7 @@ export default function AddItemSheet({
             <button
               type="button"
               onClick={handleScanLabel}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-xs font-medium"
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[#FAFAFA] px-3 py-1.5 text-xs font-medium"
             >
               <ScanLine className="h-3.5 w-3.5" />
               Scan Label

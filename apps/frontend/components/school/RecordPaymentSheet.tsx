@@ -56,9 +56,9 @@ export function RecordPaymentSheet({ invoiceId, totalExpected, amountPaid }: Rec
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button size="sm">Record Payment</Button>
+        <Button size="sm" className="bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white">Record Payment</Button>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="bg-[#FAFAFA]">
         <SheetHeader>
           <SheetTitle>Record Payment</SheetTitle>
         </SheetHeader>
@@ -106,7 +106,7 @@ export function RecordPaymentSheet({ invoiceId, totalExpected, amountPaid }: Rec
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Payment
           </Button>

@@ -54,9 +54,9 @@ export function AddStudentSheet() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button>Add Student</Button>
+        <Button className="bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white">Add Student</Button>
       </SheetTrigger>
-      <SheetContent className="overflow-y-auto">
+      <SheetContent className="overflow-y-auto bg-[#FAFAFA]">
         <SheetHeader>
           <SheetTitle>Add New Student</SheetTitle>
         </SheetHeader>
@@ -115,7 +115,7 @@ export function AddStudentSheet() {
               />
             </div>
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Student
           </Button>

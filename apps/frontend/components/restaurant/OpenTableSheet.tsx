@@ -46,7 +46,7 @@ export function OpenTableSheet({ children, onOpenSuccess }: OpenTableSheetProps)
       <SheetTrigger asChild>
         {children}
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="bg-[#FAFAFA]">
         <SheetHeader>
           <SheetTitle>Open New Table</SheetTitle>
         </SheetHeader>
@@ -75,7 +75,7 @@ export function OpenTableSheet({ children, onOpenSuccess }: OpenTableSheetProps)
             />
           </div>
 
-          <Button type="submit" className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90" disabled={loading || !label.trim()}>
+          <Button type="submit" className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white" disabled={loading || !label.trim()}>
             {loading ? "Opening..." : "Open Table"}
           </Button>
         </form>

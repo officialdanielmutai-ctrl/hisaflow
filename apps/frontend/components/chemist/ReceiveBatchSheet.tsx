@@ -50,7 +50,7 @@ export function ReceiveBatchSheet({ itemId, children }: { itemId: string, childr
       <SheetTrigger asChild>
         {children}
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="bg-[#FAFAFA]">
         <SheetHeader>
           <SheetTitle>Receive New Batch</SheetTitle>
         </SheetHeader>
@@ -106,7 +106,7 @@ export function ReceiveBatchSheet({ itemId, children }: { itemId: string, childr
             />
           </div>
 
-          <Button type="submit" className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90" disabled={loading}>
+          <Button type="submit" className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white" disabled={loading}>
             {loading ? "Processing..." : "Receive Batch"}
           </Button>
         </form>

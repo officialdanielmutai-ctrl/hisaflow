@@ -218,8 +218,8 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex flex-col rounded-t-[32px] bg-white h-[85vh] max-h-[800px] outline-none border border-gray-200">
-          <div className="p-4 bg-white rounded-t-[32px] flex flex-col items-center border-b border-gray-100 flex-shrink-0">
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex flex-col rounded-t-[32px] bg-[#FAFAFA] h-[85vh] max-h-[800px] outline-none border border-gray-200">
+          <div className="p-4 bg-[#FAFAFA] rounded-t-[32px] flex flex-col items-center border-b border-gray-100 flex-shrink-0">
             <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-200 mb-6" />
             <div className="flex w-full justify-between items-center px-2">
               <div className="flex items-center gap-2">

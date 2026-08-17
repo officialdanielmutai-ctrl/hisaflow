@@ -20,7 +20,7 @@ export default function ScanModeSheet({
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[32px] bg-white outline-none border border-gray-200 p-4 pb-8">
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-[32px] bg-[#FAFAFA] outline-none border border-gray-200 p-4 pb-8">
           <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-gray-300" />
           <Drawer.Title className="mb-4 text-center text-base font-bold">
             What do you want to scan?

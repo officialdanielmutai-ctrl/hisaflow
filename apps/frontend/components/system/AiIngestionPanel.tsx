@@ -279,7 +279,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb',
     borderRadius: 8, fontSize: 13, boxSizing: 'border-box', outline: 'none',
-    background: '#fff',
+    background: '#FAFAFA',
   };
   const labelStyle: React.CSSProperties = {
     display: 'block', fontSize: 11, fontWeight: 600,
@@ -382,7 +382,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
 
                   {/* Editable fields — shown when expanded */}
                   {isExpanded && (
-                    <div style={{ padding: '14px', borderTop: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column', gap: 10, background: '#fff' }}>
+                    <div style={{ padding: '14px', borderTop: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column', gap: 10, background: '#FAFAFA' }}>
 
                       {/* SALE / PURCHASE / WASTAGE */}
                       {(action.type === 'SALE' || action.type === 'PURCHASE' || action.type === 'WASTAGE') && (

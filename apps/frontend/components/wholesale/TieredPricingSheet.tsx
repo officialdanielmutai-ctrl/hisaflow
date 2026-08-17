@@ -76,7 +76,7 @@ export function TieredPricingSheet({ itemId, children }: { itemId: string, child
       <SheetTrigger asChild>
         {children}
       </SheetTrigger>
-      <SheetContent className="sm:max-w-md overflow-y-auto">
+      <SheetContent className="sm:max-w-md overflow-y-auto bg-[#FAFAFA]">
         <SheetHeader>
           <SheetTitle>Tiered Pricing Configuration</SheetTitle>
         </SheetHeader>
@@ -125,7 +125,7 @@ export function TieredPricingSheet({ itemId, children }: { itemId: string, child
             </div>
           )}
 
-          <Button className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90" onClick={handleSave} disabled={saving || loading}>
+          <Button className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white" onClick={handleSave} disabled={saving || loading}>
             {saving ? "Saving..." : "Save Pricing Rules"}
           </Button>
         </div>

@@ -130,8 +130,8 @@ export default function LabelCaptureSheet({ open, onOpenChange, onCapture }: Lab
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex flex-col rounded-t-[32px] bg-white h-[85vh] max-h-[800px] outline-none border border-gray-200">
-          <div className="p-4 bg-white rounded-t-[32px] flex flex-col items-center border-b border-gray-100 flex-shrink-0">
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex flex-col rounded-t-[32px] bg-[#FAFAFA] h-[85vh] max-h-[800px] outline-none border border-gray-200">
+          <div className="p-4 bg-[#FAFAFA] rounded-t-[32px] flex flex-col items-center border-b border-gray-100 flex-shrink-0">
             <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-200 mb-6" />
             <div className="flex w-full justify-between items-center px-2">
               <div className="flex items-center gap-2">
@@ -208,7 +208,7 @@ export default function LabelCaptureSheet({ open, onOpenChange, onCapture }: Lab
               <button
                 type="button"
                 onClick={handleRetry}
-                className="mt-6 flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-4 py-2 text-sm font-medium"
+                className="mt-6 flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[#FAFAFA] px-4 py-2 text-sm font-medium"
               >
                 <RotateCcw className="h-4 w-4" />
                 Try Again
@@ -217,13 +217,13 @@ export default function LabelCaptureSheet({ open, onOpenChange, onCapture }: Lab
           </div>
 
           {ready && !preview && !error && (
-            <div className="flex-shrink-0 flex items-center justify-center p-6 bg-white border-t border-gray-100">
+            <div className="flex-shrink-0 flex items-center justify-center p-6 bg-[#FAFAFA] border-t border-gray-100">
               <button
                 type="button"
                 onClick={handleShutter}
                 disabled={status === 'processing'}
                 aria-label="Capture photo"
-                className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-[var(--color-primary)] bg-white disabled:opacity-50"
+                className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-[var(--color-primary)] bg-[#FAFAFA] disabled:opacity-50"
               >
                 <div className="h-12 w-12 rounded-full bg-[var(--color-primary)]" />
               </button>

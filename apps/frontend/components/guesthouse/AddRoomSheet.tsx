@@ -76,7 +76,7 @@ export function AddRoomSheet({ isOpen, onClose, onSuccess }: AddRoomSheetProps) 
           zIndex: 9999,
           width: '100%',
           maxWidth: 440,
-          background: '#ffffff',
+          background: '#FAFAFA',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '-8px 0 40px rgba(0,0,0,0.18)',
