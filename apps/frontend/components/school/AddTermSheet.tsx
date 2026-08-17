@@ -58,8 +58,10 @@ export function AddTermSheet({ onSuccess }: { onSuccess?: () => void }) {
       const payload = {
         ...formData,
         feeStructures: feeStructures.map((f) => ({
-          ...f,
+          name: f.name,
           amount: parseFloat(f.amount) || 0,
+          // Don't send classId if empty — backend expects null or omitted
+          ...(f.classId ? { classId: f.classId } : {}),
         })),
       };
       await apiPost("/academic-terms", token, membership.organization.id, payload);

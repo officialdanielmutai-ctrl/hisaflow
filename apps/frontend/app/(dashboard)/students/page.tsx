@@ -38,7 +38,7 @@ export default function StudentsPage() {
       if (!token) throw new Error('Not authenticated');
       const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.hisaflow.com';
       const res = await fetch(`${apiBase}/students`, {
-        headers: { Authorization: `Bearer ${token}`, 'x-org-id': orgId! },
+        headers: { Authorization: `Bearer ${token}`, 'x-organization-id': orgId! },
       });
       if (!res.ok) throw new Error('Failed to load students');
       return res.json();

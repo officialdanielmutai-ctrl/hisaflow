@@ -44,7 +44,7 @@ export default function SchoolClassesPage() {
       if (!token) throw new Error('Not authenticated');
       const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.hisaflow.com';
       const res = await fetch(`${apiBase}/school-classes`, {
-        headers: { Authorization: `Bearer ${token}`, 'x-org-id': orgId! },
+        headers: { Authorization: `Bearer ${token}`, 'x-organization-id': orgId! },
       });
       if (!res.ok) throw new Error('Failed to load classes');
       return res.json();
@@ -59,7 +59,7 @@ export default function SchoolClassesPage() {
           <h1 className="text-xl font-bold text-[var(--color-text-primary)]">School Classes</h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">Manage your classes and streams</p>
         </div>
-        <AddClassSheet />
+        <AddClassSheet onSuccess={() => mutate()} />
       </div>
 
       {/* Stats row */}
@@ -97,7 +97,7 @@ export default function SchoolClassesPage() {
           </div>
           <h3 className="text-base font-bold text-[var(--color-text-primary)] mb-1">No classes yet</h3>
           <p className="text-sm text-[var(--color-text-secondary)] mb-4">Add your first class to get started</p>
-          <AddClassSheet />
+          <AddClassSheet onSuccess={() => mutate()} />
         </div>
       )}
 
