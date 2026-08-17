@@ -28,18 +28,18 @@ export function HisaFlowMotif({ className, ...props }: HisaFlowMotifProps) {
         />
       </defs>
 
-      {/* Chevron 1 (Smallest): lighter shade so it's not invisible against bg */}
-      <g transform="translate(20, 380) scale(0.6)">
+      {/* Chevron 1 (Smallest) */}
+      <g transform="translate(20, 360) scale(0.6)">
         <use href="#chevron" stroke="#3DAB76" strokeWidth="35" />
       </g>
 
       {/* Chevron 2 (Medium) */}
-      <g transform="translate(120, 280) scale(0.8)">
+      <g transform="translate(120, 260) scale(0.8)">
         <use href="#chevron" stroke="#2E8B62" strokeWidth="30" />
       </g>
 
-      {/* Chevron 3 (Largest): restored gap from Chevron 2 */}
-      <g transform="translate(230, 170) scale(1.0)">
+      {/* Chevron 3 (Largest) */}
+      <g transform="translate(230, 150) scale(1.0)">
         <use href="#chevron" stroke="#52C48A" strokeWidth="26" />
       </g>
     </svg>
