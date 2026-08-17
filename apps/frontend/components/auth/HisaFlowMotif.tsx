@@ -3,8 +3,8 @@ import React from 'react';
 interface HisaFlowMotifProps extends React.SVGProps<SVGSVGElement> {}
 
 /**
- * HisaFlow Motif — 3 upward-right chevrons, perfectly diagonal.
- * Uses a base path at (0,0) scaled and translated so the math is flawless.
+ * HisaFlow Motif — 3 upward-pointing chevrons arranged in a diagonal staircase.
+ * Uses a base upward chevron scaled and translated to interlock perfectly.
  */
 export function HisaFlowMotif({ className, ...props }: HisaFlowMotifProps) {
   return (
@@ -17,29 +17,29 @@ export function HisaFlowMotif({ className, ...props }: HisaFlowMotifProps) {
       {...props}
     >
       <defs>
-        {/* Base Chevron: Peak is at (0,0). Points top-right. */}
-        {/* Left arm extends left (-100). Bottom arm extends down (+100). */}
+        {/* Base Chevron: Peak is at (0,0). Points straight UP. */}
+        {/* Left arm extends down and left (-100, +100). Right arm extends down and right (+100, +100). */}
         <path 
           id="chevron" 
-          d="M -100,0 L 0,0 L 0,100" 
+          d="M -100,100 L 0,0 L 100,100" 
           fill="none" 
           strokeLinecap="square" 
           strokeLinejoin="miter" 
         />
       </defs>
 
-      {/* Chevron 1 (Smallest): Peak at (70, 330) */}
-      <g transform="translate(70, 330) scale(0.6)">
+      {/* Chevron 1 (Smallest, bottom-left) */}
+      <g transform="translate(80, 320) scale(0.6)">
         <use href="#chevron" stroke="#1F7A5A" strokeWidth="35" />
       </g>
 
-      {/* Chevron 2 (Medium): Peak at (170, 230) */}
-      <g transform="translate(170, 230) scale(0.8)">
+      {/* Chevron 2 (Medium, middle) */}
+      <g transform="translate(160, 240) scale(0.8)">
         <use href="#chevron" stroke="#2E8B62" strokeWidth="30" />
       </g>
 
-      {/* Chevron 3 (Largest): Peak at (270, 130) */}
-      <g transform="translate(270, 130) scale(1.0)">
+      {/* Chevron 3 (Largest, top-right) */}
+      <g transform="translate(240, 160) scale(1.0)">
         <use href="#chevron" stroke="#52C48A" strokeWidth="26" />
       </g>
     </svg>
