@@ -28,18 +28,18 @@ export function HisaFlowMotif({ className, ...props }: HisaFlowMotifProps) {
         />
       </defs>
 
-      {/* Chevron 1 (Smallest): Peak at (100, 300) */}
-      <g transform="translate(100, 300) scale(0.6)">
+      {/* Chevron 1 (Smallest): Peak at (70, 330) */}
+      <g transform="translate(70, 330) scale(0.6)">
         <use href="#chevron" stroke="#1F7A5A" strokeWidth="35" />
       </g>
 
-      {/* Chevron 2 (Medium): Peak at (200, 200) */}
-      <g transform="translate(200, 200) scale(0.8)">
+      {/* Chevron 2 (Medium): Peak at (170, 230) */}
+      <g transform="translate(170, 230) scale(0.8)">
         <use href="#chevron" stroke="#2E8B62" strokeWidth="30" />
       </g>
 
-      {/* Chevron 3 (Largest): Peak at (300, 100) — fully visible inside the 400x400 box */}
-      <g transform="translate(300, 100) scale(1.0)">
+      {/* Chevron 3 (Largest): Peak at (270, 130) */}
+      <g transform="translate(270, 130) scale(1.0)">
         <use href="#chevron" stroke="#52C48A" strokeWidth="26" />
       </g>
     </svg>
