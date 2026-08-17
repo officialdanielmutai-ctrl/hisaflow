@@ -39,7 +39,7 @@ export function AddClassSheet() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button>Add Class</Button>
+        <Button className="bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white">Add Class</Button>
       </SheetTrigger>
       <SheetContent>
         <SheetHeader>
@@ -75,7 +75,7 @@ export function AddClassSheet() {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full bg-[#1F7A5A] hover:bg-[#1A6B4E] text-white" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Class
           </Button>

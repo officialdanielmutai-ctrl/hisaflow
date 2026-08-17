@@ -50,8 +50,12 @@ export default function TopBar() {
             <span className="text-xs font-medium text-[var(--color-text-muted)]">
               {membership?.organization.businessType === 'ISP'
                 ? 'ISP Workspace'
-                : membership?.organization.businessType === 'CHEMIST'
-                ? 'Chemist Workspace'
+                : membership?.organization.businessType
+                ? `${membership.organization.businessType
+                    .toLowerCase()
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')} Workspace`
                 : 'Retail Workspace'}
             </span>
           </div>
