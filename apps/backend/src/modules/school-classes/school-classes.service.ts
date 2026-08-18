@@ -18,6 +18,11 @@ export class SchoolClassesService {
   async findAll(orgId: string) {
     return this.prisma.db.schoolClass.findMany({
       where: { organizationId: orgId, isActive: true },
+      include: {
+        _count: {
+          select: { students: true },
+        },
+      },
       orderBy: { name: 'asc' },
     });
   }
