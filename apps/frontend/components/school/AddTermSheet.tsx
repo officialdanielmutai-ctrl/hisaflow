@@ -57,12 +57,14 @@ export function AddTermSheet({ onSuccess }: { onSuccess?: () => void }) {
       if (!token) throw new Error("Not authenticated");
       const payload = {
         ...formData,
-        feeStructures: feeStructures.map((f) => ({
-          name: f.name,
-          amount: parseFloat(f.amount) || 0,
-          // Don't send classId if empty — backend expects null or omitted
-          ...(f.classId ? { classId: f.classId } : {}),
-        })),
+        dueDate: formData.dueDate || undefined,
+        feeStructures: feeStructures
+          .filter((f) => f.name.trim() !== "")
+          .map((f) => ({
+            name: f.name,
+            amount: parseFloat(f.amount) || 0,
+            ...(f.classId ? { classId: f.classId } : {}),
+          })),
       };
       await apiPost("/academic-terms", token, membership.organization.id, payload);
       setOpen(false);

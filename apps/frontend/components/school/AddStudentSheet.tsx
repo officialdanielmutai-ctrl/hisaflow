@@ -54,7 +54,14 @@ export function AddStudentSheet({ onSuccess }: { onSuccess?: () => void }) {
     try {
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
-      await apiPost("/students", token, membership.organization.id, formData);
+      const payload = {
+        name: formData.name,
+        admissionNumber: formData.admissionNumber || undefined,
+        classId: formData.classId || undefined,
+        guardianName: formData.parentName || undefined,
+        guardianPhone: formData.parentPhone || undefined,
+      };
+      await apiPost("/students", token, membership.organization.id, payload);
       setOpen(false);
       setFormData({ name: "", admissionNumber: "", classId: "", parentName: "", parentPhone: "" });
       onSuccess?.();
