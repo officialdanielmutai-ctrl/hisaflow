@@ -12,6 +12,48 @@ import { getGuestHouseDashboardData, type GuestHouseDashboardData } from '@/serv
 import DashboardLoading from '@/app/(dashboard)/loading';
 import { AddRoomSheet } from './AddRoomSheet';
 import { AddGuestSheet } from './AddGuestSheet';
+import { AiRecommendationsCard, type Recommendation } from '@/components/shared/AiRecommendationsCard';
+
+function buildGuestHouseRecommendations(data: GuestHouseDashboardData): Recommendation[] {
+  const recs: Recommendation[] = [];
+
+  if (data.departureAlerts.overdue.length > 0) {
+    recs.push({
+      action: `Follow up on ${data.departureAlerts.overdue.length} overdue checkout${data.departureAlerts.overdue.length > 1 ? 's' : ''}`,
+      reason: `${data.departureAlerts.overdue.map(b => b.guestName).slice(0, 2).join(', ')} should have already checked out. Resolve to free up rooms.`,
+      priority: 'HIGH',
+      href: '/bookings',
+    });
+  }
+
+  if (data.outstandingBalance > 0) {
+    recs.push({
+      action: `Collect KES ${data.outstandingBalance.toLocaleString()} in outstanding payments`,
+      reason: 'Outstanding balances reduce reported profit. Follow up with guests before checkout.',
+      priority: 'MEDIUM',
+      href: '/finance',
+    });
+  }
+
+  if (data.lowStockItems.length > 0) {
+    recs.push({
+      action: `Restock ${data.lowStockItems.length} low-stock item${data.lowStockItems.length > 1 ? 's' : ''}`,
+      reason: `${data.lowStockItems.map(i => i.name).slice(0, 2).join(', ')} are running low. Restock before next check-ins.`,
+      priority: 'LOW',
+      href: '/inventory',
+    });
+  }
+
+  if (data.occupancyRate < 50) {
+    recs.push({
+      action: 'Occupancy is below 50% — consider a promotional rate',
+      reason: `Only ${data.occupancyRate}% of rooms are occupied. A short-term discount could boost bookings.`,
+      priority: 'LOW',
+    });
+  }
+
+  return recs;
+}
 
 export function GuestHouseDashboard() {
   const { getToken } = useAuth();
@@ -123,6 +165,9 @@ export function GuestHouseDashboard() {
           </p>
         </Link>
       </div>
+
+      {/* AI Recommendations */}
+      <AiRecommendationsCard recommendations={buildGuestHouseRecommendations(data)} />
 
       {/* ── Layer 2: Departures ────────────────────────────────────────────────────── */}
       <section>

@@ -11,6 +11,49 @@ import {
 import { getSchoolDashboardData, type SchoolDashboardData } from '@/services/analytics.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
 import { format } from 'date-fns';
+import { AiRecommendationsCard, type Recommendation } from '@/components/shared/AiRecommendationsCard';
+
+function buildSchoolRecommendations(data: SchoolDashboardData): Recommendation[] {
+  const recs: Recommendation[] = [];
+
+  if (data.activeTerm === null) {
+    recs.push({
+      action: 'Set up an active academic term',
+      reason: 'No term is currently active. You cannot generate invoices or collect fees without an active term.',
+      priority: 'HIGH',
+      href: '/school-fees',
+    });
+  }
+
+  if (data.fees.collectionRate < 50 && data.fees.totalExpected > 0) {
+    recs.push({
+      action: `Boost fee collection (currently at ${data.fees.collectionRate}%)`,
+      reason: 'Fee collection is below 50%. Consider sending SMS reminders to parents with outstanding balances.',
+      priority: 'HIGH',
+      href: '/school-fees',
+    });
+  }
+
+  if (data.overdueInvoices.length > 0) {
+    recs.push({
+      action: `Follow up on ${data.overdueInvoices.length} overdue invoice${data.overdueInvoices.length > 1 ? 's' : ''}`,
+      reason: `${data.overdueInvoices.slice(0, 2).map(i => i.studentName).join(', ')} ${data.overdueInvoices.length > 2 ? 'and others have' : 'has'} unpaid fees.`,
+      priority: 'MEDIUM',
+      href: '/school-fees',
+    });
+  }
+
+  if (data.totalStudents === 0) {
+    recs.push({
+      action: 'Add your first students',
+      reason: 'Your student roster is empty. Add students and assign them to classes to begin managing your school.',
+      priority: 'LOW',
+      href: '/students',
+    });
+  }
+
+  return recs;
+}
 
 function KpiCard({
   href, icon: Icon, iconBg, iconColor, label, value, sub, subColor,
@@ -181,6 +224,9 @@ export function SchoolDashboard() {
           subColor={data.fees.outstanding > 0 ? 'text-red-500' : 'text-green-600'}
         />
       </div>
+
+      {/* AI Recommendations */}
+      <AiRecommendationsCard recommendations={buildSchoolRecommendations(data)} />
 
       {/* Fee Collection Progress */}
       <section>
