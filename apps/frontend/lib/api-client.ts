@@ -6,6 +6,7 @@ export async function apiGet<T>(
   organizationId: string
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    cache: 'no-store',
     headers: {
       'Authorization': `Bearer ${token}`,
       'x-organization-id': organizationId,

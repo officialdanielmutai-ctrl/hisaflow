@@ -3,6 +3,7 @@
 import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { apiGet } from '@/lib/api-client';
 import Link from 'next/link';
 import { AddStudentSheet } from '@/components/school/AddStudentSheet';
 import { Users, GraduationCap, Search, ChevronRight } from 'lucide-react';
@@ -36,12 +37,7 @@ export default function StudentsPage() {
     async () => {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.hisaflow.com';
-      const res = await fetch(`${apiBase}/students`, {
-        headers: { Authorization: `Bearer ${token}`, 'x-organization-id': orgId! },
-      });
-      if (!res.ok) throw new Error('Failed to load students');
-      return res.json();
+      return apiGet<Student[]>('/students', token, orgId!);
     },
   );
 

@@ -57,6 +57,7 @@ export function AddTermSheet({ onSuccess }: { onSuccess?: () => void }) {
       if (!token) throw new Error("Not authenticated");
       const payload = {
         ...formData,
+        isActive: true,
         dueDate: formData.dueDate || undefined,
         feeStructures: feeStructures
           .filter((f) => f.name.trim() !== "")
@@ -71,7 +72,6 @@ export function AddTermSheet({ onSuccess }: { onSuccess?: () => void }) {
       setFormData({ name: "", startDate: "", endDate: "", dueDate: "" });
       setFeeStructures([{ name: "", amount: "", classId: "" }]);
       onSuccess?.();
-      window.location.reload();
     } catch (err: any) {
       setError(err.message || "Failed to add term");
     } finally {

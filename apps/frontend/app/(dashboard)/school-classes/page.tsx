@@ -4,6 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { apiGet } from '@/lib/api-client';
 import { AddClassSheet } from '@/components/school/AddClassSheet';
 import Link from 'next/link';
 import { BookOpen, Users, ChevronRight, GraduationCap } from 'lucide-react';
@@ -42,12 +43,7 @@ export default function SchoolClassesPage() {
     async () => {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
-      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.hisaflow.com';
-      const res = await fetch(`${apiBase}/school-classes`, {
-        headers: { Authorization: `Bearer ${token}`, 'x-organization-id': orgId! },
-      });
-      if (!res.ok) throw new Error('Failed to load classes');
-      return res.json();
+      return apiGet<SchoolClass[]>('/school-classes', token, orgId!);
     },
   );
 
