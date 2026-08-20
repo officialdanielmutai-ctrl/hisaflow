@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Menu, Bell, ScanLine } from 'lucide-react';
-import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { OCR_DRAFT_STORAGE_KEY, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
@@ -12,13 +11,13 @@ import SideMenu from './SideMenu';
 import BarcodeScannerSheet from '../system/BarcodeScannerSheet';
 import ScanModeSheet from '../system/ScanModeSheet';
 import LabelCaptureSheet from '../system/LabelCaptureSheet';
+import { OrgSwitcher } from './OrgSwitcher';
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [scanModeOpen, setScanModeOpen] = React.useState(false);
   const [scannerOpen, setScannerOpen] = React.useState(false);
   const [labelCaptureOpen, setLabelCaptureOpen] = React.useState(false);
-  const { membership } = useMyOrganization();
   const { data: alerts } = useAlerts();
   const router = useRouter();
 
@@ -43,22 +42,7 @@ export default function TopBar() {
           >
             <Menu className="h-6 w-6 text-[var(--color-text-primary)]" />
           </button>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-[var(--color-text-primary)]">
-              {membership?.organization.name || 'Hisa Flow'}
-            </span>
-            <span className="text-xs font-medium text-[var(--color-text-muted)]">
-              {membership?.organization.businessType === 'ISP'
-                ? 'ISP Workspace'
-                : membership?.organization.businessType
-                ? `${membership.organization.businessType
-                    .toLowerCase()
-                    .split('_')
-                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                    .join(' ')} Workspace`
-                : 'Retail Workspace'}
-            </span>
-          </div>
+          <OrgSwitcher />
         </div>
         <div className="flex items-center gap-4">
           <button

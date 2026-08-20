@@ -1,12 +1,12 @@
-'use client';
+﻿'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import useSWR from 'swr';
 import { getMyOrganizations, type OrgMembership } from '@/services/organizations.service';
 
-// -- Session-storage helpers --------------------------------------------------
 const SESSION_KEY = 'hf:org';
+const ACTIVE_ORG_KEY = 'hf:active_org_id';
 
 function readCachedOrg(): OrgMembership | null {
   try {
@@ -24,57 +24,87 @@ function writeCachedOrg(org: OrgMembership | null) {
   } catch {}
 }
 
+function getActiveOrgId(): string | null {
+  try { return localStorage.getItem(ACTIVE_ORG_KEY); } catch { return null; }
+}
+
+function saveActiveOrgId(id: string) {
+  try { localStorage.setItem(ACTIVE_ORG_KEY, id); } catch {}
+}
+
 // -- Context ------------------------------------------------------------------
 interface OrganizationContextType {
   membership: OrgMembership | null;
+  allMemberships: OrgMembership[];
   loading: boolean;
   error: string | null;
+  setActiveOrgId: (id: string) => void;
 }
 
 const OrganizationContext = createContext<OrganizationContextType>({
   membership: null,
+  allMemberships: [],
   loading: true,
   error: null,
+  setActiveOrgId: () => {},
 });
 
 // -- Provider -----------------------------------------------------------------
 export function OrganizationProvider({ children }: { children: React.ReactNode }) {
   const { getToken, isLoaded } = useAuth();
 
-  // Hydration-safe cache: start as null (matches SSR), then read sessionStorage
-  // on the client after mount so server and client initial renders agree.
+  // Hydration-safe: start null (server), populate from storage after mount
   const [cachedOrg, setCachedOrg] = useState<OrgMembership | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [activeOrgId, setActiveOrgIdState] = useState<string | null>(null);
+
   useEffect(() => {
     setCachedOrg(readCachedOrg());
+    setActiveOrgIdState(getActiveOrgId());
     setIsMounted(true);
   }, []);
 
-  const { data, isLoading, error } = useSWR<OrgMembership | null>(
-    // Don't start until Clerk is ready AND we've mounted (cache is available)
-    isLoaded && isMounted ? 'org-membership' : null,
+  const { data: allMemberships, isLoading, error } = useSWR<OrgMembership[]>(
+    isLoaded && isMounted ? 'org-memberships' : null,
     async () => {
       const token = await getToken();
-      if (!token) return null;
-      const memberships = await getMyOrganizations(token);
-      const org = memberships[0] ?? null;
-      writeCachedOrg(org);
-      return org;
+      if (!token) return [];
+      return getMyOrganizations(token);
     },
     {
-      fallbackData: cachedOrg,         // Safe: only set after client mount
       dedupingInterval: 60_000,
       revalidateOnFocus: false,
       revalidateOnMount: true,
     },
   );
 
+  // Pick the active membership — user's stored choice, else first in list
+  const activeMembership: OrgMembership | null =
+    (allMemberships && allMemberships.length > 0)
+      ? (activeOrgId
+          ? (allMemberships.find(m => m.organization.id === activeOrgId) ?? allMemberships[0])
+          : allMemberships[0])
+      : cachedOrg;
+
+  // Keep session cache in sync
+  useEffect(() => {
+    if (activeMembership) writeCachedOrg(activeMembership);
+  }, [activeMembership]);
+
+  const handleSetActiveOrgId = (id: string) => {
+    saveActiveOrgId(id);
+    // Hard navigate to / so all SWR caches reset for the new org context
+    window.location.href = '/';
+  };
+
   return (
     <OrganizationContext.Provider
       value={{
-        membership: data ?? null,
-        loading: isLoading && !data,
-        error: error ? 'Failed to load organization' : null,
+        membership: activeMembership,
+        allMemberships: allMemberships ?? [],
+        loading: isLoading && !activeMembership,
+        error: error ? 'Failed to load organizations' : null,
+        setActiveOrgId: handleSetActiveOrgId,
       }}
     >
       {children}
@@ -86,4 +116,3 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 export function useMyOrganization() {
   return useContext(OrganizationContext);
 }
-
