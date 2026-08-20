@@ -986,15 +986,25 @@ async function main() {
   };
   const organizationsService = app.get(OrganizationsService);
 
-  const owner = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
+  // Try to find an existing user. If none exists, create a stub row so the
+  // script is fully self-contained for local / CI runs where Clerk hasn't
+  // synced a real user yet. The stub clerkId is prefixed "sim-" so it is
+  // easy to identify and won't collide with a real Clerk identity.
+  let owner = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
   if (!owner) {
-    console.error(
-      `\nNo HisaFlow user found with email "${OWNER_EMAIL}".\n` +
-        `Sign into the app at least once with this account first (so Clerk sync creates the user record), then re-run this script.\n` +
-        `Or set SIM_OWNER_EMAIL to an email that already has a HisaFlow account.\n`,
+    console.warn(
+      `\n⚠  No user row found for "${OWNER_EMAIL}". Creating a local stub so the simulation can proceed.\n` +
+        `   (Sign in to the app to replace the stub with your real Clerk identity.)\n`,
     );
-    await app.close();
-    process.exit(1);
+    owner = await prisma.user.upsert({
+      where: { email: OWNER_EMAIL },
+      update: {},
+      create: {
+        clerkId: `sim-${Date.now()}`,
+        email: OWNER_EMAIL,
+        name: 'Simulated Owner',
+      },
+    });
   }
 
   console.log(`Owner: ${owner.email} (${owner.id})`);
