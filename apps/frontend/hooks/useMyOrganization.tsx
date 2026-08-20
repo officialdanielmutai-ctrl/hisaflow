@@ -53,10 +53,11 @@ const OrganizationContext = createContext<OrganizationContextType>({
 export function OrganizationProvider({ children }: { children: React.ReactNode }) {
   const { getToken, isLoaded } = useAuth();
 
-  // Hydration-safe: start null (server), populate from storage after mount
-  const [cachedOrg, setCachedOrg] = useState<OrgMembership | null>(null);
+  // isMounted starts false — keeps loading=true until client has hydrated.
+  // This prevents OrgGate from seeing (loading=false, membership=null) on first render.
   const [isMounted, setIsMounted] = useState(false);
   const [activeOrgId, setActiveOrgIdState] = useState<string | null>(null);
+  const [cachedOrg, setCachedOrg] = useState<OrgMembership | null>(null);
 
   useEffect(() => {
     setCachedOrg(readCachedOrg());
@@ -65,6 +66,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const { data: allMemberships, isLoading, error } = useSWR<OrgMembership[]>(
+    // Gate on both Clerk being ready AND component being mounted
     isLoaded && isMounted ? 'org-memberships' : null,
     async () => {
       const token = await getToken();
@@ -80,16 +82,20 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
   // Pick the active membership — user's stored choice, else first in list
   const activeMembership: OrgMembership | null =
-    (allMemberships && allMemberships.length > 0)
+    allMemberships && allMemberships.length > 0
       ? (activeOrgId
           ? (allMemberships.find(m => m.organization.id === activeOrgId) ?? allMemberships[0])
           : allMemberships[0])
       : cachedOrg;
 
-  // Keep session cache in sync
+  // Keep session cache in sync with active membership
   useEffect(() => {
     if (activeMembership) writeCachedOrg(activeMembership);
   }, [activeMembership]);
+
+  // loading = true whenever: not mounted yet, Clerk not ready, or SWR fetch in flight
+  // This ensures OrgGate never sees (loading=false, membership=null) prematurely
+  const loading = !isMounted || !isLoaded || isLoading;
 
   const handleSetActiveOrgId = (id: string) => {
     saveActiveOrgId(id);
@@ -102,7 +108,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
       value={{
         membership: activeMembership,
         allMemberships: allMemberships ?? [],
-        loading: isLoading && !activeMembership,
+        loading,
         error: error ? 'Failed to load organizations' : null,
         setActiveOrgId: handleSetActiveOrgId,
       }}
