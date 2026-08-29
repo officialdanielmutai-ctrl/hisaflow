@@ -6,7 +6,7 @@ import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles, AppRole } from '../../core/decorators/roles.decorator';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
-import { Organization } from '../../../generated/prisma/client';
+import { Organization } from '@prisma/client';
 
 @Controller('bookings')
 @UseGuards(ClerkAuthGuard, RolesGuard)

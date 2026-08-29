@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
-import { AlertType, AlertSeverity } from '../../../generated/prisma/client';
+import { AlertType, AlertSeverity } from '@prisma/client';
 import { AfricasTalkingProvider } from '../../infrastructure/providers/africas-talking.provider';
 import { NotificationsService } from '../notifications/notifications.service';
 

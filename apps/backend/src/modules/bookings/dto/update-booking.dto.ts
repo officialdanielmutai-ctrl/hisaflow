@@ -1,5 +1,5 @@
 import { IsString, IsDateString, IsOptional, IsEnum } from 'class-validator';
-import { BookingStatus } from '../../../../generated/prisma/client';
+import { BookingStatus } from '@prisma/client';
 
 export class UpdateBookingDto {
   @IsEnum(BookingStatus)

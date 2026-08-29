@@ -1,5 +1,5 @@
 import { IsString, IsNumber, IsOptional, IsEnum, IsBoolean } from 'class-validator';
-import { RoomStatus } from '../../../../generated/prisma/client';
+import { RoomStatus } from '@prisma/client';
 
 export class UpdateRoomDto {
   @IsString()

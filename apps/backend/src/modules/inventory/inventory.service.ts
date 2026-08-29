@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto, UpdateVariantDto } from './dto/update-product.dto';
-import { StockStatus, CatalogSource } from '../../../generated/prisma/client';
+import { StockStatus, CatalogSource } from '@prisma/client';
 
 @Injectable()
 export class InventoryService {

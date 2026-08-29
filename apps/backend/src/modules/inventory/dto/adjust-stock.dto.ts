@@ -1,6 +1,6 @@
 import { IsString, IsNumber, IsEnum, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TransactionType } from '../../../../generated/prisma/client';
+import { TransactionType } from '@prisma/client';
 
 export class AdjustStockDto {
   @IsString()
