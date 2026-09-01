@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
@@ -38,6 +38,7 @@ interface OrganizationContextType {
   allMemberships: OrgMembership[];
   loading: boolean;
   error: string | null;
+  revoked: boolean;
   setActiveOrgId: (id: string) => void;
 }
 
@@ -46,6 +47,7 @@ const OrganizationContext = createContext<OrganizationContextType>({
   allMemberships: [],
   loading: true,
   error: null,
+  revoked: false,
   setActiveOrgId: () => {},
 });
 
@@ -53,11 +55,10 @@ const OrganizationContext = createContext<OrganizationContextType>({
 export function OrganizationProvider({ children }: { children: React.ReactNode }) {
   const { getToken, isLoaded } = useAuth();
 
-  // isMounted starts false — keeps loading=true until client has hydrated.
-  // This prevents OrgGate from seeing (loading=false, membership=null) on first render.
   const [isMounted, setIsMounted] = useState(false);
   const [activeOrgId, setActiveOrgIdState] = useState<string | null>(null);
   const [cachedOrg, setCachedOrg] = useState<OrgMembership | null>(null);
+  const [revoked, setRevoked] = useState(false);
 
   useEffect(() => {
     setCachedOrg(readCachedOrg());
@@ -65,22 +66,32 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     setIsMounted(true);
   }, []);
 
-  const { data: allMemberships, isLoading, error } = useSWR<OrgMembership[]>(
-    // Gate on both Clerk being ready AND component being mounted
-    isLoaded && isMounted ? 'org-memberships' : null,
-    async () => {
+  // Set up global fetcher that traps SessionRevokedError
+  const fetcher = async () => {
+    try {
       const token = await getToken();
       if (!token) return [];
-      return getMyOrganizations(token);
-    },
+      return await getMyOrganizations(token);
+    } catch (err: any) {
+      if (err.name === 'SessionRevokedError') {
+        setRevoked(true);
+        return [];
+      }
+      throw err;
+    }
+  };
+
+  const { data: allMemberships, isLoading, error } = useSWR<OrgMembership[]>(
+    isLoaded && isMounted ? 'org-memberships' : null,
+    fetcher,
     {
       dedupingInterval: 60_000,
       revalidateOnFocus: false,
       revalidateOnMount: true,
+      shouldRetryOnError: (err) => err.name !== 'SessionRevokedError',
     },
   );
 
-  // Pick the active membership — user's stored choice, else first in list
   const activeMembership: OrgMembership | null =
     allMemberships && allMemberships.length > 0
       ? (activeOrgId
@@ -88,18 +99,27 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
           : allMemberships[0])
       : cachedOrg;
 
-  // Keep session cache in sync with active membership
   useEffect(() => {
-    if (activeMembership) writeCachedOrg(activeMembership);
-  }, [activeMembership]);
+    if (activeMembership && !revoked) writeCachedOrg(activeMembership);
+    if (revoked) writeCachedOrg(null);
+  }, [activeMembership, revoked]);
 
-  // loading = true whenever: not mounted yet, Clerk not ready, or SWR fetch in flight
-  // This ensures OrgGate never sees (loading=false, membership=null) prematurely
-  const loading = !isMounted || !isLoaded || isLoading;
+  // Trap global unhandled promise rejections for SessionRevokedError
+  // (e.g., from other SWR hooks or mutations calling API client)
+  useEffect(() => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason?.name === 'SessionRevokedError') {
+        setRevoked(true);
+      }
+    };
+    window.addEventListener('unhandledrejection', handleRejection);
+    return () => window.removeEventListener('unhandledrejection', handleRejection);
+  }, []);
+
+  const loading = (!isMounted || !isLoaded || isLoading) && !revoked;
 
   const handleSetActiveOrgId = (id: string) => {
     saveActiveOrgId(id);
-    // Hard navigate to / so all SWR caches reset for the new org context
     window.location.href = '/';
   };
 
@@ -110,6 +130,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         allMemberships: allMemberships ?? [],
         loading,
         error: error ? 'Failed to load organizations' : null,
+        revoked,
         setActiveOrgId: handleSetActiveOrgId,
       }}
     >

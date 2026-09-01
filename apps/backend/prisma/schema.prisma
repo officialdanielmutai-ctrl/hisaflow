@@ -66,6 +66,7 @@ model User {
   memberships        OrgMembership[]
   pushSubscriptions  PushSubscription[]
   notes              Note[]
+  noteRestrictions   NoteRestriction[]
 
   @@map("users")
 }
@@ -82,8 +83,10 @@ model OrgMembership {
   id             String      @id @default(cuid())
   userId         String      @map("user_id")
   organizationId String      @map("organization_id")
-  role           OrgRole     @default(STAFF)
-  createdAt      DateTime    @default(now()) @map("created_at")
+  role               OrgRole     @default(STAFF)
+  grantedPermissions String[]    @default([]) @map("granted_permissions")
+  revokedPermissions String[]    @default([]) @map("revoked_permissions")
+  createdAt          DateTime    @default(now()) @map("created_at")
 
   user         User         @relation(fields: [userId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id])
@@ -469,11 +472,26 @@ model Note {
   organization   Organization   @relation(fields: [organizationId], references: [id])
   author         User           @relation(fields: [authorId], references: [id])
   checklistItems ChecklistItem[]
+  restrictions   NoteRestriction[]
 
   @@index([organizationId, status])
   @@index([organizationId, dueDate])
   @@index([organizationId, importance])
   @@map("notes")
+}
+
+model NoteRestriction {
+  id        String   @id @default(cuid())
+  noteId    String   @map("note_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, userId])
+  @@index([userId])
+  @@map("note_restrictions")
 }
 
 model ChecklistItem {

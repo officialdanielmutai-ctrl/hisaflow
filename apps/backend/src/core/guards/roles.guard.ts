@@ -1,6 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY, AppRole } from '../decorators/roles.decorator';
+import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
+import { AppPermission, computeEffectivePermissions } from '../constants/permissions.constant';
 import { PrismaService } from '../../infrastructure/prisma.service';
 
 @Injectable()
@@ -15,9 +17,12 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
+    const requiredPermissions = this.reflector.getAllAndOverride<AppPermission[]>(PERMISSIONS_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
-    // No @Roles decorator on this route — allow through
-    if (!requiredRoles || requiredRoles.length === 0) {
+    if ((!requiredRoles || requiredRoles.length === 0) && (!requiredPermissions || requiredPermissions.length === 0)) {
       return true;
     }
 
@@ -26,20 +31,34 @@ export class RolesGuard implements CanActivate {
     const organizationId = request.headers['x-organization-id'] as string | undefined;
 
     if (!userId || !organizationId) {
-      throw new ForbiddenException('No role assigned');
+      throw new ForbiddenException('Organization context missing');
     }
 
-    // Look up the user's actual role from the database membership
     const membership = await this.prisma.db.orgMembership.findFirst({
       where: { userId, organizationId },
-      select: { role: true },
+      select: { role: true, grantedPermissions: true, revokedPermissions: true },
     });
 
     if (!membership) {
       throw new ForbiddenException('No membership found for this organization');
     }
 
-    if (requiredRoles.includes(membership.role as AppRole)) {
+    let roleMatched = true;
+    if (requiredRoles && requiredRoles.length > 0) {
+      roleMatched = requiredRoles.includes(membership.role as AppRole);
+    }
+
+    let permissionsMatched = true;
+    if (requiredPermissions && requiredPermissions.length > 0) {
+      const effectivePermissions = computeEffectivePermissions(
+        membership.role,
+        membership.grantedPermissions,
+        membership.revokedPermissions
+      );
+      permissionsMatched = requiredPermissions.every((perm) => effectivePermissions.includes(perm));
+    }
+
+    if (roleMatched && permissionsMatched) {
       return true;
     }
 

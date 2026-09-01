@@ -3,22 +3,28 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import AccessRevokedScreen from './AccessRevokedScreen';
 
 /**
  * Wraps every dashboard page.
+ * - If session revoked → shows AccessRevokedScreen (blocks everything)
  * - While membership is loading → shows a skeleton so pages never flash "staff view"
  * - If no membership after load → redirects to /onboarding
  * - If membership exists → renders children normally
  */
 export default function OrgGate({ children }: { children: React.ReactNode }) {
-  const { membership, loading } = useMyOrganization();
+  const { membership, loading, revoked } = useMyOrganization();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !membership) {
+    if (!loading && !membership && !revoked) {
       router.replace('/onboarding');
     }
-  }, [loading, membership, router]);
+  }, [loading, membership, revoked, router]);
+
+  if (revoked) {
+    return <AccessRevokedScreen />;
+  }
 
   // Loading state — hide content until we know who the user is
   if (loading) {

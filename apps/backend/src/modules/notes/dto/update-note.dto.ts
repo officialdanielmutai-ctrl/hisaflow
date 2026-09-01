@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsDateString, IsBoolean, IsArray } from 'class-validator';
 import { NoteImportance, NoteStatus } from './create-note.dto';
 
 export class UpdateNoteDto {
@@ -25,4 +25,10 @@ export class UpdateNoteDto {
   @IsOptional()
   @IsBoolean()
   isPinned?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  restrictedUserIds?: string[];
 }
+

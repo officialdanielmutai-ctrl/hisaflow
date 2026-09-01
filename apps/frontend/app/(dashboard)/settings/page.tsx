@@ -1,18 +1,13 @@
 'use client';
 
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { Bell, BellOff, Download, Smartphone, Users, Copy, RefreshCw, Check } from 'lucide-react';
+import { Bell, BellOff, Download, Smartphone } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { apiPost } from '@/lib/api-client';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
-import {
-  getMyInviteCode,
-  regenerateInviteCode,
-  getStaffMembers,
-  type StaffMember,
-} from '@/services/organizations.service';
+import StaffManagementCard from '@/components/settings/StaffManagementCard';
 
 export default function SettingsPage() {
   const { isSupported, subscription, subscribe, isSubscribing, orgLoading, error } = usePushNotifications();
@@ -20,16 +15,10 @@ export default function SettingsPage() {
   const { membership } = useMyOrganization();
   const { isOwner, isManager } = useRole();
   const canManageStaff = isOwner || isManager;
+  const orgId = membership?.organization?.id ?? null;
 
   const [testStatus, setTestStatus] = useState('');
   const [installPrompt, setInstallPrompt] = useState<any>(null);
-
-  // Invite code state
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [codeLoading, setCodeLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const [staffLoading, setStaffLoading] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -40,38 +29,11 @@ export default function SettingsPage() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  // Load invite code and staff for owners/managers
-  useEffect(() => {
-    if (!canManageStaff) return;
-    const fetchData = async () => {
-      const token = await getToken();
-      if (!token) return;
-      setCodeLoading(true);
-      setStaffLoading(true);
-      try {
-        const [codeData, staffData] = await Promise.all([
-          getMyInviteCode(token),
-          getStaffMembers(token),
-        ]);
-        setInviteCode(codeData.inviteCode);
-        setStaffMembers(staffData);
-      } catch (e) {
-        console.error('Failed to load org data', e);
-      } finally {
-        setCodeLoading(false);
-        setStaffLoading(false);
-      }
-    };
-    fetchData();
-  }, [canManageStaff, getToken]);
-
   const handleInstall = async () => {
     if (!installPrompt) return;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setInstallPrompt(null);
-    }
+    if (outcome === 'accepted') setInstallPrompt(null);
   };
 
   const handleTestNotification = async () => {
@@ -88,35 +50,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCopyCode = () => {
-    if (!inviteCode) return;
-    navigator.clipboard.writeText(inviteCode).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  const handleRegenerateCode = async () => {
-    if (!confirm('Regenerating will invalidate the current code. Staff who haven\'t joined yet will need the new code. Continue?')) return;
-    const token = await getToken();
-    if (!token) return;
-    setCodeLoading(true);
-    try {
-      const data = await regenerateInviteCode(token);
-      setInviteCode(data.inviteCode);
-    } catch (e) {
-      console.error('Failed to regenerate code', e);
-    } finally {
-      setCodeLoading(false);
-    }
-  };
-
-  const roleColors: Record<string, string> = {
-    OWNER: 'bg-purple-100 text-purple-700',
-    MANAGER: 'bg-blue-100 text-blue-700',
-    STAFF: 'bg-gray-100 text-gray-600',
-  };
-
   return (
     <div className="space-y-6 pb-24">
       <header className="mb-6">
@@ -126,83 +59,9 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      {/* ── Staff Invite Code (owners/managers only) ───────────────────── */}
-      {canManageStaff && (
-        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="rounded-full bg-violet-100 p-2 text-violet-600">
-              <Users className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold">Staff Invite Code</h2>
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                Share this code with your staff to let them join your business
-              </p>
-            </div>
-          </div>
-
-          {codeLoading ? (
-            <div className="h-16 animate-pulse rounded-xl bg-[var(--color-bg-base)]" />
-          ) : inviteCode ? (
-            <div className="space-y-3">
-              {/* Code display */}
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--color-bg-base)] border border-[var(--color-border)] px-4 py-3">
-                <span className="font-mono text-2xl font-bold tracking-[0.3em] text-[var(--color-accent)]">
-                  {inviteCode}
-                </span>
-                <button
-                  onClick={handleCopyCode}
-                  className="flex items-center gap-1.5 rounded-lg bg-[var(--color-accent)] px-3 py-2 text-xs font-semibold text-white hover:opacity-90 transition-opacity"
-                >
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                Staff enter this code on the "Join a business" screen when they first sign in.
-              </p>
-
-              <button
-                onClick={handleRegenerateCode}
-                disabled={codeLoading}
-                className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] hover:text-red-500 transition-colors"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Regenerate code
-              </button>
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--color-text-secondary)]">Could not load invite code.</p>
-          )}
-
-          {/* Staff member list */}
-          {!staffLoading && staffMembers.length > 0 && (
-            <div className="mt-5">
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-2">
-                Team Members ({staffMembers.length})
-              </p>
-              <div className="space-y-2">
-                {staffMembers.map((member) => (
-                  <div
-                    key={member.userId}
-                    className="flex items-center justify-between rounded-xl bg-[var(--color-bg-base)] px-3 py-2.5 border border-[var(--color-border)]"
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">{member.name ?? 'Unnamed'}</span>
-                      {member.email && (
-                        <span className="text-xs text-[var(--color-text-secondary)]">{member.email}</span>
-                      )}
-                    </div>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${roleColors[member.role]}`}>
-                      {member.role}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
+      {/* ── Staff Management (owners/managers only) ───────────────────────── */}
+      {canManageStaff && orgId && (
+        <StaffManagementCard orgId={orgId} isOwner={isOwner} />
       )}
 
       {/* ── Push Notifications ─────────────────────────────────────────────── */}
@@ -231,7 +90,7 @@ export default function SettingsPage() {
                 Status: {subscription ? 'Subscribed' : 'Not Subscribed'}
               </span>
             </div>
-            
+
             {!subscription && isSupported && (
               <button
                 onClick={subscribe}

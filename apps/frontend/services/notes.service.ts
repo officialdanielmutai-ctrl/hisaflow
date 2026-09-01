@@ -52,6 +52,7 @@ export async function createNote(
     importance?: NoteImportance;
     dueDate?: string;
     checklistItems?: { text: string }[];
+    restrictedUserIds?: string[];
   }
 ): Promise<Note> {
   return apiPost<Note>('/notes', token, orgId, data);

@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, EyeOff } from 'lucide-react';
 import { createNote, NoteImportance } from '@/services/notes.service';
+import { getStaffMembers, type StaffMember } from '@/services/organizations.service';
 import { useAuth } from '@clerk/nextjs';
+import { useRole } from '@/hooks/useRole';
 
 export default function CreateNoteDialog({
   isOpen,
@@ -17,13 +19,37 @@ export default function CreateNoteDialog({
   onSuccess: () => void;
 }) {
   const { getToken } = useAuth();
+  const { isOwner } = useRole();
+
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [importance, setImportance] = useState<NoteImportance>('MEDIUM');
   const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Note restriction state
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [restrictedUserIds, setRestrictedUserIds] = useState<string[]>([]);
+  const [showRestrict, setShowRestrict] = useState(false);
+
+  // Fetch staff list when dialog opens (owners only)
+  useEffect(() => {
+    if (!isOpen || !isOwner) return;
+    getToken().then((token) => {
+      if (!token) return;
+      getStaffMembers(token, orgId)
+        .then((members) => setStaffMembers(members.filter((m) => m.role !== 'OWNER')))
+        .catch(() => {});
+    });
+  }, [isOpen, isOwner, orgId, getToken]);
+
   if (!isOpen) return null;
+
+  const toggleRestriction = (userId: string) => {
+    setRestrictedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,12 +65,16 @@ export default function CreateNoteDialog({
         content: content.trim() || undefined,
         importance,
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+        restrictedUserIds: restrictedUserIds.length > 0 ? restrictedUserIds : undefined,
       });
 
+      // Reset
       setTitle('');
       setContent('');
       setImportance('MEDIUM');
       setDueDate('');
+      setRestrictedUserIds([]);
+      setShowRestrict(false);
       onSuccess();
       onClose();
     } catch (err) {
@@ -113,6 +143,42 @@ export default function CreateNoteDialog({
               />
             </div>
           </div>
+
+          {/* ── Restrict Visibility (OWNER only, only when staff exist) ───── */}
+          {isOwner && staffMembers.length > 0 && (
+            <div className="rounded-xl border border-dashed border-gray-300 p-3">
+              <button
+                type="button"
+                onClick={() => setShowRestrict((v) => !v)}
+                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+              >
+                <EyeOff className="h-4 w-4" />
+                {restrictedUserIds.length > 0
+                  ? `Restricted from ${restrictedUserIds.length} member${restrictedUserIds.length > 1 ? 's' : ''}`
+                  : 'Restrict visibility from staff (optional)'}
+              </button>
+
+              {showRestrict && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs text-gray-500">Selected staff will not see this note at all.</p>
+                  {staffMembers.map((member) => (
+                    <label key={member.userId} className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={restrictedUserIds.includes(member.userId)}
+                        onChange={() => toggleRestriction(member.userId)}
+                        className="h-4 w-4 accent-[var(--color-accent)] rounded"
+                      />
+                      <span className="text-sm">
+                        {member.name ?? member.email ?? 'Unnamed'}
+                        <span className="ml-1.5 text-xs text-gray-400">{member.role}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             type="submit"

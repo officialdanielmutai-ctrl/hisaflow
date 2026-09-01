@@ -26,23 +26,28 @@ export class NotesController {
     return this.notesService.create(orgId, user.id, dto);
   }
 
-  // ── List all notes ────────────────────────────────────────────────────────
+  // ── List all notes (visibility-filtered per caller) ───────────────────────
   @Roles(AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF)
   @Get()
   findAll(
     @OrgContext() orgId: string,
+    @CurrentUser() user: { id: string },
     @Query('status') status?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.notesService.findAll(orgId, { status, from, to });
+    return this.notesService.findAll(orgId, user.id, { status, from, to });
   }
 
-  // ── Get a single note ─────────────────────────────────────────────────────
+  // ── Get a single note (restriction-checked) ───────────────────────────────
   @Roles(AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF)
   @Get(':id')
-  findOne(@Param('id') id: string, @OrgContext() orgId: string) {
-    return this.notesService.findOne(id, orgId);
+  findOne(
+    @Param('id') id: string,
+    @OrgContext() orgId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.notesService.findOne(id, orgId, user.id);
   }
 
   // ── Update a note ─────────────────────────────────────────────────────────
@@ -51,9 +56,10 @@ export class NotesController {
   update(
     @Param('id') id: string,
     @OrgContext() orgId: string,
+    @CurrentUser() user: { id: string },
     @Body() dto: UpdateNoteDto,
   ) {
-    return this.notesService.update(id, orgId, dto);
+    return this.notesService.update(id, orgId, user.id, dto);
   }
 
   // ── Delete a note ─────────────────────────────────────────────────────────

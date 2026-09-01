@@ -10,6 +10,7 @@ import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { OrgContext } from '../../core/decorators/org-context.decorator';
 
 @UseGuards(ClerkAuthGuard)
 @Controller('organizations')
@@ -53,28 +54,22 @@ export class OrganizationsController {
     return this.organizationsService.getOrganizationsForUser(user.id);
   }
 
-  // ── Get invite code for current user's org (owner/manager only) ───────────
+  // ── Get invite code for current org (owner/manager only) ──────────────────
   @Get('my/invite-code')
   async getMyInviteCode(
     @CurrentUser() user: { id: string; clerkId: string },
+    @OrgContext() orgId: string,
   ) {
-    return this.organizationsService.getMyInviteCode(user.id);
+    return this.organizationsService.getMyInviteCode(user.id, orgId);
   }
 
   // ── Regenerate invite code (owner/manager only) ──────────────────────────
   @Post('my/invite-code/regenerate')
   async regenerateInviteCode(
     @CurrentUser() user: { id: string; clerkId: string },
+    @OrgContext() orgId: string,
   ) {
-    return this.organizationsService.regenerateInviteCode(user.id);
-  }
-
-  // ── List staff members in the caller's org ───────────────────────────────
-  @Get('my/staff')
-  async getStaffMembers(
-    @CurrentUser() user: { id: string; clerkId: string },
-  ) {
-    return this.organizationsService.getStaffMembers(user.id);
+    return this.organizationsService.regenerateInviteCode(user.id, orgId);
   }
 
   // ── Find org by ID ────────────────────────────────────────────────────────

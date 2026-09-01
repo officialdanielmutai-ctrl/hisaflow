@@ -41,4 +41,9 @@ export class CreateNoteDto {
   @ValidateNested({ each: true })
   @Type(() => CreateChecklistItemDto)
   checklistItems?: CreateChecklistItemDto[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  restrictedUserIds?: string[];
 }
