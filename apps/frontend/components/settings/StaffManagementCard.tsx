@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Users, Trash2, RefreshCw, Copy, Check, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@clerk/nextjs';
 import {
@@ -67,10 +67,10 @@ export default function StaffManagementCard({ orgId, isOwner }: Props) {
     }
   }, [getToken, orgId]);
 
-  // Lazy load on first expand
-  if (!initialLoaded && !loading) {
+  // Load on mount — must be in useEffect, not render body
+  useEffect(() => {
     loadData();
-  }
+  }, [loadData]);
 
   const handleCopy = () => {
     if (!inviteCode) return;
@@ -276,9 +276,14 @@ export default function StaffManagementCard({ orgId, isOwner }: Props) {
                       {isOwner && isNonOwner && (
                         <button
                           onClick={() => handleExpand(member)}
-                          className="p-1.5 rounded-lg hover:bg-[var(--color-bg-surface)] transition-colors text-[var(--color-text-secondary)]"
-                          title="Manage permissions"
+                          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                            isExpanded
+                              ? 'bg-[var(--color-accent)] text-white'
+                              : 'bg-[var(--color-bg-surface)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
+                          }`}
+                          title="Manage permissions and access"
                         >
+                          <span className="hidden sm:inline">Manage</span>
                           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </button>
                       )}
