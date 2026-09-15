@@ -63,15 +63,30 @@ export default function RootLayout({
                     window.dispatchEvent(new Event('pwa-install-ready'));
                     console.log('[PWA] beforeinstallprompt captured (inline script)');
                   });
-                  // Register service worker immediately
+                  // In development, ensure stale service worker and caches are flushed
                   if ('serviceWorker' in navigator) {
-                    window.addEventListener('load', function() {
-                      navigator.serviceWorker.register('/sw.js').then(function(reg) {
-                        console.log('[PWA] SW registered:', reg.scope);
-                      }).catch(function(err) {
-                        console.error('[PWA] SW registration failed:', err);
+                    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                      navigator.serviceWorker.getRegistrations().then(function(regs) {
+                        for (var i = 0; i < regs.length; i++) {
+                          regs[i].unregister();
+                        }
                       });
-                    });
+                      if ('caches' in window) {
+                        caches.keys().then(function(names) {
+                          for (var i = 0; i < names.length; i++) {
+                            caches.delete(names[i]);
+                          }
+                        });
+                      }
+                    } else {
+                      window.addEventListener('load', function() {
+                        navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                          console.log('[PWA] SW registered:', reg.scope);
+                        }).catch(function(err) {
+                          console.error('[PWA] SW registration failed:', err);
+                        });
+                      });
+                    }
                   }
                 })();
               `,

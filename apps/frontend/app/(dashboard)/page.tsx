@@ -20,6 +20,7 @@ import { SchoolDashboard } from '@/components/school/SchoolDashboard';
 import { ChemistDashboard } from '@/components/chemist/ChemistDashboard';
 import { RestaurantDashboard } from '@/components/restaurant/RestaurantDashboard';
 import { WholesaleDashboard } from '@/components/wholesale/WholesaleDashboard';
+import { IspDashboard } from '@/components/isp/IspDashboard';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const importanceColors: Record<string, string> = {
@@ -451,7 +452,7 @@ function RetailDashboard() {
 }
 
 export default function DashboardPage() {
-  const { canViewAnalytics, isGuestHouse, isSchool, isChemist, isRestaurant, isWholesaler } = useRole();
+  const { canViewAnalytics, isGuestHouse, isSchool, isChemist, isRestaurant, isWholesaler, isIsp } = useRole();
 
   if (!canViewAnalytics) {
     return <StaffDashboard />;
@@ -462,6 +463,7 @@ export default function DashboardPage() {
   if (isChemist) return <ChemistDashboard />;
   if (isRestaurant) return <RestaurantDashboard />;
   if (isWholesaler) return <WholesaleDashboard />;
+  if (isIsp) return <IspDashboard />;
 
   return <RetailDashboard />;
 }

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, Bell, ListTodo, LogOut, TrendingUp, Package, Sparkles } from 'lucide-react';
+import { Settings, Bell, ListTodo, LogOut, TrendingUp, Package, Sparkles, Briefcase, TicketCheck, Tag, Users } from 'lucide-react';
 import { SignOutButton, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import {
@@ -35,6 +35,7 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
   const isHospitality = ['GUEST_HOUSE', 'HOTEL', 'LODGE'].includes(businessType);
   const isRestaurant = businessType === 'RESTAURANT';
   const isSchool = businessType === 'SCHOOL';
+  const isIsp = businessType === 'ISP';
 
   const dynamicItems = [...sideNavItems];
   if (isHospitality || isRestaurant || isSchool) {
@@ -42,6 +43,16 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
     dynamicItems.unshift(
       { href: '/finance', label: 'Finance', icon: TrendingUp },
       { href: '/inventory', label: 'Inventory', icon: Package },
+      { href: '/ai', label: 'AI Actions', icon: Sparkles }
+    );
+  } else if (isIsp) {
+    dynamicItems.unshift(
+      { href: '/subscribers', label: 'Subscribers', icon: Users },
+      { href: '/service-plans', label: 'Service Plans', icon: Tag },
+      { href: '/work-orders', label: 'Field Work & Dispatch', icon: Briefcase },
+      { href: '/tickets', label: 'Tickets', icon: TicketCheck },
+      { href: '/inventory', label: 'Hardware', icon: Package },
+      { href: '/finance', label: 'Billing & Finance', icon: TrendingUp },
       { href: '/ai', label: 'AI Actions', icon: Sparkles }
     );
   }

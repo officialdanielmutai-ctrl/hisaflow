@@ -29,6 +29,8 @@ import { SchoolClassesModule } from './modules/school-classes/school-classes.mod
 import { StudentsModule } from './modules/students/students.module';
 import { AcademicTermsModule } from './modules/academic-terms/academic-terms.module';
 import { SchoolFeesModule } from './modules/school-fees/school-fees.module';
+// ── ISP Vertical ─────────────────────────────────────────────────────────────
+import { IspModule } from './modules/isp/isp.module';
 
 @Module({
   imports: [
@@ -57,6 +59,7 @@ import { SchoolFeesModule } from './modules/school-fees/school-fees.module';
     StudentsModule,
     AcademicTermsModule,
     SchoolFeesModule,
+    IspModule,
   ],
   controllers: [AppController],
   providers: [AppService],

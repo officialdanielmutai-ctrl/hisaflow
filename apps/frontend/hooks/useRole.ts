@@ -52,6 +52,7 @@ export function useRole() {
   const isDuka = businessType === 'DUKA';
   const isMiniMart = businessType === 'MINI_MART';
   const isSchool = businessType === 'SCHOOL';
+  const isIsp = businessType === 'ISP';
 
   // Retail group
   const isRetail = isDuka || isMiniMart || isWholesaler;
@@ -83,6 +84,7 @@ export function useRole() {
     isDuka,
     isMiniMart,
     isSchool,
+    isIsp,
     isRetail,
     // Permission flags — sourced from backend effective permissions
     canViewAnalytics: has('canViewAnalytics'),

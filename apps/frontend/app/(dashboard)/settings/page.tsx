@@ -8,6 +8,7 @@ import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
 import StaffManagementCard from '@/components/settings/StaffManagementCard';
+import RouterSettingsCard from '@/components/settings/RouterSettingsCard';
 
 export default function SettingsPage() {
   const { isSupported, subscription, subscribe, isSubscribing, orgLoading, error } = usePushNotifications();
@@ -62,6 +63,11 @@ export default function SettingsPage() {
       {/* ── Staff Management (owners/managers only) ───────────────────────── */}
       {canManageStaff && orgId && (
         <StaffManagementCard orgId={orgId} isOwner={isOwner} />
+      )}
+
+      {/* ── MikroTik Routers (ISP access routers) ─────────────────────────── */}
+      {canManageStaff && orgId && (
+        <RouterSettingsCard orgId={orgId} isOwner={isOwner} />
       )}
 
       {/* ── Push Notifications ─────────────────────────────────────────────── */}

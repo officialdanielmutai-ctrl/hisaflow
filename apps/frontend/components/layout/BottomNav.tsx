@@ -62,9 +62,17 @@ const schoolTabs = [
   { href: '/students', label: 'Students', icon: Users },
 ];
 
+const ispTabs = [
+  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/inventory', label: 'Hardware', icon: Package },
+  { href: '/subscribers?action=add', label: 'New', icon: Plus, isFab: true },
+  { href: '/subscribers', label: 'Subscribers', icon: Users },
+  { href: '/finance', label: 'Billing', icon: TrendingUp },
+];
+
 export default function BottomNav() {
   const pathname = usePathname();
-  const { isStaff, isGuestHouse, isRestaurant, isSchool } = useRole();
+  const { isStaff, isGuestHouse, isRestaurant, isSchool, isIsp } = useRole();
 
   let visibleTabs = isStaff ? staffTabs : ownerTabs;
   if (isGuestHouse) {
@@ -73,6 +81,8 @@ export default function BottomNav() {
     visibleTabs = restaurantTabs;
   } else if (isSchool) {
     visibleTabs = schoolTabs;
+  } else if (isIsp) {
+    visibleTabs = ispTabs;
   }
 
   return (

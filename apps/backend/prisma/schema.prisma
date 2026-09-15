@@ -49,6 +49,14 @@ model Organization {
   academicTerms         AcademicTerm[]
   feeStructures         FeeStructure[]
   feeInvoices           FeeInvoice[]
+
+  // ── ISP ──────────────────────────────────────────────────────
+  subscribers           Subscriber[]
+  servicePlans          ServicePlan[]
+  workOrders            WorkOrder[]
+  tickets               Ticket[]
+  routers               Router[]
+
   @@map("organizations")
 }
 
@@ -330,7 +338,7 @@ model InventoryTransaction {
   reason         String?
   actorId        String?         @map("actor_id")
   source         String          @default("web")
-  
+
   // Business specific fields
   clientName     String?         @map("client_name")
   metadata       Json?
@@ -338,17 +346,25 @@ model InventoryTransaction {
   // Guest house: optional link to a booking (for consumption tracking)
   bookingId      String?         @map("booking_id")
 
+  // ISP: optional link to a subscriber or work order (for equipment tracking)
+  subscriberId   String?         @map("subscriber_id")
+  workOrderId    String?         @map("work_order_id")
+
   createdAt      DateTime        @default(now()) @map("created_at")
 
   organization Organization  @relation(fields: [organizationId], references: [id])
   item         InventoryItem @relation(fields: [itemId], references: [id])
   creditRecord CreditRecord?
   booking      Booking?      @relation(fields: [bookingId], references: [id])
+  subscriber   Subscriber?   @relation(fields: [subscriberId], references: [id])
+  workOrder    WorkOrder?    @relation(fields: [workOrderId], references: [id])
 
   @@index([organizationId])
   @@index([organizationId, itemId])
   @@index([organizationId, createdAt])
   @@index([bookingId])
+  @@index([subscriberId])
+  @@index([workOrderId])
   @@map("inventory_transactions")
 }
 
@@ -367,6 +383,7 @@ enum AlertType {
   VARIANCE
   DAILY_INSIGHT
   STAFF_ACTIVITY
+  ROUTER_DRIFT
 }
 
 enum AlertStatus {
@@ -628,22 +645,29 @@ enum InvoiceStatus {
 model Invoice {
   id               String        @id @default(cuid())
   organizationId   String        @map("organization_id")
-  bookingId        String        @unique @map("booking_id")
+  bookingId        String?       @unique @map("booking_id")
+  subscriberId     String?       @map("subscriber_id")
+  planId           String?       @map("plan_id")
   status           InvoiceStatus @default(DRAFT)
   roomTotal        Decimal       @map("room_total") @db.Decimal(12, 2)
   consumptionTotal Decimal       @map("consumption_total") @db.Decimal(12, 2)
   adjustmentsTotal Decimal       @default(0) @map("adjustments_total") @db.Decimal(12, 2)
   amountPaid       Decimal       @default(0) @map("amount_paid") @db.Decimal(12, 2)
   issuedAt         DateTime?     @map("issued_at")
+  dueDate          DateTime?     @map("due_date")
+  suspendedForNonPayment Boolean @default(false) @map("suspended_for_non_payment")
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
   organization Organization      @relation(fields: [organizationId], references: [id])
-  booking      Booking           @relation(fields: [bookingId], references: [id])
+  booking      Booking?          @relation(fields: [bookingId], references: [id])
+  subscriber   Subscriber?       @relation(fields: [subscriberId], references: [id])
+  plan         ServicePlan?      @relation(fields: [planId], references: [id])
   lineItems    InvoiceLineItem[]
   payments     Payment[]
 
   @@index([organizationId])
+  @@index([subscriberId])
   @@map("invoices")
 }
 
@@ -822,3 +846,203 @@ model FeePayment {
   @@map("fee_payments")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ── ISP Vertical ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum SubscriberStatus {
+  ACTIVE
+  SUSPENDED
+  CHURNED
+}
+
+enum ConnectionType {
+  PPPOE
+  HOTSPOT
+  STATIC_IP
+}
+
+enum WorkOrderType {
+  INSTALLATION
+  REPAIR
+  RELOCATION
+}
+
+enum WorkOrderStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+model Subscriber {
+  id             String           @id @default(cuid())
+  organizationId String           @map("organization_id")
+  name           String
+  phone          String
+  email          String?
+  address        String?
+  connectionType ConnectionType   @default(PPPOE) @map("connection_type")
+  planId         String?          @map("plan_id")
+  routerId       String?          @map("router_id")
+  routerAccountRef String?        @map("router_account_ref")
+  status         SubscriberStatus @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  organization       Organization           @relation(fields: [organizationId], references: [id])
+  plan               ServicePlan?           @relation(fields: [planId], references: [id])
+  router             Router?                @relation(fields: [routerId], references: [id])
+  invoices           Invoice[]
+  workOrders         WorkOrder[]
+  tickets            Ticket[]
+  equipmentIssued    InventoryTransaction[]
+  routerActions      RouterAction[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@map("subscribers")
+}
+
+model ServicePlan {
+  id             String       @id @default(cuid())
+  organizationId String       @map("organization_id")
+  name           String
+  description    String?
+  price          Decimal      @db.Decimal(12, 2)
+  billingCycle   BillingCycle @default(MONTHLY) @map("billing_cycle")
+  connectionType ConnectionType @default(PPPOE) @map("connection_type")
+  speedMbps      Int?         @map("speed_mbps")
+  isActive       Boolean      @default(true) @map("is_active")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  subscribers  Subscriber[]
+  invoices     Invoice[]
+
+  @@index([organizationId])
+  @@map("service_plans")
+}
+
+model WorkOrder {
+  id             String          @id @default(cuid())
+  organizationId String          @map("organization_id")
+  subscriberId   String          @map("subscriber_id")
+  type           WorkOrderType
+  status         WorkOrderStatus @default(SCHEDULED)
+  scheduledAt    DateTime?       @map("scheduled_at")
+  completedAt    DateTime?       @map("completed_at")
+  technicianName String?         @map("technician_name")
+  notes          String?
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  organization    Organization           @relation(fields: [organizationId], references: [id])
+  subscriber      Subscriber             @relation(fields: [subscriberId], references: [id])
+  equipmentUsed   InventoryTransaction[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([subscriberId])
+  @@map("work_orders")
+}
+
+model Ticket {
+  id             String       @id @default(cuid())
+  organizationId String       @map("organization_id")
+  subscriberId   String       @map("subscriber_id")
+  subject        String
+  description    String?
+  status         TicketStatus @default(OPEN)
+  resolvedAt     DateTime?    @map("resolved_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  subscriber   Subscriber   @relation(fields: [subscriberId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([subscriberId])
+  @@map("tickets")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── ISP Vertical — Phase 6: MikroTik Router Integration ─────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RouterStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum RouterActionType {
+  SUSPEND
+  RECONNECT
+}
+
+enum RouterActionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Router {
+  id               String       @id @default(cuid())
+  organizationId   String       @map("organization_id")
+  label            String       // e.g. "Tower A - Main POP"
+  host             String       // IP or hostname
+  port             Int          @default(8729)    // API-SSL default
+  apiUsername      String       @map("api_username")
+  apiPasswordEnc   String       @map("api_password_enc") // AES-256-CBC encrypted, iv:ciphertext hex
+  connectionStatus RouterStatus @default(DISCONNECTED) @map("connection_status")
+  lastTestedAt     DateTime?    @map("last_tested_at")
+  lastError        String?      @map("last_error") @db.Text
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  subscribers   Subscriber[]
+  routerActions RouterAction[]
+
+  @@index([organizationId])
+  @@map("routers")
+}
+
+model RouterAction {
+  id             String             @id @default(cuid())
+  organizationId String             @map("organization_id")
+  subscriberId   String             @map("subscriber_id")
+  routerId       String             @map("router_id")
+  type           RouterActionType
+  status         RouterActionStatus @default(PENDING)
+  triggeredBy    String             @map("triggered_by") // "manual" | "billing" | "reconciliation"
+  attempts       Int                @default(0)
+  lastError      String?            @map("last_error") @db.Text
+  resolvedAt     DateTime?          @map("resolved_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  subscriber Subscriber @relation(fields: [subscriberId], references: [id])
+  router     Router     @relation(fields: [routerId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([subscriberId])
+  @@map("router_actions")
+}
