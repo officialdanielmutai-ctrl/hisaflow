@@ -1,0 +1,51 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "ignorePatterns": [
+    "apps/gateway/**",
+    "**/public/sw.js"
+  ],
+  "boundaries": {
+    "zones": [
+      {
+        "name": "backend",
+        "patterns": [
+          "apps/backend/src/**"
+        ]
+      },
+      {
+        "name": "frontend",
+        "patterns": [
+          "apps/frontend/**"
+        ]
+      },
+      {
+        "name": "types",
+        "patterns": [
+          "packages/types/**"
+        ]
+      }
+    ],
+    "rules": [
+      {
+        "from": "backend",
+        "allow": [
+          "backend",
+          "types"
+        ]
+      },
+      {
+        "from": "frontend",
+        "allow": [
+          "frontend",
+          "types"
+        ]
+      },
+      {
+        "from": "types",
+        "allow": [
+          "types"
+        ]
+      }
+    ]
+  }
+}
