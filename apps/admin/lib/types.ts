@@ -49,3 +49,61 @@ export interface DashboardResponse {
   kpis: DashboardKpis;
   recentActivity: AdminAuditLogEntry[];
 }
+
+export interface OrganizationListItem {
+  id: string;
+  name: string;
+  businessType: string;
+  currency: string;
+  country: string;
+  phone?: string;
+  inviteCode?: string;
+  createdAt: string;
+  updatedAt: string;
+  status: 'ACTIVE' | 'FROZEN';
+  _count: {
+    users: number;
+    products: number;
+    subscribers: number;
+    alerts: number;
+  };
+}
+
+export interface OrgUserItem {
+  id: string;
+  role: string;
+  user: {
+    id: string;
+    clerkId: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    banned: boolean;
+    imageUrl?: string;
+    lastActiveAt?: string;
+  };
+}
+
+export interface AccountDetailResponse {
+  organization: {
+    id: string;
+    name: string;
+    businessType: string;
+    currency: string;
+    country: string;
+    phone?: string;
+    inviteCode?: string;
+    createdAt: string;
+    updatedAt: string;
+    status: 'ACTIVE' | 'FROZEN';
+    counts: {
+      products: number;
+      transactions: number;
+      subscribers: number;
+      routers: number;
+      alerts: number;
+    };
+  };
+  users: OrgUserItem[];
+  latestAction?: AdminAuditLogEntry;
+}

@@ -19,7 +19,7 @@ import { adminFetch } from '@/lib/api-client';
 import { DashboardResponse } from '@/lib/types';
 
 export default function AdminDashboardPage() {
-  const { data, error, isLoading } = useSWR<DashboardResponse>('/admin/dashboard/kpis', (url) =>
+  const { data, error, isLoading } = useSWR<DashboardResponse>('/admin/dashboard/kpis', (url: string) =>
     adminFetch(url),
   );
 

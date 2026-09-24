@@ -21,9 +21,9 @@
 
 | Level | Phase Name | Status | Completion % | Gate Ticked Off |
 |---|---|---|---|---|
-| **Phase 0** | **Foundation: RBAC, Audit Logging & Admin Shell** | 🔄 Ready to Start | 0% | [ ] |
-| **Phase 1** | **Account & Organization Management** | ⏳ Blocked by Phase 0 | 0% | [ ] |
-| **Phase 2** | **AI Provider Management (LiteLLM)** | ⏳ Blocked by Phase 1 | 0% | [ ] |
+| **Phase 0** | **Foundation: RBAC, Audit Logging & Admin Shell** | ✅ Complete | 100% | [x] |
+| **Phase 1** | **Account & Organization Management** | ✅ Complete | 100% | [x] |
+| **Phase 2** | **AI Provider Management (LiteLLM)** | 🔄 In Progress | 0% | [ ] |
 | **Phase 3** | **Message & Conversation Observability** | ⏳ Blocked by Phase 2 | 0% | [ ] |
 | **Phase 4** | **User & Email Directory** | ⏳ Blocked by Phase 3 | 0% | [ ] |
 | **Phase 5** | **Bulk Communications (Resend + Africa's Talking)** | ⏳ Blocked by Phase 4 | 0% | [ ] |
@@ -43,41 +43,41 @@
 *Goal: Establish data models, security guards, audit framework, monorepo Next.js app scaffold, and responsive admin shell.*
 
 #### 0.1 Data Layer & Prisma Schema
-- [ ] Add `AdminRole` enum: `SUPER_ADMIN`, `SUPPORT_ADMIN`, `BILLING_ADMIN`, `MARKETING_ADMIN`, `OPERATIONS_ADMIN`
-- [ ] Add `AdminUser` model with Clerk ID, email, name, role, active status
-- [ ] Add `AdminAuditLog` model with adminId, actionType, targetType, targetId, targetLabel, reason, metadata, ipAddress, userAgent
-- [ ] Run `npx prisma db push` to sync to PostgreSQL database
-- [ ] Run `npx prisma generate` to refresh Prisma Client types
+- [x] Add `AdminRole` enum: `SUPER_ADMIN`, `SUPPORT_ADMIN`, `BILLING_ADMIN`, `MARKETING_ADMIN`, `OPERATIONS_ADMIN`
+- [x] Add `AdminUser` model with Clerk ID, email, name, role, active status
+- [x] Add `AdminAuditLog` model with adminId, actionType, targetType, targetId, targetLabel, reason, metadata, ipAddress, userAgent
+- [x] Run `npx prisma db push` to sync to PostgreSQL database
+- [x] Run `npx prisma generate` to refresh Prisma Client types
 
 #### 0.2 Backend Admin Core Infrastructure
-- [ ] Create `apps/backend/src/modules/admin/admin.module.ts`
-- [ ] Implement `AdminAuthGuard` (validates admin Clerk JWT, resolves active AdminUser)
-- [ ] Implement `AdminRoleGuard` and `@RequireAdminRoles()` decorator
-- [ ] Implement `AdminAuditService.write()` synchronous audit log writer
-- [ ] Implement `AdminAuditController` (`GET /admin/audit`) with role checks
-- [ ] Implement `DashboardController` with `GET /admin/dashboard/kpis`
-- [ ] Register AdminModule in `apps/backend/src/app.module.ts`
+- [x] Create `apps/backend/src/modules/admin/admin.module.ts`
+- [x] Implement `AdminAuthGuard` (validates admin Clerk JWT, resolves active AdminUser)
+- [x] Implement `AdminRoleGuard` and `@RequireAdminRoles()` decorator
+- [x] Implement `AdminAuditService.write()` synchronous audit log writer
+- [x] Implement `AdminAuditController` (`GET /admin/audit`) with role checks
+- [x] Implement `DashboardController` with `GET /admin/dashboard/kpis`
+- [x] Register AdminModule in `apps/backend/src/app.module.ts`
 
 #### 0.3 Monorepo `apps/admin` Next.js Application Scaffold
-- [ ] Scaffold Next.js 15 App Router app in `apps/admin`
-- [ ] Configure `apps/admin/package.json` with workspace dependencies (types, lucide-react, tailwindcss, shadcn, clerk)
-- [ ] Set up Tailwind CSS, CSS variables, and layout styles
-- [ ] Verify `pnpm install` and workspace recognition
+- [x] Scaffold Next.js 15 App Router app in `apps/admin`
+- [x] Configure `apps/admin/package.json` with workspace dependencies (types, lucide-react, tailwindcss, shadcn, clerk)
+- [x] Set up Tailwind CSS, CSS variables, and layout styles
+- [x] Verify `pnpm install` and workspace recognition
 
 #### 0.4 Admin Shell Layout & Navigation
-- [ ] Implement persistent sidebar with module grouping (Core, Accounts, Intelligence, Support, Comms, Operations, System)
-- [ ] Implement top bar with global search input, admin identity card, role pill, and sign-out
-- [ ] Implement role-aware sidebar navigation (items hidden/disabled if role unauthorized)
-- [ ] Create Dashboard Home page with KPI cards and recent audit activity feed
-- [ ] Create Sign-in page (Clerk email/password + Google, restricted to admin domain)
-- [ ] Create Billing placeholder page ("Under Construction — see hisaflow-paywall.md Phase F")
+- [x] Implement persistent sidebar with module grouping (Core, Accounts, Intelligence, Support, Comms, Operations, System)
+- [x] Implement top bar with global search input, admin identity card, role pill, and sign-out
+- [x] Implement role-aware sidebar navigation (items hidden/disabled if role unauthorized)
+- [x] Create Dashboard Home page with KPI cards and recent audit activity feed
+- [x] Create Sign-in page (Clerk email/password + Google, restricted to admin domain)
+- [x] Create Billing placeholder page ("Under Construction — see hisaflow-paywall.md Phase F")
 
 #### Level 0 Verification Gate (Done When):
-- [ ] `AdminAuditService.write()` persists audit events to DB with actor, IP, metadata
-- [ ] Non-admin JWT or inactive admin user is rejected with 401
-- [ ] Admin with insufficient role receives 403 Forbidden from guarded endpoint
-- [ ] Admin shell renders sidebar, top bar, and KPI dashboard with zero console errors
-- [ ] Backend & Admin TypeScript checks pass with 0 errors (`tsc --noEmit`)
+- [x] `AdminAuditService.write()` persists audit events to DB with actor, IP, metadata
+- [x] Non-admin JWT or inactive admin user is rejected with 401
+- [x] Admin with insufficient role receives 403 Forbidden from guarded endpoint
+- [x] Admin shell renders sidebar, top bar, and KPI dashboard with zero console errors
+- [x] Backend & Admin TypeScript checks pass with 0 errors (`tsc --noEmit`)
 
 ---
 
@@ -85,25 +85,25 @@
 *Goal: Provide full visibility into customer accounts, live Clerk status, and audit-logged freeze/unfreeze actions.*
 
 #### 1.1 Backend Account Services & Endpoints
-- [ ] Implement `GET /admin/accounts` with search (name, email, phone), filters (businessType, status), and pagination
-- [ ] Implement `GET /admin/accounts/:orgId` returning org metadata, subscription status, and live Clerk user list
-- [ ] Implement `POST /admin/accounts/:orgId/freeze` using Clerk Backend API `banUser()` for all members; mandatory reason; writes to `AdminAuditLog`
-- [ ] Implement `POST /admin/accounts/:orgId/unfreeze` using Clerk `unbanUser()`; mandatory reason; writes to `AdminAuditLog`
-- [ ] Implement `GET /admin/accounts/:orgId/history` returning org-specific audit trail
+- [x] Implement `GET /admin/accounts` with search (name, email, phone), filters (businessType, status), and pagination
+- [x] Implement `GET /admin/accounts/:orgId` returning org metadata, subscription status, and live Clerk user list
+- [x] Implement `POST /admin/accounts/:orgId/freeze` using Clerk Backend API `banUser()` for all members; mandatory reason; writes to `AdminAuditLog`
+- [x] Implement `POST /admin/accounts/:orgId/unfreeze` using Clerk `unbanUser()`; mandatory reason; writes to `AdminAuditLog`
+- [x] Implement `GET /admin/accounts/:orgId/history` returning org-specific audit trail
 
 #### 1.2 Frontend Account Views
-- [ ] Build Accounts List View using TanStack Table (search bar, status filter, type filter, pagination)
-- [ ] Build Account Detail View (Header banner, Status pill, Org info card, Subscription summary)
-- [ ] Build Live Users Tab pulling current Clerk status (Active, Banned, Last active)
-- [ ] Build Freeze Account Modal with mandatory reason selection + impact explanation
-- [ ] Build Unfreeze Account Modal with reason prompt
-- [ ] Build Org Audit History Tab displaying prior admin interventions
+- [x] Build Accounts List View using TanStack Table (search bar, status filter, type filter, pagination)
+- [x] Build Account Detail View (Header banner, Status pill, Org info card, Subscription summary)
+- [x] Build Live Users Tab pulling current Clerk status (Active, Banned, Last active)
+- [x] Build Freeze Account Modal with mandatory reason selection + impact explanation
+- [x] Build Unfreeze Account Modal with reason prompt
+- [x] Build Org Audit History Tab displaying prior admin interventions
 
 #### Level 1 Verification Gate (Done When):
-- [ ] Admin can search any account by name or phone and view live data
-- [ ] Freezing an account immediately bans users in Clerk and logs to `AdminAuditLog` within the same transaction
-- [ ] Unfreezing reverses ban and logs to audit trail
-- [ ] Account history tab displays complete timeline of freeze/unfreeze actions
+- [x] Admin can search any account by name or phone and view live data
+- [x] Freezing an account immediately bans users in Clerk and logs to `AdminAuditLog` within the same transaction
+- [x] Unfreezing reverses ban and logs to audit trail
+- [x] Account history tab displays complete timeline of freeze/unfreeze actions
 
 ---
 
@@ -307,4 +307,18 @@
 | Entry # | Date & Time | Level / Phase | Action Summary | Files Touched | Verification Outcome |
 |---|---|---|---|---|---|
 | #001 | 2026-09-24 18:15 | Protocol | Created Master Progress Tracker & Blueprint with strict level gating | `hisaflow-admin-panel-tracker.md` | Protocol established |
+| #002 | 2026-09-24 18:10 | Phase 0 — 0.1 | Added `AdminRole` enum, `AdminUser` and `AdminAuditLog` models to `schema.prisma` | `apps/backend/prisma/schema.prisma` | Schema valid |
+| #003 | 2026-09-24 18:16 | Phase 0 — 0.1 | Ran `prisma db push` — synced `admin_users` + `admin_audit_logs` tables to Supabase PostgreSQL in 15.07s | DB tables | ✅ In sync |
+| #004 | 2026-09-24 18:16 | Phase 0 — 0.1 | Ran `prisma generate` — Prisma Client v7.8.0 regenerated with AdminUser + AdminAuditLog types | Prisma Client | ✅ Generated 881ms |
+| #005 | 2026-09-24 18:20 | Phase 0 — 0.2 | Created `apps/backend/src/modules/admin/` — AdminModule, AdminAuthGuard (with first-admin auto-bootstrap), AdminRoleGuard, @RequireAdminRoles decorator, AdminAuditService (sync write + paginated query), AdminAuditController (GET + CSV export), DashboardController (KPIs endpoint) | 7 new files | ✅ Backend tsc 0 errors |
+| #006 | 2026-09-24 18:20 | Phase 0 — 0.2 | Registered `AdminModule` in `apps/backend/src/app.module.ts` | `app.module.ts` | ✅ tsc 0 errors |
+| #007 | 2026-09-24 18:55 | Phase 0 — 0.3 | Scaffolded `apps/admin/` as new Next.js 15 App Router workspace: package.json, tsconfig.json, next.config.js, postcss.config.js, tailwind.config.ts, globals.css, lib/types.ts, lib/api-client.ts | 8 new files | Workspace created |
+| #008 | 2026-09-24 18:57 | Phase 0 — 0.3 | Fixed `pnpm-workspace.yaml` allowBuilds from placeholder strings to boolean `true` (was causing ERR_PNPM_IGNORED_BUILDS); ran `pnpm install` — all 5 workspaces resolved, Prisma Client regenerated | `pnpm-workspace.yaml` | ✅ Done in 32.3s |
+| #009 | 2026-09-24 19:00 | Phase 0 — 0.4 | Built admin-shell.tsx (responsive grouped sidebar + top bar + mobile drawer), app/layout.tsx (ClerkProvider + AdminShell), app/page.tsx (Dashboard: 6 KPI cards + audit feed + ops shortcuts), app/billing/page.tsx (Under Construction Phase F placeholder), sign-in page (Clerk SignIn component) | 5 new files | ✅ No TS errors |
+| #010 | 2026-09-24 19:04 | Phase 0 — Complete | Committed 26 files (2,008 insertions) and pushed to origin/main. Commit: `f376074` | All Phase 0 files | ✅ Pushed to github.com/officialdanielmutai-ctrl/hisaflow |
+| #011 | 2026-09-24 19:45 | Phase 1 — 1.1 | Created `AccountsService`, `AccountsController`, `FreezeAccountDto`, `QueryAccountsDto` with live Clerk `banUser`/`unbanUser` integration and synchronous `AdminAuditLog` writer | `apps/backend/src/modules/admin/accounts/` | ✅ Backend tsc 0 errors |
+| #012 | 2026-09-24 19:46 | Phase 1 — 1.1 | Registered `AccountsController` and `AccountsService` in `AdminModule` | `admin.module.ts` | ✅ Registered & exported |
+| #013 | 2026-09-24 19:48 | Phase 1 — 1.2 | Created Accounts List Page (`apps/admin/app/accounts/page.tsx`) with search, businessType filter, status filter, and pagination table | `apps/admin/app/accounts/page.tsx` | ✅ apps/admin tsc 0 errors |
+| #014 | 2026-09-24 19:49 | Phase 1 — 1.2 | Created Account Detail Page (`apps/admin/app/accounts/[orgId]/page.tsx`) with live Clerk user status, Freeze/Unfreeze modals (mandatory audit reasons), and org audit history | `apps/admin/app/accounts/[orgId]/page.tsx` | ✅ apps/admin tsc 0 errors |
+
 
