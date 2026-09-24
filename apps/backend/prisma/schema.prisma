@@ -1046,3 +1046,50 @@ model RouterAction {
   @@index([subscriberId])
   @@map("router_actions")
 }
+
+// ── Admin Panel Foundation (Level 0) ──────────────────────────────
+
+enum AdminRole {
+  SUPER_ADMIN
+  SUPPORT_ADMIN
+  BILLING_ADMIN
+  MARKETING_ADMIN
+  OPERATIONS_ADMIN
+}
+
+model AdminUser {
+  id        String    @id @default(cuid())
+  clerkId   String    @unique @map("clerk_id")
+  email     String    @unique
+  name      String
+  role      AdminRole
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  auditLogs AdminAuditLog[]
+
+  @@map("admin_users")
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminId     String   @map("admin_id")
+  actionType  String   @map("action_type")
+  targetType  String   @map("target_type")
+  targetId    String?  @map("target_id")
+  targetLabel String?  @map("target_label")
+  reason      String?
+  metadata    Json?
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  admin AdminUser @relation(fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([targetType, targetId])
+  @@index([actionType])
+  @@index([createdAt])
+  @@map("admin_audit_logs")
+}

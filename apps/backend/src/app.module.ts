@@ -31,6 +31,8 @@ import { AcademicTermsModule } from './modules/academic-terms/academic-terms.mod
 import { SchoolFeesModule } from './modules/school-fees/school-fees.module';
 // ── ISP Vertical ─────────────────────────────────────────────────────────────
 import { IspModule } from './modules/isp/isp.module';
+// ── Admin Panel Core ─────────────────────────────────────────────────────────
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -60,6 +62,8 @@ import { IspModule } from './modules/isp/isp.module';
     AcademicTermsModule,
     SchoolFeesModule,
     IspModule,
+    // Admin Module
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

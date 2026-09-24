@@ -3,10 +3,10 @@ packages:
   - '!apps/gateway'
   - 'packages/*'
 allowBuilds:
-  '@clerk/shared': set this to true or false
-  '@nestjs/core': set this to true or false
-  '@prisma/engines': set this to true or false
-  msw: set this to true or false
-  prisma: set this to true or false
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
+  '@clerk/shared': true
+  '@nestjs/core': true
+  '@prisma/engines': true
+  msw: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
