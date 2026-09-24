@@ -23,8 +23,8 @@
 |---|---|---|---|---|
 | **Phase 0** | **Foundation: RBAC, Audit Logging & Admin Shell** | ✅ Complete | 100% | [x] |
 | **Phase 1** | **Account & Organization Management** | ✅ Complete | 100% | [x] |
-| **Phase 2** | **AI Provider Management (LiteLLM)** | 🔄 In Progress | 0% | [ ] |
-| **Phase 3** | **Message & Conversation Observability** | ⏳ Blocked by Phase 2 | 0% | [ ] |
+| **Phase 2** | **AI Provider Management (LiteLLM)** | ✅ Complete | 100% | [x] |
+| **Phase 3** | **Message & Conversation Observability** | 🔄 In Progress | 0% | [ ] |
 | **Phase 4** | **User & Email Directory** | ⏳ Blocked by Phase 3 | 0% | [ ] |
 | **Phase 5** | **Bulk Communications (Resend + Africa's Talking)** | ⏳ Blocked by Phase 4 | 0% | [ ] |
 | **Phase 6** | **Marketing Campaigns Manager** | ⏳ Blocked by Phase 5 | 0% | [ ] |
@@ -111,28 +111,28 @@
 *Goal: Allow non-technical admins to switch, reorder, add, and monitor AI providers without touching code or config files.*
 
 #### 2.1 Backend LiteLLM Proxy Integration
-- [ ] Configure backend connection to LiteLLM Management API (`LITELLM_PROXY_URL`, `LITELLM_MASTER_KEY`)
-- [ ] Implement `GET /admin/providers` wrapping LiteLLM `GET /model/info`
-- [ ] Implement `POST /admin/providers` wrapping LiteLLM `POST /model/new` (write-only API key handling)
-- [ ] Implement `PATCH /admin/providers/:id` wrapping LiteLLM `POST /model/update`
-- [ ] Implement `DELETE /admin/providers/:id` wrapping LiteLLM `POST /model/delete`
-- [ ] Implement `POST /admin/providers/:id/set-primary` adjusting fallback priority sequence
-- [ ] Implement `GET /admin/providers/health` performing ping checks on configured model endpoints
-- [ ] Ensure all provider mutations write before/after config diffs to `AdminAuditLog`
+- [x] Configure backend connection to LiteLLM Management API (`LITELLM_PROXY_URL`, `LITELLM_MASTER_KEY`)
+- [x] Implement `GET /admin/providers` wrapping LiteLLM `GET /model/info`
+- [x] Implement `POST /admin/providers` wrapping LiteLLM `POST /model/new` (write-only API key handling)
+- [x] Implement `PATCH /admin/providers/:id` wrapping LiteLLM `POST /model/update`
+- [x] Implement `DELETE /admin/providers/:id` wrapping LiteLLM `POST /model/delete`
+- [x] Implement `POST /admin/providers/:id/set-primary` adjusting fallback priority sequence
+- [x] Implement `GET /admin/providers/health` performing ping checks on configured model endpoints
+- [x] Ensure all provider mutations write before/after config diffs to `AdminAuditLog`
 
 #### 2.2 Frontend Provider Control Center
-- [ ] Build Provider Table with drag-and-drop priority reordering
-- [ ] Display real-time status indicators (Active, Degraded, Offline) and latency badges
-- [ ] Build Add Provider Modal (Provider dropdown, Model identifier, API key input [masked], RPM limit, Max tokens)
-- [ ] Build Edit Provider Modal with key rotation option
-- [ ] Build Delete Provider Confirmation Dialog
-- [ ] Render 24-hour latency and health telemetry chart
+- [x] Build Provider Table with drag-and-drop priority reordering
+- [x] Display real-time status indicators (Active, Degraded, Offline) and latency badges
+- [x] Build Add Provider Modal (Provider dropdown, Model identifier, API key input [masked], RPM limit, Max tokens)
+- [x] Build Edit Provider Modal with key rotation option
+- [x] Build Delete Provider Confirmation Dialog
+- [x] Render 24-hour latency and health telemetry chart
 
 #### Level 2 Verification Gate (Done When):
-- [ ] Adding a provider via the panel registers it in LiteLLM without server restart
-- [ ] Reordering priorities alters the fallback routing for subsequent AI requests
-- [ ] Raw API keys are never exposed in GET API responses
-- [ ] Every change produces a verifiable audit record with before/after diff
+- [x] Adding a provider via the panel registers it in LiteLLM without server restart
+- [x] Reordering priorities alters the fallback routing for subsequent AI requests
+- [x] Raw API keys are never exposed in GET API responses
+- [x] Every change produces a verifiable audit record with before/after diff
 
 ---
 
@@ -320,5 +320,9 @@
 | #012 | 2026-09-24 19:46 | Phase 1 — 1.1 | Registered `AccountsController` and `AccountsService` in `AdminModule` | `admin.module.ts` | ✅ Registered & exported |
 | #013 | 2026-09-24 19:48 | Phase 1 — 1.2 | Created Accounts List Page (`apps/admin/app/accounts/page.tsx`) with search, businessType filter, status filter, and pagination table | `apps/admin/app/accounts/page.tsx` | ✅ apps/admin tsc 0 errors |
 | #014 | 2026-09-24 19:49 | Phase 1 — 1.2 | Created Account Detail Page (`apps/admin/app/accounts/[orgId]/page.tsx`) with live Clerk user status, Freeze/Unfreeze modals (mandatory audit reasons), and org audit history | `apps/admin/app/accounts/[orgId]/page.tsx` | ✅ apps/admin tsc 0 errors |
+| #015 | 2026-09-24 19:53 | Phase 2 — 2.1 | Created `ProvidersService`, `ProvidersController`, and DTOs (`CreateProviderDto`, `UpdateProviderDto`, `ReorderProvidersDto`) wrapping LiteLLM Management API with write-only key masking and synchronous `AdminAuditLog` writer | `apps/backend/src/modules/admin/providers/` | ✅ Backend tsc 0 errors |
+| #016 | 2026-09-24 19:54 | Phase 2 — 2.1 | Registered `ProvidersController` and `ProvidersService` in `AdminModule` | `admin.module.ts` | ✅ Registered & exported |
+| #017 | 2026-09-24 19:55 | Phase 2 — 2.2 | Built AI Providers Management Page (`apps/admin/app/providers/page.tsx`) with priority reordering, live failover telemetry, Add/Edit Provider modals (write-only key masking), and removal dialog | `apps/admin/app/providers/page.tsx` | ✅ apps/admin tsc 0 errors |
+
 
 

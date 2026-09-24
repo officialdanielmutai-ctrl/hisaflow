@@ -7,11 +7,31 @@ import { AdminAuditController } from './audit/admin-audit.controller';
 import { DashboardController } from './dashboard/dashboard.controller';
 import { AccountsService } from './accounts/accounts.service';
 import { AccountsController } from './accounts/accounts.controller';
+import { ProvidersService } from './providers/providers.service';
+import { ProvidersController } from './providers/providers.controller';
 
 @Module({
   imports: [DatabaseModule],
-  controllers: [DashboardController, AdminAuditController, AccountsController],
-  providers: [AdminAuditService, AdminAuthGuard, AdminRoleGuard, AccountsService],
-  exports: [AdminAuditService, AdminAuthGuard, AdminRoleGuard, AccountsService],
+  controllers: [
+    DashboardController,
+    AdminAuditController,
+    AccountsController,
+    ProvidersController,
+  ],
+  providers: [
+    AdminAuditService,
+    AdminAuthGuard,
+    AdminRoleGuard,
+    AccountsService,
+    ProvidersService,
+  ],
+  exports: [
+    AdminAuditService,
+    AdminAuthGuard,
+    AdminRoleGuard,
+    AccountsService,
+    ProvidersService,
+  ],
 })
 export class AdminModule {}
+

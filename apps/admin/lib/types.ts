@@ -107,3 +107,33 @@ export interface AccountDetailResponse {
   users: OrgUserItem[];
   latestAction?: AdminAuditLogEntry;
 }
+
+export interface ProviderItem {
+  id: string;
+  modelName: string;
+  provider: string;
+  litellmModelId: string;
+  rpm?: number;
+  maxTokens?: number;
+  priority: number;
+  status: 'ACTIVE' | 'DEGRADED' | 'OFFLINE';
+  avgLatencyMs: number;
+  lastTestedAt?: string;
+  maskedKey: string;
+}
+
+export interface ProvidersResponse {
+  providers: ProviderItem[];
+  connected: boolean;
+  proxyUrl: string;
+}
+
+export interface ProviderHealthResponse {
+  status: 'HEALTHY' | 'STANDBY';
+  proxyUrl: string;
+  roundtripLatencyMs: number;
+  totalModelsConfigured: number;
+  fallbackChain: Array<{ priority: number; model: string; provider: string }>;
+  error?: string | null;
+}
+
