@@ -137,3 +137,34 @@ export interface ProviderHealthResponse {
   error?: string | null;
 }
 
+export interface MessageAccessLogEntry {
+  id: string;
+  adminId: string;
+  adminName: string;
+  orgId: string;
+  orgName: string;
+  accessReason: string;
+  reasonNote?: string;
+  accessedAt: string;
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  channel: string;
+  lastMessageSnippet: string;
+  lastMessageAt: string;
+  messageCount: number;
+}
+
+export interface MessageItem {
+  id: string;
+  senderType: 'USER' | 'AI_SYSTEM' | 'NOTIFICATION_DISPATCH' | 'STAFF';
+  senderName: string;
+  channel: 'WHATSAPP' | 'SMS' | 'AI_INGESTION' | 'SYSTEM_ALERT';
+  content: string;
+  timestamp: string;
+  metadata?: any;
+}
+
+

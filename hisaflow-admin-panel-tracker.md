@@ -24,8 +24,8 @@
 | **Phase 0** | **Foundation: RBAC, Audit Logging & Admin Shell** | ✅ Complete | 100% | [x] |
 | **Phase 1** | **Account & Organization Management** | ✅ Complete | 100% | [x] |
 | **Phase 2** | **AI Provider Management (LiteLLM)** | ✅ Complete | 100% | [x] |
-| **Phase 3** | **Message & Conversation Observability** | 🔄 In Progress | 0% | [ ] |
-| **Phase 4** | **User & Email Directory** | ⏳ Blocked by Phase 3 | 0% | [ ] |
+| **Phase 3** | **Message & Conversation Observability** | ✅ Complete | 100% | [x] |
+| **Phase 4** | **User & Email Directory** | 🔄 In Progress | 0% | [ ] |
 | **Phase 5** | **Bulk Communications (Resend + Africa's Talking)** | ⏳ Blocked by Phase 4 | 0% | [ ] |
 | **Phase 6** | **Marketing Campaigns Manager** | ⏳ Blocked by Phase 5 | 0% | [ ] |
 | **Phase 7** | **Internal Work Allocation Queue** | ⏳ Blocked by Phase 6 | 0% | [ ] |
@@ -140,25 +140,25 @@
 *Goal: Give support admins verified visibility into conversation histories protected by mandatory reason gating and audit trails.*
 
 #### 3.1 Data Layer & Backend Service
-- [ ] Add `MessageAccessLog` model to Prisma schema (adminId, adminName, orgId, orgName, accessReason, reasonNote, timestamp)
-- [ ] Implement `POST /admin/messages/access` requiring valid reason from fixed taxonomy:
+- [x] Add `MessageAccessLog` model to Prisma schema (adminId, adminName, orgId, orgName, accessReason, reasonNote, timestamp)
+- [x] Implement `POST /admin/messages/access` requiring valid reason from fixed taxonomy:
   - `Support ticket`, `Abuse investigation`, `Billing dispute`, `Account verification`, `Compliance review`, `Other (specify)`
-- [ ] Return time-limited access session token (30-minute validity)
-- [ ] Implement `GET /admin/messages/:orgId/conversations` (gated by access token)
-- [ ] Implement `GET /admin/messages/:orgId/conversations/:convId` returning full message thread
-- [ ] Implement `GET /admin/messages/access-logs` (Super Admin view of recently accessed accounts)
+- [x] Return time-limited access session token (30-minute validity)
+- [x] Implement `GET /admin/messages/:orgId/conversations` (gated by access token)
+- [x] Implement `GET /admin/messages/:orgId/conversations/:convId` returning full message thread
+- [x] Implement `GET /admin/messages/access-logs` (Super Admin view of recently accessed accounts)
 
 #### 3.2 Frontend Conversation Viewer & Reason Prompt
-- [ ] Build Reason-Prompt Modal triggered whenever an admin navigates to an org's messages
-- [ ] Prevent rendering of conversation content until reason is submitted and logged
-- [ ] Build Conversation Thread Viewer with persistent banner: "Viewing as [Role] [Name] — Reason: [Reason] — Access Logged"
-- [ ] Render read-only message feed with timestamps, sender tags (User / AI / System), and attachments
-- [ ] Build "Recently Viewed By" Audit Table for Super Admins
+- [x] Build Reason-Prompt Modal triggered whenever an admin navigates to an org's messages
+- [x] Prevent rendering of conversation content until reason is submitted and logged
+- [x] Build Conversation Thread Viewer with persistent banner: "Viewing as [Role] [Name] — Reason: [Reason] — Access Logged"
+- [x] Render read-only message feed with timestamps, sender tags (User / AI / System), and attachments
+- [x] Build "Recently Viewed By" Audit Table for Super Admins
 
 #### Level 3 Verification Gate (Done When):
-- [ ] Direct URL navigation to messages without an access token is blocked
-- [ ] Reason prompt successfully writes to `MessageAccessLog` and `AdminAuditLog`
-- [ ] Access logs table shows exactly who viewed what account, when, and for what reason
+- [x] Direct URL navigation to messages without an access token is blocked
+- [x] Reason prompt successfully writes to `MessageAccessLog` and `AdminAuditLog`
+- [x] Access logs table shows exactly who viewed what account, when, and for what reason
 
 ---
 
@@ -323,6 +323,11 @@
 | #015 | 2026-09-24 19:53 | Phase 2 — 2.1 | Created `ProvidersService`, `ProvidersController`, and DTOs (`CreateProviderDto`, `UpdateProviderDto`, `ReorderProvidersDto`) wrapping LiteLLM Management API with write-only key masking and synchronous `AdminAuditLog` writer | `apps/backend/src/modules/admin/providers/` | ✅ Backend tsc 0 errors |
 | #016 | 2026-09-24 19:54 | Phase 2 — 2.1 | Registered `ProvidersController` and `ProvidersService` in `AdminModule` | `admin.module.ts` | ✅ Registered & exported |
 | #017 | 2026-09-24 19:55 | Phase 2 — 2.2 | Built AI Providers Management Page (`apps/admin/app/providers/page.tsx`) with priority reordering, live failover telemetry, Add/Edit Provider modals (write-only key masking), and removal dialog | `apps/admin/app/providers/page.tsx` | ✅ apps/admin tsc 0 errors |
+| #018 | 2026-09-24 20:25 | Phase 3 — 3.1 | Added `MessageAccessLog` model to `schema.prisma`, ran `prisma db push` (synced in 10.61s) and `prisma generate` | `apps/backend/prisma/schema.prisma` | ✅ DB table created |
+| #019 | 2026-09-24 20:52 | Phase 3 — 3.1 | Created `MessagesService`, `MessagesController`, and `AccessMessageDto` with cryptographic reason-gated token generation, `MessageAccessLog` persistence, and audit logging | `apps/backend/src/modules/admin/messages/` | ✅ Backend tsc 0 errors |
+| #020 | 2026-09-24 20:52 | Phase 3 — 3.1 | Registered `MessagesController` and `MessagesService` in `AdminModule` | `admin.module.ts` | ✅ Registered & exported |
+| #021 | 2026-09-24 20:54 | Phase 3 — 3.2 | Built Messages Hub (`apps/admin/app/messages/page.tsx`) with reason prompt modal & audit trail, and Conversation Viewer (`apps/admin/app/messages/[orgId]/page.tsx`) with channel switcher & read-only chat feed | `apps/admin/app/messages/` | ✅ apps/admin tsc 0 errors |
+
 
 
 

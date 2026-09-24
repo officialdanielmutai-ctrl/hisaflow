@@ -1093,3 +1093,22 @@ model AdminAuditLog {
   @@index([createdAt])
   @@map("admin_audit_logs")
 }
+
+// ── Message Observability Access Log (Level 3) ───────────────────
+
+model MessageAccessLog {
+  id           String   @id @default(cuid())
+  adminId      String   @map("admin_id")
+  adminName    String   @map("admin_name")
+  orgId        String   @map("org_id")
+  orgName      String   @map("org_name")
+  accessReason String   @map("access_reason")
+  reasonNote   String?  @map("reason_note")
+  accessedAt   DateTime @default(now()) @map("accessed_at")
+
+  @@index([orgId])
+  @@index([adminId])
+  @@index([accessedAt])
+  @@map("message_access_logs")
+}
+
