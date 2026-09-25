@@ -17,6 +17,8 @@ import { CommsService } from './comms/comms.service';
 import { CommsController } from './comms/comms.controller';
 import { CampaignsService } from './campaigns/campaigns.service';
 import { CampaignsController } from './campaigns/campaigns.controller';
+import { WorkQueueService } from './work-queue/work-queue.service';
+import { WorkQueueController } from './work-queue/work-queue.controller';
 
 @Module({
   imports: [DatabaseModule],
@@ -29,6 +31,7 @@ import { CampaignsController } from './campaigns/campaigns.controller';
     DirectoryController,
     CommsController,
     CampaignsController,
+    WorkQueueController,
   ],
   providers: [
     AdminAuditService,
@@ -40,6 +43,7 @@ import { CampaignsController } from './campaigns/campaigns.controller';
     DirectoryService,
     CommsService,
     CampaignsService,
+    WorkQueueService,
   ],
   exports: [
     AdminAuditService,
@@ -51,6 +55,7 @@ import { CampaignsController } from './campaigns/campaigns.controller';
     DirectoryService,
     CommsService,
     CampaignsService,
+    WorkQueueService,
   ],
 })
 export class AdminModule {}

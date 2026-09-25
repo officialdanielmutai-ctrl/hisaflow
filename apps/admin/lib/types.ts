@@ -254,4 +254,40 @@ export interface CampaignListResponse {
   limit: number;
 }
 
+export type WorkItemPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type WorkItemStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+
+export interface AdminWorkItem {
+  id: string;
+  title: string;
+  description: string;
+  priority: WorkItemPriority;
+  status: WorkItemStatus;
+  organizationId?: string;
+  organizationName?: string;
+  assignedToAdminId?: string;
+  assignedToAdminName?: string;
+  createdByAdminId: string;
+  createdByAdminName: string;
+  resolutionNote?: string;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkItemListResponse {
+  items: AdminWorkItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminRosterItem {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+
 
