@@ -185,6 +185,39 @@ export interface DirectoryUser {
     role: string;
   };
 }
+export interface BulkPreviewResult {
+  channel: 'EMAIL' | 'SMS';
+  recipientCount: number;
+  excludedCount: number;
+  totalAudience: number;
+  sampleRecipients: Array<{ name: string; email?: string; phone?: string; org?: string }>;
+  filterSummary: string;
+  estimatedCost?: string;
+}
 
+export interface BulkSendLogEntry {
+  id: string;
+  adminId: string;
+  adminName: string;
+  channel: 'EMAIL' | 'SMS';
+  subject?: string;
+  body: string;
+  recipientCount: number;
+  successCount: number;
+  failureCount: number;
+  status: 'DRAFT' | 'SENDING' | 'SENT' | 'PARTIAL_FAILURE' | 'FAILED';
+  filterSummary?: string;
+  sentAt?: string;
+  createdAt: string;
+  _count?: {
+    deliveries: number;
+  };
+}
 
+export interface BulkSendHistoryResponse {
+  logs: BulkSendLogEntry[];
+  total: number;
+  page: number;
+  limit: number;
+}
 

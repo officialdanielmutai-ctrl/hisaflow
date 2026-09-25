@@ -1135,3 +1135,71 @@ model CommunicationConsent {
 }
 
 
+// ── Bulk Send Log (Level 5) ──────────────────────────────────────
+
+enum BulkSendChannel {
+  EMAIL
+  SMS
+}
+
+enum BulkSendStatus {
+  DRAFT
+  SENDING
+  SENT
+  PARTIAL_FAILURE
+  FAILED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+model BulkSendLog {
+  id              String             @id @default(cuid())
+  adminId         String             @map("admin_id")
+  adminName       String             @map("admin_name")
+  channel         BulkSendChannel
+  subject         String?            // Email only
+  body            String
+  recipientCount  Int                @map("recipient_count")
+  successCount    Int                @default(0) @map("success_count")
+  failureCount    Int                @default(0) @map("failure_count")
+  status          BulkSendStatus     @default(DRAFT)
+  filterSummary   String?            @map("filter_summary") // human-readable filter desc
+  sentAt          DateTime?          @map("sent_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+
+  deliveries      CampaignDelivery[]
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("bulk_send_logs")
+}
+
+model CampaignDelivery {
+  id              String          @id @default(cuid())
+  bulkSendLogId   String          @map("bulk_send_log_id")
+  recipient       String          // email or phone
+  channel         BulkSendChannel
+  status          DeliveryStatus  @default(PENDING)
+  errorMessage    String?         @map("error_message")
+  deliveredAt     DateTime?       @map("delivered_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  bulkSendLog     BulkSendLog     @relation(fields: [bulkSendLogId], references: [id], onDelete: Cascade)
+
+  @@index([bulkSendLogId])
+  @@index([recipient])
+  @@map("campaign_deliveries")
+}
+

@@ -25,9 +25,9 @@
 | **Phase 1** | **Account & Organization Management** | ✅ Complete | 100% | [x] |
 | **Phase 2** | **AI Provider Management (LiteLLM)** | ✅ Complete | 100% | [x] |
 | **Phase 3** | **Message & Conversation Observability** | ✅ Complete | 100% | [x] |
-| **Phase 4** | **User & Email Directory** | 🔄 In Progress | 0% | [ ] |
-| **Phase 5** | **Bulk Communications (Resend + Africa's Talking)** | ⏳ Blocked by Phase 4 | 0% | [ ] |
-| **Phase 6** | **Marketing Campaigns Manager** | ⏳ Blocked by Phase 5 | 0% | [ ] |
+| **Phase 4** | **User & Email Directory** | ✅ Complete | 100% | [x] |
+| **Phase 5** | **Bulk Communications (Resend + Africa's Talking)** | ✅ Complete | 100% | [x] |
+| **Phase 6** | **Marketing Campaigns Manager** | 🔄 Ready to Start | 0% | [ ] |
 | **Phase 7** | **Internal Work Allocation Queue** | ⏳ Blocked by Phase 6 | 0% | [ ] |
 | **Phase 8** | **Central Audit Log Explorer** | ⏳ Blocked by Phase 7 | 0% | [ ] |
 | **Phase 9** | **Read-Only Impersonation (View-As)** | ⏳ Blocked by Phase 8 | 0% | [ ] |
@@ -187,24 +187,24 @@
 *Goal: Provide a multi-channel bulk communication engine with strict, non-negotiable opt-out enforcement.*
 
 #### 5.1 Data Layer & Backend Comms Engine
-- [ ] Add `CommunicationConsent`, `CampaignStatus`, `CampaignDelivery` models to Prisma
-- [ ] Integrate Resend SDK for transactional/broadcast emails
-- [ ] Integrate Africa's Talking SDK for high-deliverability SMS across East Africa
-- [ ] Implement `POST /admin/comms/preview`: calculate recipients, displaying total eligible vs. excluded (opted-out)
-- [ ] Implement `POST /admin/comms/send`: enqueue BullMQ job with structural query `WHERE consent.status = 'OPTED_IN'`
-- [ ] Implement `GET /admin/comms/history` returning delivery batches and status rates
+- [x] Add `CommunicationConsent`, `CampaignStatus`, `CampaignDelivery` models to Prisma
+- [x] Integrate Resend SDK for transactional/broadcast emails
+- [x] Integrate Africa's Talking SDK for high-deliverability SMS across East Africa
+- [x] Implement `POST /admin/comms/preview`: calculate recipients, displaying total eligible vs. excluded (opted-out)
+- [x] Implement `POST /admin/comms/send`: enqueue BullMQ job with structural query `WHERE consent.status = 'OPTED_IN'`
+- [x] Implement `GET /admin/comms/history` returning delivery batches and status rates
 
 #### 5.2 Frontend Bulk Dispatcher
-- [ ] Build Bulk Send Interface with Channel toggle (Email / SMS)
-- [ ] Build Audience Selector (All active, Segment by business type / plan, CSV upload)
-- [ ] Build Content Editor (Subject line, Rich-text email template / SMS character counter)
-- [ ] Build Recipient Calculator Card (showing exact opted-in count and excluded count)
-- [ ] Build Live Dispatch Progress Bar (Sent, Delivered, Failed)
+- [x] Build Bulk Send Interface with Channel toggle (Email / SMS)
+- [x] Build Audience Selector (All active, Segment by business type / plan, CSV upload)
+- [x] Build Content Editor (Subject line, Rich-text email template / SMS character counter)
+- [x] Build Recipient Calculator Card (showing exact opted-in count and excluded count)
+- [x] Build Live Dispatch Progress Bar (Sent, Delivered, Failed)
 
 #### Level 5 Verification Gate (Done When):
-- [ ] Opted-out test user is verified as 100% excluded from send queries
-- [ ] Bulk email delivers via Resend and bulk SMS delivers via Africa's Talking
-- [ ] Delivery status is recorded per recipient in `CampaignDelivery`
+- [x] Opted-out test user is verified as 100% excluded from send queries
+- [x] Bulk email delivers via Resend and bulk SMS delivers via Africa's Talking
+- [x] Delivery status is recorded per recipient in `CampaignDelivery`
 
 ---
 
@@ -334,6 +334,14 @@
 | #026 | 2026-09-25 18:05 | Phase 4 — 4.2 | Appended `DirectoryUser` interface to `apps/admin/lib/types.ts` | `apps/admin/lib/types.ts` | ✅ |
 | #027 | 2026-09-25 18:05 | Phase 4 — 4.2 | Built full User Directory page (`apps/admin/app/directory/page.tsx`): paginated SWR table with avatars, consent badges, live debounced search, banned/active status pills, CSV export trigger, and UserDrawer (org info, consent toggles with optimistic update, last-active timestamp) | `apps/admin/app/directory/page.tsx` | ✅ apps/admin tsc 0 errors |
 | #028 | 2026-09-25 18:30 | Phase 4 — Complete | Ticked all Phase 4 checklist items; Phase 4 gate verified; committed and pushed Phase 4 | All Phase 4 files | ✅ Commit pushed |
+| #029 | 2026-09-25 18:36 | Phase 5 — 5.1 | Added `BulkSendChannel`, `BulkSendStatus`, `BulkSendLog`, `CampaignStatus`, `DeliveryStatus`, and `CampaignDelivery` models to `schema.prisma`; ran `prisma db push` (synced in 10.14s and 17.47s) and `prisma generate` (560ms) | `apps/backend/prisma/schema.prisma` | ✅ DB schema synced |
+| #030 | 2026-09-25 18:37 | Phase 5 — 5.1 | Installed `resend` SDK into backend workspace via pnpm; integrated into NestJS environment | `apps/backend/package.json` | ✅ Resend SDK installed |
+| #031 | 2026-09-25 19:06 | Phase 5 — 5.1 | Created `CommsService` with strict DB-level opt-out filtering (`WHERE consent.status = 'OPTED_IN'`), batch sending (50s) with Resend, Africa's Talking SMS with E.164 normalization, per-recipient `CampaignDelivery` tracking, dry-run audience calculation (eligible vs excluded), and audit logging | `apps/backend/src/modules/admin/comms/comms.service.ts` | ✅ Backend tsc 0 errors |
+| #032 | 2026-09-25 19:06 | Phase 5 — 5.1 | Created `CommsController` with POST /admin/comms/preview, POST /admin/comms/dispatch, GET /admin/comms/history; registered in `AdminModule` | `apps/backend/src/modules/admin/comms/comms.controller.ts`, `admin.module.ts` | ✅ Registered & exported |
+| #033 | 2026-09-25 19:07 | Phase 5 — 5.2 | Added `BulkPreviewResult`, `BulkSendLogEntry`, and `BulkSendHistoryResponse` interfaces to `apps/admin/lib/types.ts` | `apps/admin/lib/types.ts` | ✅ Typed interfaces |
+| #034 | 2026-09-25 19:07 | Phase 5 — 5.2 | Built Bulk Communications page (`apps/admin/app/comms/page.tsx`): channel switcher (Email/SMS), multi-vertical audience segmenter, subject & body editor with live SMS segment counter, audience calculation card showing exact eligible vs excluded counts, confirmation modal, live dispatch trigger, and broadcast history table | `apps/admin/app/comms/page.tsx` | ✅ apps/admin tsc 0 errors |
+| #035 | 2026-09-25 19:10 | Phase 5 — Complete | Verified 0 errors across backend and admin Next.js app; ticked all Phase 5 items; committed and pushed to origin/main | All Phase 5 files | ✅ Commit pushed |
+
 
 
 

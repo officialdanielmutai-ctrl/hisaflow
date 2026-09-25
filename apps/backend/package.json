@@ -33,6 +33,7 @@
     "openai": "^6.48.0",
     "pg": "^8.21.0",
     "reflect-metadata": "^0.2.0",
+    "resend": "^6.28.1",
     "routeros-client": "^1.1.2",
     "rxjs": "^7.8.1",
     "web-push": "^3.6.7"
