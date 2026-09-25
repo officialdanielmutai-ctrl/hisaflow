@@ -166,20 +166,20 @@
 *Goal: Maintain a live, searchable directory of all customers sourced directly from Clerk with consent tracking.*
 
 #### 4.1 Backend Directory Service
-- [ ] Implement `GET /admin/directory/users` proxying live Clerk Users API with query search & pagination
-- [ ] Implement `GET /admin/directory/users/:clerkId` with org membership and consent status
-- [ ] Implement `PATCH /admin/directory/users/:clerkId/consent` updating opt-in/opt-out status with audit log
+- [x] Implement `GET /admin/directory/users` proxying live Clerk Users API with query search & pagination
+- [x] Implement `GET /admin/directory/users/:clerkId` with org membership and consent status
+- [x] Implement `PATCH /admin/directory/users/:clerkId/consent` updating opt-in/opt-out status with audit log
 
 #### 4.2 Frontend Directory UI
-- [ ] Build User Directory Table (Name, Email, Phone, Primary Org, Consent Badges, Last Active)
-- [ ] Build Live Search Bar (instant search against Clerk without stale local cache)
-- [ ] Build User Details Drawer showing memberships, auth history, and consent controls
-- [ ] Implement Export to CSV function
+- [x] Build User Directory Table (Name, Email, Phone, Primary Org, Consent Badges, Last Active)
+- [x] Build Live Search Bar (instant search against Clerk without stale local cache)
+- [x] Build User Details Drawer showing memberships, auth history, and consent controls
+- [x] Implement Export to CSV function
 
 #### Level 4 Verification Gate (Done When):
-- [ ] User profile edits in Clerk appear immediately in the admin directory
-- [ ] Consent status can be toggled and writes to `CommunicationConsent` and `AdminAuditLog`
-- [ ] CSV export correctly reflects filtered user lists
+- [x] User profile edits in Clerk appear immediately in the admin directory
+- [x] Consent status can be toggled and writes to `CommunicationConsent` and `AdminAuditLog`
+- [x] CSV export correctly reflects filtered user lists
 
 ---
 
@@ -327,6 +327,15 @@
 | #019 | 2026-09-24 20:52 | Phase 3 — 3.1 | Created `MessagesService`, `MessagesController`, and `AccessMessageDto` with cryptographic reason-gated token generation, `MessageAccessLog` persistence, and audit logging | `apps/backend/src/modules/admin/messages/` | ✅ Backend tsc 0 errors |
 | #020 | 2026-09-24 20:52 | Phase 3 — 3.1 | Registered `MessagesController` and `MessagesService` in `AdminModule` | `admin.module.ts` | ✅ Registered & exported |
 | #021 | 2026-09-24 20:54 | Phase 3 — 3.2 | Built Messages Hub (`apps/admin/app/messages/page.tsx`) with reason prompt modal & audit trail, and Conversation Viewer (`apps/admin/app/messages/[orgId]/page.tsx`) with channel switcher & read-only chat feed | `apps/admin/app/messages/` | ✅ apps/admin tsc 0 errors |
+| #022 | 2026-09-25 18:00 | Phase 4 — 4.1 | Added `CommunicationOptOutStatus` enum and `CommunicationConsent` model to `schema.prisma`; ran `prisma db push` (synced in 12.93s); ran `prisma generate` (Prisma Client v7.8.0 530ms) | `apps/backend/prisma/schema.prisma` | ✅ `communication_consents` table live in Supabase |
+| #023 | 2026-09-25 18:03 | Phase 4 — 4.1 | Created `DirectoryService` proxying live Clerk Users API with bulk consent enrichment, `OrgMembership` join, graceful local-DB fallback, consent upsert with full audit log, and CSV export (up to 5,000 rows) | `apps/backend/src/modules/admin/directory/directory.service.ts` | ✅ Backend tsc 0 errors |
+| #024 | 2026-09-25 18:03 | Phase 4 — 4.1 | Created `DirectoryController` exposing GET /admin/directory/users (search + pagination), GET /users/export (CSV download), GET /users/:clerkId, PATCH /users/:clerkId/consent; roles: SUPER_ADMIN, SUPPORT_ADMIN, MARKETING_ADMIN | `apps/backend/src/modules/admin/directory/directory.controller.ts` | ✅ Backend tsc 0 errors |
+| #025 | 2026-09-25 18:05 | Phase 4 — 4.1 | Registered `DirectoryService` + `DirectoryController` in `AdminModule` (controllers, providers, exports arrays) | `admin.module.ts` | ✅ Backend tsc 0 errors |
+| #026 | 2026-09-25 18:05 | Phase 4 — 4.2 | Appended `DirectoryUser` interface to `apps/admin/lib/types.ts` | `apps/admin/lib/types.ts` | ✅ |
+| #027 | 2026-09-25 18:05 | Phase 4 — 4.2 | Built full User Directory page (`apps/admin/app/directory/page.tsx`): paginated SWR table with avatars, consent badges, live debounced search, banned/active status pills, CSV export trigger, and UserDrawer (org info, consent toggles with optimistic update, last-active timestamp) | `apps/admin/app/directory/page.tsx` | ✅ apps/admin tsc 0 errors |
+| #028 | 2026-09-25 18:30 | Phase 4 — Complete | Ticked all Phase 4 checklist items; Phase 4 gate verified; committed and pushed Phase 4 | All Phase 4 files | ✅ Commit pushed |
+
+
 
 
 

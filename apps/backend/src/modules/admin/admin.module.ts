@@ -11,6 +11,8 @@ import { ProvidersService } from './providers/providers.service';
 import { ProvidersController } from './providers/providers.controller';
 import { MessagesService } from './messages/messages.service';
 import { MessagesController } from './messages/messages.controller';
+import { DirectoryService } from './directory/directory.service';
+import { DirectoryController } from './directory/directory.controller';
 
 @Module({
   imports: [DatabaseModule],
@@ -20,6 +22,7 @@ import { MessagesController } from './messages/messages.controller';
     AccountsController,
     ProvidersController,
     MessagesController,
+    DirectoryController,
   ],
   providers: [
     AdminAuditService,
@@ -28,6 +31,7 @@ import { MessagesController } from './messages/messages.controller';
     AccountsService,
     ProvidersService,
     MessagesService,
+    DirectoryService,
   ],
   exports: [
     AdminAuditService,
@@ -36,6 +40,7 @@ import { MessagesController } from './messages/messages.controller';
     AccountsService,
     ProvidersService,
     MessagesService,
+    DirectoryService,
   ],
 })
 export class AdminModule {}

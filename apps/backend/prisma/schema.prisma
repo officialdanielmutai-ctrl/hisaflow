@@ -1112,3 +1112,26 @@ model MessageAccessLog {
   @@map("message_access_logs")
 }
 
+// ── Marketing & Communication Consent (Level 4 & 5) ───────────────
+
+enum CommunicationOptOutStatus {
+  OPTED_IN
+  OPTED_OUT
+}
+
+model CommunicationConsent {
+  id             String                    @id @default(cuid())
+  organizationId String?                   @map("organization_id")
+  clerkUserId    String                    @unique @map("clerk_user_id")
+  email          String?
+  phone          String?
+  emailStatus    CommunicationOptOutStatus @default(OPTED_IN) @map("email_status")
+  smsStatus      CommunicationOptOutStatus @default(OPTED_IN) @map("sms_status")
+  updatedAt      DateTime                  @updatedAt @map("updated_at")
+  createdAt      DateTime                  @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@map("communication_consents")
+}
+
+

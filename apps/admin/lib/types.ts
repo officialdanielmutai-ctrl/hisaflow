@@ -167,4 +167,24 @@ export interface MessageItem {
   metadata?: any;
 }
 
+export interface DirectoryUser {
+  clerkId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  imageUrl?: string;
+  banned: boolean;
+  lastActiveAt?: string;
+  createdAt: string;
+  emailStatus: 'OPTED_IN' | 'OPTED_OUT';
+  smsStatus: 'OPTED_IN' | 'OPTED_OUT';
+  primaryOrg?: {
+    id: string;
+    name: string;
+    businessType: string;
+    role: string;
+  };
+}
+
+
 
