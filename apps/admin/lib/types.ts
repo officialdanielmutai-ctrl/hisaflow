@@ -35,6 +35,12 @@ export interface AdminAuditLogEntry {
   };
 }
 
+export interface AuditMetaResponse {
+  actionTypes: string[];
+  targetTypes: string[];
+  admins: { id: string; name: string; email: string }[];
+}
+
 export interface DashboardKpis {
   activeOrganizations: number;
   newSignupsThisWeek: number;

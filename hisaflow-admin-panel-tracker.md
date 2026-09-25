@@ -29,8 +29,8 @@
 | **Phase 5** | **Bulk Communications (Resend + Africa's Talking)** | ✅ Complete | 100% | [x] |
 | **Phase 6** | **Marketing Campaigns Manager** | ✅ Complete | 100% | [x] |
 | **Phase 7** | **Internal Work Allocation Queue** | ✅ Complete | 100% | [x] |
-| **Phase 8** | **Central Audit Log Explorer** | 🔄 Ready to Start | 0% | [ ] |
-| **Phase 9** | **Read-Only Impersonation (View-As)** | ⏳ Blocked by Phase 8 | 0% | [ ] |
+| **Phase 8** | **Central Audit Log Explorer** | ✅ Complete | 100% | [x] |
+| **Phase 9** | **Read-Only Impersonation (View-As)** | 🔄 Ready to Start | 0% | [ ] |
 | **Phase F** | **Billing Admin (Paystack)** | 🚧 Under Construction | 0% | [ ] (Scoped in paywall.md) |
 
 ---

@@ -18,27 +18,19 @@ export class AdminAuditController {
   }
 
   @RequireAdminRoles(AdminRole.SUPER_ADMIN)
+  @Get('meta')
+  async getAuditMeta() {
+    return this.auditService.getAuditMeta();
+  }
+
+  @RequireAdminRoles(AdminRole.SUPER_ADMIN)
   @Get('export')
   async exportCsv(@Query() query: QueryAuditLogsDto, @Res() res: Response) {
-    const logs = await this.auditService.findLogs({ ...query, limit: 1000, offset: 0 });
-
-    const headers = ['Timestamp', 'Admin Name', 'Admin Email', 'Action', 'Target Type', 'Target ID', 'Target Label', 'Reason', 'IP Address'];
-    const rows = logs.items.map((log: any) => [
-      log.createdAt.toISOString(),
-      `"${log.admin.name.replace(/"/g, '""')}"`,
-      log.admin.email,
-      log.actionType,
-      log.targetType,
-      log.targetId || '',
-      `"${(log.targetLabel || '').replace(/"/g, '""')}"`,
-      `"${(log.reason || '').replace(/"/g, '""')}"`,
-      log.ipAddress || '',
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\n');
+    const { csvContent, sha256 } = await this.auditService.exportCsvWithChecksum(query);
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=admin-audit-logs-${Date.now()}.csv`);
+    res.setHeader('X-Integrity-SHA256', sha256);
     return res.status(200).send(csvContent);
   }
 }
