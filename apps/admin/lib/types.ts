@@ -221,3 +221,37 @@ export interface BulkSendHistoryResponse {
   limit: number;
 }
 
+export interface MarketingCampaign {
+  id: string;
+  name: string;
+  channel: 'EMAIL' | 'SMS';
+  status: 'DRAFT' | 'SCHEDULED' | 'RUNNING' | 'COMPLETED' | 'CANCELLED';
+  subject?: string;
+  body: string;
+  templateName?: string;
+  segmentCriteria: {
+    businessTypes?: string[];
+    orgSearch?: string;
+    activityDays?: number;
+  };
+  scheduledAt?: string;
+  executedAt?: string;
+  recipientCount: number;
+  deliveredCount: number;
+  openedCount: number;
+  clickedCount: number;
+  failedCount: number;
+  createdByAdminId: string;
+  createdByAdminName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignListResponse {
+  campaigns: MarketingCampaign[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+

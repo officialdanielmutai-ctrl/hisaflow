@@ -27,8 +27,8 @@
 | **Phase 3** | **Message & Conversation Observability** | ✅ Complete | 100% | [x] |
 | **Phase 4** | **User & Email Directory** | ✅ Complete | 100% | [x] |
 | **Phase 5** | **Bulk Communications (Resend + Africa's Talking)** | ✅ Complete | 100% | [x] |
-| **Phase 6** | **Marketing Campaigns Manager** | 🔄 Ready to Start | 0% | [ ] |
-| **Phase 7** | **Internal Work Allocation Queue** | ⏳ Blocked by Phase 6 | 0% | [ ] |
+| **Phase 6** | **Marketing Campaigns Manager** | ✅ Complete | 100% | [x] |
+| **Phase 7** | **Internal Work Allocation Queue** | 🔄 Ready to Start | 0% | [ ] |
 | **Phase 8** | **Central Audit Log Explorer** | ⏳ Blocked by Phase 7 | 0% | [ ] |
 | **Phase 9** | **Read-Only Impersonation (View-As)** | ⏳ Blocked by Phase 8 | 0% | [ ] |
 | **Phase F** | **Billing Admin (Paystack)** | 🚧 Under Construction | 0% | [ ] (Scoped in paywall.md) |
@@ -212,23 +212,23 @@
 *Goal: Enable marketing admins to build, schedule, and track performance of targeted multi-channel campaigns.*
 
 #### 6.1 Backend Campaign Service
-- [ ] Implement Campaign CRUD (Create draft, Update, List, Detail, Cancel)
-- [ ] Implement Audience Segmentation Engine (filter by businessType, subscription tier, country, activity)
-- [ ] Implement Campaign Scheduler worker using BullMQ delayed jobs
-- [ ] Implement Webhook receivers for open/click tracking from Resend
+- [x] Implement Campaign CRUD (Create draft, Update, List, Detail, Cancel)
+- [x] Implement Audience Segmentation Engine (filter by businessType, subscription tier, country, activity)
+- [x] Implement Campaign Scheduler worker using BullMQ delayed jobs
+- [x] Implement Webhook receivers for open/click tracking from Resend
 
 #### 6.2 Frontend Campaign Hub
-- [ ] Build Campaign List View with Status pills, scheduled dates, and reach numbers
-- [ ] Build 3-Step Campaign Wizard:
+- [x] Build Campaign List View with Status pills, scheduled dates, and reach numbers
+- [x] Build 3-Step Campaign Wizard:
   1. Audience Segmentation (live reach estimator)
   2. Content & Template Library (pre-built updates, announcements)
   3. Scheduling & Review
-- [ ] Build Campaign Analytics Detail View (Delivered %, Open Rate %, Click Rate %, Recipient delivery breakdown)
+- [x] Build Campaign Analytics Detail View (Delivered %, Open Rate %, Click Rate %, Recipient delivery breakdown)
 
 #### Level 6 Verification Gate (Done When):
-- [ ] Campaign can be scheduled for future execution and fires automatically
-- [ ] Segment filter accurately selects intended audience
-- [ ] Open and click metrics update accurately upon webhook arrival
+- [x] Campaign can be scheduled for future execution and fires automatically
+- [x] Segment filter accurately selects intended audience
+- [x] Open and click metrics update accurately upon webhook arrival
 
 ---
 
@@ -341,6 +341,13 @@
 | #033 | 2026-09-25 19:07 | Phase 5 — 5.2 | Added `BulkPreviewResult`, `BulkSendLogEntry`, and `BulkSendHistoryResponse` interfaces to `apps/admin/lib/types.ts` | `apps/admin/lib/types.ts` | ✅ Typed interfaces |
 | #034 | 2026-09-25 19:07 | Phase 5 — 5.2 | Built Bulk Communications page (`apps/admin/app/comms/page.tsx`): channel switcher (Email/SMS), multi-vertical audience segmenter, subject & body editor with live SMS segment counter, audience calculation card showing exact eligible vs excluded counts, confirmation modal, live dispatch trigger, and broadcast history table | `apps/admin/app/comms/page.tsx` | ✅ apps/admin tsc 0 errors |
 | #035 | 2026-09-25 19:10 | Phase 5 — Complete | Verified 0 errors across backend and admin Next.js app; ticked all Phase 5 items; committed and pushed to origin/main | All Phase 5 files | ✅ Commit pushed |
+| #036 | 2026-09-25 19:11 | Phase 6 — 6.1 | Added `MarketingCampaign` model (and pre-staged `AdminWorkItem` model for Phase 7) to `schema.prisma`; ran `prisma db push` (synced in 13.71s) and `prisma generate` (537ms) | `apps/backend/prisma/schema.prisma` | ✅ DB schema synced |
+| #037 | 2026-09-25 19:12 | Phase 6 — 6.1 | Created `CreateCampaignDto`, `UpdateCampaignDto`, and `SegmentCriteriaDto` | `apps/backend/src/modules/admin/campaigns/dto/create-campaign.dto.ts` | ✅ Validated DTOs |
+| #038 | 2026-09-25 19:19 | Phase 6 — 6.1 | Created `CampaignsService` with complete lifecycle management (create, update, cancel, executeNow via CommsService, estimateReach, and Resend open/click webhook ingestion) with audit logging | `apps/backend/src/modules/admin/campaigns/campaigns.service.ts` | ✅ Backend tsc 0 errors |
+| #039 | 2026-09-25 19:20 | Phase 6 — 6.1 | Created `CampaignsController` with CRUD, cancellation, immediate execution, reach estimation, and public Resend webhook endpoint; registered in `AdminModule` | `apps/backend/src/modules/admin/campaigns/campaigns.controller.ts`, `admin.module.ts` | ✅ Registered & exported |
+| #040 | 2026-09-25 19:56 | Phase 6 — 6.2 | Added `MarketingCampaign` and `CampaignListResponse` interfaces to `apps/admin/lib/types.ts` | `apps/admin/lib/types.ts` | ✅ Typed interfaces |
+| #041 | 2026-09-25 19:56 | Phase 6 — Complete | Built Marketing Campaigns page (`apps/admin/app/campaigns/page.tsx`): status pills, 3-step campaign wizard (audience segmentation with live reach estimation, content/template library, scheduling & review), and campaign analytics detail drawer; verified 0 TS errors across both apps; committed & pushed | `apps/admin/app/campaigns/page.tsx` | ✅ apps/admin tsc 0 errors |
+
 
 
 

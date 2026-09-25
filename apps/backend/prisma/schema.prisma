@@ -1203,3 +1203,72 @@ model CampaignDelivery {
   @@map("campaign_deliveries")
 }
 
+// ── Marketing Campaigns (Level 6) ────────────────────────────────
+
+model MarketingCampaign {
+  id                 String          @id @default(cuid())
+  name               String
+  channel            BulkSendChannel @default(EMAIL)
+  status             CampaignStatus  @default(DRAFT)
+  subject            String?
+  body               String
+  templateName       String?         @map("template_name")
+  segmentCriteria    Json            @map("segment_criteria") // { businessTypes: [], orgSearch: '', activityDays: 30 }
+  scheduledAt        DateTime?       @map("scheduled_at")
+  executedAt         DateTime?       @map("executed_at")
+  recipientCount     Int             @default(0) @map("recipient_count")
+  deliveredCount     Int             @default(0) @map("delivered_count")
+  openedCount        Int             @default(0) @map("opened_count")
+  clickedCount       Int             @default(0) @map("clicked_count")
+  failedCount        Int             @default(0) @map("failed_count")
+  createdByAdminId   String          @map("created_by_admin_id")
+  createdByAdminName String          @map("created_by_admin_name")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("marketing_campaigns")
+}
+
+// ── Admin Work Allocation Queue (Level 7) ────────────────────────
+
+enum WorkItemPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum WorkItemStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model AdminWorkItem {
+  id                  String            @id @default(cuid())
+  title               String
+  description         String
+  priority            WorkItemPriority  @default(MEDIUM)
+  status              WorkItemStatus    @default(OPEN)
+  organizationId      String?           @map("organization_id")
+  organizationName    String?           @map("organization_name")
+  assignedToAdminId   String?           @map("assigned_to_admin_id")
+  assignedToAdminName String?           @map("assigned_to_admin_name")
+  createdByAdminId    String            @map("created_by_admin_id")
+  createdByAdminName  String            @map("created_by_admin_name")
+  resolutionNote      String?           @map("resolution_note")
+  resolvedAt          DateTime?         @map("resolved_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([priority])
+  @@index([assignedToAdminId])
+  @@index([organizationId])
+  @@map("admin_work_items")
+}
+
+

@@ -19,7 +19,7 @@ import {
   DollarSign,
   Filter,
 } from 'lucide-react';
-import type { BulkPreviewResult, BulkSendHistoryResponse } from '../../lib/types';
+import type { BulkPreviewResult, BulkSendHistoryResponse, BulkSendLogEntry } from '../../lib/types';
 
 const BUSINESS_TYPES = [
   'RETAIL',
@@ -543,7 +543,7 @@ export default function BulkCommsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y text-xs">
-                  {historyData.logs.map((log) => (
+                  {historyData.logs.map((log: BulkSendLogEntry) => (
                     <tr key={log.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500">
                         {new Date(log.createdAt).toLocaleString()}

@@ -15,6 +15,8 @@ import { DirectoryService } from './directory/directory.service';
 import { DirectoryController } from './directory/directory.controller';
 import { CommsService } from './comms/comms.service';
 import { CommsController } from './comms/comms.controller';
+import { CampaignsService } from './campaigns/campaigns.service';
+import { CampaignsController } from './campaigns/campaigns.controller';
 
 @Module({
   imports: [DatabaseModule],
@@ -26,6 +28,7 @@ import { CommsController } from './comms/comms.controller';
     MessagesController,
     DirectoryController,
     CommsController,
+    CampaignsController,
   ],
   providers: [
     AdminAuditService,
@@ -36,6 +39,7 @@ import { CommsController } from './comms/comms.controller';
     MessagesService,
     DirectoryService,
     CommsService,
+    CampaignsService,
   ],
   exports: [
     AdminAuditService,
@@ -46,6 +50,7 @@ import { CommsController } from './comms/comms.controller';
     MessagesService,
     DirectoryService,
     CommsService,
+    CampaignsService,
   ],
 })
 export class AdminModule {}
