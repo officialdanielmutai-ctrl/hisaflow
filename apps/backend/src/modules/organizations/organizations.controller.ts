@@ -49,8 +49,24 @@ export class OrganizationsController {
   // ── List the caller's memberships ─────────────────────────────────────────
   @Get('me')
   async getMyOrganizations(
-    @CurrentUser() user: { id: string; clerkId: string },
+    @CurrentUser() user: any,
   ) {
+    if (user?.isImpersonated && user?.targetOrgId) {
+      const org = await this.organizationsService.findById(user.targetOrgId);
+      return [
+        {
+          id: `imp-${org.id}`,
+          role: 'OWNER',
+          organization: {
+            id: org.id,
+            name: org.name,
+            businessType: org.businessType,
+            currency: org.currency,
+            country: org.country,
+          },
+        },
+      ];
+    }
     return this.organizationsService.getOrganizationsForUser(user.id);
   }
 

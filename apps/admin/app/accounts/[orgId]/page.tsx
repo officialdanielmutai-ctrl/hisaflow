@@ -20,6 +20,7 @@ import {
   Mail,
   Phone,
   ShieldCheck,
+  Eye,
 } from 'lucide-react';
 import { adminFetch } from '@/lib/api-client';
 import { AccountDetailResponse, AdminAuditLogEntry } from '@/lib/types';
@@ -163,6 +164,12 @@ export default function AccountDetailPage() {
 
         {/* Administrative Action Trigger */}
         <div className="flex items-center gap-3">
+          <Link
+            href={`/impersonation`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold shadow-sm transition-colors"
+          >
+            <Eye className="w-3.5 h-3.5" /> View As (Read-Only)
+          </Link>
           {isFrozen ? (
             <button
               onClick={() => {

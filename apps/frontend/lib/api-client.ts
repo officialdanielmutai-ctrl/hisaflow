@@ -42,18 +42,33 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json() as T;
 }
 
+export function getImpersonationToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return sessionStorage.getItem('hf:impersonation_token');
+  } catch {
+    return null;
+  }
+}
+
 export async function apiGet<T>(
   path: string,
   token: string,
   organizationId: string
 ): Promise<T> {
+  const impToken = getImpersonationToken();
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${token}`,
+    'x-organization-id': organizationId,
+    'Content-Type': 'application/json',
+  };
+  if (impToken) {
+    headers['x-impersonation-token'] = impToken;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     cache: 'no-store',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'x-organization-id': organizationId,
-      'Content-Type': 'application/json',
-    },
+    headers,
   });
   return handleResponse<T>(response);
 }
@@ -64,6 +79,11 @@ export async function apiPost<T>(
   organizationId: string,
   body: unknown
 ): Promise<T> {
+  const impToken = getImpersonationToken();
+  if (impToken) {
+    throw new Error('Admin View-As mode is read-only. Mutations are disabled.');
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: {
@@ -82,6 +102,11 @@ export async function apiPatch<T>(
   organizationId: string,
   body: unknown
 ): Promise<T> {
+  const impToken = getImpersonationToken();
+  if (impToken) {
+    throw new Error('Admin View-As mode is read-only. Mutations are disabled.');
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'PATCH',
     headers: {
@@ -99,6 +124,11 @@ export async function apiDelete<T>(
   token: string,
   organizationId: string,
 ): Promise<T> {
+  const impToken = getImpersonationToken();
+  if (impToken) {
+    throw new Error('Admin View-As mode is read-only. Mutations are disabled.');
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'DELETE',
     headers: {

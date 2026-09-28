@@ -30,6 +30,14 @@ export class RolesGuard implements CanActivate {
     const userId = request.user?.id as string | undefined;
     const organizationId = request.headers['x-organization-id'] as string | undefined;
 
+    // View-As mode: allow reading any role-protected resource, but reject mutations
+    if (request.user?.isImpersonated === true) {
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+        throw new ForbiddenException('Mutations are disabled in Admin View-As (Read-Only) mode');
+      }
+      return true;
+    }
+
     if (!userId || !organizationId) {
       throw new ForbiddenException('Organization context missing');
     }

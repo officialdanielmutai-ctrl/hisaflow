@@ -1,7 +1,14 @@
-﻿import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { verifyToken, createClerkClient } from '@clerk/backend';
 import { PrismaService } from '../../infrastructure/prisma.service';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
@@ -12,7 +19,58 @@ export class ClerkAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
+    const impHeader = request.headers['x-impersonation-token'] as string | undefined;
     const header = request.headers.authorization;
+
+    // Check for impersonation token in custom header or Bearer header
+    const candidateToken =
+      impHeader || (header && header.startsWith('Bearer ') ? header.split(' ')[1] : undefined);
+
+    if (candidateToken) {
+      try {
+        const secret =
+          this.configService.get<string>('ADMIN_IMPERSONATION_SECRET') ||
+          this.configService.get<string>('clerk.secretKey') ||
+          'impersonation-fallback-secret';
+
+        const decoded = jwt.verify(candidateToken, secret) as any;
+
+        if (decoded && decoded.readOnly === true && decoded.sub && decoded.targetOrgId) {
+          const record = await this.prisma.db.impersonationToken.findUnique({
+            where: { id: decoded.sub },
+          });
+
+          if (!record || record.revokedAt || record.expiresAt < new Date()) {
+            throw new ForbiddenException('Impersonation session is expired or revoked');
+          }
+
+          // Enforce read-only constraint: reject mutations with 403 Forbidden
+          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+            throw new ForbiddenException(
+              'Mutations are disabled in Admin View-As (Read-Only) mode',
+            );
+          }
+
+          request.headers['x-organization-id'] = decoded.targetOrgId;
+          request.user = {
+            id: decoded.adminId,
+            clerkId: decoded.adminId,
+            name: `${decoded.adminName} (View-As)`,
+            role: 'OWNER',
+            orgRole: 'org:admin',
+            isImpersonated: true,
+            readOnly: true,
+            targetOrgId: decoded.targetOrgId,
+            targetOrgName: decoded.targetOrgName,
+          };
+          return true;
+        }
+      } catch (jwtErr) {
+        if (impHeader) {
+          throw new UnauthorizedException('Invalid or expired impersonation token');
+        }
+      }
+    }
 
     if (!header || !header.startsWith('Bearer ')) {
       throw new UnauthorizedException('No token provided');
