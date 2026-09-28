@@ -20,6 +20,7 @@ import {
   Shield,
   Menu,
   X,
+  Eye,
 } from 'lucide-react';
 import { useUser, useClerk } from '@clerk/nextjs';
 
@@ -59,6 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { name: 'Messages', href: '/messages', icon: MessageSquare },
       { name: 'User Directory', href: '/directory', icon: Users },
+      { name: 'View As (Read-Only)', href: '/impersonation', icon: Eye },
     ],
   },
   {

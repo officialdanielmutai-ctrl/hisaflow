@@ -295,5 +295,21 @@ export interface AdminRosterItem {
   role: string;
 }
 
+export interface ImpersonationToken {
+  id: string;
+  adminId: string;
+  adminName: string;
+  targetOrgId: string;
+  targetOrgName: string;
+  reason: string;
+  token?: string; // only returned at creation time
+  expiresAt: string;
+  usedAt?: string;
+  revokedAt?: string;
+  createdAt: string;
+}
 
-
+export interface ImpersonationHistoryResponse {
+  data: ImpersonationToken[];
+  total: number;
+}

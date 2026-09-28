@@ -1271,4 +1271,23 @@ model AdminWorkItem {
   @@map("admin_work_items")
 }
 
+// ── Read-Only Impersonation (Level 9) ────────────────────────────
 
+model ImpersonationToken {
+  id              String    @id @default(cuid())
+  adminId         String    @map("admin_id")
+  adminName       String    @map("admin_name")
+  targetOrgId     String    @map("target_org_id")
+  targetOrgName   String    @map("target_org_name")
+  reason          String
+  token           String    @unique
+  expiresAt       DateTime  @map("expires_at")
+  usedAt          DateTime? @map("used_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([adminId])
+  @@index([targetOrgId])
+  @@index([expiresAt])
+  @@map("impersonation_tokens")
+}

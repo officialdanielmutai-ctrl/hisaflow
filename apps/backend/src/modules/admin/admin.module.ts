@@ -19,6 +19,8 @@ import { CampaignsService } from './campaigns/campaigns.service';
 import { CampaignsController } from './campaigns/campaigns.controller';
 import { WorkQueueService } from './work-queue/work-queue.service';
 import { WorkQueueController } from './work-queue/work-queue.controller';
+import { ImpersonationService } from './impersonation/impersonation.service';
+import { ImpersonationController } from './impersonation/impersonation.controller';
 
 @Module({
   imports: [DatabaseModule],
@@ -32,6 +34,7 @@ import { WorkQueueController } from './work-queue/work-queue.controller';
     CommsController,
     CampaignsController,
     WorkQueueController,
+    ImpersonationController,
   ],
   providers: [
     AdminAuditService,
@@ -44,6 +47,7 @@ import { WorkQueueController } from './work-queue/work-queue.controller';
     CommsService,
     CampaignsService,
     WorkQueueService,
+    ImpersonationService,
   ],
   exports: [
     AdminAuditService,
@@ -56,6 +60,7 @@ import { WorkQueueController } from './work-queue/work-queue.controller';
     CommsService,
     CampaignsService,
     WorkQueueService,
+    ImpersonationService,
   ],
 })
 export class AdminModule {}
