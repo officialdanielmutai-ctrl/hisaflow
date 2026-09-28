@@ -30,7 +30,7 @@
 | **Phase 6** | **Marketing Campaigns Manager** | ✅ Complete | 100% | [x] |
 | **Phase 7** | **Internal Work Allocation Queue** | ✅ Complete | 100% | [x] |
 | **Phase 8** | **Central Audit Log Explorer** | ✅ Complete | 100% | [x] |
-| **Phase 9** | **Read-Only Impersonation (View-As)** | 🔄 Ready to Start | 0% | [ ] |
+| **Phase 9** | **Read-Only Impersonation (View-As)** | ✅ Complete | 100% | [x] |
 | **Phase F** | **Billing Admin (Paystack)** | 🚧 Under Construction | 0% | [ ] (Scoped in paywall.md) |
 
 ---
@@ -278,20 +278,20 @@
 *Goal: Allow support admins to troubleshoot customer issues by viewing accounts exactly as the customer sees them, in read-only mode.*
 
 #### 9.1 Backend Token Generator
-- [ ] Implement `POST /admin/accounts/:orgId/impersonate` (Super Admin only; reason required)
-- [ ] Generate short-lived (15-min) scoped JWT carrying `impersonatedByAdminId` and `readOnly: true`
-- [ ] Update customer API guards to reject write mutations when `readOnly: true` is present
+- [x] Implement `POST /admin/accounts/:orgId/impersonate` (Super Admin only; reason required)
+- [x] Generate short-lived (15-min) scoped JWT carrying `impersonatedByAdminId` and `readOnly: true`
+- [x] Update customer API guards to reject write mutations when `readOnly: true` is present
 
 #### 9.2 Frontend View-As Integration
-- [ ] Add "View As" action button in Account Detail
-- [ ] Customer frontend detects impersonation token and renders persistent bright amber banner:
+- [x] Add "View As" action button in Account Detail
+- [x] Customer frontend detects impersonation token and renders persistent bright amber banner:
   - "ADMIN VIEW-AS MODE (READ-ONLY) — Acting as [Org Name] — [Exit View-As]"
-- [ ] Disable all form submission / mutation buttons in view-as mode
+- [x] Disable all form submission / mutation buttons in view-as mode
 
 #### Level 9 Verification Gate (Done When):
-- [ ] Impersonation session logs reason to `AdminAuditLog`
-- [ ] Read-only view renders customer interface accurately
-- [ ] Any attempt to execute a mutation while impersonating returns 403 Forbidden
+- [x] Impersonation session logs reason to `AdminAuditLog`
+- [x] Read-only view renders customer interface accurately
+- [x] Any attempt to execute a mutation while impersonating returns 403 Forbidden
 
 ---
 
@@ -352,6 +352,15 @@
 | #044 | 2026-09-25 20:01 | Phase 7 — 7.1 | Created `WorkQueueController` with GET, POST, GET /:id, PATCH /:id, and GET /admins; registered in `AdminModule`; gated by SUPER_ADMIN, OPERATIONS_ADMIN, SUPPORT_ADMIN | `apps/backend/src/modules/admin/work-queue/work-queue.controller.ts`, `admin.module.ts` | ✅ Registered & exported |
 | #045 | 2026-09-25 20:03 | Phase 7 — 7.2 | Added `AdminWorkItem`, `WorkItemListResponse`, and `AdminRosterItem` interfaces to `apps/admin/lib/types.ts` | `apps/admin/lib/types.ts` | ✅ Typed interfaces |
 | #046 | 2026-09-25 20:03 | Phase 7 — Complete | Built Work Queue Dashboard (`apps/admin/app/work-queue/page.tsx`): multi-faceted filtering (status, priority, search), colored priority badges, Create Work Item modal, Work Item detail drawer with live assignee/priority updates, and mandatory resolution modal on resolve; verified 0 TS errors across backend & admin; committed & pushed | `apps/admin/app/work-queue/page.tsx` | ✅ apps/admin tsc 0 errors |
+| #047 | 2026-09-25 20:25 | Phase 8 — 8.1 | Enhanced `AdminAuditService` with `search` param on `QueryAuditLogsDto`, `getAuditMeta()` returning distinct actionTypes/targetTypes/active admins, and `exportCsvWithChecksum()` with SHA-256 integrity header | `apps/backend/src/modules/admin/audit/admin-audit.service.ts` | ✅ Backend tsc 0 errors |
+| #048 | 2026-09-25 20:26 | Phase 8 — 8.1 | Updated `AdminAuditController` with `GET /admin/audit/meta` endpoint and `X-Integrity-SHA256` response header on CSV export | `apps/backend/src/modules/admin/audit/admin-audit.controller.ts` | ✅ Backend tsc 0 errors |
+| #049 | 2026-09-25 20:27 | Phase 8 — 8.2 | Added `AuditMetaResponse` interface to `apps/admin/lib/types.ts` | `apps/admin/lib/types.ts` | ✅ |
+| #050 | 2026-09-25 20:28 | Phase 8 — Complete | Built Audit Explorer page (`apps/admin/app/audit/page.tsx`): multi-dimensional filters (admin, action type, target type, date range), quick-filter preset pills, tamper-evident SHA-256 CSV export, paginated table, JSON Before/After Diff Inspector modal; verified 0 TS errors; committed `834e9df` & pushed | `apps/admin/app/audit/page.tsx` | ✅ Commit `834e9df` pushed |
+| #051 | 2026-09-28 16:10 | Phase 9 — 9.1 | Added `ImpersonationToken` model to `schema.prisma`; ran `prisma db push` (synced in 10.62s) + `prisma generate` (591ms) | `apps/backend/prisma/schema.prisma` | ✅ `impersonation_tokens` table live in Supabase |
+| #052 | 2026-09-28 16:11 | Phase 9 — 9.1 | Installed `jsonwebtoken` + `@types/jsonwebtoken` into backend workspace; created `GenerateImpersonationTokenDto` with mandatory 10-char minimum reason | `apps/backend/package.json`, `dto/generate-token.dto.ts` | ✅ Installed |
+| #053 | 2026-09-28 16:12 | Phase 9 — 9.1 | Created `ImpersonationService` with `generateToken()` (signed JWT + DB record), `validateToken()` (JWT + revocation check + usedAt mark), `revokeToken()` (sets revokedAt + audit log), `listHistory()`, `listActive()`; full audit logging on every action | `apps/backend/src/modules/admin/impersonation/impersonation.service.ts` | ✅ Backend tsc 0 errors |
+| #054 | 2026-09-28 16:13 | Phase 9 — 9.1 | Created `ImpersonationController` with 5 endpoints: `POST /generate` (SUPER_ADMIN + SUPPORT_ADMIN), `POST /:id/revoke` (SUPER_ADMIN), `GET /history` (SUPER_ADMIN), `GET /active` (SUPER_ADMIN), `POST /validate` (SUPER_ADMIN + SUPPORT_ADMIN); registered in `AdminModule` | `impersonation.controller.ts`, `admin.module.ts` | ✅ Registered |
+| #055 | 2026-09-28 16:14 | Phase 9 — 9.2 | Added `ImpersonationToken` + `ImpersonationHistoryResponse` interfaces to `apps/admin/lib/types.ts`; added `Eye` icon + `View As (Read-Only)` nav item to `admin-shell.tsx` SUPPORT group; built full Impersonation page (`apps/admin/app/impersonation/page.tsx`) with Generate modal (mandatory reason), Token Result modal (deep link + copy button), Active Sessions panel with Revoke, paginated history table with status badges; verified 0 TS errors on both apps; committed `cbe46f4` & pushed | `apps/admin/app/impersonation/page.tsx`, `admin-shell.tsx`, `lib/types.ts` | ✅ Commit `cbe46f4` pushed |
 
 
 
