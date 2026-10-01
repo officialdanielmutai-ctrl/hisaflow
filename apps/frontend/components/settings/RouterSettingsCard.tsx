@@ -258,7 +258,7 @@ export default function RouterSettingsCard({ orgId, isOwner }: RouterSettingsCar
               <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <strong className="font-semibold block mb-1">Required Security Setting</strong>
-                To protect against public port-scanning attacks, restrict API-SSL access in RouterOS to HisaFlow's backend IP:
+                To protect against public port-scanning attacks, restrict API-SSL access in RouterOS to HisaFlow&apos;s backend IP:
                 <code className="block bg-amber-100 text-amber-950 font-mono text-[11px] p-1.5 rounded mt-1.5 break-all select-all">
                   /ip service set api-ssl address=&lt;hisaflow-backend-ip&gt;
                 </code>

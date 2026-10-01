@@ -78,7 +78,7 @@ export function RestaurantDashboard() {
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Today's Revenue</p>
+              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Today&apos;s Revenue</p>
               <p className="text-xl font-bold">KES {data.todayRevenue.toLocaleString()}</p>
             </div>
           </div>

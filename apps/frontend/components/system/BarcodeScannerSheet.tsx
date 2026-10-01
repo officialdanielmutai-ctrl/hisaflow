@@ -151,7 +151,7 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
 
         if ('BarcodeDetector' in window) {
           try {
-            // @ts-ignore
+            // @ts-expect-error BarcodeDetector is not declared in this TS DOM lib
             nativeDetector = new window.BarcodeDetector({ formats: ['qr_code', 'ean_13', 'upc_a', 'code_128', 'data_matrix'] });
             
             const scanNative = async () => {
@@ -161,8 +161,7 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
                 if (barcodes.length > 0) {
                   tryConfirmCode(barcodes[0].rawValue);
                 }
-              } catch (e) {
-              }
+              } catch { /* frame not decodable yet */ }
               animationFrameId = requestAnimationFrame(scanNative);
             };
             scanNative();

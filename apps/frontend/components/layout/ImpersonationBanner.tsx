@@ -32,7 +32,9 @@ export default function ImpersonationBanner() {
     try {
       sessionStorage.removeItem('hf:impersonation_token');
       sessionStorage.removeItem('hf:impersonation_meta');
-    } catch {}
+    } catch {
+      /* sessionStorage may be unavailable */
+    }
     window.location.href = '/';
   };
 

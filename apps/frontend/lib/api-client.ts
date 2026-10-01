@@ -1,3 +1,5 @@
+import { resolveFeatureLock } from './feature-lock';
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 /**
@@ -13,14 +15,64 @@ export class SessionRevokedError extends Error {
   }
 }
 
+/**
+ * A tier/seat gate blocked the action. Carries the exact paywall URL the
+ * backend built (reason + feature), so the client can route there with the
+ * blocked action still attached (Section 2.1).
+ */
+export class FeatureLockedError extends Error {
+  readonly paywallUrl: string;
+  constructor(message: string, paywallUrl: string) {
+    super(message);
+    this.name = 'FeatureLockedError';
+    this.paywallUrl = paywallUrl;
+  }
+}
+
+/**
+ * Routes straight into the in-context paywall. The doc is explicit that a
+ * gate must not dead-end on a generic pricing page, so this happens centrally
+ * rather than relying on every call site to remember.
+ */
+function featureLocked(
+  body: Record<string, unknown> | null,
+): FeatureLockedError | null {
+  const lock = resolveFeatureLock(body);
+  if (!lock) return null;
+
+  const error = new FeatureLockedError(lock.message, lock.paywallUrl);
+  if (typeof window !== 'undefined') {
+    window.location.assign(lock.paywallUrl);
+  }
+  return error;
+}
+
+async function readErrorBody(
+  response: Response,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const body = (await response.json()) as unknown;
+    return body && typeof body === 'object'
+      ? (body as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    let message = `API error: ${response.status}`;
-    let body: any = null;
-    try {
-      body = await response.json();
-      message = body?.message || message;
-    } catch {}
+    const body = await readErrorBody(response);
+    const message =
+      typeof body?.message === 'string'
+        ? body.message
+        : `API error: ${response.status}`;
+
+    // Tier/seat gate → in-context paywall.
+    if (response.status === 403) {
+      const lockError = featureLocked(body);
+      if (lockError) throw lockError;
+    }
 
     // 403 with membership-related message → session revoked
     if (
@@ -119,6 +171,29 @@ export async function apiPatch<T>(
   return handleResponse<T>(response);
 }
 
+export async function apiPut<T>(
+  path: string,
+  token: string,
+  organizationId: string,
+  body: unknown
+): Promise<T> {
+  const impToken = getImpersonationToken();
+  if (impToken) {
+    throw new Error('Admin View-As mode is read-only. Mutations are disabled.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'x-organization-id': organizationId,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  return handleResponse<T>(response);
+}
+
 export async function apiDelete<T>(
   path: string,
   token: string,
@@ -139,12 +214,16 @@ export async function apiDelete<T>(
   });
 
   if (!response.ok) {
-    let message = `API error: ${response.status}`;
-    try {
-      const body = await response.json();
-      message = body?.message || message;
-    } catch {}
+    const body = await readErrorBody(response);
+    const message =
+      typeof body?.message === 'string'
+        ? body.message
+        : `API error: ${response.status}`;
 
+    if (response.status === 403) {
+      const lockError = featureLocked(body);
+      if (lockError) throw lockError;
+    }
     if (response.status === 403 && message.toLowerCase().includes('membership')) {
       throw new SessionRevokedError(message);
     }

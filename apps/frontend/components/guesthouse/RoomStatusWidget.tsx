@@ -60,7 +60,7 @@ export function RoomStatusWidget() {
         <div className="col-span-2 rounded-2xl bg-[var(--color-primary)] p-4 text-white relative overflow-hidden shadow-sm">
           <div className="relative z-10 flex items-center justify-between">
             <div>
-              <p className="text-white/80 text-sm font-medium mb-1">Today's Occupancy</p>
+              <p className="text-white/80 text-sm font-medium mb-1">Today&apos;s Occupancy</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl font-bold">{occupancyRate}%</span>
               </div>

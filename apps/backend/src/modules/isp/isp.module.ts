@@ -20,10 +20,12 @@ import { RouterActionService } from './routers/router-action.service';
 import { BillingSuspendJob } from './routers/billing-suspend.job';
 import { ReconciliationJob } from './routers/reconciliation.job';
 import { PrismaService } from '../../infrastructure/prisma.service';
+import { TaxModule } from '../tax/tax.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    TaxModule,
   ],
   controllers: [
     IspController,

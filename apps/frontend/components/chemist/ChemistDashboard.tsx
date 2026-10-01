@@ -162,7 +162,7 @@ export function ChemistDashboard() {
             <div className="h-9 w-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
               <TrendingUp className="h-4 w-4 text-green-600" />
             </div>
-            <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Today's Sales</p>
+            <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Today&apos;s Sales</p>
           </div>
           <p className="text-xl font-bold">KES {data.todaySales.toLocaleString()}</p>
           <span className="text-[10px] font-semibold text-[var(--color-text-muted)] mt-1">Dispensed today</span>
@@ -321,7 +321,7 @@ export function ChemistDashboard() {
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-[var(--color-text-secondary)]" />
-              <span className="text-sm text-[var(--color-text-primary)]">Today's Revenue</span>
+              <span className="text-sm text-[var(--color-text-primary)]">Today&apos;s Revenue</span>
             </div>
             <span className="text-sm font-bold text-green-600">KES {data.todaySales.toLocaleString()}</span>
           </div>

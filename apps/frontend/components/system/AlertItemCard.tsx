@@ -9,6 +9,9 @@ const TYPE_LABELS: Record<string, string> = {
   EXPIRY_RISK: 'Expiry Risk',
   VARIANCE: 'High Wastage',
   DAILY_INSIGHT: 'Daily Insight',
+  BILLING_PAYMENT_DUE: 'Billing',
+  TAX_SYNC_FAILED: 'Tax Filing',
+  TAX_RECONCILIATION_MISMATCH: 'Tax Reconciliation',
 };
 
 interface AlertItemCardProps {

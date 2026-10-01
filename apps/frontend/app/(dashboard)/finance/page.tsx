@@ -15,6 +15,12 @@ import {
   type ItemFinancialProfile,
 } from '@/services/finance.service';
 import {
+  getCredits,
+  recordPayment,
+  createCredit,
+  updateCredit,
+} from '@/services/credit.service';
+import {
   getBusinessOverview,
   getBusinessTransactions,
   createBusinessTransaction,
@@ -120,7 +126,7 @@ function OverviewTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
       if (!token) return;
       const result = await getFinanceForecast(token, orgId);
       setForecast(result.insights);
-    } catch { } finally { setLoadingForecast(false); }
+    } catch { /* non-fatal: keep the previous forecast */ } finally { setLoadingForecast(false); }
   }, [orgId, getToken, forecast.length]);
 
   const loadSuggestions = useCallback(async () => {
@@ -131,7 +137,7 @@ function OverviewTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
       const result = await getPriceSuggestions(token, orgId);
       setSuggestions(result);
       setShowPriceSheet(true);
-    } catch { } finally { setLoadingSuggestions(false); }
+    } catch { /* non-fatal: no suggestions to show */ } finally { setLoadingSuggestions(false); }
   }, [orgId, getToken]);
 
   if (loading) return (
@@ -274,7 +280,7 @@ function OverviewTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
           <div className="flex flex-col gap-3">{forecast.map((ins, i) => <InsightCard key={i} insight={ins} />)}</div>
         )}
         {!loadingForecast && forecast.length === 0 && (
-          <p className="text-sm text-[var(--color-text-secondary)]">Tap "Generate Analysis" for personalised financial insights.</p>
+          <p className="text-sm text-[var(--color-text-secondary)]">Tap &quot;Generate Analysis&quot; for personalised financial insights.</p>
         )}
       </div>
 
@@ -327,7 +333,7 @@ function ExpensesTab({ orgId, getToken }: { orgId: string; getToken: () => Promi
       if (!token) return;
       await deleteBusinessTransaction(id, token, orgId);
       load();
-    } catch { } finally { setDeleting(null); }
+    } catch { /* non-fatal: leave the entry in place */ } finally { setDeleting(null); }
   };
 
   const filtered = filter === 'ALL' ? entries : entries.filter((e) => e.type === filter);
@@ -466,7 +472,7 @@ function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
       if (!token) return;
       const profile = await getItemFinancialProfile(item.id, token, orgId);
       setSelectedItem(profile);
-    } catch { } finally { setLoadingItem(false); }
+    } catch { /* non-fatal: leave the profile unset */ } finally { setLoadingItem(false); }
   };
 
   const filtered = typeFilter === 'ALL' ? entries : entries.filter((e) => e.type === typeFilter);
@@ -573,8 +579,6 @@ import AddCreditSheet from '@/components/finance/AddCreditSheet';
 // ─── Credit Tab ───────────────────────────────────────────────────────────────
 
 function CreditTab({ orgId, getToken }: { orgId: string; getToken: () => Promise<string | null> }) {
-  const { getCredits, recordPayment, createCredit, updateCredit } = require('@/services/credit.service');
-  
   const fetchCredits = async () => {
     const token = await getToken();
     if (!token) throw new Error('No token');

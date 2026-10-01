@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma.service';
 import { Prisma, TransactionType, InvoiceStatus } from '@prisma/client';
+import { InvoiceTaxService } from '../../tax/invoice-tax.service';
 import { IssueEquipmentDto } from './dto/issue-equipment.dto';
 
 @Injectable()
 export class EquipmentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly invoiceTax: InvoiceTaxService,
+  ) {}
 
   async issue(organizationId: string, dto: IssueEquipmentDto) {
     const subscriber = await this.prisma.db.subscriber.findFirst({
@@ -64,7 +68,7 @@ export class EquipmentService {
         });
 
         if (!invoice) {
-          invoice = await tx.invoice.create({
+          invoice = await this.invoiceTax.createInvoice(tx, {
             data: {
               organizationId,
               subscriberId: subscriber.id,
@@ -80,19 +84,12 @@ export class EquipmentService {
         const unitPrice = item.sellingPrice || item.costPrice || new Prisma.Decimal(0);
         const lineTotal = qtyDecimal.mul(unitPrice);
 
-        await tx.invoiceLineItem.create({
-          data: {
-            invoiceId: invoice.id,
-            description: `${item.name} (${dto.quantity} unit${dto.quantity > 1 ? 's' : ''})`,
-            quantity: qtyDecimal,
-            unitPrice,
-            total: lineTotal,
-          },
-        });
-
-        await tx.invoice.update({
-          where: { id: invoice.id },
-          data: { adjustmentsTotal: { increment: lineTotal } },
+        await this.invoiceTax.createLineItem(tx, {
+          invoiceId: invoice.id,
+          description: `${item.name} (${dto.quantity} unit${dto.quantity > 1 ? 's' : ''})`,
+          quantity: qtyDecimal,
+          unitPrice,
+          total: lineTotal,
         });
       }
 

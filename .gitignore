@@ -43,3 +43,7 @@ yarn.lock
 node_modules
 .aider*
 .turbo
+
+# Local env overrides (never commit secrets)
+.env.local
+*.env.local

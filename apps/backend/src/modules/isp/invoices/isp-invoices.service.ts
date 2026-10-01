@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma.service';
 import { Prisma, InvoiceStatus } from '@prisma/client';
+import { InvoiceTaxService } from '../../tax/invoice-tax.service';
 import { CreateIspInvoiceDto } from './dto/create-isp-invoice.dto';
 import { AddIspLineItemDto } from './dto/add-isp-line-item.dto';
 import { RecordIspPaymentDto } from './dto/record-isp-payment.dto';
@@ -11,6 +12,7 @@ export class IspInvoicesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly routerActionService: RouterActionService,
+    private readonly invoiceTax: InvoiceTaxService,
   ) {}
 
   async generateForSubscriber(organizationId: string, dto: CreateIspInvoiceDto) {
@@ -34,14 +36,16 @@ export class IspInvoicesService {
     const planPrice = plan ? new Prisma.Decimal(plan.price) : new Prisma.Decimal(0);
 
     return this.prisma.db.$transaction(async (tx) => {
-      const invoice = await tx.invoice.create({
+      const invoice = await this.invoiceTax.createInvoice(tx, {
         data: {
           organizationId,
           subscriberId: subscriber.id,
           planId: plan ? plan.id : null,
           roomTotal: 0,
           consumptionTotal: 0,
-          adjustmentsTotal: planPrice,
+          // The subscription line below increments this via the tax factory,
+          // so the cached total stays consistent with tax calculation.
+          adjustmentsTotal: 0,
           amountPaid: 0,
           status: InvoiceStatus.DRAFT,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
@@ -49,14 +53,12 @@ export class IspInvoicesService {
       });
 
       if (plan && Number(planPrice) > 0) {
-        await tx.invoiceLineItem.create({
-          data: {
-            invoiceId: invoice.id,
-            description: `${plan.name} - ${plan.billingCycle} Subscription`,
-            quantity: new Prisma.Decimal(1),
-            unitPrice: planPrice,
-            total: planPrice,
-          },
+        await this.invoiceTax.createLineItem(tx, {
+          invoiceId: invoice.id,
+          description: `${plan.name} - ${plan.billingCycle} Subscription`,
+          quantity: new Prisma.Decimal(1),
+          unitPrice: planPrice,
+          total: planPrice,
         });
       }
 
@@ -96,25 +98,18 @@ export class IspInvoicesService {
     const total = qty.mul(unitPrice);
 
     return this.prisma.db.$transaction(async (tx) => {
-      await tx.invoiceLineItem.create({
-        data: {
-          invoiceId: invoice.id,
-          description: dto.description,
-          quantity: qty,
-          unitPrice,
-          total,
-        },
+      await this.invoiceTax.createLineItem(tx, {
+        invoiceId: invoice.id,
+        description: dto.description,
+        quantity: qty,
+        unitPrice,
+        total,
       });
 
-      const updated = await tx.invoice.update({
+      return tx.invoice.findUniqueOrThrow({
         where: { id: invoice.id },
-        data: {
-          adjustmentsTotal: { increment: total },
-        },
         include: { lineItems: true, payments: true, plan: true },
       });
-
-      return updated;
     });
   }
 

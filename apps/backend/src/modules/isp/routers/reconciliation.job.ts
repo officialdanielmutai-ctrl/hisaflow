@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../../infrastructure/prisma.service';
 import { RoutersService } from './routers.service';
+import { RouterOSClient } from 'routeros-client';
 import { AlertType, AlertSeverity, AlertStatus, SubscriberStatus } from '@prisma/client';
 
 @Injectable()
@@ -102,7 +103,6 @@ export class ReconciliationJob {
     return new Promise<Map<string, boolean>>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Timeout')), 8000);
 
-      const RouterOSClient = require('routeros-client').RouterOSClient;
       const client = new RouterOSClient({
         host: router.host,
         port: router.port,

@@ -11,9 +11,30 @@ export default () => ({
     secretKey: process.env.CLERK_SECRET_KEY || '',
     publishableKey: process.env.CLERK_PUBLISHABLE_KEY || '',
   },
+  paystack: {
+    // Secret key used for both API calls and webhook HMAC-SHA512 verification.
+    // Never log or expose this value.
+    secretKey: process.env.PAYSTACK_SECRET_KEY || '',
+    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
+    baseUrl: process.env.PAYSTACK_BASE_URL || 'https://api.paystack.co',
+  },
   africasTalking: {
     username: process.env.AFRICAS_TALKING_USERNAME || '',
     apiKey: process.env.AFRICAS_TALKING_API_KEY || '',
+  },
+  etims: {
+    // Local VSCU JAR bridge on the taxpayer's server (tax-system doc Section 2).
+    // It signs invoices locally, so it is reachable even when the internet is down.
+    vscuBaseUrl: process.env.ETIMS_VSCU_BASE_URL || 'http://localhost:8088',
+    // KRA eTIMS API (production). The VSCU bridges here; HisaFlow confirms
+    // delivery against it. Sandbox: https://etims-api-sbx.kra.go.ke
+    apiBaseUrl: process.env.ETIMS_API_BASE_URL || 'https://etims-api.kra.go.ke',
+    // Branch office id used when signing (head office). Multi-branch is Phase F.
+    branchId: process.env.ETIMS_BRANCH_ID || '00',
+    deviceSerial: process.env.ETIMS_DEVICE_SERIAL || '',
+    // Communication key from device initialization (live contract, F-21).
+    apiKey: process.env.ETIMS_API_KEY || '',
+    requestTimeoutMs: parseInt(process.env.ETIMS_REQUEST_TIMEOUT_MS || '10000', 10),
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',

@@ -840,7 +840,7 @@ export default function SubscriberDetailPage() {
 
             {invoices.length === 0 ? (
               <p className="text-xs text-[var(--color-text-secondary)] text-center py-6">
-                No invoices generated yet. Click "Generate Bill" to create a subscription invoice.
+                No invoices generated yet. Click &quot;Generate Bill&quot; to create a subscription invoice.
               </p>
             ) : (
               <div className="space-y-3">
@@ -1348,7 +1348,7 @@ export default function SubscriberDetailPage() {
                   className="rounded"
                 />
                 <label htmlFor="chargeToInvoice" className="text-xs text-[var(--color-text-secondary)]">
-                  Charge to subscriber's invoice
+                  Charge to subscriber&apos;s invoice
                 </label>
               </div>
               <button

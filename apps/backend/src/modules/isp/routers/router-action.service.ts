@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma.service';
 import { RoutersService } from './routers.service';
+import { RouterOSClient } from 'routeros-client';
 import {
   SubscriberStatus,
   RouterActionType,
@@ -146,7 +147,6 @@ export class RouterActionService {
         reject(new Error('Router API call timed out after 5 seconds'));
       }, 5000);
 
-      const RouterOSClient = require('routeros-client').RouterOSClient;
       const client = new RouterOSClient({
         host,
         port,

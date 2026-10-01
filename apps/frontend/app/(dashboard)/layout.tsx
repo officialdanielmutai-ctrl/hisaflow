@@ -4,6 +4,7 @@ import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
 import OrgGate from '@/components/system/OrgGate';
 import NotificationPrompt from '@/components/system/NotificationPrompt';
 import InstallPrompt from '@/components/system/InstallPrompt';
+import BillingStatusBanner from '@/components/paywall/BillingStatusBanner';
 import { OrganizationProvider } from '@/hooks/useMyOrganization';
 import SWRProvider from '@/components/system/SWRProvider';
 
@@ -19,6 +20,7 @@ export default function DashboardLayout({
         <div className="min-h-screen bg-[var(--color-bg-base)] pb-20">
           <TopBar />
           <main className="max-w-lg mx-auto px-4 pt-20">
+            <BillingStatusBanner />
             <OrgGate>{children}</OrgGate>
           </main>
           <BottomNav />

@@ -116,7 +116,7 @@ export default function OnboardingPage() {
                     Set up my business
                   </p>
                   <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                    Create a new account — you'll be the owner
+                    Create a new account — you&apos;ll be the owner
                   </p>
                 </div>
               </button>

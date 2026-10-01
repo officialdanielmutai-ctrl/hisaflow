@@ -129,11 +129,11 @@ export default function InstallPrompt() {
                   </li>
                   <li className="flex gap-2 items-start">
                     <span className="font-bold text-emerald-500 shrink-0">2.</span>
-                    Scroll down and tap <strong>"Add to Home Screen"</strong>
+                    Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong>
                   </li>
                   <li className="flex gap-2 items-start">
                     <span className="font-bold text-emerald-500 shrink-0">3.</span>
-                    Tap <strong>"Add"</strong> in the top-right corner
+                    Tap <strong>&quot;Add&quot;</strong> in the top-right corner
                   </li>
                 </ol>
                 <button onClick={handleDismiss} className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-xs font-medium">
@@ -164,7 +164,7 @@ export default function InstallPrompt() {
             // Android fallback — prompt not available, show manual guide
             <>
               <p className="text-xs text-[var(--color-text-secondary)] mb-3">
-                Open Chrome's menu <strong>⋮</strong> and tap <strong>"Add to Home screen"</strong> to install HisaFlow.
+                Open Chrome&apos;s menu <strong>⋮</strong> and tap <strong>&quot;Add to Home screen&quot;</strong> to install HisaFlow.
               </p>
               <button onClick={handleDismiss} className="rounded-xl border border-[var(--color-border)] px-3 py-2 text-xs font-medium">
                 Got it

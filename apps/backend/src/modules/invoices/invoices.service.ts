@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { Prisma, InvoiceStatus } from '@prisma/client';
+import { InvoiceTaxService } from '../tax/invoice-tax.service';
 import { CreateInvoiceLineItemDto } from './dto/create-invoice-line-item.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 
 @Injectable()
 export class InvoicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly invoiceTax: InvoiceTaxService,
+  ) {}
 
   async getDraftForBooking(organizationId: string, bookingId: string) {
     const booking = await this.prisma.db.booking.findFirst({
@@ -34,23 +38,12 @@ export class InvoicesService {
     const nights = Math.max(1, Math.ceil(diffHours / 24)); // Gap 3: Min 1 night rule
     const roomTotal = new Prisma.Decimal(nights).mul(booking.ratePerNight);
 
-    // 2. Calculate consumptions
-    let consumptionTotal = new Prisma.Decimal(0);
-    for (const cons of booking.consumptions) {
-      // Assuming `quantityChange` is the amount consumed.
-      // We need price! Wait, `InventoryTransaction` doesn't store unit price natively for consumption,
-      // it's an inventory ledger. Usually price is on the `Product` or `InventoryItem`?
-      // Since the scope doesn't define price on transaction, we just sum it from the current price if available,
-      // or if not, we can default to 0 and they must add line items manually?
-      // Let's assume there's a price field or we leave consumption as 0 for now if not clear.
-      // Wait, we can't easily price items without a selling price. Let's just set consumptionTotal to 0, 
-      // and let the frontend pass in manual line items for things that don't have standard pricing, 
-      // or we can sum `quantityChange * price`. Let's assume price is on item, wait, `InventoryItem` doesn't have `price`, `Product` might.
-      // For now, I'll set consumptionTotal = 0 and let it be updated explicitly, or just keep it 0 as a placeholder.
-    }
-    
-    // Actually, I'll generate the draft invoice with roomTotal.
-    const invoice = await this.prisma.db.invoice.create({
+    // 2. Consumption charges stay 0: consumption is recorded as an inventory
+    //    ledger without a per-transaction selling price, so priced consumption
+    //    is added as explicit line items instead (which the tax factory taxes).
+
+    // Generate the draft invoice with roomTotal.
+    const invoice = await this.invoiceTax.createInvoice(this.prisma.db, {
       data: {
         organizationId,
         bookingId,
@@ -103,25 +96,18 @@ export class InvoicesService {
     const total = qty.mul(price);
 
     return this.prisma.db.$transaction(async (tx) => {
-      const lineItem = await tx.invoiceLineItem.create({
-        data: {
-          invoiceId: invoice.id,
-          description: dto.description,
-          quantity: qty,
-          unitPrice: price,
-          total,
-        },
+      await this.invoiceTax.createLineItem(tx, {
+        invoiceId: invoice.id,
+        description: dto.description,
+        quantity: qty,
+        unitPrice: price,
+        total,
       });
 
-      const updatedInvoice = await tx.invoice.update({
+      return tx.invoice.findUniqueOrThrow({
         where: { id: invoice.id },
-        data: {
-          adjustmentsTotal: { increment: total },
-        },
         include: { lineItems: true, payments: true },
       });
-
-      return updatedInvoice;
     });
   }
 

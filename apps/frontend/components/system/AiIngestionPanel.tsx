@@ -85,7 +85,9 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
         try {
           const errBody = await ocrRes.json();
           errMsg = errBody?.message || errMsg;
-        } catch {}
+        } catch {
+          /* keep the default message */
+        }
         throw new Error(errMsg);
       }
 

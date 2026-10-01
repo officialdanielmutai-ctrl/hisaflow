@@ -11,12 +11,14 @@ import {
   AppPermission,
   computeEffectivePermissions,
 } from '../../core/constants/permissions.constant';
+import { EntitlementsService } from '../../core/entitlements/entitlements.service';
 
 @Injectable()
 export class StaffAdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   // ── Step helpers ──────────────────────────────────────────────────────────
@@ -123,6 +125,10 @@ export class StaffAdminService {
     });
 
     await this.deleteMembership(targetUserId, orgId);
+
+    // Keep the stored seat count in step with the real membership rows so the
+    // billing page and next renewal reflect the freed seat.
+    await this.entitlements.syncSeatCount(orgId);
 
     if (targetUser) {
       await this.revokeUserClerkSessions(targetUser.clerkId);

@@ -2,12 +2,14 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { OrganizationsRepository } from './organizations.repository';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { PrismaService } from '../../infrastructure/prisma.service';
+import { EntitlementsService } from '../../core/entitlements/entitlements.service';
 
 @Injectable()
 export class OrganizationsService {
   constructor(
     private readonly organizationsRepository: OrganizationsRepository,
     private readonly prisma: PrismaService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async create(dto: CreateOrganizationDto, userId: string) {
@@ -68,9 +70,15 @@ export class OrganizationsService {
       throw new BadRequestException('You are already a member of this organisation');
     }
 
+    // Seat gate: Solo (and an unbilled trial) is blocked with a paywall
+    // context; Team/Growth over its allowance is allowed and billed next cycle.
+    await this.entitlements.assertSeatAvailable(org.id);
+
     await this.prisma.db.orgMembership.create({
       data: { userId, organizationId: org.id, role: 'STAFF' },
     });
+
+    await this.entitlements.syncSeatCount(org.id);
 
     return { message: 'Joined successfully', orgName: org.name };
   }

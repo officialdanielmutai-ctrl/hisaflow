@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, Bell, ListTodo, LogOut, TrendingUp, Package, Sparkles, Briefcase, TicketCheck, Tag, Users } from 'lucide-react';
+import { Settings, Bell, ListTodo, LogOut, TrendingUp, Package, Sparkles, Briefcase, TicketCheck, Tag, Users, CreditCard, Receipt } from 'lucide-react';
 import { SignOutButton, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import {
@@ -23,6 +23,8 @@ interface SideMenuProps {
 const sideNavItems = [
   { href: '/notes', label: 'Notes', icon: ListTodo },
   { href: '/alerts', label: 'Alerts', icon: Bell },
+  { href: '/tax', label: 'Tax', icon: Receipt },
+  { href: '/settings/billing', label: 'Billing', icon: CreditCard },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -74,7 +76,9 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
         <div className="flex-1 overflow-y-auto py-4">
           <div className="flex flex-col gap-1 px-3">
             {dynamicItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isActive =
+                pathname === item.href ||
+                (item.href !== '/settings' && pathname.startsWith(item.href + '/'));
               return (
                 <Link
                   key={item.href}

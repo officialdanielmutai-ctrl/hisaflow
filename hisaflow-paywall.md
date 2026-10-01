@@ -18,6 +18,29 @@
 
 ---
 
+## 1A. Feature Tiering Matrix: Compliance Floor vs. Depth Layer
+
+*How to decide what goes in Solo vs Team, applied to every feature area — not decided per-tab, decided per-layer within each tab.*
+
+**The rule:** split every feature area into two layers. The **floor** is what a business cannot legally or practically operate without — this layer is identical in Solo and Team, never tier-gated. The **depth layer** is forecasting, analysis, multi-location aggregation, and collaboration features — this is what Team actually charges more for. Tiering by "which tabs exist" instead of this floor/depth split is what produces a Solo tier that feels crippled or a Team tier that feels like padding.
+
+| Feature area | Solo — floor (identical in both tiers) | Team — depth (the actual upsell) |
+|---|---|---|
+| **Receipts** | Full, compliant receipt on every sale | — (already complete at Solo; nothing to gate here) |
+| **Tax** | eTIMS filing on every sale, automatic per-sale tax calculation, "what's owed this period" summary | Reconciliation dashboard (filed vs. collected), anomaly flags ahead of filing deadlines |
+| **Inventory** | Stock tracking, reorder alerts, transaction log | The "intelligence" layer — demand forecasting, slow-mover analysis, vertical-specific consumption analytics (guest-house per-booking usage, ISP equipment-loss patterns) |
+| **Finance** | Cash flow snapshot, basic P&L | Trend/period comparisons, accountant-ready exports, tax liability forecasting |
+| **Staff/Seats** | 1 user (owner only) | Multi-seat, role-based permissions |
+| **Vertical modules** (guest-house, ISP, etc.) | Base feature set for the org's `businessType` | Full depth (e.g. ISP work orders assigned to specific technicians — meaningless with only one login) |
+
+> Multi-branch aggregated filing (Phase F) is **Growth**, not Team: it reuses the same multi-location capability as the ISP vertical's second `Router` and the guest-house multi-property case (Section 1), so a single-location team does not pay for it.
+
+**Why tax specifically sits entirely in the floor, not as a Team upsell:** tax compliance is a legal requirement regardless of business size — a solo duka owner is exactly as obligated to file correctly as a five-person team. Gating eTIMS filing behind Team wouldn't make Team more attractive, it would make Solo non-viable as a standalone product, the same failure mode identified in the Veira comparison. The depth layer for tax (reconciliation, anomaly detection, multi-branch aggregation) is genuinely Team-scale work — a solo operator doesn't have multiple branches to aggregate — so the split falls out naturally rather than needing to be forced.
+
+**Applying this test to a new feature going forward:** before adding anything to either tier, ask "is this part of correctly and legally running the business day to day" (floor — goes in both) or "is this about scale, forecasting, or more than one person acting" (depth — Team only). A feature that doesn't clearly answer one of those two questions probably isn't ready to be tiered yet.
+
+---
+
 ## 2. Paywall design
 
 ### 2.1 Entry points
@@ -154,13 +177,16 @@ A side-by-side view comparing a given org's HisaFlow subscription state against 
 
 ---
 
-## 7. Open questions — need answers before Phase A sign-off
+## 7. Decisions — defaulted to industry standard, revisit if the business wants otherwise
 
-1. **Actual KES pricing per tier**, and the per-seat overage rate for Team/Growth — business decision, not an engineering one.
-2. **Free trial:** yes/no, and if yes, length and which tier it grants access to during the trial.
-3. **Grace period length** before a `GRACE`-status org is actually feature-locked (the Monetization Strategy doc recommended a grace window generally but didn't fix a number — needs one, e.g. "3 days" or "until 2 failed retries," for Phase C to be buildable).
-4. **Seat overage behavior:** does exceeding the included seat count on Team auto-bill the next cycle for the extra seat, or block adding the seat until manually upgraded? This changes both the `Subscription` model and the Phase D enforcement logic.
-5. **Confirm Paystack has no native change-plan/proration endpoint** before Phase E begins — this doc's Phase E design assumes that's the case based on Paystack's published endpoint list, but it's worth a direct check against current docs rather than building four weeks of work on a doc's assumption.
+Per direction: unresolved open questions are defaulted rather than left blocking. These are provisional, not final — update if data or the business says otherwise, but they unblock Phase A now.
+
+1. **Pricing:** Solo — KES 2,500/month. Team — KES 5,500/month. Per the market-comparable research already done (Section 1A context, and the pricing-advice discussion this doc's history is built on). Provisional pending real customer willingness-to-pay validation.
+2. **Free trial:** 14 days, full Team-tier feature access during the trial (industry-standard "trial the top tier" pattern — shows full value before the customer picks a tier), no payment method required upfront to start. Converts to the customer's chosen tier (or lapses to no access) at trial end.
+3. **Grace period:** 5 days from the missed due date to feature lockout, with retry attempts at day 0 (due date), day 2, and day 4 — a standard SaaS dunning cadence, not an aggressive one, appropriate given the M-Pesa approve-per-cycle friction already scoped in Phase C.
+4. **Seat overage:** auto-bill the additional seat at the next cycle rather than blocking the action — the standard pattern (Slack and most seat-based SaaS default this way) and the friendlier one for a Team-tier customer who's actively growing.
+5. **NOT defaulted — this is a factual check, not a policy choice:** Section 3.2's claim that Paystack has no native change-plan endpoint must be verified directly against current Paystack docs at the start of Phase E, not assumed indefinitely from this doc.
+   - **Verified 2026-09-30 (Phase E):** the assumption **holds**. Paystack's current API reference exposes Plan (create/list/fetch/update) and Subscription (create/list/fetch/enable/disable/generate-update-link) only — there is **no change-plan endpoint and no proration**. (`Update Plan` updates a plan's own details and can apply them to existing subscriptions via `update_existing_subscriptions`, but it is integration-wide, not a per-subscription move between plans.) Phase E was therefore built as disable-old/create-new, per the asymmetric pattern above.
 
 ---
 
@@ -168,16 +194,17 @@ A side-by-side view comparing a given org's HisaFlow subscription state against 
 
 | Phase | Layer | Status | Notes |
 |---|---|---|---|
-| Open Questions 1–4 | Decision | ☐ Not started | Blocks Phase A |
-| A. Paystack Foundation | Data model | ☐ Not started | |
-| A. Paystack Foundation | API (webhook + verification) | ☐ Not started | |
-| B. Card Subscriptions | API | ☐ Not started | |
-| B. Card Subscriptions | Frontend | ☐ Not started | |
-| C. M-Pesa Renewal Loop | API | ☐ Not started | Depends on Open Question 3 |
-| C. M-Pesa Renewal Loop | Frontend | ☐ Not started | |
-| D. Seat & Tier Enforcement | API | ☐ Not started | Depends on Open Question 4 |
-| D. Seat & Tier Enforcement | Frontend | ☐ Not started | |
-| E. Billing Management UX | Frontend | ☐ Not started | |
+| Open Questions 1–4 | Decision | ☑ Done (defaulted) | See Section 7 — industry-standard defaults applied |
+| A. Paystack Foundation | Data model | ☑ Done (2026-09-29) | `HisaflowPlan`, `Subscription`, `PaymentAttempt`, `WebhookEvent` added to `apps/backend/prisma/schema.prisma`; valid via `prisma validate`/`generate`. `HisaflowPlan` kept distinct from ISP `ServicePlan`. |
+| A. Paystack Foundation | API (webhook + verification) | ☑ Done (2026-09-29) | `POST /webhooks/paystack` in `apps/backend/src/modules/paywall` — HMAC-SHA512 over raw body, timing-safe compare, idempotent on Paystack reference. 17 tests incl. explicit invalid-signature rejection. |
+| B. Card Subscriptions | API | ☑ Done (2026-09-29) | Paystack Plan provisioning, card checkout (`POST /paywall/checkout`), lifecycle webhook handlers (`subscription.create`, `charge.success`, `invoice.payment_failed`). 33 tests; renewal advances `nextRenewalDate`, failed renewal → `GRACE` +5d. Growth tier is unpriced (not in Section 7) so its Paystack Plan is skipped until the business sets a price. |
+| B. Card Subscriptions | Frontend | ☑ Done (2026-09-29) | Paywall page `/paywall` (three tier cards, Team recommended, all-in KES pricing, card checkout → Paystack) + billing settings `/settings/billing`. Mobile-first single column, 3-up on desktop. Context-aware (`?feature=`/`?reason=`) for Phase D. M-Pesa shown first but disabled until Phase C; Growth shown as Custom (unpriced). |
+| C. M-Pesa Renewal Loop | API | ☑ Done (2026-09-30) | `MpesaRenewalService` + hourly `MpesaRenewalJob`: reminder 3 days out, Charge API on due date, one `PaymentAttempt` per try, retries at day 0/2/4 (RouterAction audit/retry convention), then `GRACE` +5d. Plus first-charge `POST /paywall/checkout/mpesa`. 50 backend tests incl. deliberate-failure → exactly 3 retries → GRACE. Live Paystack sandbox check still pending (F-02). |
+| C. M-Pesa Renewal Loop | Frontend | ☑ Done (2026-09-30) | Paywall M-Pesa flow (`POST /paywall/checkout/mpesa`) with the explicit Paystack-checkout-then-STK-prompt step (3.3); phone capture; post-payment confirmation; in-app reminder/retry/GRACE banner + billing settings messaging (day 0/2/4, 5-day grace). |
+| D. Seat & Tier Enforcement | API | ☑ Done (2026-09-30) | `EntitlementsService` + `EntitlementsModule` (global): seat gate in `joinOrganization` (Solo/trial blocked with paywall context; Team/Growth overage allowed + auto-billed when priced), `@RequiresFeatures` handled by the existing `RolesGuard` (Section 1A floor/depth), multi-location gate on the 2nd ISP router. Structured `FeatureLockedException` carries reason/feature/requiredTier/paywallUrl. 70 tests. Rate + trial-expiry still open (F-12/F-13). |
+| D. Seat & Tier Enforcement | Frontend | ☑ Done (2026-09-30) | `api-client` surfaces `FeatureLockedError` and routes straight to the backend-supplied `paywallUrl`; the Phase B paywall already renders `?reason=`/`?feature=` context. |
+| E. Billing Management UX | API | ☑ Done (2026-09-30) | `BillingService` + `PlanChangeJob` (hourly): upgrade = disable old Paystack subscription → new checkout (immediate); downgrade = `pendingTier`/`pendingPlanEffectiveAt` applied at renewal by the job (card: disable-old/create-new via `POST /subscription`; M-Pesa: local swap so the renewal charges the lower price). Seats (`PATCH /paywall/seats`, overage preserved across tier changes), payment-method change (card manage-link, M-Pesa number, rail switch). Receipts pulled from Paystack's Transactions list (`GET /transaction` by resolved customer id) with a local audit-trail fallback. Paystack client gained fetch/disable/create-subscription, manage-link, customer fetch and transaction list. 14 new tests (84 backend total). Verified Section 7 item 5 against live docs — no native change-plan endpoint. |
+| E. Billing Management UX | Frontend | ☑ Done (2026-09-30) | Billing settings now self-serve: change plan (upgrade label = "immediate", downgrade label = "takes effect on [date]" + scheduled-downgrade banner with the date), seat add/remove, payment-method update/switch, receipt history from Paystack's Transactions list (with a "synced from Paystack" / local-fallback indicator). Pure decision helpers in `lib/billing.ts` with 5 node:test cases (13 frontend tests total). Upgrade-abandoned edge case open in F-15. |
 | F1. Admin — Read-only visibility | API | ☐ Not started | |
 | F1. Admin — Read-only visibility | Frontend | ☐ Not started | |
 | F2. Admin — Manual actions | API | ☐ Not started | Each action must itself be audit-logged |

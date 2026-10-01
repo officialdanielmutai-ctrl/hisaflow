@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CoreModule } from './core/core.module';
+import { EntitlementsModule } from './core/entitlements/entitlements.module';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
@@ -31,12 +32,17 @@ import { AcademicTermsModule } from './modules/academic-terms/academic-terms.mod
 import { SchoolFeesModule } from './modules/school-fees/school-fees.module';
 // ── ISP Vertical ─────────────────────────────────────────────────────────────
 import { IspModule } from './modules/isp/isp.module';
+// ── HisaFlow Billing / Paywall ───────────────────────────────────────────────
+import { PaywallModule } from './modules/paywall/paywall.module';
+// ── Tax System / KRA eTIMS ───────────────────────────────────────────────────
+import { TaxModule } from './modules/tax/tax.module';
 // ── Admin Panel Core ─────────────────────────────────────────────────────────
 import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
     CoreModule,
+    EntitlementsModule,
     ConfigModule,
     DatabaseModule,
     OrganizationsModule,
@@ -62,6 +68,10 @@ import { AdminModule } from './modules/admin/admin.module';
     AcademicTermsModule,
     SchoolFeesModule,
     IspModule,
+    // Paywall / billing (Phase A: Paystack foundation)
+    PaywallModule,
+    // Tax system / KRA eTIMS
+    TaxModule,
     // Admin Module
     AdminModule,
   ],

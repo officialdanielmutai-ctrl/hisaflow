@@ -57,6 +57,14 @@ model Organization {
   tickets               Ticket[]
   routers               Router[]
 
+  // ── HisaFlow Billing (Paywall) ───────────────────────────────
+  subscription          Subscription?
+
+  // ── Tax / KRA eTIMS ──────────────────────────────────────────
+  taxRegistration       TaxRegistration?
+  taxInvoiceRecords     TaxInvoiceRecord[]
+  taxSyncQueue          TaxSyncQueue[]
+
   @@map("organizations")
 }
 
@@ -384,6 +392,9 @@ enum AlertType {
   DAILY_INSIGHT
   STAFF_ACTIVITY
   ROUTER_DRIFT
+  BILLING_PAYMENT_DUE
+  TAX_SYNC_FAILED
+  TAX_RECONCILIATION_MISMATCH
 }
 
 enum AlertStatus {
@@ -652,6 +663,9 @@ model Invoice {
   roomTotal        Decimal       @map("room_total") @db.Decimal(12, 2)
   consumptionTotal Decimal       @map("consumption_total") @db.Decimal(12, 2)
   adjustmentsTotal Decimal       @default(0) @map("adjustments_total") @db.Decimal(12, 2)
+  // Tax component already contained in the (tax-inclusive) totals above.
+  // Computed automatically at creation; 0 for a non-tax-registered org.
+  taxTotal         Decimal       @default(0) @map("tax_total") @db.Decimal(12, 2)
   amountPaid       Decimal       @default(0) @map("amount_paid") @db.Decimal(12, 2)
   issuedAt         DateTime?     @map("issued_at")
   dueDate          DateTime?     @map("due_date")
@@ -665,6 +679,7 @@ model Invoice {
   plan         ServicePlan?      @relation(fields: [planId], references: [id])
   lineItems    InvoiceLineItem[]
   payments     Payment[]
+  taxRecord    TaxInvoiceRecord?
 
   @@index([organizationId])
   @@index([subscriberId])
@@ -677,7 +692,13 @@ model InvoiceLineItem {
   description String
   quantity    Decimal  @db.Decimal(12, 3)
   unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
+  // `total` is the gross (tax-inclusive) amount, preserving its previous
+  // "amount due" meaning. `netAmount` + `taxAmount` are the automatically
+  // calculated split; both 0 when the org is not tax-registered.
   total       Decimal  @db.Decimal(12, 2)
+  netAmount   Decimal  @default(0) @map("net_amount") @db.Decimal(12, 2)
+  taxAmount   Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  taxRate     Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 4)
   createdAt   DateTime @default(now()) @map("created_at")
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -1047,6 +1068,167 @@ model RouterAction {
   @@map("router_actions")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ── HisaFlow Billing (Paywall) — Phase A: Paystack Foundation ───────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Naming discipline (hisaflow-paywall.md Section 4): `HisaflowPlan` is HisaFlow's
+// own subscription tier (Solo/Team/Growth). It is deliberately distinct from the
+// ISP vertical's `ServicePlan`, which models a customer's internet package.
+// Never let "plan" mean both things at once in this codebase.
+
+enum HisaflowPlanTier {
+  SOLO
+  TEAM
+  GROWTH
+}
+
+/// HisaFlow's own subscription tiers. One row per tier; `paystackPlanCode` is
+/// populated in Phase B once the matching Paystack Plan object is created.
+model HisaflowPlan {
+  id               String          @id @default(cuid())
+  tier             HisaflowPlanTier @unique
+  name             String
+  description      String?
+  priceKes         Decimal         @map("price_kes") @db.Decimal(12, 2)
+  billingInterval  BillingCycle    @default(MONTHLY) @map("billing_interval")
+  seatAllowance    Int             @map("seat_allowance")
+  // Optional per-extra-seat monthly rate. Null = overage tracked but not yet
+  // priced (Section 1 never fixed a figure) — see open finding F-12.
+  perSeatOverageKes Decimal?       @map("per_seat_overage_kes") @db.Decimal(12, 2)
+  paystackPlanCode String?         @map("paystack_plan_code")
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+  paymentAttempts PaymentAttempt[]
+
+  @@map("hisaflow_plans")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  GRACE
+  SUSPENDED
+}
+
+/// Card (CARD) uses Paystack's native recurring billing via
+/// `paystackSubscriptionCode`. M-Pesa (MPESA) is NOT eligible for native
+/// recurring on Paystack (Section 3.2) — HisaFlow's own renewal loop drives it
+/// and `paystackSubscriptionCode` stays null.
+enum SubscriptionPaymentMethod {
+  CARD
+  MPESA
+}
+
+model Subscription {
+  id                       String                    @id @default(cuid())
+  organizationId           String                    @unique @map("organization_id")
+  planId                   String                    @map("plan_id")
+  seatCount                Int                       @default(1) @map("seat_count")
+  seatAllowance            Int                       @map("seat_allowance")
+  status                   SubscriptionStatus        @default(ACTIVE)
+  paymentMethod            SubscriptionPaymentMethod @map("payment_method")
+  // M-Pesa only: the phone that receives the STK-via-Paystack prompt.
+  mpesaPhone               String?                   @map("mpesa_phone")
+  // Set when the pre-renewal reminder is sent; reset when the cycle advances.
+  renewalReminderSentAt    DateTime?                 @map("renewal_reminder_sent_at")
+  nextRenewalDate          DateTime?                 @map("next_renewal_date")
+  // Card path only — null for M-Pesa (Section 3.2).
+  paystackSubscriptionCode String?                   @map("paystack_subscription_code")
+  paystackCustomerCode     String?                   @map("paystack_customer_code")
+  // Phase E: a downgrade is deferred to the end of the current cycle rather
+  // than applied immediately (no Paystack change-plan/proration endpoint).
+  // Null when no downgrade is scheduled; cleared when it is applied.
+  pendingTier              HisaflowPlanTier?         @map("pending_tier")
+  pendingPlanEffectiveAt   DateTime?                 @map("pending_plan_effective_at")
+  trialEndsAt              DateTime?                 @map("trial_ends_at")
+  graceEndsAt              DateTime?                 @map("grace_ends_at")
+  createdAt                DateTime                  @default(now()) @map("created_at")
+  updatedAt                DateTime                  @updatedAt @map("updated_at")
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  plan            HisaflowPlan     @relation(fields: [planId], references: [id])
+  paymentAttempts PaymentAttempt[]
+
+  @@index([status])
+  @@index([nextRenewalDate])
+  @@map("subscriptions")
+}
+
+enum PaymentAttemptStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+/// One row per renewal attempt, card auto-charge or M-Pesa manual-loop charge.
+/// This is the billing audit trail that resolves "I paid but I'm still locked
+/// out" support tickets — same role `RouterAction` plays for the ISP vertical.
+model PaymentAttempt {
+  id                String                    @id @default(cuid())
+  organizationId    String                    @map("organization_id")
+  // Nullable by design: the first checkout attempt is created before the
+  // Paystack Subscription (and therefore our Subscription row) exists. It is
+  // linked once subscription.create / charge.success confirms the payment.
+  subscriptionId    String?                   @map("subscription_id")
+  hisaflowPlanId    String?                   @map("hisaflow_plan_id")
+  amountKes         Decimal                   @map("amount_kes") @db.Decimal(12, 2)
+  method            SubscriptionPaymentMethod
+  // Paystack transaction reference — unique so webhook retries can never
+  // double-credit the same charge.
+  paystackReference String?                   @unique @map("paystack_reference")
+  status            PaymentAttemptStatus      @default(PENDING)
+  attemptNumber     Int                       @default(1) @map("attempt_number")
+  errorMessage      String?                   @map("error_message") @db.Text
+  attemptedAt       DateTime                  @default(now()) @map("attempted_at")
+  resolvedAt        DateTime?                 @map("resolved_at")
+  createdAt         DateTime                  @default(now()) @map("created_at")
+  updatedAt         DateTime                  @updatedAt @map("updated_at")
+
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  plan         HisaflowPlan? @relation(fields: [hisaflowPlanId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([subscriptionId])
+  @@index([hisaflowPlanId])
+  @@map("payment_attempts")
+}
+
+enum WebhookEventStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
+/// Raw log of every *verified* webhook received. Exists so duplicate-delivery
+/// handling is provable and debuggable, not just theoretically idempotent: the
+/// unique `idempotencyKey` (event type + Paystack reference) makes a replayed
+/// event fail the insert instead of being processed twice. Invalid signatures
+/// never reach this table. `organizationId` is resolved from the payload when
+/// possible so the admin panel (Phase F1) can show an org's webhook history.
+model WebhookEvent {
+  id                String             @id @default(cuid())
+  provider          String             @default("paystack")
+  eventType         String             @map("event_type")
+  paystackReference String?            @map("paystack_reference")
+  idempotencyKey    String             @unique @map("idempotency_key")
+  organizationId    String?            @map("organization_id")
+  status            WebhookEventStatus @default(RECEIVED)
+  payload           Json
+  errorMessage      String?            @map("error_message") @db.Text
+  receivedAt        DateTime           @default(now()) @map("received_at")
+  processedAt       DateTime?          @map("processed_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  @@index([eventType])
+  @@index([paystackReference])
+  @@index([organizationId])
+  @@index([status])
+  @@map("webhook_events")
+}
+
 // ── Admin Panel Foundation (Level 0) ──────────────────────────────
 
 enum AdminRole {
@@ -1290,4 +1472,148 @@ model ImpersonationToken {
   @@index([targetOrgId])
   @@index([expiresAt])
   @@map("impersonation_tokens")
+}
+
+// ── Tax / KRA eTIMS (Tax System, Phase A) ────────────────────────
+
+/// KRA's two system-to-system modes. HisaFlow builds on VSCU (offline-capable);
+/// OSCU is stored so an org's KRA choice is represented, but is out of scope
+/// for this build (tax-system doc Section 2 / Section 6).
+enum EtimsIntegrationType {
+  VSCU
+  OSCU
+}
+
+/// Honest registration states, mirroring KRA's real onboarding sequence.
+/// `PRODUCTION_ACTIVE` is the only state that permits live filing — sandbox and
+/// every pending state must never be presented as "active".
+enum EtimsRegistrationStatus {
+  PIN_CAPTURED
+  PENDING_KRA_APPROVAL
+  SANDBOX_ACTIVE
+  PENDING_PRODUCTION
+  PRODUCTION_ACTIVE
+  REJECTED
+  SUSPENDED
+}
+
+enum EtimsEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+/// Per-organization KRA eTIMS registration (tax-system doc Section 4).
+/// Registration is a KRA-side process HisaFlow cannot complete on the org's
+/// behalf (Commitment Form + KRA approval) — this row tracks it honestly.
+/// `kraPin` is the taxpayer's own PIN, so it is org-scoped data, not a secret.
+model TaxRegistration {
+  id                           String                  @id @default(cuid())
+  organizationId               String                  @unique @map("organization_id")
+  kraPin                       String                  @map("kra_pin")
+  integrationType              EtimsIntegrationType    @default(VSCU) @map("integration_type")
+  status                       EtimsRegistrationStatus @default(PIN_CAPTURED)
+  environment                  EtimsEnvironment        @default(SANDBOX)
+  commitmentFormAcknowledgedAt DateTime?               @map("commitment_form_acknowledged_at")
+  submittedAt                  DateTime?               @map("submitted_at")
+  kraApprovedAt                DateTime?               @map("kra_approved_at")
+  productionSubmittedAt        DateTime?               @map("production_submitted_at")
+  productionActivatedAt        DateTime?               @map("production_activated_at")
+  statusNote                   String?                 @map("status_note") @db.Text
+  statusUpdatedAt              DateTime                @default(now()) @map("status_updated_at")
+  createdAt                    DateTime                @default(now()) @map("created_at")
+  updatedAt                    DateTime                @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([status])
+  @@map("tax_registrations")
+}
+
+// ── Tax / KRA eTIMS: VSCU signing & offline queue (Phase C) ──────
+
+/// `PENDING` = not yet confirmed by KRA (may already be signed locally).
+enum TaxInvoiceStatus {
+  PENDING
+  SYNCED
+  FAILED
+}
+
+enum TaxSyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+}
+
+/// The Phase C failure-mode distinction (tax-system doc Section 7 item 4).
+/// `NETWORK_OFFLINE` = no response at all (device offline) → retry silently.
+/// `KRA_ERROR` = a real error response from KRA's API → backoff + alert.
+/// `LOCAL_VSCU_ERROR` = the local VSCU bridge errored → backoff + alert.
+enum TaxSyncErrorClass {
+  NETWORK_OFFLINE
+  KRA_ERROR
+  LOCAL_VSCU_ERROR
+}
+
+/// One row per `Invoice` requiring tax filing (tax-system doc Section 4):
+/// calculated amounts plus the VSCU-local signature. Signing works offline, so
+/// a row can be signed while `status` is still PENDING; it only becomes SYNCED
+/// once KRA confirms receipt.
+model TaxInvoiceRecord {
+  id                   String           @id @default(cuid())
+  organizationId       String           @map("organization_id")
+  invoiceId            String           @unique @map("invoice_id")
+  status               TaxInvoiceStatus @default(PENDING)
+  currency             String           @default("KES")
+  netAmount            Decimal          @map("net_amount") @db.Decimal(12, 2)
+  taxAmount            Decimal          @map("tax_amount") @db.Decimal(12, 2)
+  grossAmount          Decimal          @map("gross_amount") @db.Decimal(12, 2)
+  taxRate              Decimal          @map("tax_rate") @db.Decimal(5, 4)
+  // Local VSCU signing output — present even while the device is offline.
+  vscuReceiptNumber    String?          @map("vscu_receipt_number")
+  vscuInternalData     String?          @map("vscu_internal_data") @db.Text
+  vscuReceiptSignature String?          @map("vscu_receipt_signature") @db.Text
+  signedAt             DateTime?        @map("signed_at")
+  // KRA confirmation.
+  kraInvoiceNumber     String?          @map("kra_invoice_number")
+  syncedAt             DateTime?        @map("synced_at")
+  lastError            String?          @map("last_error") @db.Text
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  invoice      Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  syncQueue    TaxSyncQueue?
+
+  @@index([organizationId, status])
+  @@map("tax_invoice_records")
+}
+
+/// The offline-resilience queue (tax-system doc Section 4). Signed invoices
+/// sit here, in order, until connectivity returns and they transmit to KRA.
+/// Mirrors the `RouterAction` audit/retry discipline: one row per pending
+/// transmission, attempt counts, `lastError`, `resolvedAt`.
+model TaxSyncQueue {
+  id                 String             @id @default(cuid())
+  organizationId     String             @map("organization_id")
+  taxInvoiceRecordId String             @unique @map("tax_invoice_record_id")
+  status             TaxSyncStatus      @default(PENDING)
+  // Device-offline attempts (no response at all).
+  attempts           Int                @default(0)
+  // Real KRA error responses, tracked separately for the backoff+alert path.
+  kraErrorCount      Int                @default(0) @map("kra_error_count")
+  nextAttemptAt      DateTime?          @map("next_attempt_at")
+  lastAttemptAt      DateTime?          @map("last_attempt_at")
+  lastError          String?            @map("last_error") @db.Text
+  lastErrorClass     TaxSyncErrorClass? @map("last_error_class")
+  enqueuedAt         DateTime           @default(now()) @map("enqueued_at")
+  resolvedAt         DateTime?          @map("resolved_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  organization     Organization     @relation(fields: [organizationId], references: [id])
+  taxInvoiceRecord TaxInvoiceRecord @relation(fields: [taxInvoiceRecordId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([status, nextAttemptAt])
+  @@map("tax_sync_queue")
 }

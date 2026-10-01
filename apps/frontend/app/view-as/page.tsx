@@ -55,7 +55,9 @@ function ViewAsContent() {
         sessionStorage.setItem('hf:active_org_id', data.targetOrgId);
         try {
           localStorage.setItem('hf:active_org_id', data.targetOrgId);
-        } catch {}
+        } catch {
+          /* localStorage may be unavailable */
+        }
 
         sessionStorage.setItem(
           'hf:org',

@@ -8,6 +8,8 @@ import { CreateRouterDto } from './dto/create-router.dto';
 import { UpdateRouterDto } from './dto/update-router.dto';
 import { RouterStatus } from '@prisma/client';
 import * as crypto from 'crypto';
+import { EntitlementsService } from '../../../core/entitlements/entitlements.service';
+import { RouterOSClient } from 'routeros-client';
 
 const ALGORITHM = 'aes-256-cbc';
 const KEY_LENGTH = 32; // 256-bit
@@ -55,11 +57,26 @@ export interface TestConnectionResult {
 
 @Injectable()
 export class RoutersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   // ── CRUD ────────────────────────────────────────────────────────────────────
 
   async create(organizationId: string, dto: CreateRouterDto) {
+    // Multi-location is Growth-depth (Section 1A): the first router is part of
+    // the ISP vertical base, the second and beyond need Growth. This is the
+    // tier dimension on the existing businessType gate, not a new mechanism.
+    const existingRouters = await this.prisma.db.router.count({
+      where: { organizationId },
+    });
+    await this.entitlements.assertMultiLocationAllowed(
+      organizationId,
+      existingRouters,
+      'isp-routers',
+    );
+
     const apiPasswordEnc = encryptPassword(dto.apiPassword);
     return this.prisma.db.router.create({
       data: {
@@ -159,8 +176,6 @@ export class RoutersService {
     username: string,
     password: string,
   ): Promise<string> {
-    const RouterOSClient = require('routeros-client').RouterOSClient;
-
     return new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Connection timed out after 5 seconds'));

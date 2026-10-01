@@ -1,8 +1,9 @@
 'use client';
 
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { Bell, BellOff, Download, Smartphone } from 'lucide-react';
+import { Bell, BellOff, Download, Receipt, Smartphone } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { apiPost } from '@/lib/api-client';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
@@ -59,6 +60,29 @@ export default function SettingsPage() {
           Manage your device preferences and notifications.
         </p>
       </header>
+
+      {/* ── Tax / KRA eTIMS registration ──────────────────────────────────── */}
+      {canManageStaff && (
+        <Link
+          href="/settings/tax"
+          className="flex items-center justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5 transition-colors hover:border-[var(--color-accent)]/60"
+        >
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-amber-100 p-2 text-amber-600">
+              <Receipt className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-semibold">Tax &amp; eTIMS</h2>
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                Register your KRA PIN and track eTIMS approval status.
+              </p>
+            </div>
+          </div>
+          <span className="text-sm font-semibold text-[var(--color-accent)]">
+            Open
+          </span>
+        </Link>
+      )}
 
       {/* ── Staff Management (owners/managers only) ───────────────────────── */}
       {canManageStaff && orgId && (
@@ -152,8 +176,8 @@ export default function SettingsPage() {
             <div className="text-sm text-[var(--color-text-secondary)]">
               <p>App is already installed, or your browser handles installation differently.</p>
               <ul className="list-disc pl-5 mt-2 text-xs space-y-1">
-                <li><strong>iOS (Safari):</strong> Tap the Share button at the bottom, then "Add to Home Screen".</li>
-                <li><strong>Android (Chrome):</strong> Tap the 3 dots menu, then "Install App".</li>
+                <li><strong>iOS (Safari):</strong> Tap the Share button at the bottom, then &quot;Add to Home Screen&quot;.</li>
+                <li><strong>Android (Chrome):</strong> Tap the 3 dots menu, then &quot;Install App&quot;.</li>
               </ul>
             </div>
           )}

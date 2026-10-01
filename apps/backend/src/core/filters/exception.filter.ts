@@ -16,11 +16,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
+    let extra: Record<string, unknown> = {};
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse();
-      message = typeof res === 'string' ? res : (res as any).message || message;
+      if (typeof res === 'string') {
+        message = res;
+      } else if (res && typeof res === 'object') {
+        // Preserve structured fields (e.g. the tier gate's reason/feature/
+        // paywallUrl) instead of flattening every error to `message`.
+        const { message: resMessage, ...rest } = res as Record<string, unknown>;
+        if (typeof resMessage === 'string') {
+          message = resMessage;
+        } else if (Array.isArray(resMessage)) {
+          message = resMessage.join(', ');
+        }
+        extra = rest;
+      }
     }
 
     response.status(status).json({
@@ -28,6 +41,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
       message,
+      ...extra,
     });
   }
 }

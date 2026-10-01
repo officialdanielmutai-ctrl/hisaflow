@@ -106,7 +106,7 @@ export default function StudentsPage() {
       {/* No search results */}
       {!isLoading && students && students.length > 0 && filtered.length === 0 && (
         <div className="text-center py-10 text-[var(--color-text-secondary)] text-sm">
-          No students match "<span className="font-semibold">{search}</span>"
+          No students match &quot;<span className="font-semibold">{search}</span>&quot;
         </div>
       )}
 

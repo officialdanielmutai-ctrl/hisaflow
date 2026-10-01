@@ -141,7 +141,7 @@ export class TransactionsService {
 
     // Handle Chemist batch deduction
     const isChemist = product.organization.businessType === 'CHEMIST';
-    let batchTxs: any[] = [];
+    const batchTxs: any[] = [];
     if (isChemist && isDeduction) {
       const batches = await this.prisma.db.stockBatch.findMany({
         where: { inventoryItemId: dto.itemId, quantity: { gt: 0 } },
@@ -149,7 +149,7 @@ export class TransactionsService {
       });
 
       let remainingToDeduct = dto.quantity;
-      let batchDeductions: string[] = [];
+      const batchDeductions: string[] = [];
 
       for (const batch of batches) {
         if (remainingToDeduct <= 0) break;
