@@ -199,8 +199,6 @@ export class AiIngestionService {
     orgId: string,
     source: 'TEXT' | 'RECEIPT_OCR' | 'LABEL_OCR' = 'TEXT'
   ): Promise<ParsedAction[]> {
-    const { items: availableItems, businessType } = await this.getInventoryContext(orgId);
-
     const baseUrl = this.configService.get<string>('litellm.baseUrl');
     const apiKey = this.configService.get<string>('litellm.masterKey');
 
@@ -208,6 +206,8 @@ export class AiIngestionService {
       console.error('Missing LiteLLM configuration');
       return [];
     }
+
+    const { items: availableItems, businessType } = await this.getInventoryContext(orgId);
 
     const openai = new OpenAI({
       baseURL: baseUrl,

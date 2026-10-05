@@ -132,7 +132,7 @@ export class AlertsService {
     }
   }
 
-  // ── Wastage spike: more than 5 wastage events today for the org ───────────
+  // ── Wastage spike: an item with 3 or more wastage events today ──────────────
   private async checkWastageSpike(organizationId: string) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);

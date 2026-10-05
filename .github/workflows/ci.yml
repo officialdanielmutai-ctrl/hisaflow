@@ -1,0 +1,201 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  install:
+    name: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+  typecheck:
+    name: typecheck
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Backend typecheck
+        run: pnpm --filter backend exec tsc --noEmit -p tsconfig.json
+      - name: Frontend typecheck
+        run: pnpm --filter frontend exec tsc --noEmit -p tsconfig.json
+      - name: Admin typecheck
+        run: pnpm --filter admin exec tsc --noEmit -p tsconfig.json
+      - name: E2E typecheck
+        run: pnpm exec tsc --noEmit -p e2e/tsconfig.json
+
+  lint:
+    name: lint
+    needs: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint all workspaces
+        run: pnpm lint
+
+  backend-test:
+    name: backend:test
+    needs: lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hisaflow
+          POSTGRES_PASSWORD: hisaflow
+          POSTGRES_DB: hisaflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hisaflow"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://hisaflow:hisaflow@localhost:5432/hisaflow_test?schema=public
+      DIRECT_URL: postgresql://hisaflow:hisaflow@localhost:5432/hisaflow_test?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations
+        run: pnpm --filter backend exec prisma migrate deploy
+      - name: Backend unit tests
+        run: pnpm --filter backend test
+
+  backend-test-e2e:
+    name: backend:test:e2e
+    needs: backend-test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hisaflow
+          POSTGRES_PASSWORD: hisaflow
+          POSTGRES_DB: hisaflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hisaflow"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://hisaflow:hisaflow@localhost:5432/hisaflow_test?schema=public
+      DIRECT_URL: postgresql://hisaflow:hisaflow@localhost:5432/hisaflow_test?schema=public
+      CLERK_SECRET_KEY: sk_test_ci_dummy
+      CLERK_PUBLISHABLE_KEY: pk_test_ci_dummy
+      ADMIN_IMPERSONATION_SECRET: ci-impersonation-secret
+      LITELLM_BASE_URL: ''
+      LITELLM_MASTER_KEY: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations
+        run: pnpm --filter backend exec prisma migrate deploy
+      - name: Backend e2e tests
+        run: pnpm --filter backend test:e2e
+
+  frontend-test:
+    name: frontend:test
+    needs: backend-test-e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Frontend tests (node:test + vitest)
+        run: pnpm --filter frontend test
+
+  admin-test:
+    name: admin:test
+    needs: frontend-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Admin tests (vitest)
+        run: pnpm --filter admin test
+
+  build:
+    name: build
+    needs: admin-test
+    runs-on: ubuntu-latest
+    env:
+      # Dummy build-time public config so `next build` never needs real secrets.
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci_dummy
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build all workspaces
+        run: pnpm build

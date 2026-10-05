@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --no-warnings --test lib/paywall-context.test.ts lib/feature-lock.test.ts lib/billing.test.ts lib/tax.test.ts lib/tax-report.test.ts lib/tax-reconciliation.test.ts lib/tax-aggregation.test.ts",
+    "test": "node --no-warnings --test lib/paywall-context.test.ts lib/feature-lock.test.ts lib/billing.test.ts lib/tax.test.ts lib/tax-report.test.ts lib/tax-reconciliation.test.ts lib/tax-aggregation.test.ts && vitest run",
     "format": "prettier --write \"**/*.{ts,tsx,md,css}\""
   },
   "dependencies": {
@@ -32,14 +32,19 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.5.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.3",
+    "jsdom": "^25.0.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

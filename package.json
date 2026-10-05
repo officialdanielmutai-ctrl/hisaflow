@@ -2,6 +2,7 @@
   "name": "hisaflow-monorepo",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.2.2",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -10,9 +11,12 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^20.3.1",
     "prettier": "^3.2.5",
     "turbo": "^2.0.0",
     "typescript": "^5.4.5"
