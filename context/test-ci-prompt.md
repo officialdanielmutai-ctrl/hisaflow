@@ -659,3 +659,20 @@ deliberately untested.
 All remaining findings from the previous report are fixed. Only the two
 framework-bootstrap files (`app.service.ts`, `prisma.service.ts`) are
 intentionally untested.
+
+### Iteration 27 — pushed to git (2026-10-05)
+
+Committed and pushed to `origin/main`:
+
+```
+e2e7d4e test(ci): add automated tests and CI pipeline across all layers
+992cd0a..e2e7d4e  main -> main
+```
+
+93 files changed, +26,036 / -11. Includes all test suites, the CI
+workflows, the Prisma reconciliation migration, `pnpm-lock.yaml`,
+`turbo.json`, and the test-only `.env.test`.
+
+NOTE: `apps/frontend/.env.local` is tracked in git (pre-existing) and was
+NOT touched; its leaked Clerk secret still needs manual rotation and should
+be `git rm --cached` + ignored as a follow-up.
