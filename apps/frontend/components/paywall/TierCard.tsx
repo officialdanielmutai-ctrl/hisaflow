@@ -1,42 +1,7 @@
 import { Check } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
+import { TIER_CONTENT } from '@/lib/plans';
 import type { HisaflowPlanTier, PaywallPlan } from '@/services/paywall.service';
-
-interface TierMeta {
-  audience: string;
-  differentiator: string;
-  features: string[];
-}
-
-const TIER_META: Record<HisaflowPlanTier, TierMeta> = {
-  SOLO: {
-    audience: 'Single owner-operator',
-    differentiator: '1 login · 1 location',
-    features: [
-      'Full inventory, invoicing and reporting',
-      'Automatic tax and eTIMS filing on every sale',
-      'One vertical module at base depth',
-    ],
-  },
-  TEAM: {
-    audience: 'Owner with staff',
-    differentiator: 'Up to 3 staff logins · role permissions',
-    features: [
-      'Everything in Solo',
-      'Staff accounts with role-based permissions',
-      'Full vertical depth, for example work orders assigned to technicians',
-    ],
-  },
-  GROWTH: {
-    audience: 'Multi-location operation',
-    differentiator: 'Multiple locations · priority support',
-    features: [
-      'Everything in Team',
-      'Multiple organization or location contexts',
-      'Priority support',
-    ],
-  },
-};
 
 export interface TierCardProps {
   plan: PaywallPlan;
@@ -58,7 +23,7 @@ export default function TierCard({
   ctaLabel,
   onSelect,
 }: TierCardProps) {
-  const meta = TIER_META[plan.tier];
+  const meta = TIER_CONTENT[plan.tier];
   const price = Number(plan.priceKes);
   const hasPrice = Number.isFinite(price) && price > 0;
   const interactive = Boolean(onSelect) && !comingSoon;

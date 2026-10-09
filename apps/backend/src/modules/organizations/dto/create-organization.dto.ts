@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsIn } from 'class-validator';
 
 export enum BusinessType {
   DUKA = 'DUKA',
@@ -10,6 +10,9 @@ export enum BusinessType {
   ISP = 'ISP',
   GUEST_HOUSE = 'GUEST_HOUSE',
 }
+
+export const PREFERRED_PLAN_VALUES = ['SOLO', 'TEAM', 'GROWTH'] as const;
+export type PreferredPlan = (typeof PREFERRED_PLAN_VALUES)[number];
 
 export class CreateOrganizationDto {
   @IsString()
@@ -29,4 +32,12 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsString()
   country?: string;
+
+  /**
+   * Advisory plan intent from the landing page. Invalid or missing values are
+   * ignored by validation; a valid value is only stored as a preference.
+   */
+  @IsOptional()
+  @IsIn(PREFERRED_PLAN_VALUES)
+  preferredPlan?: PreferredPlan;
 }

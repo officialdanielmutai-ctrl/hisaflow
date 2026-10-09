@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { apiPost } from '@/lib/api-client';
+import { normalizePlanIntent } from '@/lib/plans';
 import { joinOrganization } from '@/services/organizations.service';
 import { Building2, Users } from 'lucide-react';
 
@@ -19,6 +20,16 @@ const BUSINESS_TYPES = [
   { value: 'ISP',        label: 'Internet Service Provider (ISP)' },
   { value: 'GUEST_HOUSE', label: 'Guest House / Lodge' },
 ];
+
+const PREFERRED_PLANS = ['SOLO', 'TEAM', 'GROWTH'] as const;
+
+/** Advisory plan intent from the landing page CTA, validated before use. */
+function readPreferredPlan(): (typeof PREFERRED_PLANS)[number] | null {
+  if (typeof window === 'undefined') return null;
+  return normalizePlanIntent(
+    new URLSearchParams(window.location.search).get('plan'),
+  );
+}
 
 export default function OnboardingPage() {
   const [path, setPath] = useState<Path>('choose');
@@ -46,9 +57,11 @@ export default function OnboardingPage() {
     try {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
+      const preferredPlan = readPreferredPlan();
       await apiPost('/organizations', token, 'none', {
         name: businessName,
         businessType,
+        ...(preferredPlan ? { preferredPlan } : {}),
       });
       // Hard reload so useMyOrganization remounts and fetches the new membership
       window.location.href = '/';

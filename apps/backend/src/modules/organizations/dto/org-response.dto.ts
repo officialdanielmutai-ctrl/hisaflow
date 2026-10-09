@@ -5,5 +5,6 @@ export interface OrgResponseDto {
   currency: string;
   country: string;
   phone: string | null;
+  preferredPlan: string | null;
   createdAt: string;
 }

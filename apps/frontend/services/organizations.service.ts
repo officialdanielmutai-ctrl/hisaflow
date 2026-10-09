@@ -9,6 +9,8 @@ export interface OrgMembership {
     businessType: string;
     currency: string;
     country: string;
+    /** Advisory plan intent captured at sign-up; never a purchase. */
+    preferredPlan?: string | null;
   };
 }
 

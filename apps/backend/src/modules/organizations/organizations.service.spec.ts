@@ -3,6 +3,7 @@ import { EntitlementsService } from '../../core/entitlements/entitlements.servic
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { OrganizationsRepository } from './organizations.repository';
 import { OrganizationsService } from './organizations.service';
+import { BusinessType } from './dto/create-organization.dto';
 
 function build(assertSeatAvailable: jest.Mock) {
   const orgMembershipCreate = jest.fn(async () => ({}));
@@ -65,5 +66,51 @@ describe('OrganizationsService seat gate (Phase D)', () => {
       service.joinOrganization('ABC123', 'user_2'),
     ).rejects.toBeInstanceOf(FeatureLockedException);
     expect(orgMembershipCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('OrganizationsService plan preference (Phase L-D)', () => {
+  function buildCreate() {
+    const repoCreate = jest.fn(
+      async (data: Record<string, unknown>) => ({ id: 'org_1', ...data }),
+    );
+    const prisma = {
+      db: {
+        organization: { update: jest.fn(async () => ({})) },
+        orgMembership: { create: jest.fn(async () => ({})) },
+      },
+    };
+    const service = new OrganizationsService(
+      { create: repoCreate } as unknown as OrganizationsRepository,
+      prisma as unknown as PrismaService,
+      {} as unknown as EntitlementsService,
+    );
+    return { service, repoCreate };
+  }
+
+  it('stores plan intent as an advisory preference only', async () => {
+    const { service, repoCreate } = buildCreate();
+
+    await service.create(
+      { name: 'Mama Njeri Duka', businessType: BusinessType.DUKA, preferredPlan: 'TEAM' },
+      'user_1',
+    );
+
+    expect(repoCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ preferredPlan: 'TEAM' }),
+    );
+  });
+
+  it('defaults to null when no valid intent is supplied', async () => {
+    const { service, repoCreate } = buildCreate();
+
+    await service.create(
+      { name: 'Mama Njeri Duka', businessType: BusinessType.DUKA },
+      'user_1',
+    );
+
+    expect(repoCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ preferredPlan: null }),
+    );
   });
 });

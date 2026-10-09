@@ -15,7 +15,7 @@ import {
 import { useRole } from '@/hooks/useRole';
 
 const ownerTabs = [
-  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { href: '/finance', label: 'Sales', icon: TrendingUp },
   { href: '/inventory?action=add', label: 'Add', icon: Plus, isFab: true },
   { href: '/inventory', label: 'Inventory', icon: Package },
@@ -23,7 +23,7 @@ const ownerTabs = [
 ];
 
 const staffTabs = [
-  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { href: '/transactions', label: 'Sales', icon: TrendingUp },
   { href: '/inventory?action=add', label: 'Add', icon: Plus, isFab: true },
   { href: '/inventory', label: 'Inventory', icon: Package },
@@ -31,7 +31,7 @@ const staffTabs = [
 ];
 
 const guestHouseOwnerTabs = [
-  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { href: '/rooms', label: 'Rooms', icon: Bed },
   { href: '/bookings/new', label: 'Booking', icon: Plus, isFab: true },
   { href: '/bookings', label: 'Bookings', icon: CalendarDays },
@@ -39,7 +39,7 @@ const guestHouseOwnerTabs = [
 ];
 
 const guestHouseStaffTabs = [
-  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { href: '/rooms', label: 'Rooms', icon: Bed },
   { href: '/bookings/new', label: 'Booking', icon: Plus, isFab: true },
   { href: '/bookings', label: 'Bookings', icon: CalendarDays },
@@ -47,7 +47,7 @@ const guestHouseStaffTabs = [
 ];
 
 const restaurantTabs = [
-  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { href: '/table-orders', label: 'Orders', icon: CalendarDays },
   { href: '/table-orders/new', label: 'New', icon: Plus, isFab: true },
   { href: '/inventory', label: 'Menu', icon: Package },
@@ -55,7 +55,7 @@ const restaurantTabs = [
 ];
 
 const schoolTabs = [
-  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { href: '/school-classes', label: 'Classes', icon: Users },
   { href: '/students/new', label: 'Student', icon: Plus, isFab: true },
   { href: '/school-fees', label: 'Fees', icon: TrendingUp },
@@ -63,7 +63,7 @@ const schoolTabs = [
 ];
 
 const ispTabs = [
-  { href: '/', label: 'Home', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { href: '/inventory', label: 'Hardware', icon: Package },
   { href: '/subscribers?action=add', label: 'New', icon: Plus, isFab: true },
   { href: '/subscribers', label: 'Subscribers', icon: Users },

@@ -14,7 +14,7 @@ import { useAlerts } from '@/hooks/useAlerts';
 import { getNotes, type Note } from '@/services/notes.service';
 import { useInventory } from '@/hooks/useInventory';
 import { format } from 'date-fns';
-import DashboardLoading from './loading';
+import DashboardLoading from '../loading';
 import { GuestHouseDashboard } from '@/components/guesthouse/GuestHouseDashboard';
 import { SchoolDashboard } from '@/components/school/SchoolDashboard';
 import { ChemistDashboard } from '@/components/chemist/ChemistDashboard';

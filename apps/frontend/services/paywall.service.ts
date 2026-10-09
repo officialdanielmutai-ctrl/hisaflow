@@ -1,11 +1,8 @@
 import { apiGet, apiPatch, apiPost } from '@/lib/api-client';
+import { type HisaflowPlanTier } from '@/lib/plans';
 
-export type HisaflowPlanTier = 'SOLO' | 'TEAM' | 'GROWTH';
-export const TIER_RANK: Record<HisaflowPlanTier, number> = {
-  SOLO: 1,
-  TEAM: 2,
-  GROWTH: 3,
-};
+export type { HisaflowPlanTier } from '@/lib/plans';
+export { TIER_RANK } from '@/lib/plans';
 export type BillingInterval = 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
 export type SubscriptionStatus = 'ACTIVE' | 'GRACE' | 'SUSPENDED';
 export type SubscriptionPaymentMethod = 'CARD' | 'MPESA';

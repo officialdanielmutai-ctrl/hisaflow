@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import useSWR from 'swr';
 import { Loader2, ShieldCheck, Wallet } from 'lucide-react';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { normalizePlanIntent } from '@/lib/plans';
 import {
   getPaywallPlans,
   getSubscription,
@@ -100,6 +101,17 @@ function PlanChooser({
   const [mpesaPhone, setMpesaPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Layer L-D: the tier chosen on the public pricing page is stored on the
+  // organization as a preference and pre-selected here. It never starts a
+  // purchase on its own; missing or invalid intent degrades to the default.
+  const preferredTier = membership?.organization?.preferredPlan;
+  useEffect(() => {
+    const tier = normalizePlanIntent(preferredTier);
+    if (tier) {
+      setSelectedTier(tier);
+    }
+  }, [preferredTier]);
 
   const orderedPlans = useMemo(() => {
     const list = plans ?? [];

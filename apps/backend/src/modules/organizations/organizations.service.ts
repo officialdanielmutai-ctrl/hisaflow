@@ -19,6 +19,7 @@ export class OrganizationsService {
       currency: dto.currency ?? 'KES',
       country: dto.country ?? 'KE',
       phone: dto.phone,
+      preferredPlan: dto.preferredPlan ?? null,
     });
 
     // Auto-generate a unique 6-character invite code

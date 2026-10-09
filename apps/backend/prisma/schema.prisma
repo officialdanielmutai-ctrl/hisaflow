@@ -15,6 +15,9 @@ model Organization {
   currency     String   @default("KES")
   country      String   @default("KE")
   phone        String?
+  /// Advisory plan intent captured at sign-up (?plan=solo|team). Never a
+  /// purchase; the paywall only uses it to pre-select a tier.
+  preferredPlan String? @map("preferred_plan")
   inviteCode   String?  @unique @map("invite_code")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
