@@ -5,15 +5,10 @@ import { useAuth, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import Link from 'next/link';
 import {
-  Bell, TrendingUp, ShoppingCart, AlertTriangle, Coins, Package,
-  PackagePlus, StickyNote, Sparkles, ArrowLeftRight, CheckCircle2, Clock,
+  TrendingUp, AlertTriangle, Package, StickyNote, Sparkles,
 } from 'lucide-react';
 import { getDashboardData, DashboardData, getStaffDashboardData, StaffDashboardData } from '@/services/analytics.service';
 import { useRole } from '@/hooks/useRole';
-import { useAlerts } from '@/hooks/useAlerts';
-import { getNotes, type Note } from '@/services/notes.service';
-import { useInventory } from '@/hooks/useInventory';
-import { format } from 'date-fns';
 import DashboardLoading from '../loading';
 import { GuestHouseDashboard } from '@/components/guesthouse/GuestHouseDashboard';
 import { SchoolDashboard } from '@/components/school/SchoolDashboard';
@@ -21,14 +16,9 @@ import { ChemistDashboard } from '@/components/chemist/ChemistDashboard';
 import { RestaurantDashboard } from '@/components/restaurant/RestaurantDashboard';
 import { WholesaleDashboard } from '@/components/wholesale/WholesaleDashboard';
 import { IspDashboard } from '@/components/isp/IspDashboard';
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-const importanceColors: Record<string, string> = {
-  LOW: 'bg-gray-100 text-gray-600',
-  MEDIUM: 'bg-blue-100 text-blue-700',
-  HIGH: 'bg-orange-100 text-orange-700',
-  CRITICAL: 'bg-red-100 text-red-700',
-};
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
+import { RETAIL_KPI_ROWS, RETAIL_INVENTORY_ROWS } from '@/features/dashboard/config/retail';
+import { STAFF_KPI_ROWS } from '@/features/dashboard/config/staff';
 
 // ── Staff Dashboard ───────────────────────────────────────────────────────────
 function StaffDashboard() {
@@ -72,74 +62,8 @@ function StaffDashboard() {
         </p>
       </div>
 
-      {/* ── KPI Grid ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100">
-              <TrendingUp className="h-5 w-5 text-yellow-600" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-[var(--color-text-secondary)]">Today&apos;s Sales</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold">{data.kpis.todaySalesCount}</span>
-                <span className="text-xs text-[var(--color-text-secondary)]">units</span>
-              </div>
-            </div>
-          </div>
-          <span className={`text-[10px] font-semibold ${data.kpis.todaySalesTrend >= 0 ? 'text-green-600' : 'text-red-500'}`}>{data.kpis.todaySalesTrendLabel}</span>
-        </div>
-
-        <Link href="/inventory?filter=LOW_STOCK" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-base)] transition-colors p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-[var(--color-text-secondary)]">Low Stock Items</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold">{data.kpis.lowStockCount}</span>
-                <span className="text-xs text-[var(--color-text-secondary)]">items</span>
-              </div>
-            </div>
-          </div>
-          <span className={`text-[10px] font-semibold ${data.kpis.lowStockCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {data.kpis.lowStockCount > 0 ? 'Needs attention' : 'All healthy'}
-          </span>
-        </Link>
-
-        <Link href="/inventory" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-base)] transition-colors p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-              <Package className="h-5 w-5 text-blue-600" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-[var(--color-text-secondary)]">Total Inventory</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold">{data.kpis.totalInventory}</span>
-                <span className="text-xs text-[var(--color-text-secondary)]">items</span>
-              </div>
-            </div>
-          </div>
-          <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">{data.kpis.totalInventoryLabel}</span>
-        </Link>
-
-        <Link href="/notes" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-base)] transition-colors p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-[var(--color-text-secondary)]">Tasks Done</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold">{data.kpis.tasksDoneToday}</span>
-                <span className="text-xs text-[var(--color-text-secondary)]">today</span>
-              </div>
-            </div>
-          </div>
-          <span className={`text-[10px] font-semibold ${data.kpis.tasksLabel === 'All caught up!' ? 'text-green-600' : 'text-orange-500'}`}>{data.kpis.tasksLabel}</span>
-        </Link>
-      </div>
+      {/* ── KPI Grid: shared StatCard, per-vertical staff arrangement ── */}
+      <DashboardKpiRows rows={STAFF_KPI_ROWS} data={data} />
 
       {/* ── Active Alerts ─────────────────────────────────────────────── */}
       <section>
@@ -316,42 +240,9 @@ function RetailDashboard() {
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <Link href="/transactions?type=SALE" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
-          <TrendingUp className="h-5 w-5 text-green-600 mb-2" />
-          <p className="text-xs text-muted-foreground">Today&apos;s Sales</p>
-          <p className="font-bold text-lg">KES {data.kpis.todaySales.toLocaleString()}</p>
-          <p className={`text-xs mt-1 font-medium ${data.kpis.salesTrendIsPositive ? 'text-green-600' : 'text-red-500'}`}>
-            {data.kpis.salesTrendLabel}
-          </p>
-        </Link>
-        <Link href="/transactions?type=PURCHASE" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
-          <ShoppingCart className="h-5 w-5 text-red-500 mb-2" />
-          <p className="text-xs text-muted-foreground">Expenses</p>
-          <p className="font-bold text-lg">KES {data.kpis.todayExpenses.toLocaleString()}</p>
-          <p className={`text-xs mt-1 font-medium ${data.kpis.expensesTrendIsNegative ? 'text-red-500' : 'text-green-600'}`}>
-            {data.kpis.expensesTrendLabel}
-          </p>
-        </Link>
-        <Link href="/inventory?filter=LOW_STOCK" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
-          <AlertTriangle className="h-5 w-5 text-yellow-500 mb-2" />
-          <p className="text-xs text-muted-foreground">Low Stock</p>
-          <p className="font-bold text-lg">{data.kpis.lowStockCount} items</p>
-          <p className={`text-xs mt-1 font-medium ${data.kpis.lowStockCount > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
-            {data.kpis.lowStockLabel}
-          </p>
-        </Link>
-        <Link href="/finance" className="block rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
-          <Coins className="h-5 w-5 text-green-600 mb-2" />
-          <p className="text-xs text-muted-foreground">Profit Est.</p>
-          <p className={`font-bold text-lg ${data.kpis.profitEstimate >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-            KES {data.kpis.profitEstimate.toLocaleString()}
-          </p>
-          <p className={`text-xs mt-1 font-medium ${data.kpis.profitTrendIsPositive ? 'text-green-600' : 'text-red-500'}`}>
-            {data.kpis.profitTrendLabel}
-          </p>
-        </Link>
+      {/* KPI Grid — shared StatCard, per-vertical retail arrangement */}
+      <div className="mb-6">
+        <DashboardKpiRows rows={RETAIL_KPI_ROWS} data={data} />
       </div>
 
       {/* Attention Feed */}
@@ -390,32 +281,8 @@ function RetailDashboard() {
             View all
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-[var(--color-bg-surface)] border p-4 flex flex-col gap-1">
-            <Package className="h-5 w-5 text-green-600" />
-            <p className="font-bold text-lg">{data.inventorySnapshot.healthy}</p>
-            <p className="text-sm text-[var(--color-text-secondary)]">Healthy items</p>
-            <p className="text-xs text-green-600">Good</p>
-          </div>
-          <div className="rounded-2xl bg-[var(--color-bg-surface)] border p-4 flex flex-col gap-1">
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            <p className="font-bold text-lg">{data.inventorySnapshot.low}</p>
-            <p className="text-sm text-[var(--color-text-secondary)]">Low stock</p>
-            <p className="text-xs text-yellow-600">Watch</p>
-          </div>
-          <div className="rounded-2xl bg-[var(--color-bg-surface)] border p-4 flex flex-col gap-1">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
-            <p className="font-bold text-lg">{data.inventorySnapshot.outOfStock}</p>
-            <p className="text-sm text-[var(--color-text-secondary)]">Out of stock</p>
-            <p className="text-xs text-red-600">Urgent</p>
-          </div>
-          <div className="rounded-2xl bg-[var(--color-bg-surface)] border p-4 flex flex-col gap-1">
-            <TrendingUp className="h-5 w-5 text-blue-500" />
-            <p className="font-bold text-lg">{data.inventorySnapshot.stockHealthPct}%</p>
-            <p className="text-sm text-[var(--color-text-secondary)]">Stock health</p>
-            <p className="text-xs text-blue-600">Good</p>
-          </div>
-        </div>
+        {/* Shared StatCard, per-vertical retail inventory arrangement */}
+        <DashboardKpiRows rows={RETAIL_INVENTORY_ROWS} data={data} />
       </div>
 
       {/* Recommended Actions */}

@@ -101,4 +101,37 @@ describe('StatCard (shared building block)', () => {
 
     expect(screen.getByText('4 Pending')).toBeInTheDocument();
   });
+
+  it('renders a blue info badge in the trailing slot', () => {
+    render(
+      <StatCard
+        label="Occupied Rooms"
+        value="8"
+        icon={Wallet}
+        trailing={{ kind: 'badge', text: '72%', tone: 'blue' }}
+      />,
+    );
+
+    expect(screen.getByText('72%')).toBeInTheDocument();
+  });
+
+  it('applies value and footnote emphasis slots without forking the card', () => {
+    render(
+      <StatCard
+        label="Profit Est."
+        value="KES -12,000"
+        icon={Wallet}
+        valueTone="critical"
+        footnote="Down this month"
+        footnoteTone="warning"
+      />,
+    );
+
+    expect(screen.getByText('KES -12,000').className).toContain(
+      'text-[var(--color-status-critical)]',
+    );
+    expect(screen.getByText('Down this month').className).toContain(
+      'text-amber-600',
+    );
+  });
 });

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { getIspDashboard, type IspDashboardData } from '@/services/isp.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
-import { StatCard } from '@/components/system/StatCard';
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
 import { ISP_KPI_ROWS } from '@/features/dashboard/config/isp';
 
 export interface IspRecommendation {
@@ -177,29 +177,7 @@ export function IspDashboard() {
       </div>
 
       {/* ── KPI cards: shared StatCard, per-vertical ISP arrangement ──── */}
-      <div className="flex flex-col gap-4">
-        {ISP_KPI_ROWS.map((row, rowIndex) => (
-          <div
-            // eslint-disable-next-line react/no-array-index-key
-            key={rowIndex}
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-          >
-            {row.map((card) => (
-              <StatCard
-                key={card.id}
-                label={card.label}
-                icon={card.icon}
-                iconTone={card.iconTone}
-                cardTone={card.cardTone}
-                variant={card.variant}
-                href={card.href}
-                className={card.span === 2 ? 'sm:col-span-2' : undefined}
-                {...card.build(data)}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
+      <DashboardKpiRows rows={ISP_KPI_ROWS} data={data} />
       {/* ── AI Operational Recommendations (Smart Recommendations) ──────── */}
       <section>
         <div className="flex items-center justify-between mb-3">

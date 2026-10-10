@@ -5,10 +5,12 @@ import { useAuth, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import Link from 'next/link';
 import {
-  TrendingUp, Package, AlertTriangle, Banknote, Users, Zap, ShoppingCart, Plus,
+  Package, Banknote, Users, Zap, Plus,
 } from 'lucide-react';
 import { getWholesaleDashboardData, type WholesaleDashboardData } from '@/services/analytics.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
+import { WHOLESALE_KPI_ROWS } from '@/features/dashboard/config/wholesale';
 
 export function WholesaleDashboard() {
   const { getToken } = useAuth();
@@ -82,62 +84,8 @@ export function WholesaleDashboard() {
         </Link>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link href="/transactions?type=SALE" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm hover:bg-[var(--color-bg-base)] transition-colors">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Today&apos;s Sales</p>
-              <p className="text-xl font-bold">KES {data.todaySales.toLocaleString()}</p>
-            </div>
-          </div>
-          <span className="text-[10px] font-semibold text-green-600">Gross revenue</span>
-        </Link>
-
-        <Link href="/transactions?type=SALE" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm hover:bg-[var(--color-bg-base)] transition-colors">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-              <ShoppingCart className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Month Sales</p>
-              <p className="text-xl font-bold">KES {data.monthSales.toLocaleString()}</p>
-            </div>
-          </div>
-          <span className="text-[10px] font-semibold text-blue-600">Month to date</span>
-        </Link>
-
-        <Link href="/inventory?filter=LOW_STOCK" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm hover:bg-[var(--color-bg-base)] transition-colors">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Low Stock</p>
-              <p className="text-xl font-bold">{data.lowStockCount}</p>
-            </div>
-          </div>
-          <span className={`text-[10px] font-semibold ${data.lowStockCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {data.lowStockCount > 0 ? 'Restock needed' : 'All levels healthy'}
-          </span>
-        </Link>
-
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-              <Package className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Total SKUs</p>
-              <p className="text-xl font-bold">{data.totalItems}</p>
-            </div>
-          </div>
-          <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">Active products</span>
-        </div>
-      </div>
+      {/* KPIs — shared StatCard, per-vertical wholesale arrangement */}
+      <DashboardKpiRows rows={WHOLESALE_KPI_ROWS} data={data} />
 
       {/* Top Debtors */}
       {data.topDebtors.length > 0 && (

@@ -17,6 +17,8 @@ export default defineConfig({
       'lib/**/*.spec.ts',
       'lib/**/*.spec.tsx',
       'components/**/*.spec.tsx',
+      'features/**/*.spec.ts',
+      'features/**/*.spec.tsx',
       'hooks/**/*.spec.tsx',
       'app/**/*.spec.tsx',
     ],

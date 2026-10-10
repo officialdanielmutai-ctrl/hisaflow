@@ -18,17 +18,25 @@ import { cn } from '@/lib/utils';
 export type StatTone = 'blue' | 'emerald' | 'amber' | 'rose' | 'neutral';
 export type StatVariant = 'default' | 'compact';
 export type StatState = 'default' | 'loading' | 'empty' | 'error';
+/**
+ * Reusable emphasis for the value/footnote slots. A vertical uses this when a
+ * metric carries a status meaning (healthy/low/overdue) instead of forking the
+ * card to colour a single line.
+ */
+export type StatEmphasis = 'default' | 'success' | 'warning' | 'critical';
 
 export type StatTrailing =
   | { kind: 'arrow' }
-  | { kind: 'badge'; text: string; tone: Exclude<StatTone, 'blue'> };
+  | { kind: 'badge'; text: string; tone: StatTone };
 
 export interface StatCardContent {
   value: string;
   sublabel?: string;
   valueSuffix?: string;
   fullValue?: string;
+  valueTone?: StatEmphasis;
   footnote?: string;
+  footnoteTone?: StatEmphasis;
   trailing?: StatTrailing;
 }
 
@@ -87,7 +95,22 @@ const ARROW_TONES: Record<StatTone, string> = {
   neutral: 'group-hover:text-[var(--color-accent)]',
 };
 
-const BADGE_TONES: Record<Exclude<StatTone, 'blue'>, string> = {
+const VALUE_TONES: Record<StatEmphasis, string> = {
+  default: 'text-[var(--color-text-primary)]',
+  success: 'text-emerald-600',
+  warning: 'text-amber-600',
+  critical: 'text-[var(--color-status-critical)]',
+};
+
+const FOOTNOTE_TONES: Record<StatEmphasis, string> = {
+  default: 'text-[var(--color-text-secondary)]',
+  success: 'text-emerald-600',
+  warning: 'text-amber-600',
+  critical: 'text-[var(--color-status-critical)]',
+};
+
+const BADGE_TONES: Record<StatTone, string> = {
+  blue: 'bg-blue-50 text-blue-700 border border-blue-200',
   emerald: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
   amber: 'bg-amber-100 text-amber-800 border border-amber-200',
   rose: 'bg-rose-100 text-rose-800 border border-rose-200',
@@ -155,7 +178,9 @@ export function StatCard({
   value,
   valueSuffix,
   fullValue,
+  valueTone = 'default',
   footnote,
+  footnoteTone = 'default',
   trailing,
   icon: Icon,
   iconTone,
@@ -226,7 +251,8 @@ export function StatCard({
           data-stat-value
           title={fullValue}
           className={cn(
-            'truncate font-black tracking-tight text-[var(--color-text-primary)] tabular-nums',
+            'truncate font-black tracking-tight tabular-nums',
+            VALUE_TONES[valueTone],
             compact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl',
           )}
         >
@@ -243,9 +269,7 @@ export function StatCard({
       <p
         className={cn(
           'min-h-[18px] truncate text-xs',
-          isError
-            ? 'text-[var(--color-status-critical)]'
-            : 'text-[var(--color-text-secondary)]',
+          isError ? FOOTNOTE_TONES.critical : FOOTNOTE_TONES[footnoteTone],
         )}
       >
         {hasFootnote ? displayFootnote : ''}

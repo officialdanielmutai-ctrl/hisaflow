@@ -5,11 +5,13 @@ import { useAuth, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import Link from 'next/link';
 import {
-  TrendingUp, UtensilsCrossed, ChefHat, ShoppingBag, Clock, CheckCircle2, Zap, Plus,
+  UtensilsCrossed, ChefHat, Clock, Zap, Plus,
 } from 'lucide-react';
 import { getRestaurantDashboardData, type RestaurantDashboardData } from '@/services/analytics.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
 import { formatDistanceToNow } from 'date-fns';
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
+import { RESTAURANT_KPI_ROWS } from '@/features/dashboard/config/restaurant';
 
 export function RestaurantDashboard() {
   const { getToken } = useAuth();
@@ -70,62 +72,8 @@ export function RestaurantDashboard() {
         </Link>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Today&apos;s Revenue</p>
-              <p className="text-xl font-bold">KES {data.todayRevenue.toLocaleString()}</p>
-            </div>
-          </div>
-          <span className="text-[10px] font-semibold text-green-600">Live total</span>
-        </div>
-
-        <Link href="/table-orders" className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm hover:bg-[var(--color-bg-base)] transition-colors">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-              <UtensilsCrossed className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Open Tables</p>
-              <p className="text-xl font-bold">{data.openOrdersCount}</p>
-            </div>
-          </div>
-          <span className={`text-[10px] font-semibold ${data.openOrdersCount > 0 ? 'text-orange-600' : 'text-[var(--color-text-muted)]'}`}>
-            {data.openOrdersCount > 0 ? `KES ${data.openOrdersValue.toLocaleString()} pending` : 'Restaurant is clear'}
-          </span>
-        </Link>
-
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Closed Today</p>
-              <p className="text-xl font-bold">{data.paidOrdersToday}</p>
-            </div>
-          </div>
-          <span className="text-[10px] font-semibold text-blue-600">Tables settled</span>
-        </div>
-
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-              <ShoppingBag className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Pending Value</p>
-              <p className="text-xl font-bold">KES {data.openOrdersValue.toLocaleString()}</p>
-            </div>
-          </div>
-          <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">Active orders</span>
-        </div>
-      </div>
+      {/* KPIs — shared StatCard, per-vertical restaurant arrangement */}
+      <DashboardKpiRows rows={RESTAURANT_KPI_ROWS} data={data} />
 
       {/* Active Table Orders */}
       {data.openOrders.length > 0 && (

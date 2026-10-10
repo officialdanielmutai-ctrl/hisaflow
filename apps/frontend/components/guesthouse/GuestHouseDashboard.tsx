@@ -13,6 +13,8 @@ import DashboardLoading from '@/app/(dashboard)/loading';
 import { AddRoomSheet } from './AddRoomSheet';
 import { AddGuestSheet } from './AddGuestSheet';
 import { AiRecommendationsCard, type Recommendation } from '@/components/shared/AiRecommendationsCard';
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
+import { GUEST_HOUSE_KPI_ROWS } from '@/features/dashboard/config/guest-house';
 
 function buildGuestHouseRecommendations(data: GuestHouseDashboardData): Recommendation[] {
   const recs: Recommendation[] = [];
@@ -130,41 +132,8 @@ export function GuestHouseDashboard() {
         </button>
       </div>
 
-      {/* ── Layer 1: KPIs ──────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link href="/rooms" className="flex flex-col rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
-          <div className="flex items-center justify-between mb-2">
-            <Bed className="h-5 w-5 text-blue-500" />
-            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-              {data.occupancyRate}%
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">Occupied Rooms</p>
-          <p className="font-bold text-lg">{data.occupiedRooms} <span className="text-sm font-normal text-gray-500">/ {data.totalRooms}</span></p>
-        </Link>
-
-        <Link href="/finance" className="flex flex-col rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
-          <TrendingUp className="h-5 w-5 text-green-600 mb-2" />
-          <p className="text-xs text-muted-foreground">Revenue (MTD)</p>
-          <p className="font-bold text-lg">KES {data.revenueThisMonth.toLocaleString()}</p>
-        </Link>
-
-        <Link href="/finance" className="flex flex-col rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
-          <TrendingUp className="h-5 w-5 text-[var(--color-primary)] mb-2" />
-          <p className="text-xs text-muted-foreground">Profit Est (MTD)</p>
-          <p className={`font-bold text-lg ${data.profitThisMonth >= 0 ? 'text-[var(--color-primary)]' : 'text-red-500'}`}>
-            KES {data.profitThisMonth.toLocaleString()}
-          </p>
-        </Link>
-
-        <Link href="/finance" className="flex flex-col rounded-2xl bg-[var(--color-bg-surface)] border hover:bg-[var(--color-bg-base)] transition-colors p-4">
-          <AlertTriangle className={`h-5 w-5 mb-2 ${data.outstandingBalance > 0 ? 'text-red-500' : 'text-gray-400'}`} />
-          <p className="text-xs text-muted-foreground">Outstanding</p>
-          <p className={`font-bold text-lg ${data.outstandingBalance > 0 ? 'text-red-500' : 'text-gray-900'}`}>
-            KES {data.outstandingBalance.toLocaleString()}
-          </p>
-        </Link>
-      </div>
+      {/* ── Layer 1: KPIs — shared StatCard, per-vertical arrangement ─────── */}
+      <DashboardKpiRows rows={GUEST_HOUSE_KPI_ROWS} data={data} />
 
       {/* AI Recommendations */}
       <AiRecommendationsCard recommendations={buildGuestHouseRecommendations(data)} />

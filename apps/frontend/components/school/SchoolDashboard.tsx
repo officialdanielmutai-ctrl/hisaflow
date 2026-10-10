@@ -5,13 +5,15 @@ import { useAuth, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import Link from 'next/link';
 import {
-  Users, GraduationCap, BookOpen, TrendingUp, AlertTriangle,
-  Banknote, CheckCircle2, CircleDollarSign, Clock, Plus, ReceiptText,
+  Users, GraduationCap, BookOpen, AlertTriangle,
+  CircleDollarSign, Clock, ReceiptText,
 } from 'lucide-react';
 import { getSchoolDashboardData, type SchoolDashboardData } from '@/services/analytics.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
 import { format } from 'date-fns';
 import { AiRecommendationsCard, type Recommendation } from '@/components/shared/AiRecommendationsCard';
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
+import { SCHOOL_KPI_ROWS } from '@/features/dashboard/config/school';
 
 function buildSchoolRecommendations(data: SchoolDashboardData): Recommendation[] {
   const recs: Recommendation[] = [];
@@ -53,41 +55,6 @@ function buildSchoolRecommendations(data: SchoolDashboardData): Recommendation[]
   }
 
   return recs;
-}
-
-function KpiCard({
-  href, icon: Icon, iconBg, iconColor, label, value, sub, subColor,
-}: {
-  href?: string;
-  icon: React.ElementType;
-  iconBg: string;
-  iconColor: string;
-  label: string;
-  value: React.ReactNode;
-  sub?: string;
-  subColor?: string;
-}) {
-  const inner = (
-    <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm h-full">
-      <div className="flex items-center gap-3 mb-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${iconBg} shrink-0`}>
-          <Icon className={`h-5 w-5 ${iconColor}`} />
-        </div>
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs font-semibold text-[var(--color-text-secondary)] truncate">{label}</span>
-          <span className="text-2xl font-bold text-[var(--color-text-primary)] leading-tight">{value}</span>
-        </div>
-      </div>
-      {sub && <span className={`text-[10px] font-semibold ${subColor ?? 'text-[var(--color-text-muted)]'}`}>{sub}</span>}
-    </div>
-  );
-
-  if (href) {
-    return (
-      <Link href={href} className="hover:opacity-90 transition-opacity">{inner}</Link>
-    );
-  }
-  return inner;
 }
 
 export function SchoolDashboard() {
@@ -183,47 +150,8 @@ export function SchoolDashboard() {
         </div>
       )}
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <KpiCard
-          href="/students"
-          icon={Users}
-          iconBg="bg-indigo-100"
-          iconColor="text-indigo-600"
-          label="Total Students"
-          value={data.totalStudents}
-          sub="Active enrollment"
-        />
-        <KpiCard
-          href="/school-classes"
-          icon={BookOpen}
-          iconBg="bg-teal-100"
-          iconColor="text-teal-600"
-          label="Active Classes"
-          value={data.totalClasses}
-          sub="Streams included"
-        />
-        <KpiCard
-          href="/school-fees"
-          icon={CheckCircle2}
-          iconBg="bg-green-100"
-          iconColor="text-green-600"
-          label="Fees Collected"
-          value={`KES ${data.fees.totalCollected.toLocaleString()}`}
-          sub={`${data.fees.paidCount} of ${data.fees.totalInvoices} invoices paid`}
-          subColor="text-green-600"
-        />
-        <KpiCard
-          href="/school-fees"
-          icon={Banknote}
-          iconBg="bg-red-100"
-          iconColor="text-red-500"
-          label="Outstanding"
-          value={`KES ${data.fees.outstanding.toLocaleString()}`}
-          sub={`${100 - data.fees.collectionRate}% unpaid`}
-          subColor={data.fees.outstanding > 0 ? 'text-red-500' : 'text-green-600'}
-        />
-      </div>
+      {/* KPI Grid — shared StatCard, per-vertical school arrangement */}
+      <DashboardKpiRows rows={SCHOOL_KPI_ROWS} data={data} />
 
       {/* AI Recommendations */}
       <AiRecommendationsCard recommendations={buildSchoolRecommendations(data)} />

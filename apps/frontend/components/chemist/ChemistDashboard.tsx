@@ -5,14 +5,16 @@ import { useAuth, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import Link from 'next/link';
 import {
-  TrendingUp, AlertTriangle, Package, Plus, Pill,
+  AlertTriangle, Package, Plus, Pill,
   CalendarX, ShoppingCart, Zap, ArrowUpRight, ReceiptText,
-  Activity, Clock, Layers,
+  Clock,
 } from 'lucide-react';
 import { getChemistDashboardData, type ChemistDashboardData } from '@/services/analytics.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
 import { format } from 'date-fns';
 import { AiRecommendationsCard, type Recommendation } from '@/components/shared/AiRecommendationsCard';
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
+import { CHEMIST_KPI_ROWS } from '@/features/dashboard/config/chemist';
 
 // Derive contextual AI recommendations from chemist data
 function buildChemistRecommendations(data: ChemistDashboardData): Recommendation[] {
@@ -155,60 +157,8 @@ export function ChemistDashboard() {
         </Link>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-9 w-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Today&apos;s Sales</p>
-          </div>
-          <p className="text-xl font-bold">KES {data.todaySales.toLocaleString()}</p>
-          <span className="text-[10px] font-semibold text-[var(--color-text-muted)] mt-1">Dispensed today</span>
-        </div>
-
-        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-              <Activity className="h-4 w-4 text-blue-600" />
-            </div>
-            <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Month Sales</p>
-          </div>
-          <p className="text-xl font-bold">KES {data.monthSales.toLocaleString()}</p>
-          <span className="text-[10px] font-semibold text-[var(--color-text-muted)] mt-1">Month to date</span>
-        </div>
-
-        <Link
-          href="/inventory?filter=LOW_STOCK"
-          className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm hover:bg-[var(--color-bg-base)] transition-colors"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-9 w-9 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            </div>
-            <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Low Stock</p>
-          </div>
-          <p className="text-xl font-bold">{data.lowStockCount}</p>
-          <span className={`text-[10px] font-semibold mt-1 ${data.lowStockCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {data.lowStockCount > 0 ? 'Needs restocking' : 'All levels healthy'}
-          </span>
-        </Link>
-
-        <Link
-          href="/inventory"
-          className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm hover:bg-[var(--color-bg-base)] transition-colors"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-9 w-9 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-              <Layers className="h-4 w-4 text-purple-600" />
-            </div>
-            <p className="text-xs font-semibold text-[var(--color-text-secondary)]">Products</p>
-          </div>
-          <p className="text-xl font-bold">{data.totalItems}</p>
-          <span className="text-[10px] font-semibold text-[var(--color-text-muted)] mt-1">Active stock lines</span>
-        </Link>
-      </div>
+      {/* KPI Grid — shared StatCard, per-vertical chemist arrangement */}
+      <DashboardKpiRows rows={CHEMIST_KPI_ROWS} data={data} />
 
       {/* AI Recommendations */}
       <AiRecommendationsCard recommendations={recommendations} />
