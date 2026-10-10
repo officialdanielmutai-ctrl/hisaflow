@@ -1620,3 +1620,23 @@ model TaxSyncQueue {
   @@index([status, nextAttemptAt])
   @@map("tax_sync_queue")
 }
+
+/// Consented, anonymised AI turns captured to build the assistant golden set
+/// (overhaul Duty 2, Section 3.8). Deliberately stores NO organization, user,
+/// conversation or message identifier — only the vertical, the source, the
+/// consent version and a redacted utterance — so a sample cannot be tied back
+/// to a person or tenant. Structured identifiers (email, phone, ID numbers,
+/// URLs) are removed by `redactUtterance` before storage. Free-text names are a
+/// documented limitation to be handled before any sample is promoted into the
+/// golden set.
+model AssistantUtterance {
+  id             String   @id @default(cuid())
+  businessType   String   @map("business_type")
+  source         String
+  redactedText   String   @map("redacted_text") @db.Text
+  consentVersion String   @map("consent_version")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([businessType, createdAt])
+  @@map("assistant_utterances")
+}

@@ -48,6 +48,46 @@ model_list:
       aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
 
+  # ----------------------------------------------------------------------
+  # ASSISTANT POOL — tool-calling only. ORDERED, NOT SHUFFLED.
+  # Each group below has exactly ONE deployment, so `simple-shuffle` has
+  # nothing to shuffle; the `fallbacks` chain gives deterministic, ordered
+  # failover. A conversation therefore stays on the same model until that
+  # model actually fails. Only models that PASSED the tool-calling spike
+  # (`apps/backend/scripts/tool-calling-spike.mjs`, English + Swahili) may be
+  # added here. Tool-calling and Swahili quality differ per provider, so the
+  # order is deliberate until the live eval set says otherwise.
+  # ----------------------------------------------------------------------
+  - model_name: hisaflow-assistant
+    litellm_params:
+      model: groq/openai/gpt-oss-120b
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: hisaflow-assistant-fallback-1
+    litellm_params:
+      model: openrouter/deepseek/deepseek-chat
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: hisaflow-assistant-fallback-2
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  # ----------------------------------------------------------------------
+  # VISION POOL — OCR only (receipt/label images). Same model-gateway path
+  # as every other AI call so the admin provider switch, gateway logging and
+  # (future) LiteLLM budgets cover OCR. Ordered, not shuffled.
+  # ----------------------------------------------------------------------
+  - model_name: hisaflow-vision
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: hisaflow-vision-fallback-1
+    litellm_params:
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+
 # ----------------------------------------------------------------------
 # ROUTER SETTINGS
 # simple-shuffle distributes load across the primary pool.
@@ -68,6 +108,12 @@ router_settings:
 fallbacks:
   - hisaflow-standard:
       - hisaflow-premium
+  - hisaflow-assistant:
+      - hisaflow-assistant-fallback-1
+  - hisaflow-assistant-fallback-1:
+      - hisaflow-assistant-fallback-2
+  - hisaflow-vision:
+      - hisaflow-vision-fallback-1
 
 # ----------------------------------------------------------------------
 # LITELLM GLOBAL SETTINGS

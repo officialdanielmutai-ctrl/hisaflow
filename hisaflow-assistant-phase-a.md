@@ -72,7 +72,7 @@ There is **no conversational/chat surface** in the frontend. A1–A3 are one-sho
 | NOTE | `createNote` | `POST /notes` |
 | GUEST | `guestsService.create` | `POST /guests` |
 | ROOM | `roomsService.create` | `POST /rooms` |
-| BOOKING | **not committed** — deep-links to `/bookings/new?...` | user finishes the form |
+| BOOKING | **committed via `create_booking` → proposal** (owner decision 2026-10-11); the `/bookings/new` deep-link hand-off is retired in Phase B | `POST /bookings` through the executor |
 
 Properties:
 - Review UX exists (edit fields, remove, low-confidence flagging, "Confirm & Apply") — the human-affirms guarantee is partially honoured.
@@ -132,7 +132,7 @@ Shared algorithms that are themselves parity items (must survive the migration):
 
 | Capability | Prompt/owner | Output | Commit |
 |---|---|---|---|
-| Receipt OCR | `OcrService` (Gemini Vision) | Labelled raw text | Feeds A1 parse |
+| Receipt OCR | `OcrService` (now via LiteLLM `hisaflow-vision`) | Labelled raw text | Feeds A1 parse |
 | Label OCR | `OcrService` + LABEL_OCR prompt | One `CREATE` draft | Inventory new-item form |
 | Financial forecast | `FinanceAiService.getForecast` | 4 insights (deterministic fallback) | Read-only |
 | Price suggestions | `FinanceAiService.getPriceSuggestions` | Cost/selling suggestions (fallback) | `PATCH /inventory/:id` after per-item confirm |
@@ -170,6 +170,118 @@ Shared algorithms that are themselves parity items (must survive the migration):
 21. **No feature flag** exists anywhere in the backend to stage the new path per org/vertical.
 22. **Provider tool-calling support is unverified**; `drop_params: true` can silently strip `tools`.
 23. **Observability of provider failures** is `console.error` only.
+
+---
+
+### 4.3 Prioritised net-new tool backlog per vertical
+
+The generic read list in §6.1 is not enough on its own — this is the per-vertical backlog that makes the assistant feel capable. `R` = read (auto-run), `W` = write → proposal, `C` = communicate → proposal. Pri = P0 (parity/urgent), P1 (high value), P2 (later). Every tool maps to an existing domain endpoint so the Phase B executor shares the manual path.
+
+**Shared foundation (all verticals)**
+
+| Pri | Tool | Kind | Maps to | Risk |
+|---|---|---|---|---|
+| P0 | `search_inventory` | R | `GET /inventory` | low |
+| P0 | `get_low_stock` | R | `GET /inventory?filter=LOW_STOCK` | low |
+| P0 | `get_sales_summary` | R | analytics/transactions | low |
+| P0 | `get_finance_overview` | R | `GET /finance/overview` | low |
+| P0 | `get_recent_transactions` | R | `GET /transactions` | low |
+| P0 | `create_note` / `create_task` | W | `POST /notes` | low |
+| P1 | `record_business_expense` | W | `POST /finance/business-transactions` | low |
+| P1 | `create_credit_record` / `record_credit_payment` | W | `POST /finance/credits`, `POST /finance/credits/:id/payments` | med |
+| P2 | `send_sms` / `send_email` / `send_whatsapp` | C | notifications/admin comms (consent-gated) | high |
+
+**DUKA / MINI_MART** (first parity vertical)
+
+| Pri | Tool | Kind | Maps to |
+|---|---|---|---|
+| P0 | `record_sale` / `record_purchase` / `record_wastage` | W | `POST /transactions` |
+| P0 | `create_inventory_item` / `update_inventory_item` | W | `POST /inventory`, `PATCH /inventory/:id` |
+| P0 | `get_stock_level(item)` | R | `GET /inventory` |
+| P1 | `start_stock_count` | W | inventory count flow |
+| P1 | `suggest_reorder` | R | analytics low-stock + top sellers |
+| P2 | `record_customer_credit` | W | `POST /finance/credits` |
+
+**CHEMIST**
+
+| Pri | Tool | Kind | Maps to |
+|---|---|---|---|
+| P0 | `record_sale` / `record_purchase` / `record_wastage` | W | `POST /transactions` |
+| P0 | `create_inventory_item` / `update_inventory_item` | W | inventory endpoints (batch/expiry metadata) |
+| P0 | `list_expiring_batches(days)` | R | analytics/chemist batches |
+| P0 | `record_expiry_writeoff(batch)` | W | `POST /transactions` (WASTAGE, reason expired) |
+| P1 | `get_drug_info(name)` | R | catalog/knowledge (no side effects) |
+| P1 | `dispense_prescription(items[])` | W | multi-action plan over `record_sale` |
+| P2 | `send_refill_reminder(customer)` | C | comms (consent-gated) |
+
+**RESTAURANT**
+
+| Pri | Tool | Kind | Maps to |
+|---|---|---|---|
+| P0 | `record_sale` / `record_purchase` / `record_wastage` | W | `POST /transactions` |
+| P0 | `create_table_order` / `add_order_item` / `close_table_order` | W | `POST/PATCH /table-orders` |
+| P0 | `get_open_tables` | R | `GET /table-orders` |
+| P1 | `record_recipe_consumption(dish, qty)` | W | recipe ingredients → `record_sale` |
+| P1 | `update_menu_price(item)` | W | `PATCH /inventory/:id` |
+| P2 | `send_daily_special` | C | comms |
+
+**GUEST_HOUSE** (owner confirmed bookings commit)
+
+| Pri | Tool | Kind | Maps to |
+|---|---|---|---|
+| P0 | `create_booking` | W | `POST /bookings` (committed via proposal, no deep-link) |
+| P0 | `check_in_booking` / `check_out_booking` | W | `PATCH /bookings/:id/check-in|check-out` |
+| P0 | `add_consumption(booking, items)` | W | `POST /bookings/:id/consumption` |
+| P0 | `create_guest` / `create_room` / `update_room` | W | `POST /guests`, `POST /rooms`, `PATCH /rooms/:id` |
+| P0 | `mark_room_dirty` / `mark_room_clean` | W | `PATCH /rooms/:id` (room status) |
+| P0 | `get_arrivals_departures(date)` | R | analytics/guesthouse + `GET /bookings` |
+| P1 | `generate_booking_invoice` / `record_booking_payment` | W | `GET /invoices/booking/:id`, `POST /invoices/booking/:id/payment` |
+| P1 | `add_invoice_line_item` | W | `POST /invoices/booking/:bookingId/line-items` |
+| P2 | `send_checkout_reminder` | C | comms (consent-gated) |
+
+**SCHOOL**
+
+| Pri | Tool | Kind | Maps to |
+|---|---|---|---|
+| P0 | `create_student` / `update_student` | W | `POST /students`, `PATCH /students/:id` |
+| P0 | `create_class` / `update_class` | W | `POST /school-classes`, `PATCH /school-classes/:id` |
+| P0 | `record_fee_payment(invoice, amount)` | W | `POST /school-fees/invoice/:invoiceId/payments` |
+| P0 | `generate_fee_invoices(term)` | W | `POST /school-fees/generate/:termId` |
+| P0 | `list_fee_defaulters(term)` | R | `GET /school-fees/term/:termId/defaulters` |
+| P0 | `get_fee_summary(term)` | R | `GET /school-fees/term/:termId/summary` |
+| P1 | `issue_fee_invoice(invoice)` / `void_fee_invoice(invoice)` | W | `POST /school-fees/invoice/:id/issue|void` |
+| P1 | `record_supply_issue(item, qty)` | W | `POST /transactions` (SALE) |
+| P2 | `send_fee_reminder(defaulters)` | C | comms (consent-gated, high-risk bulk) |
+
+**WHOLESALER**
+
+| Pri | Tool | Kind | Maps to |
+|---|---|---|---|
+| P0 | `record_sale` / `record_purchase` / `record_wastage` | W | `POST /transactions` |
+| P0 | `record_bulk_sale(client, cartons, item)` | W | `POST /transactions` + packaging multiply |
+| P0 | `list_debtors` | R | `GET /finance/credits` |
+| P0 | `record_credit_payment(client, amount)` | W | `POST /finance/credits/:id/payments` |
+| P1 | `create_tiered_price(item, tiers)` | W | `PATCH /inventory/:id` tiered pricing |
+| P1 | `get_top_sellers(days)` | R | analytics |
+| P2 | `send_statement(client)` | C | comms |
+
+**ISP**
+
+| Pri | Tool | Kind | Maps to |
+|---|---|---|---|
+| P0 | `suspend_subscriber` / `reactivate_subscriber` / `churn_subscriber` | W | `PATCH /subscribers/:id/suspend|reactivate|churn` |
+| P0 | `generate_subscriber_invoice` | W | `POST /isp-invoices/generate` |
+| P0 | `record_subscriber_payment` | W | `POST /isp-invoices/:id/payments` |
+| P0 | `create_subscriber` / `assign_plan` | W | `POST /subscribers`, `PATCH /subscribers/:id` |
+| P0 | `issue_equipment(subscriber, item)` | W | `POST /isp-equipment/issue` |
+| P0 | `create_work_order` / `start_work_order` / `complete_work_order` | W | `POST /work-orders`, `PATCH /work-orders/:id/start|complete` |
+| P0 | `create_ticket` / `resolve_ticket` | W | `POST /tickets`, `PATCH /tickets/:id/resolve` |
+| P0 | `list_overdue_subscribers` / `list_open_tickets` | R | subscribers/tickets |
+| P1 | `test_router(router)` / `router_suspend(subscriber)` | W | `POST /routers/:id/test`, `POST /subscribers/:id/router-suspend` |
+| P1 | `record_fleet_revenue` | R | analytics/ISP dashboard |
+| P2 | `send_suspension_notice(subscriber)` | C | comms (consent, high-risk) |
+
+Phase B/C order: build the shared foundation, then the **first vertical's** P0 set (recommended DUKA), shadow-compare, flag on; then the next vertical. High-risk tools (suspensions, bulk sends, financial changes) get the two-step confirm from §3.6.
 
 ---
 
@@ -275,7 +387,7 @@ Characterization baseline: record what the **current** path does for 5.1–5.6 (
 | Proposal store | none | **Build** additive models (below). Immutable once approved; `argsHash` verified at execution; edits create a new version. |
 | Policy gate | scattered guards + client checks | **Build in code at the execution layer**; default-deny; role/tier/tenant/risk/limits; server injects identity. |
 | Executor | `handleConfirmAll` in React | **Build** server-side executor that calls the **same domain services** the manual UI uses; idempotency + precondition re-check + post-verify + audit. |
-| Provider layer | direct OpenAI SDK → LiteLLM pool | **Keep**, but enable tool-calling and verify per pool model; low temperature for selection/args; provider choice configurable via admin (already has provider management). |
+| Provider layer | direct OpenAI SDK → LiteLLM pool | **Keep**, but the assistant uses a dedicated `hisaflow-assistant` model group (ordered fallbacks, no shuffle, only spike-verified models — §6.6). Tool selection runs at low temperature; provider choice stays configurable via admin. |
 | Observability | `console.error` | **Build** privacy-safe turn/tool/proposal/execution logging + unsupported-intent log. |
 
 ### 6.2 Proposed additive data model (Phase B, additive migration only)
@@ -284,7 +396,7 @@ Characterization baseline: record what the **current** path does for 5.1–5.6 (
 - `AssistantMessage` (id, conversationId, role, content, toolCallsJson, createdAt)
 - `AssistantProposal` (id, organizationId, userId, conversationId, tool, argsJson, argsHash, summary, diff, riskLevel, status `PROPOSED|APPROVED|REJECTED|EXPIRED|EXECUTED|FAILED`, idempotencyKey, version, createdAt, expiresAt, decidedAt, decidedBy, result)
 - `UnsupportedIntent` (id, organizationId, userId, utterance, createdAt)
-- Feature flag: prefer an additive `Organization.assistantEnabled` (or a `FeatureFlag` table) rather than env-only, so rollout is per org/vertical.
+- **Feature flags:** a `FeatureFlag` **table**, not a boolean (owner decision 2026-10-11). Keyed by `key` + scope (`organizationId` / `businessType` / global) with `enabled`, `rolloutPct`, `updatedAt`, `updatedBy`. This lets Phase E switch communication tools on separately from read/write tools and from the assistant itself. `assistant.read`, `assistant.write`, `assistant.communicate`, `assistant.booking` are separate keys.
 
 ### 6.3 Proposed backend module layout
 
@@ -321,16 +433,88 @@ apps/backend/src/modules/assistant/
 
 ---
 
+### 6.6 Provider model group — assistant (owner decision, implemented)
+
+The gateway previously routed `hisaflow-standard` through `simple-shuffle` across five providers, so one conversation could change model every turn and tool-calling/Swahili quality varied unpredictably. The assistant now has its own **ordered, non-shuffled** group in `apps/gateway/config.yaml`:
+
+```
+hisaflow-assistant            → groq/openai/gpt-oss-120b
+hisaflow-assistant-fallback-1 → openrouter/deepseek/deepseek-chat
+hisaflow-assistant-fallback-2 → gemini/gemini-2.5-flash
+```
+
+Each group has exactly **one** deployment, so `simple-shuffle` has nothing to shuffle; the `fallbacks` chain gives deterministic ordered failover. A conversation stays on the same model unless that model actually fails.
+
+**Verification.** `apps/backend/scripts/tool-calling-spike.mjs` probes each model with a real `tools` payload in English and Swahili. Results (2026-10-11, run directly against the providers because the Docker daemon was unavailable locally):
+
+| Model | English | Swahili | Included? |
+|---|---|---|---|
+| `groq/openai/gpt-oss-120b` | PASS (`get_low_stock{limit:5}`) | PASS | yes (primary) |
+| `openrouter/deepseek/deepseek-chat` | PASS | PASS | yes (fallback 1) |
+| `gemini/gemini-2.5-flash` | PASS | PASS | yes (fallback 2) |
+| `groq/qwen/qwen3.8-27b` | 429 quota | 429 quota | no (re-run later) |
+| `cerebras/gpt-oss-120b` | 402 billing | 402 billing | no (re-run later) |
+| `mistral/mistral-medium-latest` | 429 | 429 | no (re-run later) |
+| `bedrock/claude-3-5-sonnet` | no AWS creds in gateway env | — | no (config references it but it is not provisioned) |
+
+**Finding (Duty 3):** the existing `hisaflow-standard` pool references stale/unauthorised model IDs (`groq/llama-3.3-70b-versatile` 404, `cerebras/llama-3.3-70b` 404, `mistral/mistral-large-latest` 403) and the Bedrock fallback has no credentials — the standard path is degraded and must be fixed/verified before Duty 2 depends on it. Logged in the defect log.
+
+### 6.7 OCR — routed through the gateway (owner decision, implemented)
+
+`OcrService` no longer calls Gemini directly with `GEMINI_API_KEY`. It now uses the OpenAI SDK against `litellm.baseUrl` with the dedicated **`hisaflow-vision`** group (`gemini/gemini-2.5-flash` primary → `gemini-2.5-pro` fallback). This puts OCR under the same admin provider switch and gateway request/cost logging as every other AI call, and makes it visible to future LiteLLM budgets. No separate `GEMINI_API_KEY` is needed by the backend for OCR any more. Cost caps still require LiteLLM budget configuration (follow-up task).
+
+### 6.8 Persona and language policy
+
+The small shared system prompt (Section 3.2) carries this; capabilities stay in the registry, not the persona.
+
+- **Language mirroring.** Reply in the language the user writes in. Swahili → Swahili; English → English; mixed/Sheng → match the dominant language and keep the other's key terms. Never correct the user's language.
+- **Tone.** Short, warm, direct. One idea per sentence. No corporate filler, no exclamation spam. Use the user's name sparingly.
+- **Money and units.** Show the currency the org uses (`KES`) and keep figures grouped; state the unit (cartons vs pieces) explicitly in proposals.
+- **Honesty.** Never claim an action was done while it is only proposed; label proposals as "proposed" and results as "done". Never claim a capability that is not in the registry; say what it can do instead and offer the nearest alternative (§3.4 tier 5).
+- **Assumptions.** State them in the proposal ("Assuming today's date; price from your current list") so the user can correct before approving.
+- **Clarify, don't guess.** When ambiguity changes a write, ask one precise question or present candidates (§3.6).
+- **Safety voice.** On high-risk actions, say plainly what will happen and to whom (e.g. recipient count) and require the stronger confirmation.
+- **Language scope note.** Reply-language mirroring is a policy, not a claim of quality; the live eval set explicitly scores Swahili and mixed-language tool selection and argument accuracy per model (§3.8), and the assistant model order can change on that evidence.
+
+### 6.9 Anonymised turn capture (owner decision, implemented)
+
+There was no logging, so there was no real data with which to build the golden set. The current flow now captures consented, anonymised utterances:
+
+- **Additive model** `AssistantUtterance` (migration `20261011000000_add_assistant_utterance`): `business_type`, `source`, `redacted_text`, `consent_version`, `created_at`. **No organization, user, conversation or message id** — the row cannot be tied to a person or tenant.
+- **Backend** `POST /ai-ingestion/capture` (auth + `@OrgContext`), gated by an explicit `consent` flag; `redactUtterance` removes emails, phone numbers (Kenyan and international), URLs and standalone 7+ digit runs before storage. Unit-tested.
+- **Frontend** `AiIngestionPanel` shows an off-by-default consent checkbox (persisted in `localStorage`) and fire-and-forget captures the text after a successful parse (TEXT and RECEIPT_OCR). Capture never blocks or breaks the flow.
+- **Real, authored examples** for the golden set are in §5 and now include authentic Kenyan phrasings (Swahili/Sheng/mixed, "elfu mbili", "2k", "kesho", "/= ") so the draft is usable before captured volume arrives.
+- **Known limitation:** free-text names are not regex-redactable and are not removed; captured samples must be reviewed (or passed through a model-based redactor) before promotion into the golden set. Recorded here rather than silently claimed.
+
+### 6.10 Service-audit fix landed now (double-apply risk)
+
+Rather than wait for Phase B, the partial-failure/retry risk in the current commit loop was fixed this session:
+
+- `lib/ai-action-commit.ts` replaces the inline loop with an idempotent, injectable commit: each action gets an explicit outcome (`applied` / `failed` / `skipped` / `deferred`), an already-`applied` action is **never re-sent**, and per-action errors surface in the UI. Applied actions show an "Applied" badge; the button becomes "Retry remaining (n)".
+- Guarded by `lib/ai-action-commit.spec.ts` (7 cases, including "only the failed action is retried").
+- Phase B still replaces this with the server-side executor; this is the smallest safe fix for the stock-corruption risk today.
+
+---
+
 ## 7. Sign-off checklist (owner)
 
-- [ ] Confirm the parity list (Section 3) is complete for the verticals you care about.
-- [ ] Confirm the gap list (Section 4) matches what you see users attempting.
-- [ ] Confirm the golden-set categories and samples (Section 5), especially Swahili/mixed language.
-- [ ] Confirm the architecture decisions (Section 6), in particular:
-  - [ ] governed write path + off-by-default flag for the old direct-commit path,
-  - [ ] additive `AssistantProposal`/conversation models,
-  - [ ] per-org/vertical feature flag,
-  - [ ] first vertical and first tools for the Phase C parity port,
-  - [ ] tool-calling verification spike before Phase B tools.
+The owner gave the following decisions on 2026-10-11; they are now reflected above and the code they required has landed (see §6.6–6.10).
+
+**Decided**
+- [x] Assistant gets its own ordered, non-shuffled model group limited to spike-verified models (§6.6).
+- [x] Net-new tool backlog per vertical, prioritised (§4.3).
+- [x] Bookings commit as normal proposals rather than a deep-link hand-off (§3.1, §4.3).
+- [x] Double-apply/retry risk fixed now via the service-audit path (§6.10).
+- [x] OCR routed through the gateway `hisaflow-vision` group (§6.7).
+- [x] Consented, anonymised turn capture started now (§6.9).
+- [x] Feature flags are a table, not a boolean, with separate comms keys (§6.2).
+- [x] Persona and language policy defined (§6.8).
+
+**Still needed to start Phase B**
+- [ ] Confirm the parity list (Section 3) and backlog (Section 4.3) cover your verticals.
+- [ ] Confirm the golden-set categories/samples (Section 5), especially Swahili/mixed language.
+- [ ] Confirm the governed-write-path + off-by-default flag decision (§6.4.1).
+- [ ] **Pick the first vertical for the Phase C parity port** (recommendation: DUKA shared foundation, then ISP).
+- [ ] Confirm the tool-calling spike result and that the assistant model order may change once the live eval set exists.
 
 **Phase A is done when you sign off the parity list and this architecture note. No Phase B code will be written before then.**

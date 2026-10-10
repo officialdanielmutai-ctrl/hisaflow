@@ -1,24 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
-import { parseInventoryText, type ParsedAction } from '@/services/ai-ingestion.service';
+import { parseInventoryText, captureUtterance } from '@/services/ai-ingestion.service';
 import { logTransaction } from '@/services/transactions.service';
 import { createInventoryItem, updateInventoryItem } from '@/services/inventory.service';
 import { createNote } from '@/services/notes.service';
 import { guestsService } from '@/services/guests.service';
 import { roomsService } from '@/services/rooms.service';
 import { useRouter } from 'next/navigation';
-import { Trash2, ChevronDown, ChevronUp, Camera } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp, Camera, CheckCircle2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import {
+  commitParsedActions,
+  isConfirmable,
+  type ActionClients,
+  type CommittableAction,
+} from '@/lib/ai-action-commit';
 
 interface AiIngestionPanelProps {
   onCompleted: () => void;
 }
 
-// Editable local copy of a parsed action so the user can tweak before confirming
-type EditableAction = ParsedAction & { _removed?: boolean; _expanded?: boolean };
+const CAPTURE_CONSENT_KEY = 'hisaflow:aiCaptureConsent';
+
+// Editable local copy of a parsed action so the user can tweak before confirming.
+// `_status`/`_error` come from the idempotent commit helper, so a retry never
+// re-applies an action that already succeeded.
+type EditableAction = CommittableAction & { _expanded?: boolean };
 
 export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps) {
   const [text, setText] = useState('');
@@ -26,9 +36,27 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   const [confirming, setConfirming] = useState(false);
   const [actions, setActions] = useState<EditableAction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [captureConsent, setCaptureConsent] = useState(false);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const router = useRouter();
+
+  useEffect(() => {
+    try {
+      setCaptureConsent(window.localStorage.getItem(CAPTURE_CONSENT_KEY) === '1');
+    } catch {
+      // Storage unavailable (private mode) — keep consent off.
+    }
+  }, []);
+
+  const updateCaptureConsent = (value: boolean) => {
+    setCaptureConsent(value);
+    try {
+      window.localStorage.setItem(CAPTURE_CONSENT_KEY, value ? '1' : '0');
+    } catch {
+      // Storage unavailable — the in-memory value still applies this session.
+    }
+  };
 
   const handleParse = async () => {
     if (!membership?.organization.id || !text.trim()) return;
@@ -38,8 +66,9 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     try {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
-      const result = await parseInventoryText(text.trim(), token, membership!.organization.id);
-      setActions(result.map(a => ({ ...a, _removed: false, _expanded: false })));
+      const result = await parseInventoryText(text.trim(), token, membership.organization.id);
+      setActions(result.map(a => ({ ...a, _removed: false, _status: 'pending' as const, _expanded: false })));
+      void captureUtterance(text.trim(), token, membership.organization.id, 'TEXT', captureConsent);
     } catch (err) {
       console.error(err);
       setError('Could not parse. Try again.');
@@ -100,11 +129,12 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
       // 3. Feed extracted text (with confidence flags) to AI
       setText(extractedText);
       const result = await parseInventoryText(extractedText, token, membership.organization.id, 'RECEIPT_OCR');
-      setActions(result.map(a => ({ ...a, _removed: false, _expanded: false })));
+      setActions(result.map(a => ({ ...a, _removed: false, _status: 'pending' as const, _expanded: false })));
+      void captureUtterance(extractedText, token, membership.organization.id, 'RECEIPT_OCR', captureConsent);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || 'Could not process receipt. Try again.');
+      setError(err instanceof Error ? err.message : 'Could not process receipt. Try again.');
     } finally {
       setParsing(false);
       // Reset input
@@ -124,104 +154,121 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     if (!membership?.organization.id) return;
     setConfirming(true);
     setError(null);
-    const orgId = membership!.organization.id;
+    const orgId = membership.organization.id;
 
     try {
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
 
-      const activeActions = actions.filter(a => !a._removed);
-      let bookingAction: EditableAction | undefined;
-
-      for (const action of activeActions) {
-        try {
-          if (action.type === 'SALE' || action.type === 'PURCHASE' || action.type === 'WASTAGE') {
-            if (action.itemId) {
-              await logTransaction(
-                {
-                  itemId: action.itemId,
-                  type: action.type,
-                  quantity: action.quantity,
-                  note: action.type === 'WASTAGE' ? (action.wastageReason ?? 'wastage') : undefined,
-                  clientName: action.clientName,
-                  metadata: action.metadata,
-                  isCredit: action.isCredit,
-                  dueDate: action.dueDate,
-                  creditNotes: action.creditNotes,
-                },
-                token,
-                orgId,
-              );
-            }
-          } else if (action.type === 'CREATE') {
-            await createInventoryItem(
-              {
-                name: action.itemName,
-                unit: action.unit ?? 'pcs',
-                quantity: action.quantity ?? 0,
-                reorderThreshold: action.reorderThreshold ?? 5,
-                category: action.category ?? undefined,
-                costPrice: action.costPrice ?? undefined,
-                sellingPrice: action.sellingPrice ?? undefined,
-              },
-              token,
-              orgId,
-            );
-          } else if (action.type === 'UPDATE' && action.itemId && action.updates) {
-            await updateInventoryItem(action.itemId, action.updates, token, orgId);
-          } else if (action.type === 'NOTE') {
-            await createNote(token, orgId, {
-              title: action.title || action.itemName,
-              content: action.content,
-              importance: action.importance as any,
-              dueDate: action.dueDate,
-              checklistItems: action.checklists,
-            });
-          } else if ((action.type as string) === 'GUEST') {
-            await guestsService.create(
-              {
-                name: action.guestName || action.itemName,
-                phone: (action as any).phone || undefined,
-                email: (action as any).email || undefined,
-                idNumber: (action as any).idNumber || undefined,
-              },
-              token,
-              orgId,
-            );
-          } else if ((action.type as string) === 'ROOM') {
-            await roomsService.create(
-              {
-                name: action.roomName || action.itemName,
-                type: (action as any).roomType || 'Standard',
-                baseRate: (action as any).baseRate || 0,
-                notes: (action as any).notes || undefined,
-              },
-              token,
-              orgId,
-            );
-          } else if (action.type === 'BOOKING') {
-            bookingAction = action;
+      const clients: ActionClients = {
+        logTransaction: async (a) => {
+          if (!a.itemId) throw new Error('No matching inventory item found.');
+          if (a.type !== 'SALE' && a.type !== 'PURCHASE' && a.type !== 'WASTAGE') {
+            throw new Error('Not a stock transaction.');
           }
-        } catch (actionErr) {
-          console.error(`Failed action for "${action.itemName}":`, actionErr);
+          await logTransaction(
+            {
+              itemId: a.itemId,
+              type: a.type,
+              quantity: a.quantity,
+              note: a.type === 'WASTAGE' ? (a.wastageReason ?? 'wastage') : undefined,
+              clientName: a.clientName,
+              metadata: a.metadata,
+              isCredit: a.isCredit,
+              dueDate: a.dueDate,
+              creditNotes: a.creditNotes,
+            },
+            token,
+            orgId,
+          );
+        },
+        createInventoryItem: (a) =>
+          createInventoryItem(
+            {
+              name: a.itemName,
+              unit: a.unit ?? 'pcs',
+              quantity: a.quantity ?? 0,
+              reorderThreshold: a.reorderThreshold ?? 5,
+              category: a.category ?? undefined,
+              costPrice: a.costPrice ?? undefined,
+              sellingPrice: a.sellingPrice ?? undefined,
+            },
+            token,
+            orgId,
+          ),
+        updateInventoryItem: async (a) => {
+          if (!a.itemId || !a.updates) throw new Error('Nothing to update.');
+          await updateInventoryItem(a.itemId, a.updates, token, orgId);
+        },
+        createNote: (a) =>
+          createNote(token, orgId, {
+            title: a.title || a.itemName,
+            content: a.content,
+            importance: a.importance,
+            dueDate: a.dueDate,
+            checklistItems: a.checklists,
+          }),
+        createGuest: (a) =>
+          guestsService.create(
+            {
+              name: a.guestName || a.itemName,
+              phone: a.phone,
+              email: a.email,
+              idNumber: a.idNumber,
+            },
+            token,
+            orgId,
+          ),
+        createRoom: (a) =>
+          roomsService.create(
+            {
+              name: a.roomName || a.itemName,
+              type: a.roomType || 'Standard',
+              baseRate: a.baseRate || 0,
+            },
+            token,
+            orgId,
+          ),
+      };
+
+      const { outcomes, booking } = await commitParsedActions(actions, clients);
+
+      const updated = actions.map((a, i) => {
+        const outcome = outcomes.find((o) => o.index === i);
+        if (!outcome) return a;
+        if (outcome.status === 'applied') {
+          return { ...a, _status: 'applied' as const, _error: undefined };
         }
-      }
+        if (outcome.status === 'failed') {
+          return { ...a, _status: 'failed' as const, _error: outcome.error };
+        }
+        return a;
+      });
 
-      setActions([]);
-      setText('');
-      onCompleted();
+      const failed = outcomes.filter((o) => o.status === 'failed');
+      if (failed.length > 0) {
+        setActions(updated);
+        setError(
+          `${failed.length} action${failed.length > 1 ? 's' : ''} could not be applied. ` +
+            'Only the failed actions will be retried; applied ones will not be sent again.',
+        );
+      } else {
+        setActions([]);
+        setText('');
+        onCompleted();
 
-      if (bookingAction) {
-        const params = new URLSearchParams();
-        if (bookingAction.guestName) params.set('guestName', bookingAction.guestName);
-        if (bookingAction.roomName) params.set('roomName', bookingAction.roomName);
-        if (bookingAction.checkInDate) params.set('checkIn', bookingAction.checkInDate);
-        if (bookingAction.checkOutDate) params.set('checkOut', bookingAction.checkOutDate);
-        router.push(`/bookings/new?${params.toString()}`);
+        if (booking) {
+          const params = new URLSearchParams();
+          if (booking.guestName) params.set('guestName', booking.guestName);
+          if (booking.roomName) params.set('roomName', booking.roomName);
+          if (booking.checkInDate) params.set('checkIn', booking.checkInDate);
+          if (booking.checkOutDate) params.set('checkOut', booking.checkOutDate);
+          router.push(`/bookings/new?${params.toString()}`);
+        }
       }
     } catch (err) {
       console.error('Confirmation failed', err);
-      setError('Something went wrong. Some actions may not have been applied.');
+      setError('Something went wrong. No further actions were submitted.');
     } finally {
       setConfirming(false);
     }
@@ -251,17 +298,9 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     return colorMap[action.type] ?? 'bg-gray-100 text-gray-700';
   };
 
-  const hasConfirmable = actions.some(a => !a._removed && (
-    (a.type === 'SALE' && a.itemId) ||
-    (a.type === 'PURCHASE' && a.itemId) ||
-    (a.type === 'WASTAGE' && a.itemId) ||
-    a.type === 'CREATE' ||
-    a.type === 'NOTE' ||
-    a.type === 'BOOKING' ||
-    (a.type as string) === 'GUEST' ||
-    (a.type as string) === 'ROOM' ||
-    (a.type === 'UPDATE' && a.itemId && a.updates)
-  ));
+  const hasConfirmable = actions.some(isConfirmable);
+  const remainingCount = actions.filter(isConfirmable).length;
+  const appliedCount = actions.filter((a) => a._status === 'applied').length;
 
   const getPlaceholder = () => {
     switch (membership?.organization.businessType) {
@@ -297,6 +336,18 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
+      <label className="flex items-start gap-2 text-xs text-[var(--color-text-secondary)]">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+          checked={captureConsent}
+          onChange={(e) => updateCaptureConsent(e.target.checked)}
+        />
+        <span>
+          Help improve the assistant: save an anonymised copy of this text
+          (emails, phone numbers and ID numbers are removed). Off by default.
+        </span>
+      </label>
       <div className="flex gap-2">
         <button
           onClick={handleParse}
@@ -335,30 +386,31 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
             {actions.map((action, i) => {
               if (action._removed) return null;
               const isExpanded = action._expanded;
+              const isApplied = action._status === 'applied';
 
               return (
                 <div
                   key={i}
                   style={{
                     border: '1px solid',
-                    borderColor: action.confidence === 'LOW' ? '#fbbf24' : '#e5e7eb',
+                    borderColor: action._status === 'failed' ? '#fca5a5' : action.confidence === 'LOW' ? '#fbbf24' : '#e5e7eb',
                     borderRadius: 16, overflow: 'hidden',
-                    opacity: action.confidence === 'LOW' ? 0.7 : 1,
+                    opacity: isApplied || action.confidence === 'LOW' ? 0.7 : 1,
                   }}
                 >
                   {/* Summary row — always visible */}
                   <div
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: 'pointer', background: '#fafafa' }}
-                    onClick={() => updateAction(i, { _expanded: !isExpanded })}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: isApplied ? 'default' : 'pointer', background: '#fafafa' }}
+                    onClick={() => { if (!isApplied) updateAction(i, { _expanded: !isExpanded }); }}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
                       <span style={{ fontWeight: 600, fontSize: 14 }}>
                         {action.type === 'BOOKING'
                           ? `${action.guestName ?? '?'} → ${action.roomName ?? '?'}`
                           : action.type === 'GUEST'
-                          ? (action as any).guestName || action.itemName
+                          ? action.guestName || action.itemName
                           : action.type === 'ROOM'
-                          ? (action as any).roomName || action.itemName
+                          ? action.roomName || action.itemName
                           : action.type === 'UPDATE' ? action.itemName
                           : `${action.quantity}× ${action.itemName}`
                         }
@@ -368,19 +420,33 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
                       )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${actionColor(action)}`}>
-                        {actionLabel(action)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); removeAction(i); }}
-                        style={{ padding: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                      {isExpanded ? <ChevronUp size={16} color="#9ca3af" /> : <ChevronDown size={16} color="#9ca3af" />}
+                      {isApplied ? (
+                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          <CheckCircle2 size={12} /> Applied
+                        </span>
+                      ) : (
+                        <>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${actionColor(action)}`}>
+                            {actionLabel(action)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeAction(i); }}
+                            style={{ padding: 4, border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          {isExpanded ? <ChevronUp size={16} color="#9ca3af" /> : <ChevronDown size={16} color="#9ca3af" />}
+                        </>
+                      )}
                     </div>
                   </div>
+
+                  {action._error && (
+                    <p style={{ margin: 0, padding: '8px 14px', background: '#fef2f2', color: '#b91c1c', fontSize: 12, borderTop: '1px solid #fee2e2' }}>
+                      Could not apply: {action._error}
+                    </p>
+                  )}
 
                   {/* Editable fields — shown when expanded */}
                   {isExpanded && (
@@ -435,39 +501,39 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
                       )}
 
                       {/* GUEST */}
-                      {(action.type as string) === 'GUEST' && (
+                      {action.type === 'GUEST' && (
                         <>
                           <div>
                             <label style={labelStyle}>Full Name</label>
-                            <input style={inputStyle} value={(action as any).guestName ?? action.itemName} onChange={e => updateAction(i, { guestName: e.target.value, itemName: e.target.value })} />
+                            <input style={inputStyle} value={action.guestName ?? action.itemName} onChange={e => updateAction(i, { guestName: e.target.value, itemName: e.target.value })} />
                           </div>
                           <div>
                             <label style={labelStyle}>Phone (Optional)</label>
-                            <input style={inputStyle} type="tel" value={(action as any).phone ?? ''} onChange={e => updateAction(i, { ...(action as any), phone: e.target.value })} />
+                            <input style={inputStyle} type="tel" value={action.phone ?? ''} onChange={e => updateAction(i, { phone: e.target.value })} />
                           </div>
                           <div>
                             <label style={labelStyle}>Email (Optional)</label>
-                            <input style={inputStyle} type="email" value={(action as any).email ?? ''} onChange={e => updateAction(i, { ...(action as any), email: e.target.value })} />
+                            <input style={inputStyle} type="email" value={action.email ?? ''} onChange={e => updateAction(i, { email: e.target.value })} />
                           </div>
                         </>
                       )}
 
                       {/* ROOM */}
-                      {(action.type as string) === 'ROOM' && (
+                      {action.type === 'ROOM' && (
                         <>
                           <div>
                             <label style={labelStyle}>Room Name or Number</label>
-                            <input style={inputStyle} value={(action as any).roomName ?? action.itemName} onChange={e => updateAction(i, { roomName: e.target.value, itemName: e.target.value })} />
+                            <input style={inputStyle} value={action.roomName ?? action.itemName} onChange={e => updateAction(i, { roomName: e.target.value, itemName: e.target.value })} />
                           </div>
                           <div>
                             <label style={labelStyle}>Room Type</label>
-                            <select style={inputStyle} value={(action as any).roomType ?? 'Standard'} onChange={e => updateAction(i, { ...(action as any), roomType: e.target.value })}>
+                            <select style={inputStyle} value={action.roomType ?? 'Standard'} onChange={e => updateAction(i, { roomType: e.target.value })}>
                               {['Single', 'Double', 'Standard', 'Suite', 'Deluxe'].map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                           </div>
                           <div>
                             <label style={labelStyle}>Base Rate Per Night</label>
-                            <input style={inputStyle} type="number" min="0" step="any" value={(action as any).baseRate ?? ''} onChange={e => updateAction(i, { ...(action as any), baseRate: Number(e.target.value) })} />
+                            <input style={inputStyle} type="number" min="0" step="any" value={action.baseRate ?? ''} onChange={e => updateAction(i, { baseRate: Number(e.target.value) })} />
                           </div>
                         </>
                       )}
@@ -513,7 +579,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
                           </div>
                           <div>
                             <label style={labelStyle}>Priority</label>
-                            <select style={inputStyle} value={action.importance ?? 'MEDIUM'} onChange={e => updateAction(i, { importance: e.target.value as any })}>
+                            <select style={inputStyle} value={action.importance ?? 'MEDIUM'} onChange={e => updateAction(i, { importance: e.target.value as CommittableAction['importance'] })}>
                               {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
                           </div>
@@ -531,7 +597,11 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
             disabled={confirming || !hasConfirmable}
             className="mt-4 h-12 w-full rounded-2xl bg-[var(--color-accent)] font-semibold text-white disabled:opacity-50"
           >
-            {confirming ? 'Applying...' : 'Confirm & Apply'}
+            {confirming
+              ? 'Applying...'
+              : appliedCount > 0 && remainingCount > 0
+                ? `Retry remaining (${remainingCount})`
+                : 'Confirm & Apply'}
           </button>
         </div>
       )}

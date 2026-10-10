@@ -1,79 +1,84 @@
 import { InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OcrService } from './ocr.service';
 
-const originalKey = process.env.GEMINI_API_KEY;
-const originalModel = process.env.GEMINI_MODEL;
+// The service proxies OCR through the LiteLLM gateway via the OpenAI SDK.
+// The SDK is mocked so tests never touch a real gateway or provider.
+jest.mock('openai', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
 
-function makeService(key?: string) {
-  if (key === undefined) delete process.env.GEMINI_API_KEY;
-  else process.env.GEMINI_API_KEY = key;
-  return new OcrService();
+import OpenAI from 'openai';
+
+const MockedOpenAI = OpenAI as unknown as jest.Mock;
+
+function build(opts: { baseUrl?: string; apiKey?: string; content?: string; reject?: Error } = {}) {
+  const config = {
+    get: jest.fn((key: string) => {
+      if (key === 'litellm.baseUrl') return opts.baseUrl;
+      if (key === 'litellm.masterKey') return opts.apiKey;
+      return undefined;
+    }),
+  };
+  const create = opts.reject
+    ? jest.fn().mockRejectedValue(opts.reject)
+    : jest.fn().mockResolvedValue({ choices: [{ message: { content: opts.content } }] });
+  MockedOpenAI.mockImplementation(() => ({ chat: { completions: { create } } }));
+  const service = new OcrService(config as unknown as ConfigService);
+  return { service, create };
 }
 
-afterEach(() => {
-  if (originalKey === undefined) delete process.env.GEMINI_API_KEY;
-  else process.env.GEMINI_API_KEY = originalKey;
-  if (originalModel === undefined) delete process.env.GEMINI_MODEL;
-  else process.env.GEMINI_MODEL = originalModel;
-  jest.restoreAllMocks();
-});
+const CONFIGURED = { baseUrl: 'http://litellm.local/v1', apiKey: 'test-key' };
 
 describe('OcrService', () => {
-  it('fails fast when the Gemini key is not configured', async () => {
-    const service = makeService(undefined);
+  beforeEach(() => {
+    MockedOpenAI.mockReset();
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('fails fast when the gateway is not configured', async () => {
+    const { service, create } = build();
 
     await expect(service.extractTextFromImage(Buffer.from('x'))).rejects.toThrow(
       InternalServerErrorException,
     );
+    expect(create).not.toHaveBeenCalled();
   });
 
-  it('returns the text extracted by the vision model', async () => {
-    const service = makeService('test-key');
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        candidates: [{ content: { parts: [{ text: '[CONFIDENCE: HIGH] Rice 2kg' }] } }],
-      }),
-    }) as unknown as typeof fetch;
+  it('returns the text extracted by the vision model through the gateway', async () => {
+    const { service, create } = build({
+      ...CONFIGURED,
+      content: '[CONFIDENCE: HIGH] Rice 2kg',
+    });
 
     await expect(service.extractTextFromImage(Buffer.from('x'))).resolves.toEqual({
       text: '[CONFIDENCE: HIGH] Rice 2kg',
     });
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('generativelanguage.googleapis.com'),
-      expect.objectContaining({ method: 'POST' }),
-    );
+
+    const [request] = create.mock.calls[0];
+    expect(request.model).toBe('hisaflow-vision');
+    expect(request.messages[0].content[1]).toMatchObject({
+      type: 'image_url',
+      image_url: { url: expect.stringContaining('data:image/jpeg;base64,') },
+    });
   });
 
   it('returns empty text when the model reports NO_TEXT_FOUND', async () => {
-    const service = makeService('test-key');
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ candidates: [{ content: { parts: [{ text: 'NO_TEXT_FOUND' }] } }] }),
-    }) as unknown as typeof fetch;
+    const { service } = build({ ...CONFIGURED, content: 'NO_TEXT_FOUND' });
 
     await expect(service.extractTextFromImage(Buffer.from('x'))).resolves.toEqual({ text: '' });
   });
 
-  it('surfaces a provider HTTP error as a 500', async () => {
-    const service = makeService('test-key');
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 429,
-      json: async () => ({ error: 'quota' }),
-    }) as unknown as typeof fetch;
+  it('surfaces a gateway/provider failure as a 500', async () => {
+    const { service } = build({ ...CONFIGURED, reject: new Error('quota exceeded') });
 
     await expect(service.extractTextFromImage(Buffer.from('x'))).rejects.toThrow(
-      'Gemini Vision API returned 429',
-    );
-  });
-
-  it('wraps a network failure as a 500', async () => {
-    const service = makeService('test-key');
-    global.fetch = jest.fn().mockRejectedValue(new Error('socket hang up')) as unknown as typeof fetch;
-
-    await expect(service.extractTextFromImage(Buffer.from('x'))).rejects.toThrow(
-      InternalServerErrorException,
+      'quota exceeded',
     );
   });
 });

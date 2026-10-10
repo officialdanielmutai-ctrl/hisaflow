@@ -30,7 +30,10 @@ function build(
   const organization = {
     findUnique: jest.fn(async () => ({ businessType: opts.businessType ?? 'DUKA' })),
   };
-  const db: any = { inventoryItem, organization };
+  const assistantUtterance = {
+    create: jest.fn(async (_args: { data: Record<string, unknown> }) => ({})),
+  };
+  const db: any = { inventoryItem, organization, assistantUtterance };
 
   const configService = {
     get: jest.fn((key: string) => {
@@ -53,7 +56,7 @@ function build(
     { db } as unknown as PrismaService,
   );
 
-  return { service, inventoryItem, organization, create };
+  return { service, inventoryItem, organization, create, assistantUtterance };
 }
 
 const CONFIGURED = { baseUrl: 'http://litellm.local/v1', apiKey: 'test-key' };
@@ -203,6 +206,53 @@ describe('AiIngestionService', () => {
 
       expect(actions).toHaveLength(2);
       expect(actions.map((a) => a.type)).toEqual(['BOOKING', 'NOTE']);
+    });
+  });
+
+  describe('captureUtterance — consent-gated, anonymised golden-set capture', () => {
+    it('writes nothing without consent', async () => {
+      const { service, assistantUtterance } = build({ ...CONFIGURED });
+
+      await expect(
+        service.captureUtterance('sold 2 unga to john@example.com', ORG, 'TEXT', false),
+      ).resolves.toEqual({ captured: false });
+
+      expect(assistantUtterance.create).not.toHaveBeenCalled();
+    });
+
+    it('redacts identifiers and stores the vertical when consent is given', async () => {
+      const { service, assistantUtterance } = build({ ...CONFIGURED, businessType: 'CHEMIST' });
+
+      await expect(
+        service.captureUtterance('dispensed 2 to John 0712345678', ORG, 'TEXT', true),
+      ).resolves.toEqual({ captured: true });
+
+      expect(assistantUtterance.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          businessType: 'CHEMIST',
+          source: 'TEXT',
+          redactedText: 'dispensed 2 to John [phone]',
+        }),
+      });
+    });
+
+    it('stores no organization identifier in the row', async () => {
+      const { service, assistantUtterance } = build({ ...CONFIGURED });
+
+      await service.captureUtterance('sold 2 unga', ORG, 'TEXT', true);
+
+      const [{ data }] = assistantUtterance.create.mock.calls[0];
+      expect(data).not.toHaveProperty('organizationId');
+      expect(data).not.toHaveProperty('userId');
+    });
+
+    it('skips capture when the redacted text is empty', async () => {
+      const { service, assistantUtterance } = build({ ...CONFIGURED });
+
+      await expect(
+        service.captureUtterance('   ', ORG, 'TEXT', true),
+      ).resolves.toEqual({ captured: false });
+      expect(assistantUtterance.create).not.toHaveBeenCalled();
     });
   });
 

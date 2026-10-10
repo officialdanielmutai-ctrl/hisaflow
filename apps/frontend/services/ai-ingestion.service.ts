@@ -64,3 +64,28 @@ export async function parseInventoryText(
   );
   return response.actions;
 }
+
+/**
+ * Best-effort, consent-gated capture of a user utterance for the assistant
+ * golden set (overhaul Duty 2). The server redacts structured identifiers and
+ * stores no organization/user identity. Capture must never break the user's
+ * flow, so failures are swallowed.
+ */
+export async function captureUtterance(
+  text: string,
+  token: string,
+  organizationId: string,
+  source: 'TEXT' | 'RECEIPT_OCR' | 'LABEL_OCR',
+  consent: boolean,
+): Promise<void> {
+  if (!consent || !text.trim()) return;
+  try {
+    await apiPost('/ai-ingestion/capture', token, organizationId, {
+      text,
+      source,
+      consent,
+    });
+  } catch {
+    // Capture is optional telemetry; never surface it to the user.
+  }
+}

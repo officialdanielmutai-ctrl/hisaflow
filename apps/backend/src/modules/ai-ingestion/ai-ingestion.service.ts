@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import OpenAI from 'openai';
+import {
+  CAPTURE_CONSENT_VERSION,
+  redactUtterance,
+} from './lib/redact-utterance';
 
 export interface ParsedAction {
   // ── Transaction actions ──────────────────────────────────────────
@@ -102,6 +106,40 @@ export class AiIngestionService {
   /** Invalidate cache for an org (call after inventory mutations) */
   invalidateCache(orgId: string) {
     this.inventoryCache.delete(orgId);
+  }
+
+  /**
+   * Store a consented, anonymised utterance for golden-set capture
+   * (overhaul Duty 2, Section 3.8). Never stores organization/user identity.
+   * Returns `{ captured: false }` without a consent flag or if the redacted
+   * text is empty.
+   */
+  async captureUtterance(
+    text: string,
+    orgId: string,
+    source: 'TEXT' | 'RECEIPT_OCR' | 'LABEL_OCR' = 'TEXT',
+    consent = false,
+  ): Promise<{ captured: boolean }> {
+    if (!consent) return { captured: false };
+
+    const redactedText = redactUtterance(text);
+    if (!redactedText) return { captured: false };
+
+    const org = await this.prisma.db.organization.findUnique({
+      where: { id: orgId },
+      select: { businessType: true },
+    });
+
+    await this.prisma.db.assistantUtterance.create({
+      data: {
+        businessType: org?.businessType ?? 'UNKNOWN',
+        source,
+        redactedText,
+        consentVersion: CAPTURE_CONSENT_VERSION,
+      },
+    });
+
+    return { captured: true };
   }
 
   // ── RETRIEVAL LAYER ───────────────────────────────────────────────
