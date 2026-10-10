@@ -188,12 +188,12 @@ export function IspDashboard() {
           {/* Card 1: Monthly Recurring Revenue */}
           <Link
             href="/finance"
-            className="group flex flex-col justify-between rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] p-4 sm:p-5 shadow-xs hover:border-blue-400 hover:shadow-md transition-all"
+            className="group flex flex-col justify-between rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] p-4 sm:p-5 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700 shrink-0">
-                  <CircleDollarSign className="h-4.5 w-4.5" />
+                  <CircleDollarSign className="h-[18px] w-[18px]" />
                 </div>
                 <div>
                   <span className="text-xs font-bold text-blue-900 uppercase tracking-wider block">
@@ -223,12 +223,12 @@ export function IspDashboard() {
           {/* Card 2: Subscriber Network Fleet */}
           <Link
             href="/subscribers"
-            className="group flex flex-col justify-between rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] p-4 sm:p-5 shadow-xs hover:border-emerald-400 hover:shadow-md transition-all"
+            className="group flex flex-col justify-between rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] p-4 sm:p-5 shadow-sm hover:border-emerald-400 hover:shadow-md transition-all"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
-                  <Radio className="h-4.5 w-4.5" />
+                  <Radio className="h-[18px] w-[18px]" />
                 </div>
                 <div>
                   <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider block">
@@ -264,12 +264,12 @@ export function IspDashboard() {
           {/* Card 3: Field Work Orders */}
           <Link
             href="/work-orders"
-            className="group flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 sm:p-5 shadow-xs hover:border-amber-400 hover:shadow-md transition-all"
+            className="group flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 sm:p-5 shadow-sm hover:border-amber-400 hover:shadow-md transition-all"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700 shrink-0">
-                  <Wrench className="h-4.5 w-4.5" />
+                  <Wrench className="h-[18px] w-[18px]" />
                 </div>
                 <div>
                   <span className="text-xs font-bold text-[var(--color-text-primary)] block">
@@ -307,12 +307,12 @@ export function IspDashboard() {
           {/* Card 4: Support Tickets Queue */}
           <Link
             href="/tickets"
-            className="group flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 sm:p-5 shadow-xs hover:border-rose-400 hover:shadow-md transition-all"
+            className="group flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 sm:p-5 shadow-sm hover:border-rose-400 hover:shadow-md transition-all"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700 shrink-0">
-                  <Headphones className="h-4.5 w-4.5" />
+                  <Headphones className="h-[18px] w-[18px]" />
                 </div>
                 <div>
                   <span className="text-xs font-bold text-[var(--color-text-primary)] block">
@@ -353,7 +353,7 @@ export function IspDashboard() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-lg bg-[var(--color-accent)] flex items-center justify-center text-white shadow-xs">
+            <div className="h-6 w-6 rounded-lg bg-[var(--color-accent)] flex items-center justify-center text-white shadow-sm">
               <Sparkles className="h-3.5 w-3.5" />
             </div>
             <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
@@ -396,7 +396,7 @@ export function IspDashboard() {
                   <div className="mt-3">
                     <Link
                       href={topRec.href}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-accent)] bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-accent)]/30 hover:bg-emerald-50 transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-accent)] bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-accent)]/30 hover:bg-emerald-50 transition-colors shadow-sm"
                     >
                       Take action <ArrowUpRight className="h-3.5 w-3.5" />
                     </Link>
@@ -412,7 +412,7 @@ export function IspDashboard() {
               {otherRecs.map((rec, i) => (
                 <div
                   key={i}
-                  className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white/80 border border-green-100/80 shadow-2xs hover:bg-white transition-colors"
+                  className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white/80 border border-green-100/80 shadow-sm hover:bg-white transition-colors"
                 >
                   <div className="flex items-start gap-2.5 min-w-0">
                     <span

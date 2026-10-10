@@ -361,7 +361,7 @@ export default function WorkOrdersPage() {
       {/* ── Dispatch Overview Metrics Ribbon ────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Metric 1: Scheduled */}
-        <div className="flex flex-col justify-between rounded-2xl border border-blue-200/80 bg-blue-50/40 p-3.5 sm:p-4 shadow-2xs min-w-0 overflow-hidden">
+        <div className="flex flex-col justify-between rounded-2xl border border-blue-200/80 bg-blue-50/40 p-3.5 sm:p-4 shadow-sm min-w-0 overflow-hidden">
           <div className="flex items-center justify-between gap-1">
             <span className="text-xs font-bold text-blue-800 uppercase tracking-wider truncate">
               Pending
@@ -377,7 +377,7 @@ export default function WorkOrdersPage() {
         </div>
 
         {/* Metric 2: In Progress */}
-        <div className="flex flex-col justify-between rounded-2xl border border-amber-200/80 bg-amber-50/40 p-3.5 sm:p-4 shadow-2xs min-w-0 overflow-hidden">
+        <div className="flex flex-col justify-between rounded-2xl border border-amber-200/80 bg-amber-50/40 p-3.5 sm:p-4 shadow-sm min-w-0 overflow-hidden">
           <div className="flex items-center justify-between gap-1">
             <span className="text-xs font-bold text-amber-800 uppercase tracking-wider truncate">
               In Field
@@ -393,7 +393,7 @@ export default function WorkOrdersPage() {
         </div>
 
         {/* Metric 3: Completed */}
-        <div className="flex flex-col justify-between rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-3.5 sm:p-4 shadow-2xs min-w-0 overflow-hidden">
+        <div className="flex flex-col justify-between rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-3.5 sm:p-4 shadow-sm min-w-0 overflow-hidden">
           <div className="flex items-center justify-between gap-1">
             <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider truncate">
               Completed
@@ -409,7 +409,7 @@ export default function WorkOrdersPage() {
         </div>
 
         {/* Metric 4: Repairs vs Installs */}
-        <div className="flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3.5 sm:p-4 shadow-2xs min-w-0 overflow-hidden">
+        <div className="flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3.5 sm:p-4 shadow-sm min-w-0 overflow-hidden">
           <div className="flex items-center justify-between gap-1">
             <span className="text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider truncate">
               Total Jobs
@@ -444,7 +444,7 @@ export default function WorkOrdersPage() {
                 onClick={() => setFilterStatus(tab.value)}
                 className={`flex items-center gap-1.5 shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
                   filterStatus === tab.value
-                    ? 'bg-[var(--color-accent)] text-white shadow-xs'
+                    ? 'bg-[var(--color-accent)] text-white shadow-sm'
                     : 'bg-[var(--color-bg-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:border-[var(--color-accent)]/50'
                 }`}
               >
@@ -485,7 +485,7 @@ export default function WorkOrdersPage() {
             placeholder="Search by subscriber name, phone, address, assigned technician, or notes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] pl-10 pr-4 py-2.5 text-xs font-medium outline-none focus:border-[var(--color-accent)] shadow-2xs"
+            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] pl-10 pr-4 py-2.5 text-xs font-medium outline-none focus:border-[var(--color-accent)] shadow-sm"
           />
           {searchQuery && (
             <button
@@ -528,7 +528,7 @@ export default function WorkOrdersPage() {
               setFilterType('ALL');
               setShowModal(true);
             }}
-            className="mt-4 flex items-center gap-1.5 rounded-xl bg-[var(--color-accent)] px-4 py-2 text-xs font-bold text-white shadow-xs hover:opacity-90 transition-opacity"
+            className="mt-4 flex items-center gap-1.5 rounded-xl bg-[var(--color-accent)] px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90 transition-opacity"
           >
             <Plus className="h-4 w-4" />
             Create First Field Dispatch
@@ -545,7 +545,7 @@ export default function WorkOrdersPage() {
             return (
               <div
                 key={wo.id}
-                className="group relative flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 sm:p-5 shadow-xs hover:border-[var(--color-accent)]/50 hover:shadow-md transition-all overflow-hidden"
+                className="group relative flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 sm:p-5 shadow-sm hover:border-[var(--color-accent)]/50 hover:shadow-md transition-all overflow-hidden"
               >
                 {/* Card Top: Type, Status, and Scheduled Date */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--color-border)]/60">
@@ -679,7 +679,7 @@ export default function WorkOrdersPage() {
                         <button
                           disabled={actionLoadingId === wo.id}
                           onClick={() => handleStatusChange(wo.id, 'start')}
-                          className="flex items-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-[11px] font-bold shadow-xs transition-colors disabled:opacity-60 shrink-0"
+                          className="flex items-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm transition-colors disabled:opacity-60 shrink-0"
                         >
                           <Play className="h-3 w-3" />
                           En Route
@@ -699,7 +699,7 @@ export default function WorkOrdersPage() {
                         <button
                           disabled={actionLoadingId === wo.id}
                           onClick={() => handleStatusChange(wo.id, 'complete')}
-                          className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-[11px] font-bold shadow-xs transition-colors disabled:opacity-60 shrink-0"
+                          className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-[11px] font-bold shadow-sm transition-colors disabled:opacity-60 shrink-0"
                         >
                           <CheckCircle2 className="h-3 w-3" />
                           Done
@@ -908,7 +908,7 @@ export default function WorkOrdersPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 rounded-xl bg-[var(--color-accent)] py-2.5 text-xs font-bold text-white shadow-xs hover:opacity-90 disabled:opacity-60 transition-opacity"
+                  className="flex-1 rounded-xl bg-[var(--color-accent)] py-2.5 text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:opacity-60 transition-opacity"
                 >
                   {saving ? 'Scheduling Dispatch…' : 'Schedule Dispatch'}
                 </button>
