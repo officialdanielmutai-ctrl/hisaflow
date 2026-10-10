@@ -7,22 +7,17 @@ import { useMyOrganization } from '@/hooks/useMyOrganization';
 import Link from 'next/link';
 import {
   Wifi,
-  Users,
   Wrench,
   Headphones,
-  CircleDollarSign,
-  TrendingUp,
-  AlertTriangle,
-  Radio,
   Plus,
   ArrowUpRight,
-  ShieldCheck,
-  CheckCircle2,
   Package,
   Sparkles,
 } from 'lucide-react';
 import { getIspDashboard, type IspDashboardData } from '@/services/isp.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
+import { StatCard } from '@/components/system/StatCard';
+import { ISP_KPI_ROWS } from '@/features/dashboard/config/isp';
 
 export interface IspRecommendation {
   action: string;
@@ -181,174 +176,30 @@ export function IspDashboard() {
         </div>
       </div>
 
-      {/* ── Primary KPI Section — Clean Executive Layout ────────────── */}
+      {/* ── KPI cards: shared StatCard, per-vertical ISP arrangement ──── */}
       <div className="flex flex-col gap-4">
-        {/* Tier 1: Featured Hero Cards (Revenue + Active Subscribers) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Card 1: Monthly Recurring Revenue */}
-          <Link
-            href="/finance"
-            className="group flex flex-col justify-between rounded-2xl border border-blue-200/80 bg-gradient-to-br from-blue-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] p-4 sm:p-5 shadow-sm hover:border-blue-400 hover:shadow-md transition-all"
+        {ISP_KPI_ROWS.map((row, rowIndex) => (
+          <div
+            // eslint-disable-next-line react/no-array-index-key
+            key={rowIndex}
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700 shrink-0">
-                  <CircleDollarSign className="h-[18px] w-[18px]" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-blue-900 uppercase tracking-wider block">
-                    Monthly Revenue
-                  </span>
-                  <span className="text-[11px] text-[var(--color-text-secondary)]">
-                    Recurring Invoicing
-                  </span>
-                </div>
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-blue-600 transition-colors shrink-0" />
-            </div>
-
-            <div className="my-1">
-              <p className="text-2xl sm:text-3xl font-black text-[var(--color-text-primary)] tracking-tight">
-                KES {data.monthlyRevenue.toLocaleString()}
-              </p>
-            </div>
-
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              {data.subscribers.active > 0
-                ? `KES ${Math.round(data.monthlyRevenue / data.subscribers.active).toLocaleString()} ARPU / active sub`
-                : 'No billing activity yet'}
-            </p>
-          </Link>
-
-          {/* Card 2: Subscriber Network Fleet */}
-          <Link
-            href="/subscribers"
-            className="group flex flex-col justify-between rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] p-4 sm:p-5 shadow-sm hover:border-emerald-400 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 shrink-0">
-                  <Radio className="h-[18px] w-[18px]" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider block">
-                    Active Subscribers
-                  </span>
-                  <span className="text-[11px] text-[var(--color-text-secondary)]">
-                    Total Fleet: {data.subscribers.total}
-                  </span>
-                </div>
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-[var(--color-text-muted)] group-hover:text-emerald-600 transition-colors shrink-0" />
-            </div>
-
-            <div className="my-1">
-              <p className="text-2xl sm:text-3xl font-black text-[var(--color-text-primary)] tracking-tight">
-                {data.subscribers.active}{' '}
-                <span className="text-base sm:text-lg font-medium text-[var(--color-text-secondary)]">
-                  / {data.subscribers.total}
-                </span>
-              </p>
-            </div>
-
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              {data.subscribers.suspended > 0
-                ? `${data.subscribers.suspended} suspended • ${activePct}% online`
-                : `${activePct}% fleet online`}
-            </p>
-          </Link>
-        </div>
-
-        {/* Tier 2: Operational Action Cards (Field Deployment + Support Queue) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Card 3: Field Work Orders */}
-          <Link
-            href="/work-orders"
-            className="group flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 sm:p-5 shadow-sm hover:border-amber-400 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700 shrink-0">
-                  <Wrench className="h-[18px] w-[18px]" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-[var(--color-text-primary)] block">
-                    Field Work & Dispatch
-                  </span>
-                  <span className="text-[11px] text-[var(--color-text-secondary)]">
-                    Technician Deployments
-                  </span>
-                </div>
-              </div>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                  data.scheduledWorkOrders > 0
-                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                }`}
-              >
-                {data.scheduledWorkOrders > 0 ? `${data.scheduledWorkOrders} Pending` : 'All Clear'}
-              </span>
-            </div>
-
-            <div className="my-1">
-              <p className="text-2xl sm:text-3xl font-black text-[var(--color-text-primary)]">
-                {data.scheduledWorkOrders}
-              </p>
-            </div>
-
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              {data.scheduledWorkOrders > 0
-                ? `${data.scheduledWorkOrders} job${data.scheduledWorkOrders > 1 ? 's' : ''} scheduled`
-                : 'No pending field dispatches'}
-            </p>
-          </Link>
-
-          {/* Card 4: Support Tickets Queue */}
-          <Link
-            href="/tickets"
-            className="group flex flex-col justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 sm:p-5 shadow-sm hover:border-rose-400 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700 shrink-0">
-                  <Headphones className="h-[18px] w-[18px]" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-[var(--color-text-primary)] block">
-                    Support Queue
-                  </span>
-                  <span className="text-[11px] text-[var(--color-text-secondary)]">
-                    Subscriber Complaints
-                  </span>
-                </div>
-              </div>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                  data.openTickets > 0
-                    ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                }`}
-              >
-                {data.openTickets > 0 ? `${data.openTickets} Open` : 'Resolved'}
-              </span>
-            </div>
-
-            <div className="my-1">
-              <p className="text-2xl sm:text-3xl font-black text-[var(--color-text-primary)]">
-                {data.openTickets}
-              </p>
-            </div>
-
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              {data.openTickets > 0
-                ? `${data.openTickets} ticket${data.openTickets > 1 ? 's' : ''} awaiting review`
-                : 'All subscriber tickets resolved'}
-            </p>
-          </Link>
-        </div>
+            {row.map((card) => (
+              <StatCard
+                key={card.id}
+                label={card.label}
+                icon={card.icon}
+                iconTone={card.iconTone}
+                cardTone={card.cardTone}
+                variant={card.variant}
+                href={card.href}
+                className={card.span === 2 ? 'sm:col-span-2' : undefined}
+                {...card.build(data)}
+              />
+            ))}
+          </div>
+        ))}
       </div>
-
       {/* ── AI Operational Recommendations (Smart Recommendations) ──────── */}
       <section>
         <div className="flex items-center justify-between mb-3">

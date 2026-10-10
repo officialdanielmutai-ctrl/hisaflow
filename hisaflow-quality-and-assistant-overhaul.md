@@ -383,9 +383,9 @@ Every prompt below begins with: *Read `hisaflow-quality-and-assistant-overhaul.m
 |---|---|---|
 | P0. Discovery Report | 🟡 In review | Report delivered 2026-10-10 (`hisaflow-overhaul-discovery.md`, read-only). Baseline green: typecheck x4, lint x3 (backend 580 warnings/0 errors), backend 585 + frontend 129 + admin 12 tests. Awaiting owner sign-off and Section 7 answers (seeded staging, health route, vertical scope, compact-number default). |
 | D3. Production services audit | ☐ Not started | Baseline for Duty 2; smoke tests into CI |
-| D1. UI layout audit — ISP KPI cards | 🟡 In progress | Reported defect. Q-001/Q-002 fixed: removed invalid Tailwind v3 utilities (`h-4.5`/`w-4.5` → `h-[18px] w-[18px]`; `shadow-xs`/`shadow-2xs` → `shadow-sm`) in `IspDashboard.tsx` + `work-orders/page.tsx`, with a repo-wide guard (`lib/tailwind-utility-guard.spec.ts`). Q-003/Q-004 (no shared KPI card; inconsistent Tier-1/Tier-2 header slots) and the 7-viewport geometry/screenshot evidence are pending a seeded/staging authenticated environment (Question 1). |
+| D1. UI layout audit — ISP KPI cards | 🟡 In progress | Q-001–Q-004 addressed for ISP: invalid utilities fixed (Q-001/Q-002), shared `StatCard` with slots/variants/states + `lib/kpi-format.ts` (Q-003), consistent header slots (Q-004). ISP KPI row migrated, all ISP features kept (recommendations, fleet status, quick-nav). Guards: `StatCard.spec.tsx`, `kpi-format.spec.ts`, `e2e/tests/dashboard-layout.spec.ts`. Still pending: measured before/after screenshots at the 7 viewports (needs seeded/staging auth, Question 1). |
 | D1. UI layout audit — all other verticals | ☐ Not started | Coverage matrix must reach 100% |
-| D1. KPI/stat component consolidation | ☐ Not started | Only with regression guards |
+| D1. KPI/stat component consolidation | 🟡 In progress | Shared `StatCard` (slots, tones, states, tabular figures, truncation) + `lib/kpi-format.ts` built; ISP arrangement (`features/dashboard/config/isp.ts`) migrated with regression guards. Remaining verticals: chemist, restaurant, school, wholesale, guest house, retail. |
 | D2-A. Assistant discovery & parity list | ☐ Not started | Owner sign-off required |
 | D2-B. Assistant foundation (backend) | ☐ Not started | Single governed write path |
 | D2-C. Parity port, first vertical | ☐ Not started | Flagged, shadow mode |
