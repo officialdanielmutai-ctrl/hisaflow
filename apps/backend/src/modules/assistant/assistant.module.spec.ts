@@ -41,9 +41,9 @@ describe('AssistantModule wiring', () => {
     registry = ref.get(ToolRegistryService);
   });
 
-  it('registers the foundation and ISP providers behind the token', () => {
+  it('registers the foundation, ISP and guest-house providers behind the token', () => {
     const providers = ref.get<AssistantToolProvider[]>(ASSISTANT_TOOL_PROVIDERS);
-    expect(providers).toHaveLength(2);
+    expect(providers).toHaveLength(3);
   });
 
   it('offers only ISP tools to an ISP org', () => {
@@ -62,5 +62,16 @@ describe('AssistantModule wiring', () => {
     const names = registry.listFor(contextFor('DUKA')).map((tool) => tool.name);
     expect(names).toContain('record_sale');
     expect(names).not.toContain('issue_equipment');
+    expect(names).not.toContain('create_booking');
+  });
+
+  it('offers guest-house tools only to a guest-house org', () => {
+    const guestHouse = registry
+      .listFor(contextFor('GUEST_HOUSE'))
+      .map((tool) => tool.name);
+    expect(guestHouse).toContain('create_booking');
+    expect(guestHouse).toContain('add_consumption');
+    expect(guestHouse).not.toContain('issue_equipment');
+    expect(guestHouse).not.toContain('record_sale');
   });
 });

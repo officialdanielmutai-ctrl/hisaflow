@@ -59,6 +59,26 @@ describe('assistant helpers', () => {
     expect(toolLabel('issue_equipment')).toBe('Issue equipment');
   });
 
+  it('generates guest-house suggestions from the guest-house tool set only', () => {
+    const suggestions = suggestionsForTools([
+      tool('list_rooms'),
+      tool('get_arrivals_departures'),
+      tool('create_guest'),
+      tool('create_booking'),
+    ]);
+    expect(suggestions).toEqual([
+      'Which rooms are free?',
+      'Who arrives today?',
+      'Add a new guest',
+      'Book Room 3 for John',
+    ]);
+  });
+
+  it('labels guest-house tools', () => {
+    expect(toolLabel('check_in_booking')).toBe('Check in');
+    expect(toolLabel('add_consumption')).toBe('Add consumption');
+  });
+
   it('extracts diff rows from the stock-transaction shape', () => {
     const rows = extractDiffRows({
       item: 'Maize flour',

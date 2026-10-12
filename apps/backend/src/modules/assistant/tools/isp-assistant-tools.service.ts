@@ -17,6 +17,8 @@ import type { AssistantToolProvider, ToolDefinition } from '../tool.types';
 import {
   asEnum,
   asLimit,
+  asOptionalDate,
+  asOptionalEmail,
   asOptionalEnum,
   asOptionalString,
   asPositiveNumber,
@@ -46,25 +48,6 @@ function balanceOf(invoice: InvoiceTotals): number {
     Number(invoice.consumptionTotal) +
     Number(invoice.roomTotal);
   return Math.round((total - Number(invoice.amountPaid)) * 100) / 100;
-}
-
-function asOptionalEmail(value: unknown): string | undefined {
-  const email = asOptionalString(value, 'email', 200);
-  if (email === undefined) return undefined;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new BadRequestException('"email" must be a valid email address.');
-  }
-  return email;
-}
-
-function asOptionalDate(value: unknown, field: string): string | undefined {
-  const raw = asOptionalString(value, field, 40);
-  if (raw === undefined) return undefined;
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) {
-    throw new BadRequestException(`"${field}" must be a valid date.`);
-  }
-  return date.toISOString();
 }
 
 function planSummary(plan: {

@@ -91,3 +91,40 @@ export function asOptionalEnum<T extends string>(
   if (value === undefined || value === null || value === '') return undefined;
   return asEnum(value, field, allowed);
 }
+
+/** Validates an optional email address. */
+export function asOptionalEmail(
+  value: unknown,
+  field = 'email',
+): string | undefined {
+  const email = asOptionalString(value, field, 200);
+  if (email === undefined) return undefined;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new BadRequestException(`"${field}" must be a valid email address.`);
+  }
+  return email;
+}
+
+/** Validates a required date and normalises it to an ISO string. */
+export function asDate(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new BadRequestException(`"${field}" is required.`);
+  }
+  if (value.length > 40) {
+    throw new BadRequestException(`"${field}" is too long.`);
+  }
+  const date = new Date(value.trim());
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestException(`"${field}" must be a valid date.`);
+  }
+  return date.toISOString();
+}
+
+/** Validates an optional date and normalises it to an ISO string. */
+export function asOptionalDate(
+  value: unknown,
+  field: string,
+): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  return asDate(value, field);
+}

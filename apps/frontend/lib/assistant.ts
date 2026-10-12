@@ -34,6 +34,24 @@ export const TOOL_LABELS: Record<string, string> = {
   complete_work_order: 'Complete work order',
   create_ticket: 'Create ticket',
   resolve_ticket: 'Resolve ticket',
+  // Guest house vertical
+  search_guests: 'Find guest',
+  list_rooms: 'Rooms',
+  list_bookings: 'Bookings',
+  get_arrivals_departures: 'Arrivals & departures',
+  get_booking_invoice: 'Booking invoice',
+  create_guest: 'New guest',
+  create_room: 'New room',
+  update_room: 'Update room',
+  mark_room_dirty: 'Mark room dirty',
+  mark_room_clean: 'Mark room clean',
+  create_booking: 'New booking',
+  check_in_booking: 'Check in',
+  check_out_booking: 'Check out',
+  add_consumption: 'Add consumption',
+  generate_booking_invoice: 'Generate invoice',
+  record_booking_payment: 'Record payment',
+  add_invoice_line_item: 'Add invoice charge',
 };
 
 export function toolLabel(tool: string): string {
@@ -62,6 +80,14 @@ const TOOL_SUGGESTIONS: Record<string, string> = {
   suspend_subscriber: 'Suspend a subscriber',
   issue_equipment: 'Issue a router to a subscriber',
   create_work_order: 'Schedule an installation',
+  // Guest house vertical
+  list_rooms: 'Which rooms are free?',
+  get_arrivals_departures: 'Who arrives today?',
+  create_guest: 'Add a new guest',
+  create_booking: 'Book Room 3 for John',
+  check_in_booking: 'Check in a guest',
+  check_out_booking: 'Check out a guest',
+  add_consumption: 'Add 2 sodas to Room 3',
 };
 
 export function suggestionsForTools(

@@ -1,13 +1,18 @@
 import { Module } from '@nestjs/common';
 import { AiIngestionModule } from '../ai-ingestion/ai-ingestion.module';
+import { BookingsModule } from '../bookings/bookings.module';
+import { GuestsModule } from '../guests/guests.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { InvoicesModule } from '../invoices/invoices.module';
 import { IspModule } from '../isp/isp.module';
 import { NotesModule } from '../notes/notes.module';
+import { RoomsModule } from '../rooms/rooms.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { AssistantController } from './assistant.controller';
 import { AssistantService } from './assistant.service';
 import { AssistantContextService } from './context/assistant-context.service';
 import { AssistantToolsService } from './tools/assistant-tools.service';
+import { GuestHouseAssistantToolsService } from './tools/guesthouse-assistant-tools.service';
 import { IspAssistantToolsService } from './tools/isp-assistant-tools.service';
 import { ToolRegistryService } from './registry/tool-registry.service';
 import { ASSISTANT_TOOL_PROVIDERS } from './tool.types';
@@ -25,22 +30,32 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
 @Module({
   imports: [
     AiIngestionModule,
+    BookingsModule,
+    GuestsModule,
     InventoryModule,
+    InvoicesModule,
     IspModule,
     NotesModule,
+    RoomsModule,
     TransactionsModule,
   ],
   controllers: [AssistantController],
   providers: [
     AssistantToolsService,
     IspAssistantToolsService,
+    GuestHouseAssistantToolsService,
     {
       provide: ASSISTANT_TOOL_PROVIDERS,
       useFactory: (
         foundation: AssistantToolsService,
         isp: IspAssistantToolsService,
-      ) => [foundation, isp],
-      inject: [AssistantToolsService, IspAssistantToolsService],
+        guestHouse: GuestHouseAssistantToolsService,
+      ) => [foundation, isp, guestHouse],
+      inject: [
+        AssistantToolsService,
+        IspAssistantToolsService,
+        GuestHouseAssistantToolsService,
+      ],
     },
     ToolRegistryService,
     FeatureFlagService,

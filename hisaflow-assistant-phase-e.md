@@ -1,8 +1,8 @@
 # HisaFlow — Assistant Redesign: Phase E Implementation Note
 
 **Directive:** `hisaflow-quality-and-assistant-overhaul.md`, Section 3.9 Phase E / Prompt D2-E.
-**Status:** Communicate tools + fallback capture implemented; ISP vertical ported (see `hisaflow-assistant-isp-vertical.md`). Remaining verticals still pending (see §4).
-**Date:** 2026-10-12 (ISP continuation same day).
+**Status:** Communicate tools + fallback capture implemented; ISP and guest-house verticals ported (see `hisaflow-assistant-isp-vertical.md`, `hisaflow-assistant-guesthouse-vertical.md`). Remaining verticals still pending (see §4).
+**Date:** 2026-10-12 (ISP + guest-house continuations same day).
 **Depends on:** Phase B/C/D (`hisaflow-assistant-phase-b.md`, `hisaflow-assistant-phase-d.md`).
 
 ---
@@ -37,7 +37,7 @@
 - Gates: backend `tsc` + **94 suites / 665 Jest tests** + `nest build` + module ESLint; frontend `tsc` + ESLint (assistant clean) + **140 vitest** + `next build`.
 
 ## 4. Remaining (next layers)
-- **Remaining verticals** (school, guest house, chemist, restaurant, wholesale): their P0 tool sets are not yet ported. The communicate + fallback + flag + executor + UI layers are now vertical-agnostic, so each vertical is now "add tools + tests + an arrangement of suggestions". **ISP is done** — see `hisaflow-assistant-isp-vertical.md`.
+- **Remaining verticals** (school, chemist, restaurant, wholesale): their P0 tool sets are not yet ported. The communicate + fallback + flag + executor + UI layers are now vertical-agnostic, so each vertical is now "add tools + tests + an arrangement of suggestions". **ISP and guest house are done** — see `hisaflow-assistant-isp-vertical.md` and `hisaflow-assistant-guesthouse-vertical.md`.
 - **Per-customer consent store** (see the limitation above).
 - Live e2e/screenshots + streaming (carried over from Phase D).
 - Phase F: injection/abuse suite, cost/rate controls, live eval baselines, retirement of the per-vertical capability prompts.
