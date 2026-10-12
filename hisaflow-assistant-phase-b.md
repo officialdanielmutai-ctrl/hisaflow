@@ -85,8 +85,20 @@ The DUKA P0 parity list is now fully covered by tools:
 
 Remaining before Phase C is complete:
 
-- **Shadow-mode comparison** against the existing `ai-ingestion` path on the characterization set. This needs the LLM tool-calling agent loop (provider layer), which is not built yet; the plan is a recorded-response harness so it stays deterministic in CI.
+- **Live shadow run** on the characterization set in staging (flag `assistant.shadow`, default off). The comparator and the flag-gated service are implemented; the live run needs the seeded environment and the configured `hisaflow-assistant` gateway group.
 - Flags stay **default off**.
+
+### Shadow mode (implemented)
+
+- `shadow/shadow-comparison.ts` — pure mapper + comparator: maps legacy `ParsedAction`s to tool calls (`record_sale`, `record_purchase`, `record_wastage`, `create_inventory_item`, `update_inventory_item`, `create_note`), then scores exact / partial (same tool + subject, different args) / missing / extra, order-independently.
+- `shadow/shadow.service.ts` — runs both pipelines (legacy `AiIngestionService.parseInventoryText` + the new `AssistantAgentService`), compares only write tools, and writes an `assistant_audit_logs` `shadow_compare` row. Guarded by the `assistant.shadow` flag.
+- Endpoint: `POST /assistant/shadow`.
+
+### Agent loop (implemented)
+
+- `provider/assistant-provider.service.ts` — the only LiteLLM call site, using the ordered `hisaflow-assistant` model group, `tools`, `tool_choice: auto`, temperature 0.1.
+- `agent/assistant-agent.service.ts` — offers only policy-allowed tools; auto-runs reads; writes create proposals and never commit; caps at 6 tool calls/turn; feeds tool errors back to the model.
+- Endpoint: `POST /assistant/chat`.
 
 ### Vertical scope (confirmed 2026-10-12)
 

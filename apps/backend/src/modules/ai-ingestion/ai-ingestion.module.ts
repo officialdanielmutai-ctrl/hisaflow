@@ -6,5 +6,6 @@ import { PrismaService } from '../../infrastructure/prisma.service';
 @Module({
   controllers: [AiIngestionController],
   providers: [AiIngestionService, PrismaService],
+  exports: [AiIngestionService],
 })
 export class AiIngestionModule {}

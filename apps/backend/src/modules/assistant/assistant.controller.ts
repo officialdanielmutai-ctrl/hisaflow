@@ -11,9 +11,11 @@ import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { AssistantService } from './assistant.service';
+import { AssistantShadowService } from './shadow/shadow.service';
 import { RunToolDto } from './dto/run-tool.dto';
 import { ProposeToolDto } from './dto/propose-tool.dto';
 import { ListProposalsDto } from './dto/list-proposals.dto';
+import { ChatDto } from './dto/chat.dto';
 
 interface AuthenticatedUser {
   id: string;
@@ -23,7 +25,10 @@ interface AuthenticatedUser {
 @UseGuards(ClerkAuthGuard)
 @Controller('assistant')
 export class AssistantController {
-  constructor(private readonly assistant: AssistantService) {}
+  constructor(
+    private readonly assistant: AssistantService,
+    private readonly shadow: AssistantShadowService,
+  ) {}
 
   @Get('tools')
   async tools(
@@ -52,6 +57,34 @@ export class AssistantController {
       Boolean(user.isImpersonated),
     );
     return { result: await this.assistant.runReadTool(ctx, name, dto.args ?? {}) };
+  }
+
+  @Post('chat')
+  async chat(
+    @Body() dto: ChatDto,
+    @OrgContext() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.assistant.chat(
+      orgId,
+      user.id,
+      Boolean(user.isImpersonated),
+      dto.message,
+    );
+  }
+
+  @Post('shadow')
+  async shadowRun(
+    @Body() dto: ChatDto,
+    @OrgContext() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const ctx = await this.assistant.buildContext(
+      orgId,
+      user.id,
+      Boolean(user.isImpersonated),
+    );
+    return { report: await this.shadow.run(ctx, dto.message) };
   }
 
   @Post('proposals')

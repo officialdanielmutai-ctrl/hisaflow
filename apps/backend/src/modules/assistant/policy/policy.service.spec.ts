@@ -117,4 +117,20 @@ describe('AssistantPolicyService', () => {
       service.assertToolAllowed(tool({ kind: 'write' }), CTX),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  it('filters out tools that fail policy (used to shape the model tool list)', async () => {
+    const { service, flags } = build();
+    flags.assertEnabled.mockImplementation(async (key: string) => {
+      if (key === 'assistant.write') {
+        throw new ForbiddenException('assistant.write not enabled');
+      }
+    });
+
+    const allowed = await service.filterTools(
+      [tool({ name: 'read-tool', kind: 'read' }), tool({ name: 'write-tool', kind: 'write' })],
+      CTX,
+    );
+
+    expect(allowed.map((entry) => entry.name)).toEqual(['read-tool']);
+  });
 });

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AiIngestionModule } from '../ai-ingestion/ai-ingestion.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { NotesModule } from '../notes/notes.module';
 import { TransactionsModule } from '../transactions/transactions.module';
@@ -12,9 +13,12 @@ import { AssistantPolicyService } from './policy/policy.service';
 import { ProposalService } from './proposal/proposal.service';
 import { AssistantAuditService } from './executor/assistant-audit.service';
 import { AssistantExecutorService } from './executor/executor.service';
+import { AssistantProviderService } from './provider/assistant-provider.service';
+import { AssistantAgentService } from './agent/assistant-agent.service';
+import { AssistantShadowService } from './shadow/shadow.service';
 
 @Module({
-  imports: [InventoryModule, NotesModule, TransactionsModule],
+  imports: [AiIngestionModule, InventoryModule, NotesModule, TransactionsModule],
   controllers: [AssistantController],
   providers: [
     AssistantToolsService,
@@ -25,6 +29,9 @@ import { AssistantExecutorService } from './executor/executor.service';
     AssistantAuditService,
     AssistantExecutorService,
     AssistantContextService,
+    AssistantProviderService,
+    AssistantAgentService,
+    AssistantShadowService,
     AssistantService,
   ],
   exports: [AssistantService, ToolRegistryService, ProposalService],

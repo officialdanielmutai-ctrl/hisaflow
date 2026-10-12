@@ -1,40 +1,15 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
-import type {
-  AssistantProposal,
-  AssistantProposalStatus,
-} from '@prisma/client';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import type { AssistantProposalStatus } from '@prisma/client';
 import { AssistantContextService } from './context/assistant-context.service';
 import { ToolRegistryService } from './registry/tool-registry.service';
 import { AssistantPolicyService } from './policy/policy.service';
 import { ProposalService } from './proposal/proposal.service';
+import { toPublicProposal } from './proposal/public-proposal';
+import type { PublicProposal } from './proposal/public-proposal';
 import { AssistantExecutorService } from './executor/executor.service';
+import { AssistantAgentService } from './agent/assistant-agent.service';
+import type { AgentResult } from './agent/agent.types';
 import type { ToolContext } from './tool.types';
-
-export interface PublicProposal {
-  id: string;
-  tool: string;
-  summary: string;
-  args: Record<string, unknown>;
-  diff: unknown;
-  riskLevel: string;
-  status: AssistantProposalStatus;
-  version: number;
-  createdAt: string;
-  expiresAt: string;
-  decidedAt: string | null;
-}
-
-function parse(value: string | null): unknown {
-  if (!value) return null;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Application-facing assistant orchestration: list tools, run read tools, and
@@ -49,6 +24,7 @@ export class AssistantService {
     private readonly policy: AssistantPolicyService,
     private readonly proposals: ProposalService,
     private readonly executor: AssistantExecutorService,
+    private readonly agent: AssistantAgentService,
   ) {}
 
   buildContext(
@@ -59,7 +35,11 @@ export class AssistantService {
     return this.context.build(organizationId, userId, isImpersonated);
   }
 
-  async listTools(organizationId: string, userId: string, isImpersonated: boolean) {
+  async listTools(
+    organizationId: string,
+    userId: string,
+    isImpersonated: boolean,
+  ) {
     const ctx = await this.context.build(organizationId, userId, isImpersonated);
     return this.registry.toSchemas(this.registry.listFor(ctx));
   }
@@ -95,7 +75,17 @@ export class AssistantService {
     await this.policy.assertToolAllowed(tool, ctx);
     const draft = await tool.buildProposal(args, ctx);
     const proposal = await this.proposals.create(ctx, tool, draft);
-    return this.toPublic(proposal);
+    return toPublicProposal(proposal);
+  }
+
+  /** Conversational entry point: the tool-calling agent loop. */
+  chat(
+    organizationId: string,
+    userId: string,
+    isImpersonated: boolean,
+    message: string,
+  ): Promise<AgentResult> {
+    return this.agent.run(organizationId, userId, isImpersonated, message);
   }
 
   async listProposals(
@@ -103,7 +93,7 @@ export class AssistantService {
     status?: AssistantProposalStatus,
   ): Promise<PublicProposal[]> {
     const proposals = await this.proposals.list(organizationId, status);
-    return proposals.map((proposal) => this.toPublic(proposal));
+    return proposals.map((proposal) => toPublicProposal(proposal));
   }
 
   async approve(
@@ -111,7 +101,7 @@ export class AssistantService {
     id: string,
     userId: string,
   ): Promise<PublicProposal> {
-    return this.toPublic(
+    return toPublicProposal(
       await this.proposals.approve(organizationId, id, userId),
     );
   }
@@ -121,28 +111,12 @@ export class AssistantService {
     id: string,
     userId: string,
   ): Promise<PublicProposal> {
-    return this.toPublic(
+    return toPublicProposal(
       await this.proposals.reject(organizationId, id, userId),
     );
   }
 
   execute(organizationId: string, ctx: ToolContext, id: string) {
     return this.executor.execute(organizationId, ctx, id);
-  }
-
-  private toPublic(proposal: AssistantProposal): PublicProposal {
-    return {
-      id: proposal.id,
-      tool: proposal.tool,
-      summary: proposal.summary,
-      args: (parse(proposal.argsJson) ?? {}) as Record<string, unknown>,
-      diff: parse(proposal.diffJson),
-      riskLevel: proposal.riskLevel,
-      status: proposal.status,
-      version: proposal.version,
-      createdAt: proposal.createdAt.toISOString(),
-      expiresAt: proposal.expiresAt.toISOString(),
-      decidedAt: proposal.decidedAt ? proposal.decidedAt.toISOString() : null,
-    };
   }
 }

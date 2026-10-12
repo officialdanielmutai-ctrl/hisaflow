@@ -64,4 +64,24 @@ export class AssistantPolicyService {
       businessType: ctx.businessType,
     });
   }
+
+  /** Non-throwing form used to decide which tools the model may be offered. */
+  async isAllowed(tool: ToolDefinition, ctx: ToolContext): Promise<boolean> {
+    try {
+      await this.assertToolAllowed(tool, ctx);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async filterTools(
+    tools: ToolDefinition[],
+    ctx: ToolContext,
+  ): Promise<ToolDefinition[]> {
+    const decisions = await Promise.all(
+      tools.map(async (tool) => ((await this.isAllowed(tool, ctx)) ? tool : null)),
+    );
+    return decisions.filter((tool): tool is ToolDefinition => tool !== null);
+  }
 }

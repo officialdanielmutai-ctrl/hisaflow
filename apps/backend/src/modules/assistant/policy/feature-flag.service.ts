@@ -8,6 +8,7 @@ export const ASSISTANT_FLAGS = {
   write: 'assistant.write',
   communicate: 'assistant.communicate',
   booking: 'assistant.booking',
+  shadow: 'assistant.shadow',
 } as const;
 
 export interface FlagContext {
