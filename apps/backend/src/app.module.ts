@@ -19,6 +19,7 @@ import { GuestsModule } from './modules/guests/guests.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { OcrModule } from './modules/ocr/ocr.module';
+import { AssistantModule } from './modules/assistant/assistant.module';
 // ── Phase 1: Retail / Wholesale ──────────────────────────────────────────────
 import { TieredPricingModule } from './modules/tiered-pricing/tiered-pricing.module';
 // ── Phase 2: Chemist ─────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ import { AdminModule } from './modules/admin/admin.module';
     BookingsModule,
     InvoicesModule,
     OcrModule,
+    AssistantModule,
     // Industry-specific modules
     TieredPricingModule,
     StockBatchesModule,

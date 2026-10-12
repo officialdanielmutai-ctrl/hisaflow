@@ -1640,3 +1640,87 @@ model AssistantUtterance {
   @@index([businessType, createdAt])
   @@map("assistant_utterances")
 }
+
+/// ── Assistant foundation (overhaul Duty 2, Phase B) ─────────────────────
+/// These tables store no relation to Organization on purpose: the assistant
+/// foundation is additive and tenant scoping is enforced in code (repository
+/// helpers + policy gate), so the Organization model is untouched.
+
+enum AssistantProposalStatus {
+  PROPOSED
+  APPROVED
+  REJECTED
+  EXPIRED
+  EXECUTED
+  FAILED
+}
+
+enum FeatureFlagScope {
+  GLOBAL
+  BUSINESS_TYPE
+  ORGANIZATION
+}
+
+/// A durable, immutable-once-approved write/communicate proposal. The
+/// executor runs exactly `argsJson`, verified against `argsHash`.
+model AssistantProposal {
+  id             String                  @id @default(cuid())
+  organizationId String                  @map("organization_id")
+  userId         String                  @map("user_id")
+  conversationId String?                 @map("conversation_id")
+  tool           String
+  argsJson       String                  @map("args_json") @db.Text
+  argsHash       String                  @map("args_hash")
+  summary        String                  @db.Text
+  diffJson       String?                 @map("diff_json") @db.Text
+  riskLevel      String                  @map("risk_level")
+  status         AssistantProposalStatus @default(PROPOSED)
+  idempotencyKey String                  @unique @map("idempotency_key")
+  version        Int                     @default(1)
+  createdAt      DateTime                @default(now()) @map("created_at")
+  expiresAt      DateTime                @map("expires_at")
+  decidedAt      DateTime?               @map("decided_at")
+  decidedBy      String?                 @map("decided_by")
+  executedAt     DateTime?               @map("executed_at")
+  resultJson     String?                 @map("result_json") @db.Text
+  errorMessage   String?                 @map("error_message") @db.Text
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@map("assistant_proposals")
+}
+
+/// Privacy-safe audit trail for the single governed write path.
+model AssistantAuditLog {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  userId         String?  @map("user_id")
+  proposalId     String?  @map("proposal_id")
+  tool           String?
+  action         String
+  detailJson     String?  @map("detail_json") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@index([proposalId])
+  @@map("assistant_audit_logs")
+}
+
+/// Feature flags are a table, not a boolean, so Phase E can switch
+/// communication tools on independently. Resolution order is
+/// ORGANIZATION > BUSINESS_TYPE > GLOBAL, most specific scope wins.
+model FeatureFlag {
+  id         String           @id @default(cuid())
+  key        String
+  scope      FeatureFlagScope @default(GLOBAL)
+  scopeValue String           @default("") @map("scope_value")
+  enabled    Boolean          @default(false)
+  rolloutPct Int              @default(100) @map("rollout_pct")
+  updatedBy  String?          @map("updated_by")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  @@unique([key, scope, scopeValue])
+  @@index([key, scope])
+  @@map("feature_flags")
+}
