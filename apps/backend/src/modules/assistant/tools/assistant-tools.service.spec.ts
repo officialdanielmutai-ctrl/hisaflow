@@ -22,8 +22,13 @@ function build(options: { items?: Array<Record<string, unknown>> } = {}) {
   };
   const notes = { create: jest.fn(async () => ({ id: 'note_1' })) };
   const transactions = { create: jest.fn(async () => ({ id: 'tx_1' })) };
+  const inventory = {
+    create: jest.fn(async () => ({ id: 'product_1' })),
+    updateVariant: jest.fn(async () => ({ id: 'i1' })),
+  };
   const service = new AssistantToolsService(
     { db } as never,
+    inventory as never,
     notes as never,
     transactions as never,
   );
@@ -32,7 +37,7 @@ function build(options: { items?: Array<Record<string, unknown>> } = {}) {
     if (!tool) throw new Error(`missing tool ${name}`);
     return tool;
   };
-  return { service, db, notes, transactions, byName };
+  return { service, db, inventory, notes, transactions, byName };
 }
 
 describe('AssistantToolsService.get_low_stock', () => {
@@ -203,5 +208,76 @@ describe('AssistantToolsService.record_purchase / record_wastage', () => {
       'org_1',
       expect.objectContaining({ actorId: 'user_1' }),
     );
+  });
+});
+
+describe('AssistantToolsService.create_inventory_item', () => {
+  it('normalises the draft and commits through InventoryService', async () => {
+    const { byName, inventory } = build();
+    const tool = byName('create_inventory_item');
+
+    const draft = await tool.buildProposal?.(
+      { name: '  Cooking Oil ', quantity: 5, unit: 'litres', sellingPrice: 300 },
+      CTX,
+    );
+
+    expect(draft?.args).toMatchObject({
+      name: 'Cooking Oil',
+      quantity: 5,
+      unit: 'litres',
+      sellingPrice: 300,
+    });
+
+    await tool.commit?.(draft?.args ?? {}, CTX);
+    expect(inventory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Cooking Oil',
+        quantity: 5,
+        unit: 'litres',
+        sellingPrice: 300,
+      }),
+      'org_1',
+    );
+  });
+});
+
+describe('AssistantToolsService.update_inventory_item', () => {
+  it('scopes the item lookup to the org and updates variant fields', async () => {
+    const { byName, db, inventory } = build({
+      items: [
+        {
+          id: 'i1',
+          name: 'Sugar',
+          unit: 'kg',
+          costPrice: 100,
+          sellingPrice: 120,
+          reorderThreshold: 5,
+        },
+      ],
+    });
+    const tool = byName('update_inventory_item');
+
+    const draft = await tool.buildProposal?.({ itemId: 'i1', sellingPrice: 150 }, CTX);
+
+    expect(db.inventoryItem.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'i1', organizationId: 'org_1' } }),
+    );
+    expect(draft?.args).toEqual({ itemId: 'i1', updates: { sellingPrice: 150 } });
+
+    await tool.commit?.(draft?.args ?? {}, CTX);
+    expect(inventory.updateVariant).toHaveBeenCalledWith(
+      'i1',
+      expect.objectContaining({ sellingPrice: 150 }),
+      'org_1',
+    );
+  });
+
+  it('rejects when no changes are supplied', async () => {
+    const { byName } = build({
+      items: [{ id: 'i1', name: 'Sugar', unit: 'kg' }],
+    });
+    await expect(
+      byName('update_inventory_item').buildProposal?.({ itemId: 'i1' }, CTX),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

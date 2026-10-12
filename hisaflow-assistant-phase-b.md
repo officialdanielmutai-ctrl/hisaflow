@@ -72,7 +72,22 @@ Scope `BUSINESS_TYPE` with `scope_value = 'DUKA'` to gate the first vertical onl
 
 The Phase B done criteria require a staging end-to-end run. There is no seeded Postgres locally (Phase 0 discovery), so this is deferred exactly like the Duty 1 screenshot affirmation: run `POST /assistant/proposals` → `approve` → `execute` against a seeded org once the environment is available.
 
-## 6. Phase C — DUKA parity port (started)
+## 6. Phase C — DUKA parity port
 
-Covered now: `get_low_stock`, `search_inventory`, `record_sale`, `record_purchase`, `record_wastage`.
-Remaining P0 for DUKA parity: `create_inventory_item`, `update_inventory_item` (these must go through `InventoryService`, whose create path spans `Product` + `InventoryItem` — handle carefully), then shadow-mode comparison against the existing `ai-ingestion` path behind a per-org flag. The registry, proposal store, policy gate, executor, audit and flags are all in place for that work.
+The DUKA P0 parity list is now fully covered by tools:
+
+| Priority | Tool | Maps to | Status |
+|---|---|---|---|
+| P0 | `get_low_stock`, `search_inventory` | scoped inventory reads | done |
+| P0 | `record_sale`, `record_purchase`, `record_wastage` | `TransactionsService.create` | done |
+| P0 | `create_inventory_item` | `InventoryService.create` (Product + InventoryItem variant) | done |
+| P0 | `update_inventory_item` | `InventoryService.updateVariant` (name/unit/prices/threshold) | done |
+
+Remaining before Phase C is complete:
+
+- **Shadow-mode comparison** against the existing `ai-ingestion` path on the characterization set. This needs the LLM tool-calling agent loop (provider layer), which is not built yet; the plan is a recorded-response harness so it stays deterministic in CI.
+- Flags stay **default off**.
+
+### Vertical scope (confirmed 2026-10-12)
+
+Only the stock/inventory tools are vertical-gated, and only to the retail group: `verticals: ['DUKA', 'MINI_MART']`. `get_low_stock`, `search_inventory` and `create_note` are the intentionally vertical-agnostic foundation tools from Phase A §4.3; exposure is still controlled by the (default-off) feature flags. No ISP, school, guest-house, chemist, restaurant or wholesaler tool exists in production code.

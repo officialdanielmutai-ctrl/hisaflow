@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma.service';
+import { InventoryService } from '../../inventory/inventory.service';
 import { NotesService } from '../../notes/notes.service';
 import { NoteImportance } from '../../notes/dto/create-note.dto';
 import { TransactionsService } from '../../transactions/transactions.service';
 import { TransactionTypeDto } from '../../transactions/dto/create-transaction.dto';
 import { AppRole } from '../../../core/decorators/roles.decorator';
-import type { ProposalDraft, ToolDefinition } from '../tool.types';
+import type { ToolDefinition } from '../tool.types';
 
 const IMPORTANCE = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 type Importance = (typeof IMPORTANCE)[number];
@@ -55,6 +56,15 @@ function asPositiveNumber(value: unknown, field: string): number {
   return num;
 }
 
+function asOptionalNonNegative(value: unknown, field: string): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const num = typeof value === 'string' ? Number(value) : value;
+  if (typeof num !== 'number' || !Number.isFinite(num) || num < 0) {
+    throw new BadRequestException(`"${field}" must be zero or a positive number.`);
+  }
+  return num;
+}
+
 function asLimit(value: unknown, fallback: number, max = 50): number {
   if (value === undefined) return fallback;
   const requested = asPositiveNumber(value, 'limit');
@@ -99,6 +109,7 @@ interface TransactionToolConfig {
 export class AssistantToolsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly inventory: InventoryService,
     private readonly notes: NotesService,
     private readonly transactions: TransactionsService,
   ) {}
@@ -130,6 +141,8 @@ export class AssistantToolsService {
         direction: 'out',
         wastage: true,
       }),
+      this.createInventoryItem(),
+      this.updateInventoryItem(),
     ];
   }
 
@@ -325,6 +338,178 @@ export class AssistantToolsService {
             actorName: 'Assistant (user-approved)',
             actorRole: ctx.role,
           },
+        );
+      },
+    };
+  }
+
+  // ── write: new inventory item ───────────────────────────────────────────
+  private createInventoryItem(): ToolDefinition {
+    return {
+      name: 'create_inventory_item',
+      description:
+        'Create a new inventory item with an opening quantity. Requires approval.',
+      kind: 'write',
+      riskLevel: 'low',
+      roles: [AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF],
+      verticals: ['DUKA', 'MINI_MART'],
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          unit: { type: 'string' },
+          quantity: { type: 'number' },
+          reorderThreshold: { type: 'number' },
+          costPrice: { type: 'number' },
+          sellingPrice: { type: 'number' },
+          category: { type: 'string' },
+        },
+        required: ['name'],
+        additionalProperties: false,
+      },
+      buildProposal: (raw) => {
+        const args = asRecord(raw);
+        const name = asString(args.name, 'name', 200);
+        const unit = asOptionalString(args.unit, 'unit', 40) ?? 'units';
+        const quantity = asOptionalNonNegative(args.quantity, 'quantity') ?? 0;
+        const normalised = {
+          name,
+          unit,
+          quantity,
+          reorderThreshold: asOptionalNonNegative(
+            args.reorderThreshold,
+            'reorderThreshold',
+          ),
+          costPrice: asOptionalNonNegative(args.costPrice, 'costPrice'),
+          sellingPrice: asOptionalNonNegative(args.sellingPrice, 'sellingPrice'),
+          category: asOptionalString(args.category, 'category', 100),
+        };
+        return {
+          args: normalised,
+          summary: `Create new item “${name}” with ${quantity} ${unit} in stock`,
+          diff: { before: null, after: normalised },
+          riskLevel: 'low',
+        };
+      },
+      commit: async (raw, ctx) => {
+        const args = asRecord(raw);
+        return this.inventory.create(
+          {
+            name: asString(args.name, 'name', 200),
+            unit: asOptionalString(args.unit, 'unit', 40) ?? 'units',
+            quantity: asOptionalNonNegative(args.quantity, 'quantity') ?? 0,
+            reorderThreshold: asOptionalNonNegative(
+              args.reorderThreshold,
+              'reorderThreshold',
+            ),
+            costPrice: asOptionalNonNegative(args.costPrice, 'costPrice'),
+            sellingPrice: asOptionalNonNegative(args.sellingPrice, 'sellingPrice'),
+            category: asOptionalString(args.category, 'category', 100),
+          },
+          ctx.organizationId,
+        );
+      },
+    };
+  }
+
+  // ── write: update an existing inventory item (variant fields) ───────────
+  private updateInventoryItem(): ToolDefinition {
+    return {
+      name: 'update_inventory_item',
+      description:
+        'Change an existing inventory item\u2019s name, unit, prices or reorder threshold. Requires approval.',
+      kind: 'write',
+      riskLevel: 'low',
+      roles: [AppRole.OWNER, AppRole.MANAGER],
+      verticals: ['DUKA', 'MINI_MART'],
+      parameters: {
+        type: 'object',
+        properties: {
+          itemId: { type: 'string' },
+          name: { type: 'string' },
+          unit: { type: 'string' },
+          costPrice: { type: 'number' },
+          sellingPrice: { type: 'number' },
+          reorderThreshold: { type: 'number' },
+        },
+        required: ['itemId'],
+        additionalProperties: false,
+      },
+      buildProposal: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const itemId = asString(args.itemId, 'itemId', 100);
+        const item = await this.prisma.db.inventoryItem.findFirst({
+          where: { id: itemId, organizationId: ctx.organizationId },
+          select: {
+            id: true,
+            name: true,
+            unit: true,
+            costPrice: true,
+            sellingPrice: true,
+            reorderThreshold: true,
+          },
+        });
+        if (!item) {
+          throw new BadRequestException('No matching item in this organization.');
+        }
+        const updates: Record<string, unknown> = {};
+        const name = asOptionalString(args.name, 'name', 200);
+        const unit = asOptionalString(args.unit, 'unit', 40);
+        const costPrice = asOptionalNonNegative(args.costPrice, 'costPrice');
+        const sellingPrice = asOptionalNonNegative(args.sellingPrice, 'sellingPrice');
+        const reorderThreshold = asOptionalNonNegative(
+          args.reorderThreshold,
+          'reorderThreshold',
+        );
+        if (name !== undefined) updates.name = name;
+        if (unit !== undefined) updates.unit = unit;
+        if (costPrice !== undefined) updates.costPrice = costPrice;
+        if (sellingPrice !== undefined) updates.sellingPrice = sellingPrice;
+        if (reorderThreshold !== undefined) updates.reorderThreshold = reorderThreshold;
+        if (Object.keys(updates).length === 0) {
+          throw new BadRequestException('No changes were supplied.');
+        }
+        return {
+          args: { itemId: item.id, updates },
+          summary: `Update ${item.name} (${Object.keys(updates).join(', ')})`,
+          diff: {
+            item: item.name,
+            before: {
+              name: item.name,
+              unit: item.unit,
+              costPrice: item.costPrice == null ? null : Number(item.costPrice),
+              sellingPrice:
+                item.sellingPrice == null ? null : Number(item.sellingPrice),
+              reorderThreshold:
+                item.reorderThreshold == null
+                  ? null
+                  : Number(item.reorderThreshold),
+            },
+            after: updates,
+          },
+          riskLevel: 'low',
+        };
+      },
+      commit: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const itemId = asString(args.itemId, 'itemId', 100);
+        const updates = asRecord(args.updates);
+        return this.inventory.updateVariant(
+          itemId,
+          {
+            name: asOptionalString(updates.name, 'name', 200),
+            unit: asOptionalString(updates.unit, 'unit', 40),
+            costPrice: asOptionalNonNegative(updates.costPrice, 'costPrice'),
+            sellingPrice: asOptionalNonNegative(
+              updates.sellingPrice,
+              'sellingPrice',
+            ),
+            reorderThreshold: asOptionalNonNegative(
+              updates.reorderThreshold,
+              'reorderThreshold',
+            ),
+          },
+          ctx.organizationId,
         );
       },
     };

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { InventoryModule } from '../inventory/inventory.module';
 import { NotesModule } from '../notes/notes.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { AssistantController } from './assistant.controller';
@@ -13,7 +14,7 @@ import { AssistantAuditService } from './executor/assistant-audit.service';
 import { AssistantExecutorService } from './executor/executor.service';
 
 @Module({
-  imports: [NotesModule, TransactionsModule],
+  imports: [InventoryModule, NotesModule, TransactionsModule],
   controllers: [AssistantController],
   providers: [
     AssistantToolsService,
