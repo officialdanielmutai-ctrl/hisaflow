@@ -1,8 +1,8 @@
 # HisaFlow — Assistant Redesign: Phase E Implementation Note
 
 **Directive:** `hisaflow-quality-and-assistant-overhaul.md`, Section 3.9 Phase E / Prompt D2-E.
-**Status:** Communicate tools + fallback capture implemented; ISP, guest-house and school verticals ported (see `hisaflow-assistant-isp-vertical.md`, `hisaflow-assistant-guesthouse-vertical.md`, `hisaflow-assistant-school-vertical.md`). Remaining verticals still pending (see §4).
-**Date:** 2026-10-12 (ISP + guest-house + school continuations same day).
+**Status:** Communicate tools + fallback capture implemented; ISP, guest-house, school and wholesaler verticals ported (see `hisaflow-assistant-isp-vertical.md`, `hisaflow-assistant-guesthouse-vertical.md`, `hisaflow-assistant-school-vertical.md`, `hisaflow-assistant-wholesale-vertical.md`). Remaining verticals still pending (see §4).
+**Date:** 2026-10-12 (ISP + guest-house + school + wholesaler continuations same day).
 **Depends on:** Phase B/C/D (`hisaflow-assistant-phase-b.md`, `hisaflow-assistant-phase-d.md`).
 
 ---
@@ -37,7 +37,7 @@
 - Gates: backend `tsc` + **94 suites / 665 Jest tests** + `nest build` + module ESLint; frontend `tsc` + ESLint (assistant clean) + **140 vitest** + `next build`.
 
 ## 4. Remaining (next layers)
-- **Remaining verticals** (chemist, restaurant, wholesale): their P0 tool sets are not yet ported. The communicate + fallback + flag + executor + UI layers are now vertical-agnostic, so each vertical is now "add tools + tests + an arrangement of suggestions". **ISP, guest house and school are done** — see `hisaflow-assistant-isp-vertical.md`, `hisaflow-assistant-guesthouse-vertical.md` and `hisaflow-assistant-school-vertical.md`.
+- **Remaining verticals** (chemist, restaurant): their P0 tool sets are not yet ported. The communicate + fallback + flag + executor + UI layers are now vertical-agnostic, so each vertical is now "add tools + tests + an arrangement of suggestions". **ISP, guest house, school and wholesaler are done** — see `hisaflow-assistant-isp-vertical.md`, `hisaflow-assistant-guesthouse-vertical.md`, `hisaflow-assistant-school-vertical.md` and `hisaflow-assistant-wholesale-vertical.md`.
 - **Per-customer consent store** (see the limitation above).
 - Live e2e/screenshots + streaming (carried over from Phase D).
 - Phase F: injection/abuse suite, cost/rate controls, live eval baselines, retirement of the per-vertical capability prompts.

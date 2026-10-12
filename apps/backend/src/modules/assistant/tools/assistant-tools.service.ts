@@ -60,6 +60,8 @@ interface TransactionToolConfig {
   /** SALE/WASTAGE reduce stock; PURCHASE increases it. */
   direction: 'out' | 'in';
   wastage?: boolean;
+  /** Business types this stock movement applies to. Defaults to retail. */
+  verticals?: string[];
 }
 
 /**
@@ -96,6 +98,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           'Record stock received or bought from a supplier. Requires approval.',
         type: TransactionTypeDto.PURCHASE,
         direction: 'in',
+        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER'],
       }),
       this.transactionTool({
         name: 'record_wastage',
@@ -104,6 +107,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         type: TransactionTypeDto.WASTAGE,
         direction: 'out',
         wastage: true,
+        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER'],
       }),
       this.createInventoryItem(),
       this.updateInventoryItem(),
@@ -254,7 +258,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       kind: 'write',
       riskLevel: direction === 'in' ? 'low' : 'medium',
       roles: [AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF],
-      verticals: ['DUKA', 'MINI_MART'],
+      verticals: config.verticals ?? ['DUKA', 'MINI_MART'],
       parameters: {
         type: 'object',
         properties: {

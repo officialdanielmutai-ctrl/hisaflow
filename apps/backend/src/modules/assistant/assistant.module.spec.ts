@@ -41,9 +41,9 @@ describe('AssistantModule wiring', () => {
     registry = ref.get(ToolRegistryService);
   });
 
-  it('registers the foundation, ISP, guest-house and school providers behind the token', () => {
+  it('registers the foundation, ISP, guest-house, school and wholesaler providers behind the token', () => {
     const providers = ref.get<AssistantToolProvider[]>(ASSISTANT_TOOL_PROVIDERS);
-    expect(providers).toHaveLength(4);
+    expect(providers).toHaveLength(5);
   });
 
   it('offers only ISP tools to an ISP org', () => {
@@ -83,5 +83,21 @@ describe('AssistantModule wiring', () => {
     expect(school).toContain('record_fee_payment');
     expect(school).not.toContain('create_booking');
     expect(school).not.toContain('issue_equipment');
+  });
+
+  it('offers wholesaler tools and the shared purchase/wastage tools to a wholesaler org', () => {
+    const wholesale = registry
+      .listFor(contextFor('WHOLESALER'))
+      .map((tool) => tool.name);
+    expect(wholesale).toContain('record_wholesale_sale');
+    expect(wholesale).toContain('record_bulk_sale');
+    expect(wholesale).toContain('record_credit_payment');
+    expect(wholesale).toContain('create_tiered_price');
+    // Purchase and wastage are shared stock movements widened to wholesalers.
+    expect(wholesale).toContain('record_purchase');
+    expect(wholesale).toContain('record_wastage');
+    // But retail-only sale and other verticals must not leak in.
+    expect(wholesale).not.toContain('record_sale');
+    expect(wholesale).not.toContain('create_booking');
   });
 });

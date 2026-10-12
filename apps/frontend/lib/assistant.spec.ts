@@ -99,6 +99,26 @@ describe('assistant helpers', () => {
     expect(toolLabel('record_supply_issue')).toBe('Issue supplies');
   });
 
+  it('generates wholesaler suggestions from the wholesaler tool set only', () => {
+    const suggestions = suggestionsForTools([
+      tool('list_debtors'),
+      tool('get_top_sellers'),
+      tool('record_wholesale_sale'),
+      tool('record_bulk_sale'),
+    ]);
+    expect(suggestions).toEqual([
+      'Who owes us money?',
+      'What are our top sellers?',
+      'Sold 20 kg of sugar to Ali',
+      'Sell 50 cartons of soda to Mama Mboga',
+    ]);
+  });
+
+  it('labels wholesaler tools', () => {
+    expect(toolLabel('record_credit_payment')).toBe('Credit payment');
+    expect(toolLabel('create_tiered_price')).toBe('Price tiers');
+  });
+
   it('extracts diff rows from the stock-transaction shape', () => {
     const rows = extractDiffRows({
       item: 'Maize flour',

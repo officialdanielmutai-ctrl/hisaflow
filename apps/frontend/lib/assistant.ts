@@ -68,6 +68,14 @@ export const TOOL_LABELS: Record<string, string> = {
   issue_fee_invoice: 'Issue invoice',
   void_fee_invoice: 'Void invoice',
   record_supply_issue: 'Issue supplies',
+  // Wholesaler vertical
+  list_debtors: 'Debtors',
+  list_packaging_units: 'Packaging units',
+  get_top_sellers: 'Top sellers',
+  record_wholesale_sale: 'Wholesale sale',
+  record_bulk_sale: 'Bulk (carton) sale',
+  record_credit_payment: 'Credit payment',
+  create_tiered_price: 'Price tiers',
 };
 
 export function toolLabel(tool: string): string {
@@ -111,6 +119,13 @@ const TOOL_SUGGESTIONS: Record<string, string> = {
   generate_fee_invoices: 'Generate this term\u2019s invoices',
   record_fee_payment: 'Record a fee payment',
   record_supply_issue: 'Issue exercise books to Form 2',
+  // Wholesaler vertical
+  list_debtors: 'Who owes us money?',
+  get_top_sellers: 'What are our top sellers?',
+  record_wholesale_sale: 'Sold 20 kg of sugar to Ali',
+  record_bulk_sale: 'Sell 50 cartons of soda to Mama Mboga',
+  record_credit_payment: 'Record a credit payment',
+  create_tiered_price: 'Set wholesale prices for sugar',
 };
 
 export function suggestionsForTools(
