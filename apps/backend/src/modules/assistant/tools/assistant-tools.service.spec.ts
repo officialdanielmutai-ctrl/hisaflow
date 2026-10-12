@@ -257,6 +257,37 @@ describe('AssistantToolsService.create_inventory_item', () => {
       'org_1',
     );
   });
+
+  it('carries expiry and batch metadata on the variant when supplied', async () => {
+    const { byName, inventory } = build();
+    const tool = byName('create_inventory_item');
+
+    const draft = await tool.buildProposal?.(
+      {
+        name: 'Amoxil',
+        quantity: 10,
+        unit: 'strips',
+        batchNumber: 'B1',
+        expiryDate: '2027-01-01',
+      },
+      CTX,
+    );
+    expect(draft?.args).toMatchObject({ batchNumber: 'B1' });
+
+    await tool.commit?.(draft?.args ?? {}, CTX);
+    expect(inventory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Amoxil',
+        variants: [
+          expect.objectContaining({
+            batchNumber: 'B1',
+            expiryDate: expect.any(String),
+          }),
+        ],
+      }),
+      'org_1',
+    );
+  });
 });
 
 describe('AssistantToolsService.update_inventory_item', () => {

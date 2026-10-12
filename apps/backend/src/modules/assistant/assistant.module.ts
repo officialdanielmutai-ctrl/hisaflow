@@ -10,6 +10,7 @@ import { NotesModule } from '../notes/notes.module';
 import { RoomsModule } from '../rooms/rooms.module';
 import { SchoolClassesModule } from '../school-classes/school-classes.module';
 import { SchoolFeesModule } from '../school-fees/school-fees.module';
+import { StockBatchesModule } from '../stock-batches/stock-batches.module';
 import { StudentsModule } from '../students/students.module';
 import { TableOrdersModule } from '../table-orders/table-orders.module';
 import { TieredPricingModule } from '../tiered-pricing/tiered-pricing.module';
@@ -23,6 +24,7 @@ import { IspAssistantToolsService } from './tools/isp-assistant-tools.service';
 import { SchoolAssistantToolsService } from './tools/school-assistant-tools.service';
 import { WholesaleAssistantToolsService } from './tools/wholesale-assistant-tools.service';
 import { RestaurantAssistantToolsService } from './tools/restaurant-assistant-tools.service';
+import { ChemistAssistantToolsService } from './tools/chemist-assistant-tools.service';
 import { ToolRegistryService } from './registry/tool-registry.service';
 import { ASSISTANT_TOOL_PROVIDERS } from './tool.types';
 import { FeatureFlagService } from './policy/feature-flag.service';
@@ -49,6 +51,7 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
     RoomsModule,
     SchoolClassesModule,
     SchoolFeesModule,
+    StockBatchesModule,
     StudentsModule,
     TableOrdersModule,
     TieredPricingModule,
@@ -62,6 +65,7 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
     SchoolAssistantToolsService,
     WholesaleAssistantToolsService,
     RestaurantAssistantToolsService,
+    ChemistAssistantToolsService,
     {
       provide: ASSISTANT_TOOL_PROVIDERS,
       useFactory: (
@@ -71,7 +75,16 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
         school: SchoolAssistantToolsService,
         wholesale: WholesaleAssistantToolsService,
         restaurant: RestaurantAssistantToolsService,
-      ) => [foundation, isp, guestHouse, school, wholesale, restaurant],
+        chemist: ChemistAssistantToolsService,
+      ) => [
+        foundation,
+        isp,
+        guestHouse,
+        school,
+        wholesale,
+        restaurant,
+        chemist,
+      ],
       inject: [
         AssistantToolsService,
         IspAssistantToolsService,
@@ -79,6 +92,7 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
         SchoolAssistantToolsService,
         WholesaleAssistantToolsService,
         RestaurantAssistantToolsService,
+        ChemistAssistantToolsService,
       ],
     },
     ToolRegistryService,

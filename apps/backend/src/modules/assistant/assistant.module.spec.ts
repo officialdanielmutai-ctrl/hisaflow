@@ -41,9 +41,9 @@ describe('AssistantModule wiring', () => {
     registry = ref.get(ToolRegistryService);
   });
 
-  it('registers all six vertical providers behind the token', () => {
+  it('registers all seven vertical providers behind the token', () => {
     const providers = ref.get<AssistantToolProvider[]>(ASSISTANT_TOOL_PROVIDERS);
-    expect(providers).toHaveLength(6);
+    expect(providers).toHaveLength(7);
   });
 
   it('offers only ISP tools to an ISP org', () => {
@@ -115,5 +115,19 @@ describe('AssistantModule wiring', () => {
     expect(restaurant).toContain('record_wastage');
     expect(restaurant).not.toContain('record_bulk_sale');
     expect(restaurant).not.toContain('create_booking');
+  });
+
+  it('offers chemist tools and the shared stock items to a chemist org', () => {
+    const chemist = registry
+      .listFor(contextFor('CHEMIST'))
+      .map((tool) => tool.name);
+    expect(chemist).toContain('list_expiring_batches');
+    expect(chemist).toContain('receive_stock_batch');
+    expect(chemist).toContain('record_expiry_writeoff');
+    // Shared stock/item tools are widened to chemists.
+    expect(chemist).toContain('record_sale');
+    expect(chemist).toContain('create_inventory_item');
+    expect(chemist).not.toContain('create_table_order');
+    expect(chemist).not.toContain('issue_equipment');
   });
 });

@@ -139,6 +139,26 @@ describe('assistant helpers', () => {
     expect(toolLabel('update_menu_price')).toBe('Update menu price');
   });
 
+  it('generates chemist suggestions from the chemist tool set only', () => {
+    const suggestions = suggestionsForTools([
+      tool('list_expiring_batches'),
+      tool('get_drug_info'),
+      tool('receive_stock_batch'),
+      tool('record_expiry_writeoff'),
+    ]);
+    expect(suggestions).toEqual([
+      'What is expiring soon?',
+      'Do we have Amoxil?',
+      'Received 50 Amoxil batch B123 exp 12/2027',
+      'Write off expired batches',
+    ]);
+  });
+
+  it('labels chemist tools', () => {
+    expect(toolLabel('receive_stock_batch')).toBe('Receive batch');
+    expect(toolLabel('record_expiry_writeoff')).toBe('Expiry write-off');
+  });
+
   it('extracts diff rows from the stock-transaction shape', () => {
     const rows = extractDiffRows({
       item: 'Maize flour',

@@ -11,6 +11,7 @@ import { AssistantUnsupportedService } from '../unsupported/assistant-unsupporte
 import type { AssistantToolProvider, ToolDefinition } from '../tool.types';
 import {
   asLimit,
+  asOptionalDate,
   asOptionalNonNegative,
   asOptionalString,
   asPositiveNumber,
@@ -91,7 +92,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           'Record a sale of an inventory item to a customer. Requires approval.',
         type: TransactionTypeDto.SALE,
         direction: 'out',
-        verticals: ['DUKA', 'MINI_MART', 'RESTAURANT'],
+        verticals: ['DUKA', 'MINI_MART', 'RESTAURANT', 'CHEMIST'],
       }),
       this.transactionTool({
         name: 'record_purchase',
@@ -99,7 +100,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           'Record stock received or bought from a supplier. Requires approval.',
         type: TransactionTypeDto.PURCHASE,
         direction: 'in',
-        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER', 'RESTAURANT'],
+        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER', 'RESTAURANT', 'CHEMIST'],
       }),
       this.transactionTool({
         name: 'record_wastage',
@@ -108,7 +109,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         type: TransactionTypeDto.WASTAGE,
         direction: 'out',
         wastage: true,
-        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER', 'RESTAURANT'],
+        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER', 'RESTAURANT', 'CHEMIST'],
       }),
       this.createInventoryItem(),
       this.updateInventoryItem(),
@@ -337,7 +338,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       kind: 'write',
       riskLevel: 'low',
       roles: [AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF],
-      verticals: ['DUKA', 'MINI_MART'],
+      verticals: ['DUKA', 'MINI_MART', 'CHEMIST'],
       parameters: {
         type: 'object',
         properties: {
@@ -348,6 +349,8 @@ export class AssistantToolsService implements AssistantToolProvider {
           costPrice: { type: 'number' },
           sellingPrice: { type: 'number' },
           category: { type: 'string' },
+          expiryDate: { type: 'string', description: 'ISO date.' },
+          batchNumber: { type: 'string' },
         },
         required: ['name'],
         additionalProperties: false,
@@ -368,6 +371,8 @@ export class AssistantToolsService implements AssistantToolProvider {
           costPrice: asOptionalNonNegative(args.costPrice, 'costPrice'),
           sellingPrice: asOptionalNonNegative(args.sellingPrice, 'sellingPrice'),
           category: asOptionalString(args.category, 'category', 100),
+          expiryDate: asOptionalDate(args.expiryDate, 'expiryDate'),
+          batchNumber: asOptionalString(args.batchNumber, 'batchNumber', 60),
         };
         return {
           args: normalised,
@@ -378,18 +383,52 @@ export class AssistantToolsService implements AssistantToolProvider {
       },
       commit: async (raw, ctx) => {
         const args = asRecord(raw);
+        const name = asString(args.name, 'name', 200);
+        const unit = asOptionalString(args.unit, 'unit', 40) ?? 'units';
+        const quantity = asOptionalNonNegative(args.quantity, 'quantity') ?? 0;
+        const reorderThreshold = asOptionalNonNegative(
+          args.reorderThreshold,
+          'reorderThreshold',
+        );
+        const costPrice = asOptionalNonNegative(args.costPrice, 'costPrice');
+        const sellingPrice = asOptionalNonNegative(
+          args.sellingPrice,
+          'sellingPrice',
+        );
+        const category = asOptionalString(args.category, 'category', 100);
+        const expiryDate = asOptionalDate(args.expiryDate, 'expiryDate');
+        const batchNumber = asOptionalString(args.batchNumber, 'batchNumber', 60);
+        // Expiry/batch metadata is carried on the variant, so create that way.
+        if (expiryDate !== undefined || batchNumber !== undefined) {
+          return this.inventory.create(
+            {
+              name,
+              category,
+              variants: [
+                {
+                  name: 'Default',
+                  unit,
+                  quantity,
+                  reorderThreshold: reorderThreshold ?? 0,
+                  costPrice,
+                  sellingPrice,
+                  expiryDate,
+                  batchNumber,
+                },
+              ],
+            },
+            ctx.organizationId,
+          );
+        }
         return this.inventory.create(
           {
-            name: asString(args.name, 'name', 200),
-            unit: asOptionalString(args.unit, 'unit', 40) ?? 'units',
-            quantity: asOptionalNonNegative(args.quantity, 'quantity') ?? 0,
-            reorderThreshold: asOptionalNonNegative(
-              args.reorderThreshold,
-              'reorderThreshold',
-            ),
-            costPrice: asOptionalNonNegative(args.costPrice, 'costPrice'),
-            sellingPrice: asOptionalNonNegative(args.sellingPrice, 'sellingPrice'),
-            category: asOptionalString(args.category, 'category', 100),
+            name,
+            unit,
+            quantity,
+            reorderThreshold,
+            costPrice,
+            sellingPrice,
+            category,
           },
           ctx.organizationId,
         );
@@ -406,7 +445,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       kind: 'write',
       riskLevel: 'low',
       roles: [AppRole.OWNER, AppRole.MANAGER],
-      verticals: ['DUKA', 'MINI_MART'],
+      verticals: ['DUKA', 'MINI_MART', 'CHEMIST'],
       parameters: {
         type: 'object',
         properties: {

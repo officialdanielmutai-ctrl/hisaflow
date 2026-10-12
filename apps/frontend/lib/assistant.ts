@@ -85,6 +85,11 @@ export const TOOL_LABELS: Record<string, string> = {
   close_table_order: 'Close table order',
   record_recipe_consumption: 'Record dish sold',
   update_menu_price: 'Update menu price',
+  // Chemist vertical
+  list_expiring_batches: 'Expiring batches',
+  get_drug_info: 'Medicine lookup',
+  receive_stock_batch: 'Receive batch',
+  record_expiry_writeoff: 'Expiry write-off',
 };
 
 export function toolLabel(tool: string): string {
@@ -142,6 +147,11 @@ const TOOL_SUGGESTIONS: Record<string, string> = {
   close_table_order: 'Close Table 3',
   record_recipe_consumption: 'Sold 3 biryani',
   update_menu_price: 'Change the price of biryani',
+  // Chemist vertical
+  list_expiring_batches: 'What is expiring soon?',
+  get_drug_info: 'Do we have Amoxil?',
+  receive_stock_batch: 'Received 50 Amoxil batch B123 exp 12/2027',
+  record_expiry_writeoff: 'Write off expired batches',
 };
 
 export function suggestionsForTools(
