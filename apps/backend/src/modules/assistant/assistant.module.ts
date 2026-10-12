@@ -7,6 +7,9 @@ import { InvoicesModule } from '../invoices/invoices.module';
 import { IspModule } from '../isp/isp.module';
 import { NotesModule } from '../notes/notes.module';
 import { RoomsModule } from '../rooms/rooms.module';
+import { SchoolClassesModule } from '../school-classes/school-classes.module';
+import { SchoolFeesModule } from '../school-fees/school-fees.module';
+import { StudentsModule } from '../students/students.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { AssistantController } from './assistant.controller';
 import { AssistantService } from './assistant.service';
@@ -14,6 +17,7 @@ import { AssistantContextService } from './context/assistant-context.service';
 import { AssistantToolsService } from './tools/assistant-tools.service';
 import { GuestHouseAssistantToolsService } from './tools/guesthouse-assistant-tools.service';
 import { IspAssistantToolsService } from './tools/isp-assistant-tools.service';
+import { SchoolAssistantToolsService } from './tools/school-assistant-tools.service';
 import { ToolRegistryService } from './registry/tool-registry.service';
 import { ASSISTANT_TOOL_PROVIDERS } from './tool.types';
 import { FeatureFlagService } from './policy/feature-flag.service';
@@ -37,6 +41,9 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
     IspModule,
     NotesModule,
     RoomsModule,
+    SchoolClassesModule,
+    SchoolFeesModule,
+    StudentsModule,
     TransactionsModule,
   ],
   controllers: [AssistantController],
@@ -44,17 +51,20 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
     AssistantToolsService,
     IspAssistantToolsService,
     GuestHouseAssistantToolsService,
+    SchoolAssistantToolsService,
     {
       provide: ASSISTANT_TOOL_PROVIDERS,
       useFactory: (
         foundation: AssistantToolsService,
         isp: IspAssistantToolsService,
         guestHouse: GuestHouseAssistantToolsService,
-      ) => [foundation, isp, guestHouse],
+        school: SchoolAssistantToolsService,
+      ) => [foundation, isp, guestHouse, school],
       inject: [
         AssistantToolsService,
         IspAssistantToolsService,
         GuestHouseAssistantToolsService,
+        SchoolAssistantToolsService,
       ],
     },
     ToolRegistryService,

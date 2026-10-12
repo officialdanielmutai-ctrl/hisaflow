@@ -52,6 +52,22 @@ export const TOOL_LABELS: Record<string, string> = {
   generate_booking_invoice: 'Generate invoice',
   record_booking_payment: 'Record payment',
   add_invoice_line_item: 'Add invoice charge',
+  // School vertical
+  search_students: 'Find student',
+  list_classes: 'Classes',
+  list_academic_terms: 'Academic terms',
+  list_fee_defaulters: 'Fee defaulters',
+  get_fee_summary: 'Fee summary',
+  list_fee_invoices: 'Fee invoices',
+  create_student: 'New student',
+  update_student: 'Update student',
+  create_class: 'New class',
+  update_class: 'Update class',
+  generate_fee_invoices: 'Generate fee invoices',
+  record_fee_payment: 'Record fee payment',
+  issue_fee_invoice: 'Issue invoice',
+  void_fee_invoice: 'Void invoice',
+  record_supply_issue: 'Issue supplies',
 };
 
 export function toolLabel(tool: string): string {
@@ -88,6 +104,13 @@ const TOOL_SUGGESTIONS: Record<string, string> = {
   check_in_booking: 'Check in a guest',
   check_out_booking: 'Check out a guest',
   add_consumption: 'Add 2 sodas to Room 3',
+  // School vertical
+  list_fee_defaulters: 'Who has not paid fees?',
+  get_fee_summary: 'Fee collection summary',
+  create_student: 'Enrol a new student',
+  generate_fee_invoices: 'Generate this term\u2019s invoices',
+  record_fee_payment: 'Record a fee payment',
+  record_supply_issue: 'Issue exercise books to Form 2',
 };
 
 export function suggestionsForTools(

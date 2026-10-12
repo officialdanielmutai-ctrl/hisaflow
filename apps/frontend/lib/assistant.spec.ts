@@ -79,6 +79,26 @@ describe('assistant helpers', () => {
     expect(toolLabel('add_consumption')).toBe('Add consumption');
   });
 
+  it('generates school suggestions from the school tool set only', () => {
+    const suggestions = suggestionsForTools([
+      tool('list_fee_defaulters'),
+      tool('get_fee_summary'),
+      tool('create_student'),
+      tool('generate_fee_invoices'),
+    ]);
+    expect(suggestions).toEqual([
+      'Who has not paid fees?',
+      'Fee collection summary',
+      'Enrol a new student',
+      'Generate this term\u2019s invoices',
+    ]);
+  });
+
+  it('labels school tools', () => {
+    expect(toolLabel('record_fee_payment')).toBe('Record fee payment');
+    expect(toolLabel('record_supply_issue')).toBe('Issue supplies');
+  });
+
   it('extracts diff rows from the stock-transaction shape', () => {
     const rows = extractDiffRows({
       item: 'Maize flour',
