@@ -39,6 +39,26 @@ describe('assistant helpers', () => {
     expect(toolLabel('some_new_tool')).toBe('some new tool');
   });
 
+  it('generates ISP suggestions from the ISP tool set only', () => {
+    const suggestions = suggestionsForTools([
+      tool('list_overdue_subscribers'),
+      tool('create_subscriber'),
+      tool('record_subscriber_payment'),
+      tool('suspend_subscriber'),
+    ]);
+    expect(suggestions).toEqual([
+      'Who is overdue?',
+      'Add a new subscriber',
+      'Record an M-Pesa payment',
+      'Suspend a subscriber',
+    ]);
+  });
+
+  it('labels ISP tools', () => {
+    expect(toolLabel('generate_subscriber_invoice')).toBe('Generate invoice');
+    expect(toolLabel('issue_equipment')).toBe('Issue equipment');
+  });
+
   it('extracts diff rows from the stock-transaction shape', () => {
     const rows = extractDiffRows({
       item: 'Maize flour',

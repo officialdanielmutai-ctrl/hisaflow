@@ -4,7 +4,7 @@ import type {
   AssistantToolSchema,
 } from '@/services/assistant.service';
 
-/** Human labels for the DUKA tool registry (unknown tools fall back to name). */
+/** Human labels for the tool registry (unknown tools fall back to name). */
 export const TOOL_LABELS: Record<string, string> = {
   get_low_stock: 'Low stock',
   search_inventory: 'Inventory search',
@@ -14,6 +14,26 @@ export const TOOL_LABELS: Record<string, string> = {
   create_inventory_item: 'New inventory item',
   update_inventory_item: 'Update inventory item',
   create_note: 'Create note',
+  // ISP vertical
+  search_subscribers: 'Find subscriber',
+  list_service_plans: 'Service plans',
+  list_subscriber_invoices: 'Subscriber invoices',
+  list_work_orders: 'Work orders',
+  list_overdue_subscribers: 'Overdue subscribers',
+  list_open_tickets: 'Open tickets',
+  create_subscriber: 'New subscriber',
+  assign_plan: 'Assign plan',
+  suspend_subscriber: 'Suspend subscriber',
+  reactivate_subscriber: 'Reactivate subscriber',
+  churn_subscriber: 'Churn subscriber',
+  generate_subscriber_invoice: 'Generate invoice',
+  record_subscriber_payment: 'Record payment',
+  issue_equipment: 'Issue equipment',
+  create_work_order: 'Create work order',
+  start_work_order: 'Start work order',
+  complete_work_order: 'Complete work order',
+  create_ticket: 'Create ticket',
+  resolve_ticket: 'Resolve ticket',
 };
 
 export function toolLabel(tool: string): string {
@@ -33,6 +53,15 @@ const TOOL_SUGGESTIONS: Record<string, string> = {
   create_inventory_item: 'Add a new item: 5 litres cooking oil',
   update_inventory_item: 'Change the price of sugar',
   create_note: 'Remind me to do stock count on Friday',
+  // ISP vertical
+  list_overdue_subscribers: 'Who is overdue?',
+  list_open_tickets: 'Show open support tickets',
+  create_subscriber: 'Add a new subscriber',
+  generate_subscriber_invoice: 'Generate this month\u2019s invoices',
+  record_subscriber_payment: 'Record an M-Pesa payment',
+  suspend_subscriber: 'Suspend a subscriber',
+  issue_equipment: 'Issue a router to a subscriber',
+  create_work_order: 'Schedule an installation',
 };
 
 export function suggestionsForTools(

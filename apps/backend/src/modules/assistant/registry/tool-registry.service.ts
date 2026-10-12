@@ -1,18 +1,30 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { AssistantToolsService } from '../tools/assistant-tools.service';
-import type { ToolContext, ToolDefinition, ToolSchema } from '../tool.types';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  ASSISTANT_TOOL_PROVIDERS,
+  type AssistantToolProvider,
+  type ToolContext,
+  type ToolDefinition,
+  type ToolSchema,
+} from '../tool.types';
 
 /**
  * The one place that answers "which capabilities exist and which is this org
- * allowed to be offered?". Adding a capability = adding a tool here, never
- * editing a prompt. Identity fields are never part of the schema.
+ * allowed to be offered?". Capabilities are aggregated from every registered
+ * provider (the shared foundation, DUKA, ISP, …). Adding a capability = adding
+ * a tool to a provider, never editing a prompt. Identity fields are never part
+ * of the schema.
  */
 @Injectable()
 export class ToolRegistryService {
   private readonly tools: Map<string, ToolDefinition>;
 
-  constructor(tools: AssistantToolsService) {
-    this.tools = new Map(tools.all().map((tool) => [tool.name, tool]));
+  constructor(
+    @Inject(ASSISTANT_TOOL_PROVIDERS)
+    providers: AssistantToolProvider[],
+  ) {
+    this.tools = new Map(
+      providers.flatMap((provider) => provider.all()).map((tool) => [tool.name, tool]),
+    );
   }
 
   get(name: string): ToolDefinition | undefined {

@@ -60,3 +60,15 @@ export interface ToolDefinition {
     ctx: ToolContext,
   ) => Promise<unknown>;
 }
+
+/**
+ * A source of tool definitions (one per vertical plus the shared foundation).
+ * The registry aggregates providers, so adding a vertical is "add a provider",
+ * never "edit the registry".
+ */
+export interface AssistantToolProvider {
+  all(): ToolDefinition[];
+}
+
+/** DI token for the list of registered tool providers. */
+export const ASSISTANT_TOOL_PROVIDERS = 'ASSISTANT_TOOL_PROVIDERS';

@@ -24,7 +24,11 @@ function tool(name: string, overrides: Partial<ToolDefinition> = {}): ToolDefini
 }
 
 function build(tools: ToolDefinition[]) {
-  return new ToolRegistryService({ all: () => tools } as never);
+  return new ToolRegistryService([{ all: () => tools }]);
+}
+
+function buildFrom(providers: Array<{ all: () => ToolDefinition[] }>) {
+  return new ToolRegistryService(providers);
 }
 
 describe('ToolRegistryService', () => {
@@ -66,5 +70,27 @@ describe('ToolRegistryService', () => {
       'name',
       'parameters',
     ]);
+  });
+
+  it('aggregates tools from every registered provider', () => {
+    const registry = buildFrom([
+      { all: () => [tool('foundation')] },
+      { all: () => [tool('isp-only', { verticals: ['ISP'] })] },
+    ]);
+
+    expect(registry.list().map((entry) => entry.name)).toEqual([
+      'foundation',
+      'isp-only',
+    ]);
+    expect(
+      registry
+        .listFor({ ...CTX, businessType: 'ISP' })
+        .map((entry) => entry.name),
+    ).toContain('isp-only');
+    expect(
+      registry
+        .listFor({ ...CTX, businessType: 'DUKA' })
+        .map((entry) => entry.name),
+    ).not.toContain('isp-only');
   });
 });

@@ -50,5 +50,13 @@ import { TaxModule } from '../tax/tax.module';
     ReconciliationJob,
     PrismaService,
   ],
+  exports: [
+    SubscribersService,
+    ServicePlansService,
+    WorkOrdersService,
+    TicketsService,
+    IspInvoicesService,
+    EquipmentService,
+  ],
 })
 export class IspModule {}

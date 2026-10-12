@@ -8,7 +8,15 @@ import { TransactionTypeDto } from '../../transactions/dto/create-transaction.dt
 import { AppRole } from '../../../core/decorators/roles.decorator';
 import { AssistantCommsService } from '../comms/assistant-comms.service';
 import { AssistantUnsupportedService } from '../unsupported/assistant-unsupported.service';
-import type { ToolDefinition } from '../tool.types';
+import type { AssistantToolProvider, ToolDefinition } from '../tool.types';
+import {
+  asLimit,
+  asOptionalNonNegative,
+  asOptionalString,
+  asPositiveNumber,
+  asRecord,
+  asString,
+} from './tool-args';
 
 const IMPORTANCE = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 type Importance = (typeof IMPORTANCE)[number];
@@ -24,54 +32,6 @@ const WASTAGE_REASONS = [
   'other',
 ] as const;
 type WastageReason = (typeof WASTAGE_REASONS)[number];
-
-function asRecord(args: unknown): Record<string, unknown> {
-  if (!args || typeof args !== 'object' || Array.isArray(args)) {
-    throw new BadRequestException('Tool arguments must be an object.');
-  }
-  return args as Record<string, unknown>;
-}
-
-function asString(value: unknown, field: string, max = 500): string {
-  if (typeof value !== 'string' || !value.trim()) {
-    throw new BadRequestException(`"${field}" is required.`);
-  }
-  if (value.length > max) {
-    throw new BadRequestException(`"${field}" is too long.`);
-  }
-  return value.trim();
-}
-
-function asOptionalString(value: unknown, field: string, max = 2000): string | undefined {
-  if (value === undefined || value === null || value === '') return undefined;
-  if (typeof value !== 'string') {
-    throw new BadRequestException(`"${field}" must be text.`);
-  }
-  return value.slice(0, max);
-}
-
-function asPositiveNumber(value: unknown, field: string): number {
-  const num = typeof value === 'string' ? Number(value) : value;
-  if (typeof num !== 'number' || !Number.isFinite(num) || num <= 0) {
-    throw new BadRequestException(`"${field}" must be a positive number.`);
-  }
-  return num;
-}
-
-function asOptionalNonNegative(value: unknown, field: string): number | undefined {
-  if (value === undefined || value === null || value === '') return undefined;
-  const num = typeof value === 'string' ? Number(value) : value;
-  if (typeof num !== 'number' || !Number.isFinite(num) || num < 0) {
-    throw new BadRequestException(`"${field}" must be zero or a positive number.`);
-  }
-  return num;
-}
-
-function asLimit(value: unknown, fallback: number, max = 50): number {
-  if (value === undefined) return fallback;
-  const requested = asPositiveNumber(value, 'limit');
-  return Math.min(max, Math.max(1, Math.floor(requested)));
-}
 
 function asImportance(value: unknown): NoteImportance {
   if (value === undefined || value === null) return NoteImportance.MEDIUM;
@@ -108,7 +68,7 @@ interface TransactionToolConfig {
  * executor commits through the same domain service the manual UI uses.
  */
 @Injectable()
-export class AssistantToolsService {
+export class AssistantToolsService implements AssistantToolProvider {
   constructor(
     private readonly prisma: PrismaService,
     private readonly inventory: InventoryService,
