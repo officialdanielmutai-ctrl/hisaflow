@@ -21,6 +21,7 @@ interface SideMenuProps {
 }
 
 const sideNavItems = [
+  { href: '/assistant', label: 'Assistant', icon: Sparkles },
   { href: '/notes', label: 'Notes', icon: ListTodo },
   { href: '/alerts', label: 'Alerts', icon: Bell },
   { href: '/tax', label: 'Tax', icon: Receipt },

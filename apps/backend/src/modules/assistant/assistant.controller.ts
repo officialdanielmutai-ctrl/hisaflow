@@ -16,6 +16,7 @@ import { RunToolDto } from './dto/run-tool.dto';
 import { ProposeToolDto } from './dto/propose-tool.dto';
 import { ListProposalsDto } from './dto/list-proposals.dto';
 import { ChatDto } from './dto/chat.dto';
+import { ReviseProposalDto } from './dto/revise-proposal.dto';
 
 interface AuthenticatedUser {
   id: string;
@@ -111,6 +112,21 @@ export class AssistantController {
     return {
       proposals: await this.assistant.listProposals(orgId, query.status),
     };
+  }
+
+  @Post('proposals/:id/revise')
+  async revise(
+    @Param('id') id: string,
+    @Body() dto: ReviseProposalDto,
+    @OrgContext() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const ctx = await this.assistant.buildContext(
+      orgId,
+      user.id,
+      Boolean(user.isImpersonated),
+    );
+    return { proposal: await this.assistant.revise(ctx, id, dto.args) };
   }
 
   @Post('proposals/:id/approve')

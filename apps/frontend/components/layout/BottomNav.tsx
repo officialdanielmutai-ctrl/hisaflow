@@ -19,7 +19,7 @@ const ownerTabs = [
   { href: '/finance', label: 'Sales', icon: TrendingUp },
   { href: '/inventory?action=add', label: 'Add', icon: Plus, isFab: true },
   { href: '/inventory', label: 'Inventory', icon: Package },
-  { href: '/ai', label: 'AI', icon: Sparkles },
+  { href: '/assistant', label: 'Assistant', icon: Sparkles },
 ];
 
 const staffTabs = [
@@ -27,7 +27,7 @@ const staffTabs = [
   { href: '/transactions', label: 'Sales', icon: TrendingUp },
   { href: '/inventory?action=add', label: 'Add', icon: Plus, isFab: true },
   { href: '/inventory', label: 'Inventory', icon: Package },
-  { href: '/ai', label: 'AI', icon: Sparkles },
+  { href: '/assistant', label: 'Assistant', icon: Sparkles },
 ];
 
 const guestHouseOwnerTabs = [

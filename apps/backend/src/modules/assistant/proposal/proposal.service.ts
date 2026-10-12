@@ -45,6 +45,7 @@ export class ProposalService {
     ctx: ToolContext,
     tool: ToolDefinition,
     draft: ProposalDraft,
+    options: { version?: number } = {},
   ): Promise<AssistantProposal> {
     const argsHash = hashArgs(draft.args);
     const now = new Date();
@@ -59,9 +60,24 @@ export class ProposalService {
         diffJson: draft.diff === undefined ? null : JSON.stringify(draft.diff),
         riskLevel: draft.riskLevel ?? tool.riskLevel,
         idempotencyKey: randomUUID(),
+        version: options.version ?? 1,
         expiresAt: new Date(now.getTime() + PROPOSAL_TTL_MS),
       },
     });
+  }
+
+  /**
+   * Create a new version of an edited proposal. The previous proposal stays
+   * as-is (its caller marks it rejected), so an approved payload is never
+   * mutated in place.
+   */
+  revise(
+    ctx: ToolContext,
+    previous: AssistantProposal,
+    tool: ToolDefinition,
+    draft: ProposalDraft,
+  ): Promise<AssistantProposal> {
+    return this.create(ctx, tool, draft, { version: previous.version + 1 });
   }
 
   /** Tenant-scoped fetch: another org's id returns null, never a row. */

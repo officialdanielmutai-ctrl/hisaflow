@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AssistantProposalStatus } from '@prisma/client';
 import { AssistantContextService } from './context/assistant-context.service';
 import { ToolRegistryService } from './registry/tool-registry.service';
@@ -76,6 +76,36 @@ export class AssistantService {
     const draft = await tool.buildProposal(args, ctx);
     const proposal = await this.proposals.create(ctx, tool, draft);
     return toPublicProposal(proposal);
+  }
+
+  /**
+   * Edit a proposal: re-validate the new args through the tool and create a
+   * new version, then reject the superseded one. An approved payload is never
+   * mutated in place.
+   */
+  async revise(
+    ctx: ToolContext,
+    id: string,
+    args: Record<string, unknown>,
+  ): Promise<PublicProposal> {
+    const previous = await this.proposals.getScoped(ctx.organizationId, id);
+    if (!previous) {
+      throw new NotFoundException('Proposal not found.');
+    }
+    if (previous.status !== 'PROPOSED' && previous.status !== 'APPROVED') {
+      throw new BadRequestException(
+        'Only proposed or approved proposals can be edited.',
+      );
+    }
+    const tool = this.registry.assertKnown(previous.tool);
+    if (!tool.buildProposal) {
+      throw new BadRequestException('Tool cannot be edited.');
+    }
+    await this.policy.assertToolAllowed(tool, ctx);
+    const draft = await tool.buildProposal(args, ctx);
+    const revised = await this.proposals.revise(ctx, previous, tool, draft);
+    await this.proposals.reject(ctx.organizationId, id, ctx.userId);
+    return toPublicProposal(revised);
   }
 
   /** Conversational entry point: the tool-calling agent loop. */

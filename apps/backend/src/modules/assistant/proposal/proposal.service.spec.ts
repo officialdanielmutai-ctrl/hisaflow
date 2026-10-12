@@ -102,6 +102,21 @@ describe('ProposalService', () => {
     });
   });
 
+  it('creates a new version when a proposal is revised', async () => {
+    const { service, db } = build();
+
+    await service.revise(
+      CTX,
+      proposalRow({ version: 2 }) as never,
+      TOOL,
+      { args: { title: 'edited' }, summary: 'edited summary' },
+    );
+
+    const [{ data }] = db.assistantProposal.create.mock.calls[0];
+    expect(data.version).toBe(3);
+    expect(data.summary).toBe('edited summary');
+  });
+
   it('approves a proposed, unexpired proposal', async () => {
     const { service, db } = build();
     db.assistantProposal.findFirst.mockResolvedValue(
