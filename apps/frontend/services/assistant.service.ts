@@ -49,6 +49,12 @@ export interface AssistantExecutionResult {
   idempotent: boolean;
 }
 
+export interface UnsupportedIntent {
+  id: string;
+  intent: string;
+  createdAt: string;
+}
+
 export async function getAssistantTools(
   token: string,
   organizationId: string,
@@ -139,4 +145,16 @@ export function executeAssistantProposal(
     organizationId,
     {},
   );
+}
+
+export async function getUnsupportedIntents(
+  token: string,
+  organizationId: string,
+): Promise<UnsupportedIntent[]> {
+  const response = await apiGet<{ intents: UnsupportedIntent[] }>(
+    '/assistant/unsupported',
+    token,
+    organizationId,
+  );
+  return response.intents;
 }

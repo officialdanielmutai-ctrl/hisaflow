@@ -60,6 +60,11 @@ export class AssistantController {
     return { result: await this.assistant.runReadTool(ctx, name, dto.args ?? {}) };
   }
 
+  @Get('unsupported')
+  async unsupported(@OrgContext() orgId: string) {
+    return { intents: await this.assistant.listUnsupportedIntents(orgId) };
+  }
+
   @Post('chat')
   async chat(
     @Body() dto: ChatDto,

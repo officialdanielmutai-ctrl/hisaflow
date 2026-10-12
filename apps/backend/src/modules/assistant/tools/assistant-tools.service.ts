@@ -6,6 +6,8 @@ import { NoteImportance } from '../../notes/dto/create-note.dto';
 import { TransactionsService } from '../../transactions/transactions.service';
 import { TransactionTypeDto } from '../../transactions/dto/create-transaction.dto';
 import { AppRole } from '../../../core/decorators/roles.decorator';
+import { AssistantCommsService } from '../comms/assistant-comms.service';
+import { AssistantUnsupportedService } from '../unsupported/assistant-unsupported.service';
 import type { ToolDefinition } from '../tool.types';
 
 const IMPORTANCE = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
@@ -112,6 +114,8 @@ export class AssistantToolsService {
     private readonly inventory: InventoryService,
     private readonly notes: NotesService,
     private readonly transactions: TransactionsService,
+    private readonly comms: AssistantCommsService,
+    private readonly unsupported: AssistantUnsupportedService,
   ) {}
 
   all(): ToolDefinition[] {
@@ -143,6 +147,9 @@ export class AssistantToolsService {
       }),
       this.createInventoryItem(),
       this.updateInventoryItem(),
+      this.sendEmail(),
+      this.sendSms(),
+      this.logUnsupportedIntent(),
     ];
   }
 
@@ -510,6 +517,137 @@ export class AssistantToolsService {
             ),
           },
           ctx.organizationId,
+        );
+      },
+    };
+  }
+
+  // ── communicate: email / SMS (consent-checked, proposal only) ──────────
+  private sendEmail(): ToolDefinition {
+    return {
+      name: 'send_email',
+      description:
+        'Draft and send an email to a customer. Requires approval; opt-out consent is checked.',
+      kind: 'communicate',
+      riskLevel: 'high',
+      roles: [AppRole.OWNER, AppRole.MANAGER],
+      parameters: {
+        type: 'object',
+        properties: {
+          recipient: { type: 'string' },
+          recipientName: { type: 'string' },
+          subject: { type: 'string' },
+          message: { type: 'string' },
+        },
+        required: ['recipient', 'subject', 'message'],
+        additionalProperties: false,
+      },
+      buildProposal: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const recipient = asString(args.recipient, 'recipient', 200);
+        const subject = asString(args.subject, 'subject', 200);
+        const message = asString(args.message, 'message', 2000);
+        const recipientName = asOptionalString(
+          args.recipientName,
+          'recipientName',
+          100,
+        );
+        await this.comms.assertConsent(ctx.organizationId, 'EMAIL', recipient);
+        return {
+          args: { recipient, recipientName, subject, message },
+          summary: `Email ${recipientName ? `${recipientName} ` : ''}<${recipient}>: “${subject}”`,
+          diff: {
+            before: null,
+            after: { channel: 'EMAIL', recipient, subject, message },
+          },
+          riskLevel: 'high',
+        };
+      },
+      commit: async (raw, ctx) => {
+        const args = asRecord(raw);
+        return this.comms.send({
+          organizationId: ctx.organizationId,
+          userId: ctx.userId,
+          channel: 'EMAIL',
+          recipient: asString(args.recipient, 'recipient', 200),
+          subject: asString(args.subject, 'subject', 200),
+          message: asString(args.message, 'message', 2000),
+        });
+      },
+    };
+  }
+
+  private sendSms(): ToolDefinition {
+    return {
+      name: 'send_sms',
+      description:
+        'Draft and send an SMS to a customer. Requires approval; opt-out consent is checked.',
+      kind: 'communicate',
+      riskLevel: 'high',
+      roles: [AppRole.OWNER, AppRole.MANAGER],
+      parameters: {
+        type: 'object',
+        properties: {
+          recipient: { type: 'string' },
+          recipientName: { type: 'string' },
+          message: { type: 'string' },
+        },
+        required: ['recipient', 'message'],
+        additionalProperties: false,
+      },
+      buildProposal: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const recipient = asString(args.recipient, 'recipient', 40);
+        const message = asString(args.message, 'message', 1000);
+        const recipientName = asOptionalString(
+          args.recipientName,
+          'recipientName',
+          100,
+        );
+        await this.comms.assertConsent(ctx.organizationId, 'SMS', recipient);
+        return {
+          args: { recipient, recipientName, message },
+          summary: `SMS ${recipientName ? `${recipientName} ` : ''}(${recipient}): “${message}”`,
+          diff: {
+            before: null,
+            after: { channel: 'SMS', recipient, message },
+          },
+          riskLevel: 'high',
+        };
+      },
+      commit: async (raw, ctx) => {
+        const args = asRecord(raw);
+        return this.comms.send({
+          organizationId: ctx.organizationId,
+          userId: ctx.userId,
+          channel: 'SMS',
+          recipient: asString(args.recipient, 'recipient', 40),
+          message: asString(args.message, 'message', 1000),
+        });
+      },
+    };
+  }
+
+  // ── fallback capture (utility, no business side effect) ─────────────────
+  private logUnsupportedIntent(): ToolDefinition {
+    return {
+      name: 'log_unsupported_intent',
+      description:
+        'Record a request the assistant cannot currently fulfil, so the team can review it. Use this when no other tool fits, then explain the limit and offer the nearest alternative.',
+      kind: 'utility',
+      riskLevel: 'low',
+      parameters: {
+        type: 'object',
+        properties: { request: { type: 'string' } },
+        required: ['request'],
+        additionalProperties: false,
+      },
+      execute: async (raw, ctx) => {
+        const args = asRecord(raw);
+        return this.unsupported.record(
+          ctx.organizationId,
+          ctx.userId,
+          asString(args.request, 'request', 1000),
         );
       },
     };

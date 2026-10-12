@@ -62,11 +62,13 @@ Nothing is available until an org has the flags. Insert, e.g.:
 ```sql
 INSERT INTO feature_flags (id, key, scope, scope_value, enabled, rollout_pct, updated_at)
 VALUES
-  (gen_random_uuid()::text, 'assistant.read',  'GLOBAL', '', true, 100, now()),
-  (gen_random_uuid()::text, 'assistant.write', 'GLOBAL', '', true, 100, now());
+  (gen_random_uuid()::text, 'assistant.read',        'GLOBAL', '', true, 100, now()),
+  (gen_random_uuid()::text, 'assistant.write',       'GLOBAL', '', true, 100, now()),
+  (gen_random_uuid()::text, 'assistant.communicate', 'GLOBAL', '', true, 100, now()),
+  (gen_random_uuid()::text, 'assistant.shadow',      'GLOBAL', '', false, 100, now());
 ```
 
-Scope `BUSINESS_TYPE` with `scope_value = 'DUKA'` to gate the first vertical only. An admin UI for flags is a follow-up (D2-E).
+Scope `BUSINESS_TYPE` with `scope_value = 'DUKA'` to gate the first vertical only. `assistant.shadow` defaults off. An admin UI for flags is a follow-up (D2-E).
 
 ## 5. Staging e2e (pending)
 

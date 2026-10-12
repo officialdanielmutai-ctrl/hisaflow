@@ -16,6 +16,8 @@ import { AssistantExecutorService } from './executor/executor.service';
 import { AssistantProviderService } from './provider/assistant-provider.service';
 import { AssistantAgentService } from './agent/assistant-agent.service';
 import { AssistantShadowService } from './shadow/shadow.service';
+import { AssistantCommsService } from './comms/assistant-comms.service';
+import { AssistantUnsupportedService } from './unsupported/assistant-unsupported.service';
 
 @Module({
   imports: [AiIngestionModule, InventoryModule, NotesModule, TransactionsModule],
@@ -32,6 +34,8 @@ import { AssistantShadowService } from './shadow/shadow.service';
     AssistantProviderService,
     AssistantAgentService,
     AssistantShadowService,
+    AssistantCommsService,
+    AssistantUnsupportedService,
     AssistantService,
   ],
   exports: [AssistantService, ToolRegistryService, ProposalService],

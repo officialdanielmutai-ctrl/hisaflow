@@ -26,18 +26,25 @@ function build(options: { items?: Array<Record<string, unknown>> } = {}) {
     create: jest.fn(async () => ({ id: 'product_1' })),
     updateVariant: jest.fn(async () => ({ id: 'i1' })),
   };
+  const comms = {
+    assertConsent: jest.fn(async () => undefined),
+    send: jest.fn(async () => ({ status: 'MOCKED', recipient: 'x' })),
+  };
+  const unsupported = { record: jest.fn(async () => ({ recorded: true })) };
   const service = new AssistantToolsService(
     { db } as never,
     inventory as never,
     notes as never,
     transactions as never,
+    comms as never,
+    unsupported as never,
   );
   const byName = (name: string): ToolDefinition => {
     const tool = service.all().find((entry) => entry.name === name);
     if (!tool) throw new Error(`missing tool ${name}`);
     return tool;
   };
-  return { service, db, inventory, notes, transactions, byName };
+  return { service, db, inventory, notes, transactions, comms, unsupported, byName };
 }
 
 describe('AssistantToolsService.get_low_stock', () => {
@@ -279,5 +286,77 @@ describe('AssistantToolsService.update_inventory_item', () => {
     await expect(
       byName('update_inventory_item').buildProposal?.({ itemId: 'i1' }, CTX),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('AssistantToolsService.send_email / send_sms', () => {
+  it('checks consent when building the email proposal and sends on commit', async () => {
+    const { byName, comms } = build();
+    const tool = byName('send_email');
+
+    const draft = await tool.buildProposal?.(
+      { recipient: 'Customer@Example.com', subject: 'Statement', message: 'Hello' },
+      CTX,
+    );
+
+    expect(comms.assertConsent).toHaveBeenCalledWith(
+      'org_1',
+      'EMAIL',
+      'Customer@Example.com',
+    );
+    expect(draft?.args).toMatchObject({
+      recipient: 'Customer@Example.com',
+      subject: 'Statement',
+      message: 'Hello',
+    });
+
+    await tool.commit?.(draft?.args ?? {}, CTX);
+    expect(comms.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'org_1',
+        channel: 'EMAIL',
+        recipient: 'Customer@Example.com',
+        subject: 'Statement',
+      }),
+    );
+  });
+
+  it('checks consent and sends SMS through the same governed path', async () => {
+    const { byName, comms } = build();
+    const tool = byName('send_sms');
+
+    const draft = await tool.buildProposal?.(
+      { recipient: '0712345678', message: 'Your balance is KES 500' },
+      CTX,
+    );
+
+    expect(comms.assertConsent).toHaveBeenCalledWith(
+      'org_1',
+      'SMS',
+      '0712345678',
+    );
+
+    await tool.commit?.(draft?.args ?? {}, CTX);
+    expect(comms.send).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: 'SMS', recipient: '0712345678' }),
+    );
+  });
+});
+
+describe('AssistantToolsService.log_unsupported_intent', () => {
+  it('records the request as a utility with no business side effect', async () => {
+    const { byName, unsupported } = build();
+
+    const result = await byName('log_unsupported_intent').execute?.(
+      { request: 'file my KRA return for last month' },
+      CTX,
+    );
+
+    expect(unsupported.record).toHaveBeenCalledWith(
+      'org_1',
+      'user_1',
+      'file my KRA return for last month',
+    );
+    expect(result).toEqual({ recorded: true });
   });
 });

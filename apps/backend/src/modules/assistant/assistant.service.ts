@@ -8,6 +8,7 @@ import { toPublicProposal } from './proposal/public-proposal';
 import type { PublicProposal } from './proposal/public-proposal';
 import { AssistantExecutorService } from './executor/executor.service';
 import { AssistantAgentService } from './agent/assistant-agent.service';
+import { AssistantUnsupportedService } from './unsupported/assistant-unsupported.service';
 import type { AgentResult } from './agent/agent.types';
 import type { ToolContext } from './tool.types';
 
@@ -25,6 +26,7 @@ export class AssistantService {
     private readonly proposals: ProposalService,
     private readonly executor: AssistantExecutorService,
     private readonly agent: AssistantAgentService,
+    private readonly unsupported: AssistantUnsupportedService,
   ) {}
 
   buildContext(
@@ -148,5 +150,10 @@ export class AssistantService {
 
   execute(organizationId: string, ctx: ToolContext, id: string) {
     return this.executor.execute(organizationId, ctx, id);
+  }
+
+  /** Unsupported-intent events for the team to review. */
+  listUnsupportedIntents(organizationId: string, limit?: number) {
+    return this.unsupported.list(organizationId, limit);
   }
 }

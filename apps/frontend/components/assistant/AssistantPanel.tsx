@@ -5,10 +5,12 @@ import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { Send, Sparkles } from 'lucide-react';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { useRole } from '@/hooks/useRole';
 import {
   approveAssistantProposal,
   executeAssistantProposal,
   getAssistantTools,
+  getUnsupportedIntents,
   listAssistantProposals,
   rejectAssistantProposal,
   reviseAssistantProposal,
@@ -17,6 +19,7 @@ import {
 } from '@/services/assistant.service';
 import { suggestionsForTools } from '@/lib/assistant';
 import ProposalCard from './ProposalCard';
+import UnsupportedIntentsCard from './UnsupportedIntentsCard';
 
 interface ChatMessage {
   id: string;
@@ -37,7 +40,9 @@ function mergeProposals(
 export function AssistantPanel() {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
+  const { isOwner, isManager } = useRole();
   const orgId = membership?.organization.id;
+  const canReviewIntents = isOwner || isManager;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [proposals, setProposals] = useState<AssistantProposal[]>([]);
@@ -55,6 +60,15 @@ export function AssistantPanel() {
       const token = await getToken();
       if (!token || !orgId) return [];
       return getAssistantTools(token, orgId);
+    },
+  );
+
+  const { data: unsupportedIntents } = useSWR(
+    orgId && canReviewIntents ? ['assistant-unsupported', orgId] : null,
+    async () => {
+      const token = await getToken();
+      if (!token || !orgId) return [];
+      return getUnsupportedIntents(token, orgId);
     },
   );
 
@@ -301,6 +315,10 @@ export function AssistantPanel() {
       )}
 
       {/* Suggestion chips generated from available tools */}
+      {canReviewIntents && unsupportedIntents && unsupportedIntents.length > 0 && (
+        <UnsupportedIntentsCard intents={unsupportedIntents} />
+      )}
+
       {suggestions.length > 0 && messages.length === 0 && (
         <div className="flex flex-wrap gap-2">
           {suggestions.map((suggestion) => (

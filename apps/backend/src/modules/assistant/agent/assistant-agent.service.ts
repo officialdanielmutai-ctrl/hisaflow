@@ -153,6 +153,7 @@ export class AssistantAgentService {
       'You may read data and draft proposals. A change is only applied after the user approves the exact payload.',
       'Never say something is done while it is only proposed, and never claim a capability you do not have.',
       'Use the provided tools. Do not invent organization or user identifiers.',
+      'If no tool can fulfil the request, call log_unsupported_intent with the request, then explain what you cannot do and offer the nearest alternative.',
       'If ambiguity would change a write, ask one precise question instead of guessing.',
     ].join(' ');
   }

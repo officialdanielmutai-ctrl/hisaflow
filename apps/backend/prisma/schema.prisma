@@ -1661,6 +1661,12 @@ enum FeatureFlagScope {
   ORGANIZATION
 }
 
+enum AssistantOutboundStatus {
+  SENT
+  FAILED
+  MOCKED
+}
+
 /// A durable, immutable-once-approved write/communicate proposal. The
 /// executor runs exactly `argsJson`, verified against `argsHash`.
 model AssistantProposal {
@@ -1723,4 +1729,36 @@ model FeatureFlag {
   @@unique([key, scope, scopeValue])
   @@index([key, scope])
   @@map("feature_flags")
+}
+
+/// A request the assistant could not map to a tool (overhaul Duty 2, Phase E).
+/// Records anonymised intent so the product backlog is driven by real gaps.
+model UnsupportedIntent {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  userId         String?  @map("user_id")
+  intent         String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@map("assistant_unsupported_intents")
+}
+
+/// Audit/record of an outbound message sent by the assistant (communicate
+/// tools). Consent is checked before send; this is the delivery trail.
+model AssistantOutboundMessage {
+  id             String                  @id @default(cuid())
+  organizationId String                  @map("organization_id")
+  userId         String                  @map("user_id")
+  proposalId     String?                 @map("proposal_id")
+  channel        String
+  recipient      String
+  subject        String?
+  body           String                  @db.Text
+  status         AssistantOutboundStatus
+  errorMessage   String?                 @map("error_message") @db.Text
+  createdAt      DateTime                @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@map("assistant_outbound_messages")
 }
