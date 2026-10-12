@@ -119,6 +119,26 @@ describe('assistant helpers', () => {
     expect(toolLabel('create_tiered_price')).toBe('Price tiers');
   });
 
+  it('generates restaurant suggestions from the restaurant tool set only', () => {
+    const suggestions = suggestionsForTools([
+      tool('get_open_tables'),
+      tool('list_menu_items'),
+      tool('create_table_order'),
+      tool('close_table_order'),
+    ]);
+    expect(suggestions).toEqual([
+      'Which tables are open?',
+      'Show the menu',
+      'Open Table 5 with 2 biryani',
+      'Close Table 3',
+    ]);
+  });
+
+  it('labels restaurant tools', () => {
+    expect(toolLabel('record_recipe_consumption')).toBe('Record dish sold');
+    expect(toolLabel('update_menu_price')).toBe('Update menu price');
+  });
+
   it('extracts diff rows from the stock-transaction shape', () => {
     const rows = extractDiffRows({
       item: 'Maize flour',

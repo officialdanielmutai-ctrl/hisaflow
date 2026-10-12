@@ -91,6 +91,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           'Record a sale of an inventory item to a customer. Requires approval.',
         type: TransactionTypeDto.SALE,
         direction: 'out',
+        verticals: ['DUKA', 'MINI_MART', 'RESTAURANT'],
       }),
       this.transactionTool({
         name: 'record_purchase',
@@ -98,7 +99,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           'Record stock received or bought from a supplier. Requires approval.',
         type: TransactionTypeDto.PURCHASE,
         direction: 'in',
-        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER'],
+        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER', 'RESTAURANT'],
       }),
       this.transactionTool({
         name: 'record_wastage',
@@ -107,7 +108,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         type: TransactionTypeDto.WASTAGE,
         direction: 'out',
         wastage: true,
-        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER'],
+        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER', 'RESTAURANT'],
       }),
       this.createInventoryItem(),
       this.updateInventoryItem(),
@@ -277,10 +278,23 @@ export class AssistantToolsService implements AssistantToolProvider {
         const quantity = asPositiveNumber(args.quantity, 'quantity');
         const item = await this.prisma.db.inventoryItem.findFirst({
           where: { id: itemId, organizationId: ctx.organizationId },
-          select: { id: true, name: true, unit: true, quantity: true },
+          select: {
+            id: true,
+            name: true,
+            unit: true,
+            quantity: true,
+            isComposite: true,
+          },
         });
         if (!item) {
           throw new BadRequestException('No matching item in this organization.');
+        }
+        // A composite menu item holds no stock of its own; selling it must run
+        // through the recipe so ingredient stock is deducted.
+        if (type === TransactionTypeDto.SALE && item.isComposite) {
+          throw new BadRequestException(
+            'This is a composite menu item; sell it with record_recipe_consumption (or through a table order) so ingredient stock is deducted.',
+          );
         }
         const before = Number(item.quantity);
         const after = direction === 'in' ? before + quantity : before - quantity;

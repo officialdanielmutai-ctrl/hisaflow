@@ -149,6 +149,17 @@ describe('AssistantToolsService.record_sale', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('refuses to sell a composite menu item directly', async () => {
+    const { byName } = build({
+      items: [
+        { id: 'i1', name: 'Biryani', unit: 'plate', quantity: 0, isComposite: true },
+      ],
+    });
+    await expect(
+      byName('record_sale').buildProposal?.({ itemId: 'i1', quantity: 1 }, CTX),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('commits through TransactionsService as a SALE', async () => {
     const { byName, transactions } = build({
       items: [{ id: 'i1', name: 'Maize flour', unit: 'kg', quantity: 20 }],

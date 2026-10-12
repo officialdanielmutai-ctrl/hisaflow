@@ -76,6 +76,15 @@ export const TOOL_LABELS: Record<string, string> = {
   record_bulk_sale: 'Bulk (carton) sale',
   record_credit_payment: 'Credit payment',
   create_tiered_price: 'Price tiers',
+  // Restaurant vertical
+  get_open_tables: 'Open tables',
+  list_menu_items: 'Menu items',
+  get_menu_item_recipe: 'Recipe',
+  create_table_order: 'Open table order',
+  add_order_item: 'Add order item',
+  close_table_order: 'Close table order',
+  record_recipe_consumption: 'Record dish sold',
+  update_menu_price: 'Update menu price',
 };
 
 export function toolLabel(tool: string): string {
@@ -126,6 +135,13 @@ const TOOL_SUGGESTIONS: Record<string, string> = {
   record_bulk_sale: 'Sell 50 cartons of soda to Mama Mboga',
   record_credit_payment: 'Record a credit payment',
   create_tiered_price: 'Set wholesale prices for sugar',
+  // Restaurant vertical
+  get_open_tables: 'Which tables are open?',
+  list_menu_items: 'Show the menu',
+  create_table_order: 'Open Table 5 with 2 biryani',
+  close_table_order: 'Close Table 3',
+  record_recipe_consumption: 'Sold 3 biryani',
+  update_menu_price: 'Change the price of biryani',
 };
 
 export function suggestionsForTools(

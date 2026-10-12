@@ -11,6 +11,7 @@ import { RoomsModule } from '../rooms/rooms.module';
 import { SchoolClassesModule } from '../school-classes/school-classes.module';
 import { SchoolFeesModule } from '../school-fees/school-fees.module';
 import { StudentsModule } from '../students/students.module';
+import { TableOrdersModule } from '../table-orders/table-orders.module';
 import { TieredPricingModule } from '../tiered-pricing/tiered-pricing.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { AssistantController } from './assistant.controller';
@@ -21,6 +22,7 @@ import { GuestHouseAssistantToolsService } from './tools/guesthouse-assistant-to
 import { IspAssistantToolsService } from './tools/isp-assistant-tools.service';
 import { SchoolAssistantToolsService } from './tools/school-assistant-tools.service';
 import { WholesaleAssistantToolsService } from './tools/wholesale-assistant-tools.service';
+import { RestaurantAssistantToolsService } from './tools/restaurant-assistant-tools.service';
 import { ToolRegistryService } from './registry/tool-registry.service';
 import { ASSISTANT_TOOL_PROVIDERS } from './tool.types';
 import { FeatureFlagService } from './policy/feature-flag.service';
@@ -48,6 +50,7 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
     SchoolClassesModule,
     SchoolFeesModule,
     StudentsModule,
+    TableOrdersModule,
     TieredPricingModule,
     TransactionsModule,
   ],
@@ -58,6 +61,7 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
     GuestHouseAssistantToolsService,
     SchoolAssistantToolsService,
     WholesaleAssistantToolsService,
+    RestaurantAssistantToolsService,
     {
       provide: ASSISTANT_TOOL_PROVIDERS,
       useFactory: (
@@ -66,13 +70,15 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
         guestHouse: GuestHouseAssistantToolsService,
         school: SchoolAssistantToolsService,
         wholesale: WholesaleAssistantToolsService,
-      ) => [foundation, isp, guestHouse, school, wholesale],
+        restaurant: RestaurantAssistantToolsService,
+      ) => [foundation, isp, guestHouse, school, wholesale, restaurant],
       inject: [
         AssistantToolsService,
         IspAssistantToolsService,
         GuestHouseAssistantToolsService,
         SchoolAssistantToolsService,
         WholesaleAssistantToolsService,
+        RestaurantAssistantToolsService,
       ],
     },
     ToolRegistryService,

@@ -41,9 +41,9 @@ describe('AssistantModule wiring', () => {
     registry = ref.get(ToolRegistryService);
   });
 
-  it('registers the foundation, ISP, guest-house, school and wholesaler providers behind the token', () => {
+  it('registers all six vertical providers behind the token', () => {
     const providers = ref.get<AssistantToolProvider[]>(ASSISTANT_TOOL_PROVIDERS);
-    expect(providers).toHaveLength(5);
+    expect(providers).toHaveLength(6);
   });
 
   it('offers only ISP tools to an ISP org', () => {
@@ -99,5 +99,21 @@ describe('AssistantModule wiring', () => {
     // But retail-only sale and other verticals must not leak in.
     expect(wholesale).not.toContain('record_sale');
     expect(wholesale).not.toContain('create_booking');
+  });
+
+  it('offers restaurant tools and the shared stock tools to a restaurant org', () => {
+    const restaurant = registry
+      .listFor(contextFor('RESTAURANT'))
+      .map((tool) => tool.name);
+    expect(restaurant).toContain('create_table_order');
+    expect(restaurant).toContain('close_table_order');
+    expect(restaurant).toContain('record_recipe_consumption');
+    expect(restaurant).toContain('update_menu_price');
+    // Stock movements are shared; composites are guarded inside record_sale.
+    expect(restaurant).toContain('record_sale');
+    expect(restaurant).toContain('record_purchase');
+    expect(restaurant).toContain('record_wastage');
+    expect(restaurant).not.toContain('record_bulk_sale');
+    expect(restaurant).not.toContain('create_booking');
   });
 });
