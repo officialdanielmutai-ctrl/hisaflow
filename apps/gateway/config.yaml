@@ -1,52 +1,61 @@
 model_list:
   # ----------------------------------------------------------------------
-  # PRIMARY POOL — Round-robin across 5 free/low-cost providers
+  # PRIMARY POOL — Round-robin across the verified standard providers.
   # LiteLLM will cycle through these for every standard request.
   # On 429 or 5xx it cascades immediately to the next entry.
+  # ONLY model IDs verified by `apps/backend/scripts/tool-calling-spike.mjs`
+  # may be enabled here; unverified/broken IDs are kept commented with the
+  # date and reason so drift is visible (regression guard: Q-005).
   # ----------------------------------------------------------------------
 
-  # Tier 1 — Groq (fastest inference, Llama 3.3 70B)
+  # Tier 1 — Groq (fastest inference; gpt-oss-120b verified 2026-10-11)
   - model_name: hisaflow-standard
     litellm_params:
-      model: groq/llama-3.3-70b-versatile
+      model: groq/openai/gpt-oss-120b
       api_key: os.environ/GROQ_API_KEY
 
-  # Tier 2 — Cerebras (dedicated silicon, Llama 3.3 70B)
-  - model_name: hisaflow-standard
-    litellm_params:
-      model: cerebras/llama-3.3-70b
-      api_key: os.environ/CEREBRAS_API_KEY
+  # Tier 2 — Cerebras (dedicated silicon). DISABLED 2026-10-11: returned
+  # 402 (billing not provisioned). Re-enable only after the spike passes.
+  # - model_name: hisaflow-standard
+  #   litellm_params:
+  #     model: cerebras/gpt-oss-120b
+  #     api_key: os.environ/CEREBRAS_API_KEY
 
-  # Tier 3 — OpenRouter → DeepSeek (ultra low-cost)
+  # Tier 3 — OpenRouter → DeepSeek (ultra low-cost; verified 2026-10-11)
   - model_name: hisaflow-standard
     litellm_params:
       model: openrouter/deepseek/deepseek-chat
       api_key: os.environ/OPENROUTER_API_KEY
 
-  # Tier 4 — Mistral Large (EU-hosted, strong structured output)
-  - model_name: hisaflow-standard
-    litellm_params:
-      model: mistral/mistral-large-latest
-      api_key: os.environ/MISTRAL_API_KEY
+  # Tier 4 — Mistral Large. DISABLED 2026-10-11: `mistral-large-latest`
+  # returned 403 (not authorised on the current key). Re-enable only after
+  # the spike passes for an authorised model ID.
+  # - model_name: hisaflow-standard
+  #   litellm_params:
+  #     model: mistral/mistral-large-latest
+  #     api_key: os.environ/MISTRAL_API_KEY
 
-  # Tier 5 — Google Gemini (existing provider, preserved in pool)
+  # Tier 5 — Google Gemini (verified 2026-10-11)
   - model_name: hisaflow-standard
     litellm_params:
       model: gemini/gemini-2.5-flash
       api_key: os.environ/GEMINI_API_KEY
 
   # ----------------------------------------------------------------------
-  # Tier 6 — AWS Bedrock / Claude 3.5 Sonnet (foundation failsafe)
-  # This is the highest-capability model and acts as the final fallback.
-  # It runs under the hisaflow-premium alias so the fallback chain can
-  # reference it explicitly when all standard providers are exhausted.
+  # Premium / Bedrock failsafe — DISABLED 2026-10-11 (Q-005):
+  # `apps/gateway/.env` has no AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, so
+  # this deployment could never be reached. The standard pool now has three
+  # verified providers, so the standard→premium fallback was removed. Re-add
+  # both this block and the `hisaflow-standard` entry in `fallbacks` once AWS
+  # credentials are provisioned and the spike passes.
+  #
+  # - model_name: hisaflow-premium
+  #   litellm_params:
+  #     model: bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0
+  #     aws_region_name: us-east-1
+  #     aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+  #     aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
   # ----------------------------------------------------------------------
-  - model_name: hisaflow-premium
-    litellm_params:
-      model: bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0
-      aws_region_name: us-east-1
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
 
   # ----------------------------------------------------------------------
   # ASSISTANT POOL — tool-calling only. ORDERED, NOT SHUFFLED.
@@ -103,11 +112,11 @@ router_settings:
 
 # ----------------------------------------------------------------------
 # FALLBACK CHAIN
-# If ALL providers in hisaflow-standard fail, fall back to Bedrock.
+# The standard pool is a shuffle of verified providers, so it does not
+# reference the (disabled) Bedrock premium deployment. The assistant and
+# vision groups keep their ordered, non-shuffled fallbacks.
 # ----------------------------------------------------------------------
 fallbacks:
-  - hisaflow-standard:
-      - hisaflow-premium
   - hisaflow-assistant:
       - hisaflow-assistant-fallback-1
   - hisaflow-assistant-fallback-1:
