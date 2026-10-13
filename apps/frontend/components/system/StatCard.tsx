@@ -150,25 +150,39 @@ function TrailingSlot({
 }
 
 function StatSkeleton({ compact }: { compact: boolean }) {
+  // Mirrors the loaded card's line boxes (label / optional sublabel / value /
+  // footnote) using the same typographic classes, so the skeleton and the
+  // loaded card stay the same height at every root font size and the card
+  // cannot shift when data arrives (Section 2.4).
   return (
-    <div className="animate-pulse" aria-hidden="true">
+    <>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-xl bg-[var(--color-bg-elevated)]" />
-          <div className="flex flex-col gap-1.5">
-            <div className="h-3 w-24 rounded bg-[var(--color-bg-elevated)]" />
-            <div className="h-2.5 w-16 rounded bg-[var(--color-bg-elevated)]" />
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="h-9 w-9 shrink-0 rounded-xl bg-[var(--color-bg-elevated)]" />
+          <div className="min-w-0">
+            <span className="block w-24 truncate rounded bg-[var(--color-bg-elevated)] text-xs text-transparent">
+              &nbsp;
+            </span>
+            <span className="block w-16 truncate rounded bg-[var(--color-bg-elevated)] text-[11px] text-transparent">
+              &nbsp;
+            </span>
           </div>
         </div>
       </div>
-      <div
-        className={cn(
-          'my-1 rounded bg-[var(--color-bg-elevated)]',
-          compact ? 'h-6 w-20' : 'h-8 w-28',
-        )}
-      />
-      <div className="h-3 w-28 rounded bg-[var(--color-bg-elevated)]" />
-    </div>
+      <div className="my-1 min-w-0">
+        <p
+          className={cn(
+            'w-28 truncate rounded bg-[var(--color-bg-elevated)] text-transparent',
+            compact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl',
+          )}
+        >
+          &nbsp;
+        </p>
+      </div>
+      <p className="min-h-[18px] w-28 truncate rounded bg-[var(--color-bg-elevated)] text-xs text-transparent">
+        &nbsp;
+      </p>
+    </>
   );
 }
 
@@ -199,8 +213,9 @@ export function StatCard({
       <div
         data-testid="stat-card"
         data-stat-label={label}
+        aria-hidden="true"
         className={cn(
-          'h-full rounded-2xl border p-4 shadow-sm sm:p-5',
+          'flex h-full min-w-0 animate-pulse flex-col justify-between rounded-2xl border p-4 shadow-sm sm:p-5',
           CARD_TONES[cardTone],
           className,
         )}
