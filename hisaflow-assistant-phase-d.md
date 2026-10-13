@@ -32,6 +32,7 @@
 - `lib/assistant.spec.ts` — suggestion generation, diff extraction, status/risk labels, edit coercion.
 - `components/assistant/ProposalCard.spec.tsx` — render, approve/apply/retry, high-risk two-tap, executed/no-undo, nested edit with coercion.
 - `e2e/tests/assistant-layout.spec.ts` — no horizontal overflow + 44px targets + card containment (skips without `E2E_BASE_URL`, matching the repo pattern).
+- `test/assistant-lifecycle.e2e-spec.ts` — real-Postgres contract for the edit path: `POST /assistant/proposals/:id/revise` creates a new version and rejects the superseded proposal, and a rejected proposal can never be approved or executed.
 - Gates: frontend `tsc` + ESLint (assistant clean) + **138 vitest** + `next build`; backend `tsc` + **92 suites / 653 Jest tests** + `nest build`; e2e `tsc`.
 
 ## 4. Remaining / deferred

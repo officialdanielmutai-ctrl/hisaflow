@@ -34,6 +34,7 @@
 - `unsupported/assistant-unsupported.service.spec.ts` — redaction, empty intent, scoped list.
 - `tools/assistant-tools.service.spec.ts` — `send_email`/`send_sms` consent + governed commit; `log_unsupported_intent` utility.
 - `components/assistant/UnsupportedIntentsCard.spec.tsx` — empty and populated states.
+- `test/assistant-lifecycle.e2e-spec.ts` — real-Postgres coverage: communicate tools send only after approval, honour opt-out consent and record the outbound trail; `log_unsupported_intent` records and `GET /assistant/unsupported` lists it.
 - Gates: backend `tsc` + **94 suites / 665 Jest tests** + `nest build` + module ESLint; frontend `tsc` + ESLint (assistant clean) + **140 vitest** + `next build`.
 
 ## 4. Remaining (next layers)

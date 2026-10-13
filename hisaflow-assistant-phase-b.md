@@ -52,8 +52,9 @@ There is exactly **one** code path that commits assistant writes (`AssistantExec
 | Unknown tools denied | `tool-registry.service.spec.ts` (`assertKnown` throws); policy default-denies disabled flags |
 | DUKA transaction tools | `assistant-tools.service.spec.ts`: `record_sale` decrease, `record_purchase` increase, `record_wastage` with reason |
 | Audit logging | executor writes `execute_start` / `executed` / `execute_failed` (asserted) |
+| Real-Postgres e2e of the whole path | `test/assistant-lifecycle.e2e-spec.ts` — 11 cases (vertical tool filtering, read auto-run, propose→approve→execute, pre-approval refusal, idempotency, args-hash immutability, tenant isolation, flag denial, revise/versioning, reject, unsupported-intent capture, consent-checked comms, ISP `create_subscriber` commit) |
 
-Local gates: backend `tsc` clean, **88 Jest suites / 629 tests pass** (39 assistant), `nest build` clean, ESLint clean for the module.
+Local gates: backend `tsc` clean, **102 Jest suites / 792 tests pass** (200 of them assistant/config), `nest build` clean, ESLint clean for the module; the four e2e suites (32 tests) pass against a real Postgres.
 
 ## 4. Enabling (flags default off)
 
@@ -70,9 +71,9 @@ VALUES
 
 Scope `BUSINESS_TYPE` with `scope_value = 'DUKA'` to gate the first vertical only. `assistant.shadow` defaults off. An admin UI for flags is a follow-up (D2-E).
 
-## 5. Staging e2e (pending)
+## 5. Real-Postgres e2e (closed 2026-10-13)
 
-The Phase B done criteria require a staging end-to-end run. There is no seeded Postgres locally (Phase 0 discovery), so this is deferred exactly like the Duty 1 screenshot affirmation: run `POST /assistant/proposals` → `approve` → `execute` against a seeded org once the environment is available.
+The Phase B done criteria require an end-to-end run of the governed path. `apps/backend/test/assistant-lifecycle.e2e-spec.ts` now runs the real Nest app against a real Postgres (the CI `backend:test:e2e` job) and proves, with a database: the org gets only its vertical's tools; a read tool auto-runs; a write does not mutate before approval and is idempotent on re-execute; approved args are immutable (hash check); proposals are tenant-isolated; a write is denied when its flag is off; `revise` creates a new version and rejects the superseded one; a rejected proposal can never execute; unsupported intents are recorded and listed; communicate tools send only after approval and honour opt-out consent; and a vertical tool (`create_subscriber`) commits end to end. No model provider is called — this exercises the deterministic propose/approve/execute contract, not the LLM loop. The live shadow run and live-model evals remain the only deferred assistant verification (they need the configured gateway).
 
 ## 6. Phase C — DUKA parity port
 

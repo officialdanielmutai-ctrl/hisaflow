@@ -7,6 +7,7 @@ import { CoreModule } from '../../src/core/core.module';
 import { ClerkAuthGuard } from '../../src/core/guards/clerk-auth.guard';
 import { PrismaService } from '../../src/infrastructure/prisma.service';
 import { AlertsService } from '../../src/modules/alerts/alerts.service';
+import { AssistantModule } from '../../src/modules/assistant/assistant.module';
 import { FinanceModule } from '../../src/modules/finance/finance.module';
 import { InvoicesModule } from '../../src/modules/invoices/invoices.module';
 import { SchoolFeesModule } from '../../src/modules/school-fees/school-fees.module';
@@ -41,6 +42,7 @@ export async function createE2eApp(): Promise<INestApplication> {
       CoreModule,
       DatabaseModule,
       EntitlementsModule,
+      AssistantModule,
       FinanceModule,
       InvoicesModule,
       SchoolFeesModule,
