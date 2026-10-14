@@ -48,6 +48,8 @@ All paths are relative to `apps/backend/src/modules/assistant/` unless stated.
 
 Role gating mirrors the existing controllers (rooms = owner/manager; bookings, guests and payments = staff-inclusive). The vertical-agnostic foundation tools (`search_inventory`, `get_low_stock`, `create_note`, `send_email`, `send_sms`, `log_unsupported_intent`) remain available; `search_inventory` resolves the item ID for `add_consumption`.
 
+> **Post-phase update 2026-10-14 (Q-017):** the shared inventory tools (`create_inventory_item`, `update_inventory_item`, `record_purchase`, `record_wastage`) were widened to **every** vertical, so a guest house can create/restock minibar and consumable stock directly. `add_consumption` remains the sale path. See `hisaflow-assistant-vertical-enablement.md`.
+
 ## 2. The single governed write path is unchanged
 
 ```

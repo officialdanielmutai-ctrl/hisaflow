@@ -117,6 +117,22 @@ describe('AssistantModule wiring', () => {
     expect(restaurant).not.toContain('create_booking');
   });
 
+  it('offers the shared inventory tools to every vertical', () => {
+    for (const businessType of ['GUEST_HOUSE', 'ISP', 'SCHOOL']) {
+      const names = registry
+        .listFor(contextFor(businessType))
+        .map((tool) => tool.name);
+      // Regression guard for the production report: the assistant must be able
+      // to read stock, create stock and save a note in every vertical.
+      expect(names).toContain('list_inventory');
+      expect(names).toContain('create_note');
+      expect(names).toContain('create_inventory_item');
+      expect(names).toContain('update_inventory_item');
+      expect(names).toContain('record_purchase');
+      expect(names).toContain('record_wastage');
+    }
+  });
+
   it('offers chemist tools and the shared stock items to a chemist org', () => {
     const chemist = registry
       .listFor(contextFor('CHEMIST'))

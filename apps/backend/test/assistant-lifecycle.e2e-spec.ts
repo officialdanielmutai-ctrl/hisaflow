@@ -128,6 +128,40 @@ describe('Assistant governed write path (e2e, real Postgres)', () => {
     expect(emptyResponse.body.result).toEqual([]);
   });
 
+  it('reads and proposes shared inventory tools with no feature-flag rows (default on)', async () => {
+    // Production applies the schema with `prisma db push`, so the flag table can
+    // be empty. The assistant must still work across verticals; this is the
+    // regression guard for the production report that no tool was offered.
+    const { org, owner, item } = await seedOrg('DefaultOn', 'GUEST_HOUSE');
+    await prisma.db.featureFlag.deleteMany({});
+
+    const read = await request(app, '/assistant/tools/list_inventory/run', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: { args: {} },
+    });
+    expect(read.status).toBe(201);
+    expect(read.body.result).toEqual([
+      expect.objectContaining({ id: item.id, name: expect.any(String) }),
+    ]);
+
+    const proposed = await request(app, '/assistant/proposals', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: {
+        tool: 'create_inventory_item',
+        args: { name: 'Minibar water', unit: 'bottle', quantity: 24 },
+      },
+    });
+    expect(proposed.status).toBe(201);
+    expect(proposed.body.proposal).toMatchObject({
+      tool: 'create_inventory_item',
+      status: 'PROPOSED',
+    });
+  });
+
   it('turns a body-only note draft into a committed note', async () => {
     const { org, owner } = await seedOrg('NoteDraft', 'GUEST_HOUSE');
 

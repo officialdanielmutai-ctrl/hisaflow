@@ -19,12 +19,24 @@ describe('rolloutBucket', () => {
 });
 
 describe('FeatureFlagService', () => {
-  it('denies by default when no flag row exists', async () => {
+  it('enables the assistant capabilities when no flag row exists', async () => {
     const { service } = build([]);
-    await expect(service.isEnabled('assistant.read', CTX)).resolves.toBe(false);
+    await expect(service.isEnabled('assistant.read', CTX)).resolves.toBe(true);
+    await expect(service.isEnabled('assistant.write', CTX)).resolves.toBe(true);
+    await expect(
+      service.isEnabled('assistant.communicate', CTX),
+    ).resolves.toBe(true);
   });
 
-  it('denies when the flag is present but disabled', async () => {
+  it('keeps unknown and shadow flags denied by default', async () => {
+    const { service } = build([]);
+    await expect(service.isEnabled('assistant.shadow', CTX)).resolves.toBe(false);
+    await expect(service.isEnabled('assistant.unknown', CTX)).resolves.toBe(
+      false,
+    );
+  });
+
+  it('lets an explicit disabled row turn a default-on capability off', async () => {
     const { service } = build([
       { key: 'assistant.read', scope: 'GLOBAL', enabled: false, rolloutPct: 100 },
     ]);
@@ -53,10 +65,10 @@ describe('FeatureFlagService', () => {
     await expect(service.isEnabled('assistant.read', CTX)).resolves.toBe(false);
   });
 
-  it('throws from assertEnabled when the flag is off', async () => {
+  it('throws from assertEnabled when a default-off flag is missing', async () => {
     const { service } = build([]);
     await expect(
-      service.assertEnabled('assistant.write', CTX),
+      service.assertEnabled('assistant.shadow', CTX),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

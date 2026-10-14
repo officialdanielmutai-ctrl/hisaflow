@@ -56,9 +56,11 @@ There is exactly **one** code path that commits assistant writes (`AssistantExec
 
 Local gates: backend `tsc` clean, **102 Jest suites / 792 tests pass** (200 of them assistant/config), `nest build` clean, ESLint clean for the module; the four e2e suites (32 tests) pass against a real Postgres.
 
-## 4. Enabling (flags default off)
+## 4. Enabling (flags now default on)
 
-Nothing is available until an org has the flags. Insert, e.g.:
+> **Post-phase update 2026-10-14 (Q-016):** because production boots with `prisma db push` (not `migrate deploy`), the flag rows below were never seeded and the assistant was inert. `assistant.read` / `assistant.write` / `assistant.communicate` are now **enabled by default when no row exists** (`DEFAULT_ENABLED_FLAGS`), while any explicit row still overrides and can disable. See `hisaflow-assistant-vertical-enablement.md`.
+
+The rows below are optional now (read/write/communicate default on); insert them explicitly to make the state visible or to disable a capability with `enabled = false`. Insert, e.g.:
 
 ```sql
 INSERT INTO feature_flags (id, key, scope, scope_value, enabled, rollout_pct, updated_at)

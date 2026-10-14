@@ -51,6 +51,8 @@ All paths are relative to `apps/backend/src/modules/assistant/` unless stated.
 
 The vertical-agnostic foundation tools (`search_inventory`, `get_low_stock`, `create_note`, `send_email`, `send_sms`, `log_unsupported_intent`) remain available to ISP; `search_inventory` is what resolves equipment item IDs for `issue_equipment`. The DUKA stock tools stay retail-only.
 
+> **Post-phase update 2026-10-14 (Q-017):** the shared inventory tools (`create_inventory_item`, `update_inventory_item`, `record_purchase`, `record_wastage`) were widened to **every** vertical, so ISP can create/restock equipment stock directly. `record_sale` stays gated. See `hisaflow-assistant-vertical-enablement.md`.
+
 ## 2. The single governed write path is unchanged
 
 ```

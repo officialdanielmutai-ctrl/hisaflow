@@ -48,6 +48,8 @@ Terms and classes are read through Prisma under the org scope; students and fee 
 
 The vertical-agnostic foundation tools (`search_inventory`, `get_low_stock`, `create_note`, `send_email`, `send_sms`, `log_unsupported_intent`) remain available; `search_inventory` resolves the item ID for `record_supply_issue`.
 
+> **Post-phase update 2026-10-14 (Q-017):** the shared inventory tools (`create_inventory_item`, `update_inventory_item`, `record_purchase`, `record_wastage`) were widened to **every** vertical, so a school can create/restock supply stock directly. `record_supply_issue` remains the issue path. See `hisaflow-assistant-vertical-enablement.md`.
+
 ## 2. The single governed write path is unchanged
 
 ```

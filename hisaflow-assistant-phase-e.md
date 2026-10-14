@@ -51,3 +51,8 @@ reply (never a 500), `create_note` whips up the reviewable note panel, and the
 assistant has short-lived, user-scoped conversation memory that is pruned as
 chats pile on. See `hisaflow-assistant-resilience-memory-notes.md`
 (defects Q-013/Q-014/Q-015).
+
+**Later same day (Q-016/Q-017):** the assistant flags were found to default off
+with no production seed, so no tool was offered; read/write/communicate now
+default on when no flag row exists, and the shared inventory tools were widened
+to every vertical. See `hisaflow-assistant-vertical-enablement.md`.

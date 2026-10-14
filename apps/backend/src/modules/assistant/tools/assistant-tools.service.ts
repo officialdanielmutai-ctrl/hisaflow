@@ -122,7 +122,6 @@ export class AssistantToolsService implements AssistantToolProvider {
           'Record stock received or bought from a supplier. Requires approval.',
         type: TransactionTypeDto.PURCHASE,
         direction: 'in',
-        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER', 'RESTAURANT', 'CHEMIST'],
       }),
       this.transactionTool({
         name: 'record_wastage',
@@ -131,7 +130,6 @@ export class AssistantToolsService implements AssistantToolProvider {
         type: TransactionTypeDto.WASTAGE,
         direction: 'out',
         wastage: true,
-        verticals: ['DUKA', 'MINI_MART', 'WHOLESALER', 'RESTAURANT', 'CHEMIST'],
       }),
       this.createInventoryItem(),
       this.updateInventoryItem(),
@@ -369,7 +367,8 @@ export class AssistantToolsService implements AssistantToolProvider {
       kind: 'write',
       riskLevel: direction === 'in' ? 'low' : 'medium',
       roles: [AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF],
-      verticals: config.verticals ?? ['DUKA', 'MINI_MART'],
+      // No `verticals`: stock movements are shared across every business type.
+      verticals: config.verticals,
       parameters: {
         type: 'object',
         properties: {
@@ -447,7 +446,6 @@ export class AssistantToolsService implements AssistantToolProvider {
       kind: 'write',
       riskLevel: 'low',
       roles: [AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF],
-      verticals: ['DUKA', 'MINI_MART', 'CHEMIST'],
       parameters: {
         type: 'object',
         properties: {
@@ -554,7 +552,6 @@ export class AssistantToolsService implements AssistantToolProvider {
       kind: 'write',
       riskLevel: 'low',
       roles: [AppRole.OWNER, AppRole.MANAGER],
-      verticals: ['DUKA', 'MINI_MART', 'CHEMIST'],
       parameters: {
         type: 'object',
         properties: {

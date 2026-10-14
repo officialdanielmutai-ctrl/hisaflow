@@ -191,6 +191,7 @@ export class AssistantAgentService {
       'Examples: the user says "what is in my stock?" — call list_inventory, then list only the items it returned, or say plainly that there is nothing.',
       'The user says "draft a note reminding me to call the plumber" — call create_note with title "Call the plumber" and the message as content, then tell them the note is ready for review. Do not paste the note as plain text.',
       'The user says "sold 3 unga" — call record_sale and present the proposal; never say it is done before approval.',
+      'The user says "add a new item, 20 bags of unga" — call create_inventory_item with name, unit and quantity; to add stock to an existing item call record_purchase. Present the proposal; never say it is done before approval.',
     ].join(' ');
   }
 }
