@@ -209,8 +209,9 @@ export default function SubscribersPage() {
                 </span>
               </div>
 
-              {/* Phone row — first-class, tappable */}
-              <div className="flex items-center gap-3 mt-3">
+              {/* Phone row — first-class, tappable. Wraps on narrow screens so
+                  the View link never pushes the card past the viewport. */}
+              <div className="flex flex-wrap items-center gap-3 mt-3">
                 <a
                   href={`tel:${sub.phone}`}
                   className="flex items-center gap-1.5 rounded-lg bg-[var(--color-bg-base)] border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium hover:border-[var(--color-accent)] transition-colors"
