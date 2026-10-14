@@ -3,6 +3,7 @@ import {
   coerceField,
   displayValue,
   extractDiffRows,
+  proposalDestination,
   proposalStatusLabel,
   proposalStatusTone,
   riskLabel,
@@ -190,5 +191,40 @@ describe('assistant helpers', () => {
     expect(coerceField('Sugar', 'Salt')).toBe('Sugar');
     expect(displayValue(1200)).toBe('1,200');
     expect(displayValue(null)).toBe('—');
+  });
+
+  it('labels and suggests the inventory list tool', () => {
+    expect(toolLabel('list_inventory')).toBe('Inventory list');
+    expect(suggestionsForTools([tool('list_inventory')])).toEqual([
+      'What is in my stock?',
+    ]);
+  });
+});
+
+describe('proposalDestination', () => {
+  it('links executed proposals to the section where the record lives', () => {
+    expect(proposalDestination('create_note')).toEqual({
+      label: 'Notes',
+      href: '/notes',
+    });
+    expect(proposalDestination('create_booking')).toEqual({
+      label: 'Bookings',
+      href: '/bookings',
+    });
+    expect(proposalDestination('create_subscriber')).toEqual({
+      label: 'Subscribers',
+      href: '/subscribers',
+    });
+    expect(proposalDestination('record_sale')).toEqual({
+      label: 'Transactions',
+      href: '/transactions',
+    });
+  });
+
+  it('returns null for tools with no stable page', () => {
+    expect(proposalDestination('send_sms')).toBeNull();
+    expect(proposalDestination('send_email')).toBeNull();
+    expect(proposalDestination('log_unsupported_intent')).toBeNull();
+    expect(proposalDestination('not_a_tool')).toBeNull();
   });
 });

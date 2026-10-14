@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Check, Pencil, RotateCcw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type {
@@ -12,6 +13,7 @@ import {
   displayValue,
   extractDiffRows,
   isEditableScalar,
+  proposalDestination,
   proposalStatusLabel,
   proposalStatusTone,
   riskLabel,
@@ -65,6 +67,7 @@ export function ProposalCard({
 }: ProposalCardProps) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const destination = proposalDestination(proposal.tool);
   const initial = initialDrafts(proposal.args);
   const [scalars, setScalars] = useState<Record<string, string>>(initial.scalars);
   const [updates, setUpdates] = useState<Record<string, string>>(initial.updates);
@@ -245,6 +248,15 @@ export function ProposalCard({
 
       {proposal.status === 'EXECUTED' && !result && (
         <p className="mt-3 text-xs font-semibold text-emerald-700">Applied.</p>
+      )}
+
+      {proposal.status === 'EXECUTED' && destination && (
+        <Link
+          href={destination.href}
+          className="mt-2 inline-flex min-h-[44px] items-center text-xs font-semibold text-[var(--color-accent)] hover:underline"
+        >
+          View in {destination.label} →
+        </Link>
       )}
 
       {proposal.status === 'EXECUTED' && (

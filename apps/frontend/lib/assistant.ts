@@ -8,6 +8,7 @@ import type {
 export const TOOL_LABELS: Record<string, string> = {
   get_low_stock: 'Low stock',
   search_inventory: 'Inventory search',
+  list_inventory: 'Inventory list',
   record_sale: 'Record sale',
   record_purchase: 'Record purchase',
   record_wastage: 'Record wastage',
@@ -103,6 +104,7 @@ export function toolLabel(tool: string): string {
 const TOOL_SUGGESTIONS: Record<string, string> = {
   get_low_stock: 'What is low on stock?',
   search_inventory: 'Do we have cooking oil?',
+  list_inventory: 'What is in my stock?',
   record_sale: 'Sold 3 unga',
   record_purchase: 'Received 10 sugar',
   record_wastage: '2 milk expired',
@@ -162,6 +164,79 @@ export function suggestionsForTools(
     .map((tool) => TOOL_SUGGESTIONS[tool.name])
     .filter((suggestion): suggestion is string => Boolean(suggestion))
     .slice(0, limit);
+}
+
+export interface ProposalDestination {
+  label: string;
+  href: string;
+}
+
+/**
+ * Where an executed proposal's record lives, so a card can link the user to
+ * what the assistant just did instead of leaving them to guess. Tools with no
+ * stable page (for example outbound SMS/email) return null.
+ */
+const PROPOSAL_DESTINATIONS: Record<string, ProposalDestination> = {
+  create_note: { label: 'Notes', href: '/notes' },
+  create_inventory_item: { label: 'Inventory', href: '/inventory' },
+  update_inventory_item: { label: 'Inventory', href: '/inventory' },
+  record_sale: { label: 'Transactions', href: '/transactions' },
+  record_purchase: { label: 'Transactions', href: '/transactions' },
+  record_wastage: { label: 'Transactions', href: '/transactions' },
+  receive_stock_batch: { label: 'Inventory', href: '/inventory' },
+  record_expiry_writeoff: { label: 'Transactions', href: '/transactions' },
+  // Guest house
+  create_guest: { label: 'Guests', href: '/guests' },
+  create_room: { label: 'Rooms', href: '/rooms' },
+  update_room: { label: 'Rooms', href: '/rooms' },
+  mark_room_dirty: { label: 'Rooms', href: '/rooms' },
+  mark_room_clean: { label: 'Rooms', href: '/rooms' },
+  create_booking: { label: 'Bookings', href: '/bookings' },
+  check_in_booking: { label: 'Bookings', href: '/bookings' },
+  check_out_booking: { label: 'Bookings', href: '/bookings' },
+  add_consumption: { label: 'Bookings', href: '/bookings' },
+  generate_booking_invoice: { label: 'Bookings', href: '/bookings' },
+  record_booking_payment: { label: 'Bookings', href: '/bookings' },
+  add_invoice_line_item: { label: 'Bookings', href: '/bookings' },
+  // ISP
+  create_subscriber: { label: 'Subscribers', href: '/subscribers' },
+  assign_plan: { label: 'Subscribers', href: '/subscribers' },
+  suspend_subscriber: { label: 'Subscribers', href: '/subscribers' },
+  reactivate_subscriber: { label: 'Subscribers', href: '/subscribers' },
+  churn_subscriber: { label: 'Subscribers', href: '/subscribers' },
+  record_subscriber_payment: { label: 'Subscribers', href: '/subscribers' },
+  generate_subscriber_invoice: { label: 'Subscribers', href: '/subscribers' },
+  issue_equipment: { label: 'Subscribers', href: '/subscribers' },
+  create_work_order: { label: 'Work orders', href: '/work-orders' },
+  start_work_order: { label: 'Work orders', href: '/work-orders' },
+  complete_work_order: { label: 'Work orders', href: '/work-orders' },
+  create_ticket: { label: 'Tickets', href: '/tickets' },
+  resolve_ticket: { label: 'Tickets', href: '/tickets' },
+  // School
+  create_student: { label: 'Students', href: '/students' },
+  update_student: { label: 'Students', href: '/students' },
+  create_class: { label: 'Classes', href: '/school-classes' },
+  update_class: { label: 'Classes', href: '/school-classes' },
+  record_fee_payment: { label: 'Fees', href: '/school-fees' },
+  generate_fee_invoices: { label: 'Fees', href: '/school-fees' },
+  issue_fee_invoice: { label: 'Fees', href: '/school-fees' },
+  void_fee_invoice: { label: 'Fees', href: '/school-fees' },
+  record_supply_issue: { label: 'Transactions', href: '/transactions' },
+  // Restaurant
+  create_table_order: { label: 'Table orders', href: '/table-orders' },
+  add_order_item: { label: 'Table orders', href: '/table-orders' },
+  close_table_order: { label: 'Table orders', href: '/table-orders' },
+  record_recipe_consumption: { label: 'Transactions', href: '/transactions' },
+  update_menu_price: { label: 'Inventory', href: '/inventory' },
+  // Wholesaler
+  record_wholesale_sale: { label: 'Transactions', href: '/transactions' },
+  record_bulk_sale: { label: 'Transactions', href: '/transactions' },
+  record_credit_payment: { label: 'Finance', href: '/finance' },
+  create_tiered_price: { label: 'Inventory', href: '/inventory' },
+};
+
+export function proposalDestination(tool: string): ProposalDestination | null {
+  return PROPOSAL_DESTINATIONS[tool] ?? null;
 }
 
 export interface DiffRow {

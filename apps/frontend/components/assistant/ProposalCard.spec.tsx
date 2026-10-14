@@ -1,7 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import type { ReactNode, AnchorHTMLAttributes } from 'react';
 import type { AssistantProposal } from '@/services/assistant.service';
 import { ProposalCard } from './ProposalCard';
+
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    ...rest
+  }: { href: string; children: ReactNode } & AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={typeof href === 'string' ? href : '#'} {...rest}>
+      {children}
+    </a>
+  ),
+}));
 
 function proposal(
   overrides: Partial<AssistantProposal> = {},
@@ -94,8 +107,23 @@ describe('ProposalCard', () => {
     expect(screen.getByText('Applied successfully.')).toBeInTheDocument();
     expect(screen.getByText(/undo is not available/i)).toBeInTheDocument();
     expect(
+      screen.getByRole('link', { name: /view in transactions/i }),
+    ).toHaveAttribute('href', '/transactions');
+    expect(
       screen.queryByRole('button', { name: /approve/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it('links an executed note proposal to the Notes page', () => {
+    render(
+      <ProposalCard
+        proposal={proposal({ tool: 'create_note', status: 'EXECUTED' })}
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: /view in notes/i }),
+    ).toHaveAttribute('href', '/notes');
   });
 
   it('edits scalar and nested args and saves coerced values', () => {
