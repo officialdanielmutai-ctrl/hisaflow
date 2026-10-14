@@ -53,6 +53,9 @@ e2e/test-results/
 e2e/playwright-report/
 e2e/.auth/
 e2e/artifacts/
+# Playwright output when invoked from the repo root
+test-results/
+playwright-report/
 playwright/.cache/
 
 # Generated build artifacts (never commit)

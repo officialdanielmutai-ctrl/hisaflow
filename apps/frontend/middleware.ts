@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { appUrl, siteUrl } from '@/features/marketing/config/site';
 
 const isPublicRoute = createRouteMatcher([
@@ -50,7 +50,19 @@ const SITE_HOST = hostOf(siteUrl());
 const APP_HOST = hostOf(appUrl());
 const SPLIT = APP_HOST !== null && SITE_HOST !== null && APP_HOST !== SITE_HOST;
 
-export default clerkMiddleware(async (auth, request) => {
+// Test-only: the seeded Duty 1 browser sweep authenticates with a synthetic
+// token the backend's test guard understands. This bypass is never active in a
+// production build (`NODE_ENV === 'production'`) and never unless the operator
+// explicitly sets `E2E_AUTH_BYPASS=true`.
+const E2E_AUTH_BYPASS =
+  process.env.E2E_AUTH_BYPASS === 'true' &&
+  process.env.NODE_ENV !== 'production';
+
+export default E2E_AUTH_BYPASS
+  ? function e2eAuthBypassMiddleware(_request: NextRequest) {
+      return NextResponse.next();
+    }
+  : clerkMiddleware(async (auth, request) => {
   const { userId } = await auth();
   const { pathname, search } = request.nextUrl;
   const host = request.headers.get('host');

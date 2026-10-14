@@ -1,4 +1,6 @@
 /** @type {import("next").NextConfig} */
+const path = require('path');
+
 const nextConfig = {
   reactStrictMode: true,
   eslint: {
@@ -8,6 +10,16 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   webpack: (config, { dev }) => {
+    // Test-only: swap Clerk for the stub used by the seeded Duty 1 sweep.
+    // Never active unless NEXT_PUBLIC_E2E_AUTH is explicitly "true".
+    if (process.env.NEXT_PUBLIC_E2E_AUTH === 'true') {
+      // The trailing `$` makes this an exact match, so
+      // `@clerk/nextjs/server` (used by the middleware) is left untouched.
+      config.resolve.alias['@clerk/nextjs$'] = path.resolve(
+        __dirname,
+        'lib/e2e/clerk-stub.tsx',
+      );
+    }
     if (dev) {
       config.cache = false;
       config.watchOptions = {

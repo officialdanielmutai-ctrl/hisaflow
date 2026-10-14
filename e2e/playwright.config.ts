@@ -15,6 +15,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  // `duty1-sweep.spec.ts` is a local, seeded harness (`playwright.duty1.config.ts`).
+  // It must never run in the scheduled staging smoke job, where `e2e/.auth/seed.json`
+  // does not exist.
+  testIgnore: ['**/duty1-sweep.spec.ts'],
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,

@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { existsSync, readFileSync } from 'fs';
+import { resolve } from 'path';
 import {
   KPI_VIEWPORTS,
   assertKpiGeometry,
@@ -24,6 +26,27 @@ import {
  */
 const hasEnv = Boolean(process.env.E2E_BASE_URL);
 test.skip(!hasEnv, 'Set E2E_BASE_URL to a seeded test environment to run layout checks.');
+
+// When the local seeded harness is present (Duty 1 sweep), select the same
+// deterministic active organisation the sweep uses. Against staging the file
+// does not exist and the real Clerk storageState + org selection apply.
+const SEED_PATH = resolve(__dirname, '../.auth/seed.json');
+const seed = existsSync(SEED_PATH)
+  ? (JSON.parse(readFileSync(SEED_PATH, 'utf8')) as Record<
+      string,
+      { id: string }
+    >)
+  : null;
+
+test.beforeEach(async ({ context }) => {
+  if (!seed) return;
+  const firstOrg = Object.values(seed)[0];
+  if (!firstOrg) return;
+  await context.addInitScript(
+    (id) => window.localStorage.setItem('hf:active_org_id', id),
+    firstOrg.id,
+  );
+});
 
 for (const width of KPI_VIEWPORTS) {
   test(`dashboard KPI geometry at ${width}px`, async ({ page }, testInfo) => {
