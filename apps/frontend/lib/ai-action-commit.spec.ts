@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   commitParsedActions,
+  completionRoute,
   isConfirmable,
   type ActionClients,
   type CommittableAction,
@@ -150,5 +151,41 @@ describe('isConfirmable', () => {
     expect(
       isConfirmable(action({ type: 'SALE', itemId: 'i1', _status: 'applied' })),
     ).toBe(false);
+  });
+});
+
+describe('completionRoute', () => {
+  it('routes each action to the section that mirrors it', () => {
+    expect(completionRoute([action({ type: 'NOTE' })])).toBe('/notes');
+    expect(completionRoute([action({ type: 'GUEST' })])).toBe('/guests');
+    expect(completionRoute([action({ type: 'ROOM' })])).toBe('/rooms');
+    expect(completionRoute([action({ type: 'SALE', itemId: 'i1' })])).toBe(
+      '/transactions',
+    );
+    expect(completionRoute([action({ type: 'PURCHASE', itemId: 'i1' })])).toBe(
+      '/transactions',
+    );
+    expect(completionRoute([action({ type: 'WASTAGE', itemId: 'i1' })])).toBe(
+      '/transactions',
+    );
+    expect(completionRoute([action({ type: 'CREATE', itemName: 'New' })])).toBe(
+      '/inventory',
+    );
+    expect(completionRoute([action({ type: 'UPDATE', itemId: 'i1' })])).toBe(
+      '/inventory',
+    );
+  });
+
+  it('uses the first applied action for a mixed request', () => {
+    expect(
+      completionRoute([
+        action({ type: 'NOTE' }),
+        action({ type: 'SALE', itemId: 'i1' }),
+      ]),
+    ).toBe('/notes');
+  });
+
+  it('falls back to inventory when nothing was applied', () => {
+    expect(completionRoute([])).toBe('/inventory');
   });
 });

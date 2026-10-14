@@ -133,3 +133,40 @@ export async function commitParsedActions(
 
   return { outcomes, booking };
 }
+
+export type ActionDestination =
+  | '/inventory'
+  | '/transactions'
+  | '/notes'
+  | '/guests'
+  | '/rooms';
+
+/**
+ * Where the user should land once AI actions are applied, so the result
+ * mirrors the request: a note opens Notes, a guest opens Guests, a stock
+ * movement opens the transaction ledger, and so on. For a multi-action
+ * request the first applied action wins, which keeps the destination
+ * deterministic and predictable.
+ */
+export function completionRoute(
+  applied: Array<Pick<CommittableAction, 'type'>>,
+): ActionDestination {
+  const first = applied[0];
+  if (!first) return '/inventory';
+  switch (first.type) {
+    case 'NOTE':
+      return '/notes';
+    case 'GUEST':
+      return '/guests';
+    case 'ROOM':
+      return '/rooms';
+    case 'SALE':
+    case 'PURCHASE':
+    case 'WASTAGE':
+      return '/transactions';
+    case 'CREATE':
+    case 'UPDATE':
+    default:
+      return '/inventory';
+  }
+}

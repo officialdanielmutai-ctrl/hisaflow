@@ -9,18 +9,19 @@ import { createInventoryItem, updateInventoryItem } from '@/services/inventory.s
 import { createNote } from '@/services/notes.service';
 import { guestsService } from '@/services/guests.service';
 import { roomsService } from '@/services/rooms.service';
-import { useRouter } from 'next/navigation';
 import { Trash2, ChevronDown, ChevronUp, Camera, CheckCircle2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import {
   commitParsedActions,
+  completionRoute,
   isConfirmable,
   type ActionClients,
   type CommittableAction,
 } from '@/lib/ai-action-commit';
 
 interface AiIngestionPanelProps {
-  onCompleted: () => void;
+  /** Navigate to the section that mirrors what the AI just applied. */
+  onCompleted: (href: string) => void;
 }
 
 const CAPTURE_CONSENT_KEY = 'hisaflow:aiCaptureConsent';
@@ -39,7 +40,6 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   const [captureConsent, setCaptureConsent] = useState(false);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
-  const router = useRouter();
 
   useEffect(() => {
     try {
@@ -253,17 +253,18 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
             'Only the failed actions will be retried; applied ones will not be sent again.',
         );
       } else {
+        const applied = updated.filter((a) => a._status === 'applied');
         setActions([]);
         setText('');
-        onCompleted();
-
         if (booking) {
           const params = new URLSearchParams();
           if (booking.guestName) params.set('guestName', booking.guestName);
           if (booking.roomName) params.set('roomName', booking.roomName);
           if (booking.checkInDate) params.set('checkIn', booking.checkInDate);
           if (booking.checkOutDate) params.set('checkOut', booking.checkOutDate);
-          router.push(`/bookings/new?${params.toString()}`);
+          onCompleted(`/bookings/new?${params.toString()}`);
+        } else {
+          onCompleted(completionRoute(applied));
         }
       }
     } catch (err) {

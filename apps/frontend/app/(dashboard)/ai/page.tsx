@@ -12,7 +12,7 @@ export default function AiPage() {
       <p className="text-sm text-[var(--color-text-secondary)]">
         Describe what happened and AI will extract the actions.
       </p>
-      <AiIngestionPanel onCompleted={() => router.push('/inventory')} />
+      <AiIngestionPanel onCompleted={(href) => router.push(href)} />
     </div>
   );
 }
