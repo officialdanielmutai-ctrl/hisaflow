@@ -76,6 +76,51 @@ describe('AssistantToolsService.get_low_stock', () => {
   });
 });
 
+describe('AssistantToolsService.list_inventory', () => {
+  it('scopes the query, numbers the prices and preserves nulls', async () => {
+    const { byName, db } = build({
+      items: [
+        {
+          id: 'i1',
+          name: 'Maize flour',
+          unit: 'kg',
+          quantity: 2,
+          reorderThreshold: 5,
+          costPrice: '120',
+          sellingPrice: null,
+        },
+      ],
+    });
+    const tool = byName('list_inventory');
+
+    const result = await tool.execute?.({ limit: 20 }, CTX);
+
+    expect(db.inventoryItem.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { organizationId: 'org_1', isActive: true },
+      }),
+    );
+    expect(result).toEqual([
+      {
+        id: 'i1',
+        name: 'Maize flour',
+        unit: 'kg',
+        quantity: 2,
+        reorderThreshold: 5,
+        costPrice: 120,
+        sellingPrice: null,
+      },
+    ]);
+  });
+
+  it('returns an empty list for an organization with no inventory', async () => {
+    const { byName } = build({ items: [] });
+    const tool = byName('list_inventory');
+
+    await expect(tool.execute?.({}, CTX)).resolves.toEqual([]);
+  });
+});
+
 describe('AssistantToolsService.create_note', () => {
   it('validates and summarises without committing', async () => {
     const { byName, notes } = build();

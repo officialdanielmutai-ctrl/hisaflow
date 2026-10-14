@@ -73,6 +73,7 @@ describe('Assistant governed write path (e2e, real Postgres)', () => {
     const names = (response.body.tools as Array<{ name: string }>).map((t) => t.name);
     expect(names).toContain('record_sale');
     expect(names).toContain('create_note');
+    expect(names).toContain('list_inventory');
     expect(names).not.toContain('create_subscriber');
     expect(names).not.toContain('create_booking');
   });
@@ -95,6 +96,36 @@ describe('Assistant governed write path (e2e, real Postgres)', () => {
     expect(response.body.result).toEqual([
       expect.objectContaining({ id: item.id, quantity: 2 }),
     ]);
+  });
+
+  it('lists inventory for the org and returns an empty list (never invented rows)', async () => {
+    const { org, owner, item } = await seedOrg('ListInventory', 'GUEST_HOUSE');
+
+    const withItems = await request(app, '/assistant/tools/list_inventory/run', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: { args: { limit: 20 } },
+    });
+    expect(withItems.status).toBe(201);
+    expect(withItems.body.result).toEqual([
+      expect.objectContaining({ id: item.id, name: expect.any(String) }),
+    ]);
+
+    // An org with no inventory must get an empty list, which is what lets the
+    // assistant say "no items" instead of hallucinating products.
+    const empty = await seedOrg('ListInventoryEmpty', 'GUEST_HOUSE');
+    await prisma.db.inventoryItem.deleteMany({
+      where: { organizationId: empty.org.id },
+    });
+    const emptyResponse = await request(app, '/assistant/tools/list_inventory/run', {
+      method: 'POST',
+      orgId: empty.org.id,
+      userId: empty.owner.id,
+      body: { args: {} },
+    });
+    expect(emptyResponse.status).toBe(201);
+    expect(emptyResponse.body.result).toEqual([]);
   });
 
   it('does not mutate until an approved proposal is executed, and is idempotent', async () => {

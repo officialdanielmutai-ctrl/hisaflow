@@ -199,4 +199,48 @@ describe('AssistantAgentService', () => {
 
     expect(result.reply).toContain('1 proposal');
   });
+
+  it('grounds the model against inventing business data and names the write tools', async () => {
+    const { service, provider } = build({
+      tools: [readTool('list_inventory', jest.fn(async () => []))],
+      completions: [{ content: 'You have no inventory items yet.', toolCalls: [] }],
+    });
+
+    await service.run('org_1', 'user_1', false, 'nionyeshe stoo yangu');
+
+    const calls = (provider.complete as jest.Mock).mock.calls;
+    const system = (
+      calls[0][0] as Array<{ role: string; content: string }>
+    ).find((message) => message.role === 'system');
+    expect(system?.content).toContain('NO built-in knowledge');
+    expect(system?.content).toContain('Never invent');
+    expect(system?.content).toContain('call the matching read tool');
+    expect(system?.content).toContain('create_note');
+  });
+
+  it('passes an empty read result back so the model can say there is nothing', async () => {
+    const execute = jest.fn(async () => []);
+    const { service, provider } = build({
+      tools: [readTool('list_inventory', execute)],
+      completions: [
+        {
+          content: null,
+          toolCalls: [{ id: 'c1', name: 'list_inventory', args: {} }],
+        },
+        { content: 'You have no inventory items yet.', toolCalls: [] },
+      ],
+    });
+
+    const result = await service.run('org_1', 'user_1', false, 'stoo yangu iko aje?');
+
+    expect(execute).toHaveBeenCalledWith({}, CTX);
+    const calls = (provider.complete as jest.Mock).mock.calls;
+    const secondMessages = calls[1][0] as Array<{
+      role: string;
+      content: string;
+    }>;
+    const toolMessage = secondMessages.find((message) => message.role === 'tool');
+    expect(toolMessage?.content).toBe(JSON.stringify({ result: [] }));
+    expect(result.reply).toBe('You have no inventory items yet.');
+  });
 });

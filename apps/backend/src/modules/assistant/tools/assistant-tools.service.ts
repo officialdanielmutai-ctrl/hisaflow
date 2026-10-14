@@ -85,6 +85,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     return [
       this.getLowStock(),
       this.searchInventory(),
+      this.listInventory(),
       this.createNote(),
       this.transactionTool({
         name: 'record_sale',
@@ -124,7 +125,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     return {
       name: 'get_low_stock',
       description:
-        'List inventory items at or below their reorder threshold. Read-only.',
+        'List inventory items at or below their reorder threshold. Read-only. Use this to answer what is low or running out; never guess stock figures.',
       kind: 'read',
       riskLevel: 'low',
       parameters: {
@@ -172,7 +173,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     return {
       name: 'search_inventory',
       description:
-        'Search the organization inventory by product name. Read-only.',
+        'Search the organization inventory by product name. Read-only. Use this before quoting a specific item; never invent a match.',
       kind: 'read',
       riskLevel: 'low',
       parameters: {
@@ -207,12 +208,70 @@ export class AssistantToolsService implements AssistantToolProvider {
     };
   }
 
+  // ── read: list inventory ────────────────────────────────────────────────
+  // Added after a production report that the assistant invented products when
+  // asked to "pull the details about my stock": there was no read tool that
+  // lists inventory without a known product name, so the model filled the gap.
+  private listInventory(): ToolDefinition {
+    return {
+      name: 'list_inventory',
+      description:
+        'List the organization inventory items and their current quantities. Read-only. Call this before answering any general question about what is in stock. If it returns an empty list, the organization has no inventory items yet — say so and do not invent examples.',
+      kind: 'read',
+      riskLevel: 'low',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: {
+            type: 'number',
+            description: 'Maximum number of items to return (1-50).',
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const limit = asLimit(args.limit, 20);
+        const items = await this.prisma.db.inventoryItem.findMany({
+          where: { organizationId: ctx.organizationId, isActive: true },
+          orderBy: { name: 'asc' },
+          take: limit,
+          select: {
+            id: true,
+            name: true,
+            unit: true,
+            quantity: true,
+            reorderThreshold: true,
+            costPrice: true,
+            sellingPrice: true,
+          },
+        });
+        return items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          unit: item.unit,
+          quantity: Number(item.quantity),
+          reorderThreshold: item.reorderThreshold,
+          costPrice:
+            item.costPrice === null || item.costPrice === undefined
+              ? null
+              : Number(item.costPrice),
+          sellingPrice:
+            item.sellingPrice === null || item.sellingPrice === undefined
+              ? null
+              : Number(item.sellingPrice),
+        }));
+      },
+    };
+  }
+
   // ── write: note ─────────────────────────────────────────────────────────
   private createNote(): ToolDefinition {
     return {
       name: 'create_note',
       description:
-        'Create a note, reminder or task for the team. Requires approval.',
+        'Save a note, reminder or task for the team (it appears under Notes). Requires approval. Use this whenever the user asks to create, save, remember or send a note/reminder — never just write the text in your reply.',
       kind: 'write',
       riskLevel: 'low',
       roles: [AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF],
