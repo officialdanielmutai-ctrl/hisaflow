@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import type {
@@ -60,6 +60,8 @@ function toOpenAiMessage(
  */
 @Injectable()
 export class AssistantProviderService {
+  private readonly logger = new Logger(AssistantProviderService.name);
+
   constructor(private readonly config: ConfigService) {}
 
   isConfigured(): boolean {
@@ -79,26 +81,46 @@ export class AssistantProviderService {
       throw new ServiceUnavailableException('AI gateway is not configured.');
     }
 
-    const openai = new OpenAI({ baseURL: baseUrl, apiKey });
-    const response = await openai.chat.completions.create({
-      model: ASSISTANT_MODEL,
-      messages: messages.map(toOpenAiMessage),
-      tools: tools.map((tool) => ({
-        type: 'function' as const,
-        function: {
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.parameters as OpenAI.FunctionParameters,
-        },
-      })),
-      tool_choice: 'auto',
-      temperature: 0.1,
+    const openai = new OpenAI({
+      baseURL: baseUrl,
+      apiKey,
+      // Bound a single provider call. LiteLLM already retries/backoffs on the
+      // gateway side, so SDK retries would stack and turn a slow provider into
+      // a multi-minute request that the reverse proxy would kill with a 500.
+      timeout: 50_000,
+      maxRetries: 0,
     });
+    let response: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      response = await openai.chat.completions.create({
+        model: ASSISTANT_MODEL,
+        messages: messages.map(toOpenAiMessage),
+        tools: tools.map((tool) => ({
+          type: 'function' as const,
+          function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters as OpenAI.FunctionParameters,
+          },
+        })),
+        tool_choice: 'auto',
+        temperature: 0.1,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Assistant provider call failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
 
     const message = response.choices?.[0]?.message;
     const toolCalls: AgentToolCall[] = (message?.tool_calls ?? []).flatMap(
       (call) => {
-        if (call.type !== 'function') return [];
+        // A provider can return a truncated/malformed tool call; skip it rather
+        // than throwing and turning the whole turn into a 500.
+        if (call.type !== 'function' || !call.function?.name) return [];
         return [
           {
             id: call.id,

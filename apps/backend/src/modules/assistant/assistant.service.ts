@@ -9,6 +9,11 @@ import type { PublicProposal } from './proposal/public-proposal';
 import { AssistantExecutorService } from './executor/executor.service';
 import { AssistantAgentService } from './agent/assistant-agent.service';
 import { AssistantUnsupportedService } from './unsupported/assistant-unsupported.service';
+import {
+  AssistantMemoryService,
+  type ConversationSummary,
+  type StoredMessage,
+} from './memory/assistant-memory.service';
 import type { AgentResult } from './agent/agent.types';
 import type { ToolContext } from './tool.types';
 
@@ -27,6 +32,7 @@ export class AssistantService {
     private readonly executor: AssistantExecutorService,
     private readonly agent: AssistantAgentService,
     private readonly unsupported: AssistantUnsupportedService,
+    private readonly memory: AssistantMemoryService,
   ) {}
 
   buildContext(
@@ -110,14 +116,72 @@ export class AssistantService {
     return toPublicProposal(revised);
   }
 
-  /** Conversational entry point: the tool-calling agent loop. */
-  chat(
+  /**
+   * Conversational entry point: the tool-calling agent loop, wrapped in
+   * short-lived thread memory. The memory is pruned on every turn so old
+   * chats are deleted as new ones pile on. `conversationId` is optional; an
+   * unknown/expired id starts a fresh thread rather than failing.
+   */
+  async chat(
     organizationId: string,
     userId: string,
     isImpersonated: boolean,
     message: string,
-  ): Promise<AgentResult> {
-    return this.agent.run(organizationId, userId, isImpersonated, message);
+    conversationId?: string,
+  ): Promise<AgentResult & { conversationId: string }> {
+    const existing = conversationId
+      ? await this.memory.getScoped(organizationId, userId, conversationId)
+      : null;
+    const conversation =
+      existing ?? (await this.memory.start(organizationId, userId, message));
+
+    const history = await this.memory.history(
+      conversation.id,
+      organizationId,
+    );
+    await this.memory.append(
+      conversation.id,
+      organizationId,
+      userId,
+      'user',
+      message,
+    );
+
+    const result = await this.agent.run(
+      organizationId,
+      userId,
+      isImpersonated,
+      message,
+      history,
+    );
+
+    await this.memory.append(
+      conversation.id,
+      organizationId,
+      userId,
+      'assistant',
+      result.reply ?? '',
+    );
+    await this.memory.prune(organizationId, userId);
+
+    return { ...result, conversationId: conversation.id };
+  }
+
+  /** The user's recent assistant threads, newest first. */
+  listConversations(
+    organizationId: string,
+    userId: string,
+  ): Promise<ConversationSummary[]> {
+    return this.memory.list(organizationId, userId);
+  }
+
+  /** Full stored messages for one scoped thread. */
+  getConversationMessages(
+    organizationId: string,
+    userId: string,
+    conversationId: string,
+  ): Promise<StoredMessage[]> {
+    return this.memory.getMessages(organizationId, userId, conversationId);
   }
 
   async listProposals(

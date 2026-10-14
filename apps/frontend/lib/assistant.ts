@@ -347,3 +347,86 @@ export function coerceField(value: string, original: unknown): unknown {
   }
   return value;
 }
+
+/** True when a proposal should render as the reviewable note panel. */
+export function isNoteProposal(proposal: { tool: string }): boolean {
+  return proposal.tool === 'create_note';
+}
+
+export const NOTE_IMPORTANCE = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
+export type NoteImportance = (typeof NOTE_IMPORTANCE)[number];
+
+/** Editable note draft as it appears in the panel. */
+export interface NoteDraft {
+  title: string;
+  content: string;
+  importance: NoteImportance;
+  /** `datetime-local` value (local time), or '' when unset. */
+  dueDate: string;
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+/** ISO date (from the proposal) → local `datetime-local` input value. */
+export function toDateTimeLocal(value: unknown): string {
+  if (typeof value !== 'string' || !value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate(),
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** Local `datetime-local` input value → ISO string, or undefined. */
+export function fromDateTimeLocal(value: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+/** Prefill the note panel from a `create_note` proposal's validated args. */
+export function noteDraftFromProposal(proposal: {
+  args: Record<string, unknown>;
+}): NoteDraft {
+  const args = proposal.args ?? {};
+  const rawImportance = String(args.importance ?? 'MEDIUM').toUpperCase();
+  const importance = (NOTE_IMPORTANCE as readonly string[]).includes(
+    rawImportance,
+  )
+    ? (rawImportance as NoteImportance)
+    : 'MEDIUM';
+  return {
+    title: typeof args.title === 'string' ? args.title : '',
+    content: typeof args.content === 'string' ? args.content : '',
+    importance,
+    dueDate: toDateTimeLocal(args.dueDate),
+  };
+}
+
+/** Panel draft → proposal args (empty optional fields are omitted). */
+export function noteArgsFromDraft(draft: NoteDraft): Record<string, unknown> {
+  return {
+    title: draft.title.trim(),
+    content: draft.content.trim() || undefined,
+    importance: draft.importance,
+    dueDate: fromDateTimeLocal(draft.dueDate),
+  };
+}
+
+/** True when the panel's next args are unchanged, so no new version is needed. */
+export function noteArgsEqual(
+  proposalArgs: Record<string, unknown>,
+  nextArgs: Record<string, unknown>,
+): boolean {
+  const norm = (value: unknown) =>
+    value === undefined || value === null ? '' : String(value).trim();
+  return (
+    norm(proposalArgs.title) === norm(nextArgs.title) &&
+    norm(proposalArgs.content) === norm(nextArgs.content) &&
+    norm(proposalArgs.importance ?? 'MEDIUM') ===
+      norm(nextArgs.importance ?? 'MEDIUM') &&
+    norm(proposalArgs.dueDate) === norm(nextArgs.dueDate)
+  );
+}

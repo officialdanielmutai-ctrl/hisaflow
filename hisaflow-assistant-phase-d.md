@@ -42,3 +42,13 @@
 - **State coverage** partially done: empty/first-run, error, loading are handled; offline/slow, rate-limited, and tier-gated messaging are explicit follow-ups.
 - **Undo/revert**: not offered because the DUKA domain has no revert; the UI says so rather than implying one exists.
 - The conversational surface is additive — the legacy `/ai` ingestion page still exists and is retired in Phase F.
+
+## 5. Post-phase update (2026-10-14)
+
+`create_note` proposals now render as a dedicated **note panel**
+(`NoteProposalEditor`) instead of the generic card: the assistant's draft is
+prefilled into the same fields as the manual New Note form (title, details,
+importance, due date) and **Save note** runs the governed approve → execute
+path, editing first only when the user changed a field. The panel also restores
+conversation memory per organisation and offers **New chat**. See
+`hisaflow-assistant-resilience-memory-notes.md` (defect Q-014).

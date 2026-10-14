@@ -1744,6 +1744,44 @@ model UnsupportedIntent {
   @@map("assistant_unsupported_intents")
 }
 
+/// ── Assistant conversation memory (overhaul Duty 2) ─────────────────────
+/// Short-lived conversational memory so the assistant can follow a thread
+/// ("no, make it 30"). Pruned automatically: threads older than the
+/// retention window and threads beyond the per-user cap are deleted as new
+/// chats arrive. Tenant scope is a plain column (no Organization relation),
+/// consistent with the rest of the assistant foundation.
+model AssistantConversation {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  title          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  lastMessageAt  DateTime @default(now()) @map("last_message_at")
+
+  messages AssistantMessage[]
+
+  @@index([organizationId, userId, lastMessageAt])
+  @@map("assistant_conversations")
+}
+
+/// A single turn in an assistant conversation. Owner is the conversation;
+/// deleting a conversation (retention) cascades to its messages.
+model AssistantMessage {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  role           String
+  content        String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("assistant_messages")
+}
+
 /// Audit/record of an outbound message sent by the assistant (communicate
 /// tools). Consent is checked before send; this is the delivery trail.
 model AssistantOutboundMessage {

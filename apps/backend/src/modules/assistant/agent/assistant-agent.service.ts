@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AssistantContextService } from '../context/assistant-context.service';
 import { ToolRegistryService } from '../registry/tool-registry.service';
 import { AssistantPolicyService } from '../policy/policy.service';
@@ -8,6 +8,7 @@ import type { PublicProposal } from '../proposal/public-proposal';
 import { AssistantProviderService } from '../provider/assistant-provider.service';
 import type { ToolContext } from '../tool.types';
 import type {
+  AgentCompletion,
   AgentMessage,
   AgentResult,
   AgentToolCall,
@@ -24,6 +25,8 @@ export const MAX_TOOL_CALLS_PER_TURN = 6;
  */
 @Injectable()
 export class AssistantAgentService {
+  private readonly logger = new Logger(AssistantAgentService.name);
+
   constructor(
     private readonly context: AssistantContextService,
     private readonly registry: ToolRegistryService,
@@ -37,6 +40,7 @@ export class AssistantAgentService {
     userId: string,
     isImpersonated: boolean,
     message: string,
+    history: AgentMessage[] = [],
   ): Promise<AgentResult> {
     const ctx = await this.context.build(
       organizationId,
@@ -51,6 +55,9 @@ export class AssistantAgentService {
 
     const messages: AgentMessage[] = [
       { role: 'system', content: this.systemPrompt(ctx) },
+      // Recent turns from the thread's memory, so "no, make it 30" can update
+      // the previous request instead of starting a new one.
+      ...history,
       { role: 'user', content: message },
     ];
 
@@ -65,7 +72,25 @@ export class AssistantAgentService {
         break;
       }
 
-      const completion = await this.provider.complete(messages, schemas);
+      let completion: AgentCompletion;
+      try {
+        completion = await this.provider.complete(messages, schemas);
+      } catch (error) {
+        // Never let a provider/gateway failure become a 500. Keep any
+        // proposals already collected and return an honest, retryable reply.
+        this.logger.error(
+          `Assistant turn failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        return {
+          reply:
+            "I couldn't reach the AI service just now. Please try again in a moment.",
+          toolCalls: collected,
+          proposals: proposed,
+          capped: false,
+        };
+      }
       if (completion.toolCalls.length === 0) {
         finalContent = completion.content;
         break;
@@ -161,6 +186,11 @@ export class AssistantAgentService {
       'Use the provided tools. Do not invent organization or user identifiers.',
       'If no tool can fulfil the request, call log_unsupported_intent with the request, then explain what you cannot do and offer the nearest alternative.',
       'If ambiguity would change a write, ask one precise question instead of guessing.',
+      // Concrete examples measurably improve tool-call reliability, especially
+      // for weaker/faster models that otherwise answer from memory.
+      'Examples: the user says "what is in my stock?" — call list_inventory, then list only the items it returned, or say plainly that there is nothing.',
+      'The user says "draft a note reminding me to call the plumber" — call create_note with title "Call the plumber" and the message as content, then tell them the note is ready for review. Do not paste the note as plain text.',
+      'The user says "sold 3 unga" — call record_sale and present the proposal; never say it is done before approval.',
     ].join(' ');
   }
 }

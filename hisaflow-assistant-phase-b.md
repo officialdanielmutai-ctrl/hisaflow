@@ -106,3 +106,12 @@ Remaining before Phase C is complete:
 ### Vertical scope (confirmed 2026-10-12)
 
 Only the stock/inventory tools are vertical-gated, and only to the retail group: `verticals: ['DUKA', 'MINI_MART']`. `get_low_stock`, `search_inventory` and `create_note` are the intentionally vertical-agnostic foundation tools from Phase A §4.3; exposure is still controlled by the (default-off) feature flags. No ISP, school, guest-house, chemist, restaurant or wholesaler tool exists in production code.
+
+## 7. Post-phase update (2026-10-14)
+
+Conversation memory was added on top of the foundation: `/assistant/chat` now
+accepts an optional `conversationId`, the server persists and replays short-lived
+thread memory (30 days / newest 20 threads per user) and the agent feeds prior
+turns to the model. Provider failures are caught and returned as an honest,
+retryable reply instead of a 500. See
+`hisaflow-assistant-resilience-memory-notes.md` (defects Q-013/Q-015).

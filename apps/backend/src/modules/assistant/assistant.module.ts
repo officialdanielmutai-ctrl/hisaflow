@@ -37,6 +37,7 @@ import { AssistantAgentService } from './agent/assistant-agent.service';
 import { AssistantShadowService } from './shadow/shadow.service';
 import { AssistantCommsService } from './comms/assistant-comms.service';
 import { AssistantUnsupportedService } from './unsupported/assistant-unsupported.service';
+import { AssistantMemoryService } from './memory/assistant-memory.service';
 
 @Module({
   imports: [
@@ -107,6 +108,7 @@ import { AssistantUnsupportedService } from './unsupported/assistant-unsupported
     AssistantShadowService,
     AssistantCommsService,
     AssistantUnsupportedService,
+    AssistantMemoryService,
     AssistantService,
   ],
   exports: [AssistantService, ToolRegistryService, ProposalService],

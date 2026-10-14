@@ -9,6 +9,7 @@ import { useRole } from '@/hooks/useRole';
 import {
   approveAssistantProposal,
   executeAssistantProposal,
+  getAssistantConversationMessages,
   getAssistantTools,
   getUnsupportedIntents,
   listAssistantProposals,
@@ -17,7 +18,12 @@ import {
   sendAssistantMessage,
   type AssistantProposal,
 } from '@/services/assistant.service';
-import { suggestionsForTools } from '@/lib/assistant';
+import {
+  isNoteProposal,
+  noteArgsEqual,
+  suggestionsForTools,
+} from '@/lib/assistant';
+import NoteProposalEditor from './NoteProposalEditor';
 import ProposalCard from './ProposalCard';
 import UnsupportedIntentsCard from './UnsupportedIntentsCard';
 
@@ -51,6 +57,8 @@ export function AssistantPanel() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -90,6 +98,56 @@ export function AssistantPanel() {
     };
   }, [getToken, orgId]);
 
+  // Restore the current thread's memory for this organization. The id is kept
+  // per-org in localStorage; the server prunes old threads, so a stale id
+  // simply starts a fresh thread on the next message.
+  useEffect(() => {
+    if (!orgId) {
+      setConversationId(null);
+      setMessages([]);
+      return;
+    }
+    const stored =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem(`hf:assistant:conversation:${orgId}`)
+        : null;
+    if (!stored) {
+      setConversationId(null);
+      setMessages([]);
+      return;
+    }
+    let active = true;
+    setLoadingHistory(true);
+    (async () => {
+      const token = await getToken();
+      if (!token) return;
+      try {
+        const storedMessages = await getAssistantConversationMessages(
+          token,
+          orgId,
+          stored,
+        );
+        if (!active) return;
+        setConversationId(stored);
+        setMessages(
+          storedMessages.map((message) => ({
+            id: message.id,
+            role: message.role === 'assistant' ? 'assistant' : 'user',
+            text: message.content,
+            at: new Date(message.createdAt).getTime(),
+          })),
+        );
+      } catch {
+        // Best-effort: a missing/expired thread just starts fresh.
+      } finally {
+        if (active) setLoadingHistory(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [getToken, orgId]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, proposals]);
@@ -113,7 +171,21 @@ export function AssistantPanel() {
       try {
         const token = await getToken();
         if (!token) throw new Error('Not authenticated');
-        const result = await sendAssistantMessage(text, token, orgId);
+        const result = await sendAssistantMessage(
+          text,
+          token,
+          orgId,
+          conversationId ?? undefined,
+        );
+        if (result.conversationId) {
+          setConversationId(result.conversationId);
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(
+              `hf:assistant:conversation:${orgId}`,
+              result.conversationId,
+            );
+          }
+        }
         appendMessage(
           'assistant',
           result.reply ??
@@ -135,7 +207,7 @@ export function AssistantPanel() {
         composerRef.current?.focus();
       }
     },
-    [getToken, input, orgId, sending],
+    [conversationId, getToken, input, orgId, sending],
   );
 
   const runProposalAction = async (
@@ -190,6 +262,57 @@ export function AssistantPanel() {
     }
   };
 
+  /**
+   * Save a drafted note: revise first if the user changed the fields, then
+   * walk the same governed approve → execute path as any other proposal.
+   */
+  const handleSaveNote = async (
+    id: string,
+    args: Record<string, unknown>,
+  ) => {
+    if (!orgId) return;
+    setBusyId(id);
+    setError(null);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
+      const original = proposals.find((proposal) => proposal.id === id);
+      let targetId = id;
+      if (original && !noteArgsEqual(original.args, args)) {
+        const revised = await reviseAssistantProposal(id, args, token, orgId);
+        setProposals((current) => mergeProposals(current, [revised]));
+        targetId = revised.id;
+      }
+      await approveAssistantProposal(targetId, token, orgId);
+      const outcome = await executeAssistantProposal(targetId, token, orgId);
+      const refreshed = await listAssistantProposals(token, orgId);
+      setProposals((current) => mergeProposals(current, refreshed));
+      const message = outcome.idempotent ? 'Note already saved.' : 'Note saved.';
+      setResults((current) => ({
+        ...current,
+        [id]: message,
+        [targetId]: message,
+      }));
+      appendMessage('assistant', 'Note saved. You can find it under Notes.');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'The note could not be saved.',
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const startNewChat = () => {
+    if (orgId && typeof window !== 'undefined') {
+      window.localStorage.removeItem(`hf:assistant:conversation:${orgId}`);
+    }
+    setConversationId(null);
+    setMessages([]);
+    setError(null);
+    composerRef.current?.focus();
+  };
+
   const confirmAll = async () => {
     if (!orgId || pending.length === 0) return;
     setBusyId('all');
@@ -237,6 +360,14 @@ export function AssistantPanel() {
         <h1 className="text-lg font-bold text-[var(--color-text-primary)]">
           Assistant
         </h1>
+        <button
+          type="button"
+          onClick={startNewChat}
+          disabled={sending}
+          className="ml-auto min-h-[44px] rounded-xl border border-[var(--color-border)] px-3 text-xs font-semibold text-[var(--color-text-secondary)] disabled:opacity-50"
+        >
+          New chat
+        </button>
       </div>
 
       {/* Message list */}
@@ -247,8 +378,9 @@ export function AssistantPanel() {
       >
         {messages.length === 0 && (
           <p className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 text-sm text-[var(--color-text-secondary)]">
-            Ask about your stock, sales or customers. I can read your data and
-            prepare changes for you to approve.
+            {loadingHistory
+              ? 'Restoring your conversation…'
+              : 'Ask about your stock, sales or customers. I can read your data and prepare changes for you to approve.'}
           </p>
         )}
         {messages.map((message) => (
@@ -299,18 +431,29 @@ export function AssistantPanel() {
 
       {active.length > 0 && (
         <div className="flex flex-col gap-3">
-          {active.map((proposal) => (
-            <ProposalCard
-              key={proposal.id}
-              proposal={proposal}
-              busy={busyId === proposal.id}
-              result={results[proposal.id] ?? null}
-              onApprove={(id) => runProposalAction(id, 'approve')}
-              onReject={(id) => runProposalAction(id, 'reject')}
-              onExecute={(id) => runProposalAction(id, 'execute')}
-              onEdit={handleEdit}
-            />
-          ))}
+          {active.map((proposal) =>
+            isNoteProposal(proposal) ? (
+              <NoteProposalEditor
+                key={proposal.id}
+                proposal={proposal}
+                busy={busyId === proposal.id}
+                result={results[proposal.id] ?? null}
+                onSave={handleSaveNote}
+                onDiscard={(id) => runProposalAction(id, 'reject')}
+              />
+            ) : (
+              <ProposalCard
+                key={proposal.id}
+                proposal={proposal}
+                busy={busyId === proposal.id}
+                result={results[proposal.id] ?? null}
+                onApprove={(id) => runProposalAction(id, 'approve')}
+                onReject={(id) => runProposalAction(id, 'reject')}
+                onExecute={(id) => runProposalAction(id, 'execute')}
+                onEdit={handleEdit}
+              />
+            ),
+          )}
         </div>
       )}
 

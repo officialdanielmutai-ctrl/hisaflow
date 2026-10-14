@@ -160,6 +160,53 @@ describe('AssistantToolsService.create_note', () => {
       importance: 'HIGH',
     });
   });
+
+  it('derives a title from the body when the model omits one', async () => {
+    const { byName, notes } = build();
+    const tool = byName('create_note');
+
+    const draft = await tool.buildProposal?.(
+      { content: 'Call the plumber tomorrow\nAlso check the water tank' },
+      CTX,
+    );
+
+    expect(draft?.args.title).toBe('Call the plumber tomorrow');
+    expect(draft?.args.content).toContain('Also check the water tank');
+    expect(notes.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts "text" as an alias for the note body', async () => {
+    const { byName } = build();
+    const tool = byName('create_note');
+
+    const draft = await tool.buildProposal?.({ text: 'Pay rent' }, CTX);
+
+    expect(draft?.args).toMatchObject({
+      title: 'Pay rent',
+      content: 'Pay rent',
+    });
+  });
+
+  it('normalises an optional due date and carries it to NotesService', async () => {
+    const { byName, notes } = build();
+    const tool = byName('create_note');
+
+    const draft = await tool.buildProposal?.(
+      { title: 'Call plumber', dueDate: '2026-10-20T09:00:00Z' },
+      CTX,
+    );
+    expect(draft?.args.dueDate).toBe('2026-10-20T09:00:00.000Z');
+
+    await tool.commit?.(
+      { title: 'Call plumber', dueDate: '2026-10-20T09:00:00Z' },
+      CTX,
+    );
+    expect(notes.create).toHaveBeenCalledWith(
+      'org_1',
+      'user_1',
+      expect.objectContaining({ dueDate: '2026-10-20T09:00:00.000Z' }),
+    );
+  });
 });
 
 describe('AssistantToolsService.record_sale', () => {

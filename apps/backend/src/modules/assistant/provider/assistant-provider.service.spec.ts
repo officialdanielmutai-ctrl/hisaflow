@@ -111,4 +111,44 @@ describe('AssistantProviderService', () => {
       content: '{"result":[]}',
     });
   });
+
+  it('bounds the gateway call with a timeout and no SDK retries', async () => {
+    const { service } = build(CONFIGURED);
+
+    await service.complete([{ role: 'user', content: 'hi' }], []);
+
+    expect(MockedOpenAI).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: CONFIGURED.baseUrl,
+        apiKey: CONFIGURED.apiKey,
+        timeout: 50_000,
+        maxRetries: 0,
+      }),
+    );
+  });
+
+  it('skips malformed or truncated tool calls instead of throwing', async () => {
+    const { service } = build({
+      ...CONFIGURED,
+      message: {
+        content: 'Sorry, let me try that again.',
+        tool_calls: [
+          {
+            id: 'ok',
+            type: 'function',
+            function: { name: 'get_low_stock', arguments: '{}' },
+          },
+          { id: 'bad', type: 'function', function: {} },
+          { id: 'other', type: 'image' },
+        ],
+      },
+    });
+
+    const result = await service.complete([{ role: 'user', content: 'hi' }], []);
+
+    expect(result.toolCalls).toEqual([
+      { id: 'ok', name: 'get_low_stock', args: {} },
+    ]);
+    expect(result.content).toBe('Sorry, let me try that again.');
+  });
 });

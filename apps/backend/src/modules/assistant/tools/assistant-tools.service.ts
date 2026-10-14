@@ -44,6 +44,27 @@ function asImportance(value: unknown): NoteImportance {
   return value as NoteImportance;
 }
 
+/**
+ * A note needs a title for the list view, but a model asked to "draft a note"
+ * often returns only the body. Derive a title from the first non-empty line so
+ * the request still becomes a reviewable proposal instead of failing validation
+ * and being pasted back as plain text.
+ */
+function normaliseTitle(
+  title: string | undefined,
+  content: string | undefined,
+): string | undefined {
+  const trimmedTitle = title?.trim();
+  if (trimmedTitle) return trimmedTitle.slice(0, 200);
+  const body = content?.trim();
+  if (!body) return undefined;
+  const firstLine = body
+    .split('\n')
+    .map((line) => line.trim())
+    .find(Boolean);
+  return (firstLine ?? body).slice(0, 80);
+}
+
 function asWastageReason(value: unknown): WastageReason {
   if (value === undefined || value === null) return 'other';
   if (typeof value !== 'string' || !WASTAGE_REASONS.includes(value as WastageReason)) {
@@ -278,20 +299,27 @@ export class AssistantToolsService implements AssistantToolProvider {
       parameters: {
         type: 'object',
         properties: {
-          title: { type: 'string' },
-          content: { type: 'string' },
+          title: {
+            type: 'string',
+            description:
+              'Short title. Optional; derived from the content if omitted.',
+          },
+          content: {
+            type: 'string',
+            description: 'The note body. Also accepts "body" or "text".',
+          },
           importance: { type: 'string', enum: [...IMPORTANCE] },
+          dueDate: {
+            type: 'string',
+            description:
+              'Optional due date/time, ISO 8601 (for example 2026-10-20T09:00:00Z).',
+          },
         },
-        required: ['title'],
+        required: [],
         additionalProperties: false,
       },
       buildProposal: (raw) => {
-        const args = asRecord(raw);
-        const normalised = {
-          title: asString(args.title, 'title', 200),
-          content: asOptionalString(args.content, 'content'),
-          importance: asImportance(args.importance),
-        };
+        const normalised = this.normaliseNoteArgs(asRecord(raw));
         return {
           args: normalised,
           summary: `Create a ${normalised.importance} note: “${normalised.title}”`,
@@ -300,13 +328,35 @@ export class AssistantToolsService implements AssistantToolProvider {
         };
       },
       commit: async (raw, ctx) => {
-        const args = asRecord(raw);
-        return this.notes.create(ctx.organizationId, ctx.userId, {
-          title: asString(args.title, 'title', 200),
-          content: asOptionalString(args.content, 'content'),
-          importance: asImportance(args.importance),
-        });
+        const normalised = this.normaliseNoteArgs(asRecord(raw));
+        return this.notes.create(ctx.organizationId, ctx.userId, normalised);
       },
+    };
+  }
+
+  /**
+   * Normalise a note draft. A model asked to "draft a note" often returns only
+   * the body, and sometimes uses `body`/`text` for it; derive a title so the
+   * request still becomes a reviewable proposal instead of failing validation.
+   */
+  private normaliseNoteArgs(raw: Record<string, unknown>) {
+    const content = asOptionalString(
+      raw.content ?? raw.body ?? raw.text,
+      'content',
+      10000,
+    );
+    const title = normaliseTitle(
+      asOptionalString(raw.title, 'title', 200),
+      content,
+    );
+    if (!title) {
+      throw new BadRequestException('Provide a note title or content.');
+    }
+    return {
+      title,
+      content,
+      importance: asImportance(raw.importance),
+      dueDate: asOptionalDate(raw.dueDate, 'dueDate'),
     };
   }
 

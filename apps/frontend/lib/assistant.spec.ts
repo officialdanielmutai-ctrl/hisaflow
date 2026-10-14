@@ -3,11 +3,17 @@ import {
   coerceField,
   displayValue,
   extractDiffRows,
+  fromDateTimeLocal,
+  isNoteProposal,
+  noteArgsEqual,
+  noteArgsFromDraft,
+  noteDraftFromProposal,
   proposalDestination,
   proposalStatusLabel,
   proposalStatusTone,
   riskLabel,
   suggestionsForTools,
+  toDateTimeLocal,
   toolLabel,
 } from './assistant';
 import type { AssistantToolSchema } from '@/services/assistant.service';
@@ -226,5 +232,70 @@ describe('proposalDestination', () => {
     expect(proposalDestination('send_email')).toBeNull();
     expect(proposalDestination('log_unsupported_intent')).toBeNull();
     expect(proposalDestination('not_a_tool')).toBeNull();
+  });
+});
+
+describe('note panel helpers', () => {
+  it('identifies only the create_note proposal', () => {
+    expect(isNoteProposal({ tool: 'create_note' })).toBe(true);
+    expect(isNoteProposal({ tool: 'record_sale' })).toBe(false);
+  });
+
+  it('round-trips a local datetime value', () => {
+    const local = '2026-10-20T09:30';
+    const iso = fromDateTimeLocal(local);
+    expect(iso).toBeTruthy();
+    expect(toDateTimeLocal(iso)).toBe(local);
+  });
+
+  it('prefills the note panel from a body-only proposal', () => {
+    const draft = noteDraftFromProposal({
+      args: { content: 'Pay rent\nBefore Friday', importance: 'HIGH' },
+    });
+    expect(draft).toMatchObject({
+      title: '',
+      content: 'Pay rent\nBefore Friday',
+      importance: 'HIGH',
+      dueDate: '',
+    });
+  });
+
+  it('omits empty optional fields when building proposal args', () => {
+    expect(
+      noteArgsFromDraft({
+        title: '  Restock  ',
+        content: '   ',
+        importance: 'MEDIUM',
+        dueDate: '',
+      }),
+    ).toEqual({
+      title: 'Restock',
+      content: undefined,
+      importance: 'MEDIUM',
+      dueDate: undefined,
+    });
+  });
+
+  it('detects whether the panel draft changed', () => {
+    const original = {
+      title: 'Restock',
+      content: 'Order more',
+      importance: 'MEDIUM',
+    };
+    expect(
+      noteArgsEqual(original, {
+        title: 'Restock',
+        content: 'Order more',
+        importance: 'MEDIUM',
+        dueDate: undefined,
+      }),
+    ).toBe(true);
+    expect(
+      noteArgsEqual(original, {
+        title: 'Restock',
+        content: 'Order more',
+        importance: 'HIGH',
+      }),
+    ).toBe(false);
   });
 });

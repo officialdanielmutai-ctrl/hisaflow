@@ -65,6 +65,31 @@ export class AssistantController {
     return { intents: await this.assistant.listUnsupportedIntents(orgId) };
   }
 
+  @Get('conversations')
+  async conversations(
+    @OrgContext() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      conversations: await this.assistant.listConversations(orgId, user.id),
+    };
+  }
+
+  @Get('conversations/:id/messages')
+  async conversationMessages(
+    @Param('id') id: string,
+    @OrgContext() orgId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      messages: await this.assistant.getConversationMessages(
+        orgId,
+        user.id,
+        id,
+      ),
+    };
+  }
+
   @Post('chat')
   async chat(
     @Body() dto: ChatDto,
@@ -76,6 +101,7 @@ export class AssistantController {
       user.id,
       Boolean(user.isImpersonated),
       dto.message,
+      dto.conversationId,
     );
   }
 

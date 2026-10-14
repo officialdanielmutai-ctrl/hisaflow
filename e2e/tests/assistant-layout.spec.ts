@@ -51,4 +51,26 @@ test.describe('assistant layout geometry', () => {
       expect(overflow).toBeLessThanOrEqual(1);
     }
   });
+
+  test('note panel stays inside its container with 44px actions', async ({
+    page,
+  }) => {
+    await page.goto('/assistant');
+    const panels = page.locator('[data-testid="note-proposal-panel"]');
+    const count = await panels.count();
+    for (let index = 0; index < count; index += 1) {
+      const panel = panels.nth(index);
+      const overflow = await panel.evaluate(
+        (node) => node.scrollWidth - node.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(1);
+
+      const actions = panel.locator('button');
+      const actionCount = await actions.count();
+      for (let action = 0; action < actionCount; action += 1) {
+        const box = await actions.nth(action).boundingBox();
+        if (box) expect(box.height).toBeGreaterThanOrEqual(44);
+      }
+    }
+  });
 });

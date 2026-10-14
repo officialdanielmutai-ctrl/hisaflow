@@ -40,6 +40,21 @@ export interface AssistantChatResult {
   toolCalls: AssistantToolCall[];
   proposals: AssistantProposal[];
   capped: boolean;
+  conversationId: string;
+}
+
+export interface AssistantConversation {
+  id: string;
+  title: string | null;
+  createdAt: string;
+  lastMessageAt: string;
+}
+
+export interface AssistantStoredMessage {
+  id: string;
+  role: string;
+  content: string;
+  createdAt: string;
 }
 
 export interface AssistantExecutionResult {
@@ -71,10 +86,39 @@ export function sendAssistantMessage(
   message: string,
   token: string,
   organizationId: string,
+  conversationId?: string,
 ): Promise<AssistantChatResult> {
   return apiPost<AssistantChatResult>('/assistant/chat', token, organizationId, {
     message,
+    conversationId,
   });
+}
+
+/** The user's recent assistant threads, newest first. */
+export async function listAssistantConversations(
+  token: string,
+  organizationId: string,
+): Promise<AssistantConversation[]> {
+  const response = await apiGet<{ conversations: AssistantConversation[] }>(
+    '/assistant/conversations',
+    token,
+    organizationId,
+  );
+  return response.conversations;
+}
+
+/** Replay one scoped thread's stored turns (oldest first). */
+export async function getAssistantConversationMessages(
+  token: string,
+  organizationId: string,
+  conversationId: string,
+): Promise<AssistantStoredMessage[]> {
+  const response = await apiGet<{ messages: AssistantStoredMessage[] }>(
+    `/assistant/conversations/${conversationId}/messages`,
+    token,
+    organizationId,
+  );
+  return response.messages;
 }
 
 export async function listAssistantProposals(

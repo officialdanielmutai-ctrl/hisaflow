@@ -128,6 +128,44 @@ describe('Assistant governed write path (e2e, real Postgres)', () => {
     expect(emptyResponse.body.result).toEqual([]);
   });
 
+  it('turns a body-only note draft into a committed note', async () => {
+    const { org, owner } = await seedOrg('NoteDraft', 'GUEST_HOUSE');
+
+    const proposed = await request(app, '/assistant/proposals', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: {
+        tool: 'create_note',
+        args: { content: 'Call the plumber tomorrow' },
+      },
+    });
+    expect(proposed.status).toBe(201);
+    expect(proposed.body.proposal).toMatchObject({
+      tool: 'create_note',
+      status: 'PROPOSED',
+    });
+    expect(proposed.body.proposal.args.title).toBe('Call the plumber tomorrow');
+
+    const id = proposed.body.proposal.id as string;
+    await request(app, `/assistant/proposals/${id}/approve`, {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+    });
+    const executed = await request(app, `/assistant/proposals/${id}/execute`, {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+    });
+    expect(executed.status).toBe(201);
+
+    const note = await prisma.db.note.findFirst({
+      where: { organizationId: org.id },
+    });
+    expect(note?.title).toBe('Call the plumber tomorrow');
+  });
+
   it('does not mutate until an approved proposal is executed, and is idempotent', async () => {
     const { org, owner, item } = await seedOrg('Write', 'DUKA');
 
@@ -461,5 +499,88 @@ describe('Assistant governed write path (e2e, real Postgres)', () => {
       where: { organizationId: org.id },
     });
     expect(subscriber).toMatchObject({ name: 'John Doe', phone: '0712345678' });
+  });
+
+  it('persists a note due date approved through the governed path', async () => {
+    const { org, owner } = await seedOrg('NoteDue', 'DUKA');
+
+    const proposed = await request(app, '/assistant/proposals', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: {
+        tool: 'create_note',
+        args: {
+          title: 'Call plumber',
+          dueDate: '2026-10-20T09:00:00Z',
+        },
+      },
+    });
+    expect(proposed.status).toBe(201);
+    expect(proposed.body.proposal.args.dueDate).toBe('2026-10-20T09:00:00.000Z');
+
+    const proposalId = proposed.body.proposal.id as string;
+    await request(app, `/assistant/proposals/${proposalId}/approve`, {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+    });
+    const executed = await request(app, `/assistant/proposals/${proposalId}/execute`, {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+    });
+    expect(executed.status).toBe(201);
+
+    const note = await prisma.db.note.findFirst({
+      where: { organizationId: org.id },
+    });
+    expect(note?.dueDate?.toISOString()).toBe('2026-10-20T09:00:00.000Z');
+  });
+
+  it('remembers a conversation, scoped to the user, and returns its turns', async () => {
+    const { org, owner } = await seedOrg('Memory', 'GUEST_HOUSE');
+
+    const first = await request(app, '/assistant/chat', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: { message: 'hello' },
+    });
+    expect(first.status).toBe(201);
+    expect(typeof first.body.conversationId).toBe('string');
+    const conversationId = first.body.conversationId as string;
+
+    const second = await request(app, '/assistant/chat', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: { message: 'and again', conversationId },
+    });
+    expect(second.status).toBe(201);
+    expect(second.body.conversationId).toBe(conversationId);
+
+    const messages = await request(app, `/assistant/conversations/${conversationId}/messages`, {
+      orgId: org.id,
+      userId: owner.id,
+    });
+    expect(messages.status).toBe(200);
+    expect(
+      (messages.body.messages as Array<{ role: string }>).map((m) => m.role),
+    ).toEqual(['user', 'assistant', 'user', 'assistant']);
+
+    // Another member of the same org cannot read someone else's thread.
+    const other = await prisma.db.user.create({
+      data: { clerkId: 'Memory-other', name: 'Other' },
+    });
+    await prisma.db.orgMembership.create({
+      data: { organizationId: org.id, userId: other.id, role: 'STAFF' },
+    });
+    const denied = await request(app, `/assistant/conversations/${conversationId}/messages`, {
+      orgId: org.id,
+      userId: other.id,
+    });
+    expect(denied.status).toBe(200);
+    expect(denied.body.messages).toEqual([]);
   });
 });

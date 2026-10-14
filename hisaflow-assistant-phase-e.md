@@ -42,3 +42,12 @@
 - **Per-customer consent store** (see the limitation above).
 - Live e2e/screenshots + streaming (carried over from Phase D).
 - Phase F: injection/abuse suite, cost/rate controls, live eval baselines, retirement of the per-vertical capability prompts.
+
+## 5. Post-phase update (2026-10-14)
+
+Cross-vertical resilience and memory landed after the per-vertical ports: the
+gateway call is bounded and provider failures degrade to an honest retryable
+reply (never a 500), `create_note` whips up the reviewable note panel, and the
+assistant has short-lived, user-scoped conversation memory that is pruned as
+chats pile on. See `hisaflow-assistant-resilience-memory-notes.md`
+(defects Q-013/Q-014/Q-015).

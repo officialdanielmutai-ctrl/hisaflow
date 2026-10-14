@@ -215,7 +215,8 @@ describe('AssistantAgentService', () => {
     expect(system?.content).toContain('NO built-in knowledge');
     expect(system?.content).toContain('Never invent');
     expect(system?.content).toContain('call the matching read tool');
-    expect(system?.content).toContain('create_note');
+    expect(system?.content).toContain('call create_note');
+    expect(system?.content).toContain('list_inventory');
   });
 
   it('passes an empty read result back so the model can say there is nothing', async () => {
@@ -242,5 +243,78 @@ describe('AssistantAgentService', () => {
     const toolMessage = secondMessages.find((message) => message.role === 'tool');
     expect(toolMessage?.content).toBe(JSON.stringify({ result: [] }));
     expect(result.reply).toBe('You have no inventory items yet.');
+  });
+
+  it('returns a graceful, retryable reply when the provider fails (no 500)', async () => {
+    const { service, provider } = build({
+      tools: [readTool('list_inventory', jest.fn(async () => []))],
+      completions: [],
+    });
+    (provider.complete as jest.Mock).mockRejectedValueOnce(
+      new Error('gateway timeout'),
+    );
+
+    const result = await service.run(
+      'org_1',
+      'user_1',
+      false,
+      'what is in my stock?',
+    );
+
+    expect(result.reply).toContain("couldn't reach");
+    expect(result.proposals).toHaveLength(0);
+  });
+
+  it('keeps already-built proposals when a later provider call fails', async () => {
+    const tool = writeTool(
+      'create_note',
+      jest.fn(() => ({ args: { title: 'Plumber' }, summary: 'Create note' })),
+    );
+    const { service, provider } = build({ tools: [tool], completions: [] });
+    (provider.complete as jest.Mock)
+      .mockResolvedValueOnce({
+        content: null,
+        toolCalls: [
+          { id: 'c1', name: 'create_note', args: { title: 'Plumber' } },
+        ],
+      })
+      .mockRejectedValueOnce(new Error('gateway down'));
+
+    const result = await service.run('org_1', 'user_1', false, 'draft a note');
+
+    expect(result.proposals).toHaveLength(1);
+    expect(result.reply).toContain("couldn't reach");
+  });
+
+  it('carries prior conversation turns into the model prompt', async () => {
+    const { service, provider } = build({
+      tools: [readTool('list_inventory', jest.fn(async () => []))],
+      completions: [{ content: 'Nothing yet.', toolCalls: [] }],
+    });
+
+    await service.run('org_1', 'user_1', false, 'and now?', [
+      { role: 'user', content: 'what is in my stock?' },
+      {
+        role: 'assistant',
+        content: 'You have no inventory items yet.',
+        toolCalls: [],
+      },
+    ]);
+
+    const messages = (
+      provider.complete.mock.calls[0] as unknown as Array<
+        Array<{ role: string; content: string | null }>
+      >
+    )[0];
+    expect(messages.map((m) => m.role)).toEqual([
+      'system',
+      'user',
+      'assistant',
+      'user',
+    ]);
+    expect(messages[1]).toEqual({
+      role: 'user',
+      content: 'what is in my stock?',
+    });
   });
 });
