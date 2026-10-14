@@ -15,7 +15,7 @@ All paths are relative to `apps/backend/src/modules/assistant/`.
 |---|---|---|
 | Typed tool contract | `tool.types.ts` | `read`/`write`/`communicate`/`utility`, risk level, JSON-schema params, optional role/vertical/tier gates, `execute` for reads, `buildProposal` + `commit` for writes |
 | Tool registry | `registry/tool-registry.service.ts` | The only source of capabilities; filters per org/role/vertical; model-facing schemas never contain identity |
-| Tool set | `tools/assistant-tools.service.ts` | `get_low_stock`, `search_inventory` (reads); `create_note`, `record_sale`, `record_purchase`, `record_wastage` (writes) |
+| Tool set | `tools/assistant-tools.service.ts` | `get_low_stock`, `search_inventory`, `list_inventory` (reads); `create_note`, `record_sale`, `record_purchase`, `record_wastage` (writes) |
 | Proposal store | `proposal/proposal.service.ts` | Durable, `argsHash` (SHA-256 over canonical JSON), idempotency key, 30-min expiry, approve/reject, tenant-scoped reads |
 | Policy gate | `policy/policy.service.ts` | Enforced at the execution layer: impersonation, vertical, role, tier, feature flag. Default deny. |
 | Feature flags | `policy/feature-flag.service.ts` | Table-backed, scoped GLOBAL → BUSINESS_TYPE → ORGANIZATION, deterministic rollout |
@@ -81,7 +81,7 @@ The DUKA P0 parity list is now fully covered by tools:
 
 | Priority | Tool | Maps to | Status |
 |---|---|---|---|
-| P0 | `get_low_stock`, `search_inventory` | scoped inventory reads | done |
+| P0 | `get_low_stock`, `search_inventory`, `list_inventory` | scoped inventory reads | done |
 | P0 | `record_sale`, `record_purchase`, `record_wastage` | `TransactionsService.create` | done |
 | P0 | `create_inventory_item` | `InventoryService.create` (Product + InventoryItem variant) | done |
 | P0 | `update_inventory_item` | `InventoryService.updateVariant` (name/unit/prices/threshold) | done |

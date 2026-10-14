@@ -13,7 +13,7 @@
 |---|---|---|
 | API client | `apps/frontend/services/assistant.service.ts` | `getAssistantTools`, `sendAssistantMessage`, `listAssistantProposals`, `approve`, `reject`, `revise`, `execute` |
 | Pure helpers | `apps/frontend/lib/assistant.ts` | tool labels, tool-derived suggestion chips, diff-row extraction, status/risk labels+tones, edit coercion |
-| Proposal card | `apps/frontend/components/assistant/ProposalCard.tsx` | summary, status/risk badges, before/after diff, Approve/Apply/Edit/Reject/Retry, inline edit, high-risk two-tap confirm, honesty + no-undo note |
+| Proposal card | `apps/frontend/components/assistant/ProposalCard.tsx` | summary, status/risk badges, before/after diff, Approve/Apply/Edit/Reject/Retry, inline edit, high-risk two-tap confirm, honesty + no-undo note, and a **View in `<section>`** link on executed cards so the user lands on the record the action produced |
 | Conversation panel | `apps/frontend/components/assistant/AssistantPanel.tsx` | message list, honest activity chip, multi-action "Review and confirm / Confirm all", per-item actions, suggestion chips, sticky composer |
 | Page | `apps/frontend/app/(dashboard)/assistant/page.tsx` | route `/assistant` |
 | Navigation | `components/layout/SideMenu.tsx`, `components/layout/BottomNav.tsx` | "Assistant" in the side menu (all verticals) and the retail bottom nav |
@@ -25,6 +25,7 @@
 - **Edit re-validates**: the card sends edited args to `/revise`; the backend rebuilds the draft through the tool and creates `version + 1`.
 - **High-risk actions** require a second tap ("Tap again to approve/apply").
 - **Suggestion chips are generated from the tools returned by `GET /assistant/tools`** — never a hard-coded per-vertical list.
+- **Where it went.** On an executed proposal the card shows a `View in <section>` link (Notes, Inventory, Transactions, Bookings, Guests, Rooms, Subscribers, …) derived from the tool name, so an action mirrors the user's request and points at the record it produced (Q-011 follow-up).
 - **Activity indicator** is honest ("Working…"). The backend chat is synchronous (no token streaming), so no fake progress is shown; streaming is a follow-up.
 - **Accessibility**: 44px minimum targets, `aria-label`s on icon buttons, `role="group"`/`aria-label` on cards, `aria-live="polite"` activity region, `role="alert"` errors, keyboard-safe composer (Enter sends, Shift+Enter newline), sticky composer above the bottom nav.
 
