@@ -123,6 +123,27 @@ describe('FinanceService — unified business overview', () => {
     expect(overview.periodLabel).toBe('Last 30 Days');
   });
 
+  it('returns the calendar-month P&L the Month Comparison panel reads', async () => {
+    const { service } = build({
+      manual: [
+        { type: 'EXPENSE', category: 'RENT', amount: decimal(200) },
+        { type: 'INCOME', category: 'OTHER', amount: decimal(50) },
+      ],
+    });
+
+    const overview = await service.getBusinessOverview(ORG, 'rolling30');
+
+    // Default mock sales: 2 + 1 + 4 = 7 units × sell 10 / cost 5.
+    expect(overview.thisMonth).toEqual({
+      revenue: 120, // 70 sales revenue + 50 manual income
+      expenses: 200,
+      netProfit: -115, // (70 − 35) + 50 − 200
+    });
+    // Regression guard: the fields must never be dropped again, or `/finance`
+    // throws `Cannot read properties of undefined` on every render.
+    expect(overview.lastMonth).toBeDefined();
+  });
+
   it('uses calendar bounds when calendar mode is requested', async () => {
     const { service } = build();
 

@@ -54,6 +54,8 @@ export interface BusinessOverview {
   netProfit: number;
   netMarginPct: number | null;
   expensesByCategory: ExpenseCategoryBreakdown[];
+  thisMonth: { revenue: number; expenses: number; netProfit: number };
+  lastMonth: { revenue: number; expenses: number; netProfit: number };
   periodDays: number;
   dateMode: 'rolling30' | 'calendar';
   periodLabel: string;
@@ -188,6 +190,11 @@ export class FinanceService {
         ? start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
         : 'Last 30 Days';
 
+    // Calendar-month P&L for the "Month Comparison" panel (restored from the
+    // pre-refactor implementation dropped in c026970).
+    const thisMonth = await this.getMonthSummary(organizationId, 0);
+    const lastMonth = await this.getMonthSummary(organizationId, 1);
+
     return {
       totalInventoryValue,
       totalPotentialRevenue,
@@ -202,6 +209,8 @@ export class FinanceService {
       netProfit,
       netMarginPct,
       expensesByCategory,
+      thisMonth,
+      lastMonth,
       periodDays,
       dateMode,
       periodLabel,
@@ -289,6 +298,56 @@ export class FinanceService {
 
   getPriceSuggestions(organizationId: string): Promise<PriceSuggestion[]> {
     return this.financeAiService.getPriceSuggestions(organizationId);
+  }
+
+  // ── Private Helper: Calendar-month P&L ─────────────────────────────────────
+  private async getMonthSummary(
+    organizationId: string,
+    monthsAgo: number,
+  ): Promise<{ revenue: number; expenses: number; netProfit: number }> {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth() - monthsAgo + 1,
+      0,
+      23,
+      59,
+      59,
+    );
+
+    const saleTxs = await this.prisma.db.inventoryTransaction.findMany({
+      where: {
+        organizationId,
+        type: 'SALE',
+        createdAt: { gte: start, lte: end },
+      },
+      include: { item: { select: { costPrice: true, sellingPrice: true } } },
+    });
+
+    let revenue = 0;
+    let cogs = 0;
+    for (const tx of saleTxs) {
+      const qty = Math.abs(Number(tx.quantityChange));
+      revenue += qty * Number(tx.item.sellingPrice ?? 0);
+      cogs += qty * Number(tx.item.costPrice ?? 0);
+    }
+
+    const bizTxs = await this.prisma.db.businessTransaction.findMany({
+      where: { organizationId, date: { gte: start, lte: end } },
+    });
+    const expenses = bizTxs
+      .filter((t) => t.type === 'EXPENSE')
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const manualIncome = bizTxs
+      .filter((t) => t.type === 'INCOME')
+      .reduce((s, t) => s + Number(t.amount), 0);
+
+    return {
+      revenue: revenue + manualIncome,
+      expenses,
+      netProfit: revenue - cogs + manualIncome - expenses,
+    };
   }
 
   // ── Private Helper: Date Range ─────────────────────────────────────────────
