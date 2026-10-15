@@ -26,16 +26,18 @@ import {
   createBusinessTransaction,
   updateBusinessTransaction,
   deleteBusinessTransaction,
+  getFinanceBreakdown,
   getCategoryLabel,
   getCategoryEmoji,
-  type BusinessOverview,
   type BusinessTransactionRecord,
+  type FinanceBreakdown,
 } from '@/services/business-finance.service';
+import { FinanceBreakdownPanel } from '@/components/finance/FinanceBreakdownPanel';
 import { getInventoryItems, type InventoryItem } from '@/services/inventory.service';
 import dynamic from 'next/dynamic';
 import {
   TrendingUp, TrendingDown, Minus, AlertCircle, Tag,
-  Search, Plus, Trash2, RotateCcw, RefreshCw, ChevronRight,
+  Search, Plus, Trash2, RotateCcw, ChevronRight,
   ArrowDownLeft, ArrowUpRight, Edit2,
 } from 'lucide-react';
 import PriceReviewSheet from '@/components/system/PriceReviewSheet';
@@ -456,6 +458,15 @@ function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
     fetchLedger
   );
 
+  const { data: breakdown } = useSWR<FinanceBreakdown>(
+    orgId ? ['finance-breakdown', orgId] : null,
+    async () => {
+      const token = await getToken();
+      if (!token) throw new Error('No token');
+      return getFinanceBreakdown(token, orgId);
+    }
+  );
+
   const entries = data?.entries ?? [];
   const items = data?.items ?? [];
 
@@ -480,6 +491,14 @@ function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
 
   return (
     <div className="flex flex-col gap-4 pt-2">
+      {/* Vertical-aware financial breakdown */}
+      {breakdown && (
+        <div>
+          <p className="mb-3 font-semibold text-sm">Financial breakdown</p>
+          <FinanceBreakdownPanel breakdown={breakdown} />
+        </div>
+      )}
+
       {/* Filter chips */}
       <div className="flex gap-2">
         {(['ALL', 'EXPENSE', 'INCOME'] as const).map((f) => (

@@ -43,7 +43,7 @@ interface Harness {
     addConsumption: MockFn;
   };
   guests: { create: MockFn };
-  rooms: { create: MockFn; update: MockFn };
+  rooms: { create: MockFn; update: MockFn; reportIssue: MockFn };
   invoices: {
     getDraftForBooking: MockFn;
     addPayment: MockFn;
@@ -79,6 +79,7 @@ function build(): Harness {
   const rooms = {
     create: jest.fn(async () => ({ id: 'room_new' })),
     update: jest.fn(async () => ({ id: 'room_1' })),
+    reportIssue: jest.fn(async () => ({ id: 'issue_1', status: 'OPEN' })),
   };
   const invoices = {
     getDraftForBooking: jest.fn(async () => ({ id: 'inv_1' })),
@@ -113,7 +114,7 @@ describe('GuestHouseAssistantToolsService vertical gating', () => {
   it('gates every guest-house tool to the GUEST_HOUSE vertical', () => {
     const { service } = build();
     const tools = service.all();
-    expect(tools).toHaveLength(17);
+    expect(tools).toHaveLength(18);
     for (const tool of tools) {
       expect(tool.verticals).toEqual(['GUEST_HOUSE']);
     }
@@ -126,6 +127,7 @@ describe('GuestHouseAssistantToolsService vertical gating', () => {
       'update_room',
       'mark_room_dirty',
       'mark_room_clean',
+      'report_room_issue',
       'add_invoice_line_item',
     ]) {
       expect(byName(name).roles).toEqual([AppRole.OWNER, AppRole.MANAGER]);
@@ -633,6 +635,42 @@ describe('GuestHouseAssistantToolsService.add_invoice_line_item', () => {
         quantity: 2,
         unitPrice: 500,
       }),
+    );
+  });
+});
+
+describe('GuestHouseAssistantToolsService.report_room_issue', () => {
+  it('requires a description, takes the room out of service and commits through RoomsService', async () => {
+    const h = build();
+
+    await expect(
+      h.byName('report_room_issue').buildProposal?.({ roomId: 'room_1' }, CTX),
+    ).rejects.toThrow(BadRequestException);
+
+    h.db.room.findFirst.mockResolvedValue({
+      id: 'room_1',
+      name: 'Room 3',
+      type: 'Deluxe',
+      baseRate: 3500,
+      status: RoomStatus.VACANT_CLEAN,
+      isActive: true,
+      notes: null,
+    });
+
+    const draft = await h.byName('report_room_issue').buildProposal?.(
+      { roomId: 'room_1', description: 'Shower is leaking', cost: 2500 },
+      CTX,
+    );
+    expect(draft?.diff).toMatchObject({
+      status: { before: RoomStatus.VACANT_CLEAN, after: RoomStatus.OUT_OF_ORDER },
+    });
+
+    await h.byName('report_room_issue').commit?.(draft?.args ?? {}, CTX);
+    expect(h.rooms.reportIssue).toHaveBeenCalledWith(
+      'org_1',
+      'room_1',
+      expect.objectContaining({ description: 'Shower is leaking', cost: 2500 }),
+      { id: 'user_1' },
     );
   });
 });

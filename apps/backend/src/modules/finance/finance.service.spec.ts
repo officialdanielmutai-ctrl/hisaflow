@@ -3,6 +3,7 @@ import { PrismaService } from '../../infrastructure/prisma.service';
 import { FinanceService } from './finance.service';
 import { BusinessTransactionsService } from './business-transactions.service';
 import { FinanceAiService } from './finance-ai.service';
+import { FinanceBreakdownService } from './finance-breakdown.service';
 
 const ORG = 'org_a';
 const OTHER_ORG = 'org_b';
@@ -18,19 +19,22 @@ function build(opts: { transactions?: any[]; manual?: any[] } = {}) {
     async () =>
       opts.transactions ?? [
         {
+          type: 'SALE',
           createdAt: new Date('2026-01-01T08:00:00.000Z'),
           quantityChange: decimal(-2),
-          item: { costPrice: decimal(5), sellingPrice: decimal(10) },
+          item: { name: 'Sugar', costPrice: decimal(5), sellingPrice: decimal(10) },
         },
         {
+          type: 'SALE',
           createdAt: new Date('2026-01-01T12:00:00.000Z'),
           quantityChange: decimal(-1),
-          item: { costPrice: decimal(5), sellingPrice: decimal(10) },
+          item: { name: 'Sugar', costPrice: decimal(5), sellingPrice: decimal(10) },
         },
         {
+          type: 'SALE',
           createdAt: new Date('2026-01-02T09:00:00.000Z'),
           quantityChange: decimal(-4),
-          item: { costPrice: decimal(5), sellingPrice: decimal(10) },
+          item: { name: 'Sugar', costPrice: decimal(5), sellingPrice: decimal(10) },
         },
       ],
   );
@@ -51,6 +55,16 @@ function build(opts: { transactions?: any[]; manual?: any[] } = {}) {
     inventoryItem: { findMany: inventoryItemFindMany, findFirst: inventoryItemFindFirst },
     inventoryTransaction: { findMany: inventoryTransactionFindMany },
     businessTransaction: { findMany: businessTransactionFindMany },
+    // Vertical-aware breakdown lookups (default to empty so the existing
+    // DUKA-shaped assertions are unchanged).
+    organization: { findUnique: jest.fn(async () => ({ businessType: 'DUKA' })) },
+    roomIssue: { findMany: jest.fn(async () => []) },
+    payment: { findMany: jest.fn(async () => []) },
+    feePayment: { findMany: jest.fn(async () => []) },
+    invoice: { findMany: jest.fn(async () => []) },
+    feeInvoice: { findMany: jest.fn(async () => []) },
+    creditRecord: { findMany: jest.fn(async () => []) },
+    stockBatch: { findMany: jest.fn(async () => []) },
   };
   const businessTxService = {
     createBusinessTransaction: jest.fn(),
@@ -64,12 +78,14 @@ function build(opts: { transactions?: any[]; manual?: any[] } = {}) {
     getPriceSuggestions: jest.fn(async () => [{ itemId: 'i1' }]),
   } as unknown as FinanceAiService;
   const config = { get: jest.fn() };
+  const financeBreakdown = new FinanceBreakdownService({ db } as unknown as PrismaService);
 
   const service = new FinanceService(
     { db } as unknown as PrismaService,
     config as any,
     businessTxService,
     financeAiService,
+    financeBreakdown,
   );
   return {
     service,

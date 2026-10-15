@@ -2,6 +2,8 @@ import './globals.css'
 import { Inter } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
+import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import { THEME_BOOTSTRAP_SCRIPT } from '@/lib/theme'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -48,6 +50,10 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" className={inter.variable}>
         <head>
+          {/* Apply the saved theme before first paint to avoid a flash. */}
+          <script
+            dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
+          />
           {/* This runs SYNCHRONOUSLY before any React hydration.
               It captures beforeinstallprompt (which fires very early) and
               registers the service worker immediately — both stored globally
@@ -94,7 +100,7 @@ export default function RootLayout({
           />
         </head>
         <body>
-          {children}
+          <ThemeProvider>{children}</ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

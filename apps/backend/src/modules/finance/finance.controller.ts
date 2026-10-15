@@ -29,6 +29,16 @@ export class FinanceController {
     return this.financeService.getBusinessOverview(orgId, mode);
   }
 
+  // ── Vertical-aware breakdown (revenue sources, expenses, leaks) ───────────
+  @Roles(AppRole.OWNER, AppRole.MANAGER)
+  @Get('breakdown')
+  getBreakdown(
+    @OrgContext() orgId: string,
+    @Query('mode') mode: 'rolling30' | 'calendar' = 'rolling30',
+  ) {
+    return this.financeService.getBreakdown(orgId, mode);
+  }
+
   // ── AI forecast (now opex-aware) ─────────────────────────────────────────
   @Roles(AppRole.OWNER, AppRole.MANAGER)
   @Get('forecast')

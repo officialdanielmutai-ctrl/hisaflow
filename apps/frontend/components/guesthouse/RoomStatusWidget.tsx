@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { roomsService, type Room } from '@/services/rooms.service';
-import { BedDouble, CheckCircle, Clock, AlertTriangle, Hammer, Loader2 } from 'lucide-react';
+import { BedDouble, CheckCircle, Clock, Wrench, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export function RoomStatusWidget() {
@@ -39,6 +39,7 @@ export function RoomStatusWidget() {
   const vacantClean = activeRooms.filter(r => r.status === 'VACANT_CLEAN').length;
   const vacantDirty = activeRooms.filter(r => r.status === 'VACANT_DIRTY').length;
   const maintenance = activeRooms.filter(r => r.status === 'MAINTENANCE').length;
+  const outOfOrder = activeRooms.filter(r => r.status === 'OUT_OF_ORDER').length;
   const total = activeRooms.length;
 
   const occupancyRate = total > 0 ? Math.round((occupied / total) * 100) : 0;
@@ -94,6 +95,26 @@ export function RoomStatusWidget() {
           <div>
             <p className="text-xl font-bold leading-none">{vacantDirty}</p>
             <p className="text-[10px] font-semibold text-[var(--color-text-secondary)] uppercase mt-1 tracking-wider">Dirty</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+            <Wrench className="h-5 w-5 text-red-600" />
+          </div>
+          <div>
+            <p className="text-xl font-bold leading-none">{outOfOrder}</p>
+            <p className="text-[10px] font-semibold text-[var(--color-text-secondary)] uppercase mt-1 tracking-wider">Broken</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-3 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+            <Wrench className="h-5 w-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-xl font-bold leading-none">{maintenance}</p>
+            <p className="text-[10px] font-semibold text-[var(--color-text-secondary)] uppercase mt-1 tracking-wider">Maintenance</p>
           </div>
         </div>
       </div>

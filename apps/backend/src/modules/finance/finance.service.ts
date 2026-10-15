@@ -5,9 +5,11 @@ import { CreateBusinessTransactionDto } from './dto/create-business-transaction.
 import { UpdateBusinessTransactionDto } from './dto/update-business-transaction.dto';
 import { BusinessTransactionsService, BusinessTransactionRecord } from './business-transactions.service';
 import { FinanceAiService, PriceSuggestion } from './finance-ai.service';
+import { FinanceBreakdownService, FinanceBreakdown } from './finance-breakdown.service';
 
 export { BusinessTransactionRecord } from './business-transactions.service';
 export { PriceSuggestion } from './finance-ai.service';
+export type { FinanceBreakdown } from './finance-breakdown.service';
 
 // ─── Response Shapes ──────────────────────────────────────────────────────────
 
@@ -70,6 +72,7 @@ export class FinanceService {
     private readonly config: ConfigService,
     private readonly businessTxService: BusinessTransactionsService,
     private readonly financeAiService: FinanceAiService,
+    private readonly financeBreakdown: FinanceBreakdownService,
   ) {}
 
   // ── 1. Legacy Overview (backwards compatibility) ───────────────────────────
@@ -125,18 +128,12 @@ export class FinanceService {
       Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)),
     );
 
-    const [items, dailyTrend, manualTransactions] = await Promise.all([
+    const [items, breakdown] = await Promise.all([
       this.prisma.db.inventoryItem.findMany({
         where: { organizationId, isActive: true },
         select: { id: true, costPrice: true, sellingPrice: true, quantity: true },
       }),
-      this.getDailyTrend(organizationId, start, end),
-      this.prisma.db.businessTransaction.findMany({
-        where: {
-          organizationId,
-          date: { gte: start, lte: end },
-        },
-      }),
+      this.financeBreakdown.getBreakdown(organizationId, start, end),
     ]);
 
     let totalInventoryValue = 0;
@@ -151,39 +148,18 @@ export class FinanceService {
       if (cost == null || sell == null) unpricedCount++;
     }
 
-    const grossRevenue = dailyTrend.reduce((s, d) => s + d.revenue, 0);
-    const grossCogs = dailyTrend.reduce((s, d) => s + d.cogs, 0);
-    const grossProfit = grossRevenue - grossCogs;
-    const grossMarginPct =
-      grossRevenue > 0 ? Math.round((grossProfit / grossRevenue) * 1000) / 10 : null;
-
-    let totalOperatingExpenses = 0;
-    let totalOtherIncome = 0;
-    const categoryMap = new Map<string, { total: number; count: number }>();
-
-    for (const tx of manualTransactions) {
-      const amount = Number(tx.amount);
-      if (tx.type === 'EXPENSE') {
-        totalOperatingExpenses += amount;
-        const cat = categoryMap.get(tx.category) ?? { total: 0, count: 0 };
-        cat.total += amount;
-        cat.count += 1;
-        categoryMap.set(tx.category, cat);
-      } else if (tx.type === 'INCOME') {
-        totalOtherIncome += amount;
-      }
-    }
-
-    const expensesByCategory: ExpenseCategoryBreakdown[] = Array.from(
-      categoryMap.entries(),
-    )
-      .map(([category, { total, count }]) => ({ category, total, count }))
-      .sort((a, b) => b.total - a.total);
-
-    const netProfit = grossProfit + totalOtherIncome - totalOperatingExpenses;
-    const totalIncome = grossRevenue + totalOtherIncome;
-    const netMarginPct =
-      totalIncome > 0 ? Math.round((netProfit / totalIncome) * 1000) / 10 : null;
+    // Revenue, COGS and net profit are computed vertical-aware so invoiced
+    // verticals (guest house, ISP, school) are not understated.
+    const grossRevenue = breakdown.revenue;
+    const grossCogs = breakdown.cogs;
+    const grossProfit = breakdown.grossProfit;
+    const grossMarginPct = breakdown.grossMarginPct;
+    const totalOperatingExpenses = breakdown.operatingExpenses;
+    const totalOtherIncome = breakdown.otherIncome;
+    const netProfit = breakdown.netProfit;
+    const netMarginPct = breakdown.netMarginPct;
+    const expensesByCategory = breakdown.expensesByCategory;
+    const dailyTrend = breakdown.dailyTrend;
 
     const periodLabel =
       dateMode === 'calendar'
@@ -307,47 +283,23 @@ export class FinanceService {
   ): Promise<{ revenue: number; expenses: number; netProfit: number }> {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
-    const end = new Date(
-      now.getFullYear(),
-      now.getMonth() - monthsAgo + 1,
-      0,
-      23,
-      59,
-      59,
-    );
+    const end = new Date(now.getFullYear(), now.getMonth() - monthsAgo + 1, 0, 23, 59, 59);
 
-    const saleTxs = await this.prisma.db.inventoryTransaction.findMany({
-      where: {
-        organizationId,
-        type: 'SALE',
-        createdAt: { gte: start, lte: end },
-      },
-      include: { item: { select: { costPrice: true, sellingPrice: true } } },
-    });
-
-    let revenue = 0;
-    let cogs = 0;
-    for (const tx of saleTxs) {
-      const qty = Math.abs(Number(tx.quantityChange));
-      revenue += qty * Number(tx.item.sellingPrice ?? 0);
-      cogs += qty * Number(tx.item.costPrice ?? 0);
-    }
-
-    const bizTxs = await this.prisma.db.businessTransaction.findMany({
-      where: { organizationId, date: { gte: start, lte: end } },
-    });
-    const expenses = bizTxs
-      .filter((t) => t.type === 'EXPENSE')
-      .reduce((s, t) => s + Number(t.amount), 0);
-    const manualIncome = bizTxs
-      .filter((t) => t.type === 'INCOME')
-      .reduce((s, t) => s + Number(t.amount), 0);
-
+    const breakdown = await this.financeBreakdown.getBreakdown(organizationId, start, end);
     return {
-      revenue: revenue + manualIncome,
-      expenses,
-      netProfit: revenue - cogs + manualIncome - expenses,
+      revenue: breakdown.revenue + breakdown.otherIncome,
+      expenses: breakdown.operatingExpenses,
+      netProfit: breakdown.netProfit,
     };
+  }
+
+  // ── 6. Vertical-aware breakdown (Finance → Breakdown) ──────────────────────
+  async getBreakdown(
+    organizationId: string,
+    dateMode: 'rolling30' | 'calendar' = 'rolling30',
+  ): Promise<FinanceBreakdown> {
+    const { start, end } = this.getDateRange(dateMode);
+    return this.financeBreakdown.getBreakdown(organizationId, start, end);
   }
 
   // ── Private Helper: Date Range ─────────────────────────────────────────────

@@ -117,6 +117,58 @@
     --radius: 0.75rem;
   }
 
+  /* ── Dark mode tokens (toggled from Settings → Appearance) ──
+     Applied by the `.dark` class on <html>. Marketing tokens are remapped too
+     so public surfaces (e.g. the KPI gallery) follow the same mode. */
+  .dark {
+    --color-bg-base: #0b0f14;
+    --color-bg-surface: #141a21;
+    --color-bg-elevated: #1c242d;
+    --color-bg-secondary: #10251d;
+    --color-bg-surface-hover: #1f2933;
+    --color-text-primary: #f3f4f6;
+    --color-text-secondary: #9ca3af;
+    --color-text-muted: #6b7280;
+    --color-border: #2a343f;
+    --color-accent: #34a97b;
+    --color-accent-hover: #2c8f67;
+    --color-accent-blue: #60a5fa;
+    --color-primary: #34a97b;
+    --color-primary-hover: #2c8f67;
+    --color-status-success: #4ade80;
+    --color-status-warning: #fbbf24;
+    --color-status-critical: #f87171;
+    --color-status-info: #60a5fa;
+    --color-status-neutral: #9ca3af;
+
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-raised: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+    --shadow-overlay: 0 10px 15px -3px rgb(0 0 0 / 0.55), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+
+    --mk-canvas: var(--color-bg-base);
+    --mk-surface: var(--color-bg-surface);
+    --mk-ink: var(--color-text-primary);
+    --mk-ink-2: #c7cdd6;
+    --mk-ink-3: var(--color-text-secondary);
+    --mk-line: var(--color-border);
+
+    --background: 212 30% 6%;
+    --foreground: 210 20% 96%;
+    --card: 213 24% 10%;
+    --card-foreground: 210 20% 96%;
+    --popover: 213 24% 10%;
+    --popover-foreground: 210 20% 96%;
+    --secondary: 213 18% 16%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 213 18% 16%;
+    --muted-foreground: 215 15% 65%;
+    --accent: 213 18% 18%;
+    --accent-foreground: 210 20% 96%;
+    --border: 213 16% 22%;
+    --input: 213 16% 22%;
+    color-scheme: dark;
+  }
+
   * {
     @apply border-border;
   }
@@ -133,6 +185,55 @@
 
   .mk-tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Dark-mode bridge for legacy utility colours ──
+     A number of older screens still use Tailwind's literal `bg-white` / `gray`
+     utilities instead of the semantic tokens. Rather than leave those screens
+     unreadable in dark mode, remap the common ones centrally here. New work
+     should use the token classes (`bg-[var(--color-bg-surface)]`, etc.); this
+     bridge shrinks as screens migrate. Specificity (0,2,0) beats the plain
+     utility (0,1,0), so no `!important` is needed. */
+  .dark .bg-white {
+    background-color: var(--color-bg-surface);
+  }
+  .dark .bg-white\/80 {
+    background-color: color-mix(in srgb, var(--color-bg-surface) 80%, transparent);
+  }
+  .dark .bg-gray-50,
+  .dark .bg-gray-50\/50,
+  .dark .bg-gray-50\/30 {
+    background-color: var(--color-bg-base);
+  }
+  .dark .bg-gray-100 {
+    background-color: var(--color-bg-elevated);
+  }
+  .dark .bg-muted {
+    background-color: var(--color-bg-elevated);
+  }
+  .dark .hover\:bg-gray-50:hover,
+  .dark .hover\:bg-gray-100:hover {
+    background-color: var(--color-bg-elevated);
+  }
+  .dark .text-gray-900,
+  .dark .text-gray-800 {
+    color: var(--color-text-primary);
+  }
+  .dark .text-gray-700,
+  .dark .text-gray-600 {
+    color: var(--color-text-secondary);
+  }
+  .dark .text-gray-500,
+  .dark .text-gray-400 {
+    color: var(--color-text-muted);
+  }
+  .dark .border-gray-50,
+  .dark .border-gray-100,
+  .dark .border-gray-200 {
+    border-color: var(--color-border);
+  }
+  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--color-border);
   }
 }
 

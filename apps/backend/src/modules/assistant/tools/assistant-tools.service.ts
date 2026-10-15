@@ -5,6 +5,7 @@ import { NotesService } from '../../notes/notes.service';
 import { NoteImportance } from '../../notes/dto/create-note.dto';
 import { TransactionsService } from '../../transactions/transactions.service';
 import { TransactionTypeDto } from '../../transactions/dto/create-transaction.dto';
+import { FinanceService } from '../../finance/finance.service';
 import { AppRole } from '../../../core/decorators/roles.decorator';
 import { AssistantCommsService } from '../comms/assistant-comms.service';
 import { AssistantUnsupportedService } from '../unsupported/assistant-unsupported.service';
@@ -100,6 +101,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     private readonly transactions: TransactionsService,
     private readonly comms: AssistantCommsService,
     private readonly unsupported: AssistantUnsupportedService,
+    private readonly finance: FinanceService,
   ) {}
 
   all(): ToolDefinition[] {
@@ -107,6 +109,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       this.getLowStock(),
       this.searchInventory(),
       this.listInventory(),
+      this.getFinancialBreakdown(),
       this.createNote(),
       this.transactionTool({
         name: 'record_sale',
@@ -137,6 +140,48 @@ export class AssistantToolsService implements AssistantToolProvider {
       this.sendSms(),
       this.logUnsupportedIntent(),
     ];
+  }
+
+  // ── read: financial breakdown ──────────────────────────────────────────
+  private getFinancialBreakdown(): ToolDefinition {
+    return {
+      name: 'get_financial_breakdown',
+      description:
+        "Summarise the organisation's finances for the last 30 days: revenue, cost of sales, gross and net profit, revenue broken down by this business's own sources (rooms, plans, classes or commodities), running costs by category and where money is leaking (wastage, unpaid invoices/fees/credit, expiring stock, repairs). Read-only. Use this for any revenue, profit, margin, loss or 'where is my money going' question; never invent figures.",
+      kind: 'read',
+      riskLevel: 'low',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async (_raw, ctx) => {
+        const breakdown = await this.finance.getBreakdown(
+          ctx.organizationId,
+          'rolling30',
+        );
+        return {
+          businessType: breakdown.businessType,
+          period: 'last 30 days',
+          revenue: breakdown.revenue,
+          costOfSales: breakdown.cogs,
+          grossProfit: breakdown.grossProfit,
+          grossMarginPct: breakdown.grossMarginPct,
+          otherIncome: breakdown.otherIncome,
+          runningCosts: breakdown.operatingExpenses,
+          maintenanceCosts: breakdown.maintenanceCosts,
+          netProfit: breakdown.netProfit,
+          netMarginPct: breakdown.netMarginPct,
+          revenueBreakdown: breakdown.breakdowns.map((group) => ({
+            title: group.title,
+            rows: group.rows,
+          })),
+          expensesByCategory: breakdown.expensesByCategory,
+          leaks: breakdown.leaks,
+        };
+      },
+    };
   }
 
   // ── read: low stock ─────────────────────────────────────────────────────

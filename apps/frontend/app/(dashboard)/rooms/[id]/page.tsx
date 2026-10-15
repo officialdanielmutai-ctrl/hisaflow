@@ -10,6 +10,8 @@ import { ArrowLeft, Bed, Edit3, Trash2, Loader2, AlertTriangle } from 'lucide-re
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { EditRoomSheet } from '@/components/guesthouse/EditRoomSheet';
+import { RoomStatusControl } from '@/components/guesthouse/RoomStatusControl';
+import { ROOM_STATUS_LABELS } from '@/lib/room-status';
 
 export default function RoomDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
@@ -87,6 +89,8 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Details */}
       <div className="p-4 sm:p-6 space-y-6">
+        <RoomStatusControl room={room} />
+
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-[var(--color-primary)]/10 p-2.5 rounded-xl text-[var(--color-primary)]">
@@ -101,7 +105,9 @@ export default function RoomDetailPage({ params }: { params: Promise<{ id: strin
           <div className="grid grid-cols-2 gap-y-6 gap-x-4">
             <div>
               <div className="text-xs text-gray-500 mb-1">Status</div>
-              <div className="text-sm font-semibold text-gray-900">{room.status}</div>
+              <div className="text-sm font-semibold text-gray-900">
+                {ROOM_STATUS_LABELS[room.status] ?? room.status}
+              </div>
             </div>
             <div>
               <div className="text-xs text-gray-500 mb-1">Base Rate</div>

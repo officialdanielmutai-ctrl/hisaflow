@@ -14,7 +14,7 @@ All paths are relative to `apps/backend/src/modules/assistant/` unless stated.
 
 | Piece | File | Notes |
 |---|---|---|
-| Guest-house tool set | `tools/guesthouse-assistant-tools.service.ts` | 17 tools, all `verticals: ['GUEST_HOUSE']`; writes only build proposals |
+| Guest-house tool set | `tools/guesthouse-assistant-tools.service.ts` | 18 tools, all `verticals: ['GUEST_HOUSE']`; writes only build proposals |
 | Shared arg coercion | `tools/tool-args.ts` | Date/email helpers promoted here (`asDate`, `asOptionalDate`, `asOptionalEmail`) and reused by the ISP set |
 | Module wiring | `assistant.module.ts` | Imports `BookingsModule`, `GuestsModule`, `RoomsModule`, `InvoicesModule` (all already export their services) and registers the third provider |
 
@@ -38,6 +38,7 @@ All paths are relative to `apps/backend/src/modules/assistant/` unless stated.
 | `create_room` | `RoomsService.create` | medium | OWNER, MANAGER |
 | `update_room` | `RoomsService.update` | medium | OWNER, MANAGER |
 | `mark_room_dirty` / `mark_room_clean` | `RoomsService.update` | low | OWNER, MANAGER |
+| `report_room_issue` | `RoomsService.reportIssue` | medium | OWNER, MANAGER |
 | `create_booking` | `BookingsService.create` | medium | OWNER, MANAGER, STAFF |
 | `check_in_booking` | `BookingsService.checkIn` | medium | OWNER, MANAGER, STAFF |
 | `check_out_booking` | `BookingsService.checkOut` | medium | OWNER, MANAGER, STAFF |
@@ -45,6 +46,8 @@ All paths are relative to `apps/backend/src/modules/assistant/` unless stated.
 | `generate_booking_invoice` | `InvoicesService.getDraftForBooking` | low | OWNER, MANAGER, STAFF |
 | `record_booking_payment` | `InvoicesService.addPayment` | medium | OWNER, MANAGER, STAFF |
 | `add_invoice_line_item` | `InvoicesService.addLineItem` | medium | OWNER, MANAGER |
+
+`report_room_issue` requires a mandatory description of what broke plus an optional repair cost, and commits the room to `OUT_OF_ORDER` through `RoomsService.reportIssue` (the same path the new `/rooms/[id]` Report-fault sheet uses). Room status is now changeable from the UI (`RoomStatusControl`), including the new `OUT_OF_ORDER` state. See `hisaflow-rooms-finance-settings-upgrade.md`.
 
 Role gating mirrors the existing controllers (rooms = owner/manager; bookings, guests and payments = staff-inclusive). The vertical-agnostic foundation tools (`search_inventory`, `get_low_stock`, `create_note`, `send_email`, `send_sms`, `log_unsupported_intent`) remain available; `search_inventory` resolves the item ID for `add_consumption`.
 
@@ -82,7 +85,7 @@ The registry now aggregates three providers (`AssistantToolsService`, `IspAssist
 
 ## 5. Tests + gates
 
-- `tools/guesthouse-assistant-tools.service.spec.ts` — 28 tests: vertical gating for all 17 tools, owner/manager gating for room and invoice-line tools, org scoping, date-day boundaries for arrivals/departures, stock guard for consumption, balance projection, status-state guards (check-in/check-out), `force=false`, and commit calls through each service.
+- `tools/guesthouse-assistant-tools.service.spec.ts` — 29 tests: vertical gating for all 18 tools, owner/manager gating for room and invoice-line tools, org scoping, date-day boundaries for arrivals/departures, stock guard for consumption, balance projection, status-state guards (check-in/check-out), `force=false`, and commit calls through each service.
 - `assistant.module.spec.ts` — three-provider aggregation + per-vertical isolation.
 - `apps/frontend/lib/assistant.spec.ts` — guest-house labels + tool-derived chips (2 new tests).
 - Gates: backend `tsc` + **97 suites / 720 Jest tests** + `nest build` + module ESLint (0 errors); frontend `tsc` + `next lint` (0 errors) + **144 vitest** + `next build`.

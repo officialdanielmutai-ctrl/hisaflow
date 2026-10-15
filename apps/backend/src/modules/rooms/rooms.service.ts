@@ -2,7 +2,13 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
-import { BookingStatus, RoomStatus } from '@prisma/client';
+import { CreateRoomIssueDto } from './dto/create-room-issue.dto';
+import { BookingStatus, RoomIssueStatus, RoomStatus } from '@prisma/client';
+
+export interface RoomIssueActor {
+  id?: string;
+  name?: string;
+}
 
 @Injectable()
 export class RoomsService {
@@ -46,6 +52,89 @@ export class RoomsService {
     return this.prisma.db.room.update({
       where: { id },
       data: dto,
+    });
+  }
+
+  /** All fault reports for a room, open ones first. */
+  async listIssues(organizationId: string, roomId: string) {
+    await this.findOne(organizationId, roomId);
+    return this.prisma.db.roomIssue.findMany({
+      where: { organizationId, roomId },
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    });
+  }
+
+  /**
+   * Report a fault: records the mandatory description and optional cost, and
+   * marks the room OUT_OF_ORDER so it cannot be sold until resolved.
+   */
+  async reportIssue(
+    organizationId: string,
+    roomId: string,
+    dto: CreateRoomIssueDto,
+    reporter?: RoomIssueActor,
+  ) {
+    await this.findOne(organizationId, roomId);
+
+    return this.prisma.db.$transaction(async (tx) => {
+      const issue = await tx.roomIssue.create({
+        data: {
+          organizationId,
+          roomId,
+          description: dto.description,
+          category: dto.category ?? 'REPAIR',
+          cost: dto.cost ?? null,
+          reportedById: reporter?.id ?? null,
+          reportedByName: reporter?.name ?? null,
+        },
+      });
+
+      await tx.room.update({
+        where: { id: roomId },
+        data: { status: RoomStatus.OUT_OF_ORDER },
+      });
+
+      return issue;
+    });
+  }
+
+  /**
+   * Resolve a fault. When it was the room's last open issue the room returns to
+   * VACANT_DIRTY (needs cleaning) rather than being sold as ready.
+   */
+  async resolveIssue(
+    organizationId: string,
+    issueId: string,
+    resolver?: RoomIssueActor,
+  ) {
+    const issue = await this.prisma.db.roomIssue.findFirst({
+      where: { id: issueId, organizationId },
+    });
+    if (!issue) {
+      throw new NotFoundException(`Room issue with ID ${issueId} not found`);
+    }
+
+    return this.prisma.db.$transaction(async (tx) => {
+      const resolved = await tx.roomIssue.update({
+        where: { id: issueId },
+        data: {
+          status: RoomIssueStatus.RESOLVED,
+          resolvedById: resolver?.id ?? null,
+          resolvedAt: new Date(),
+        },
+      });
+
+      const openIssues = await tx.roomIssue.count({
+        where: { organizationId, roomId: issue.roomId, status: RoomIssueStatus.OPEN },
+      });
+      if (openIssues === 0) {
+        await tx.room.update({
+          where: { id: issue.roomId },
+          data: { status: RoomStatus.VACANT_DIRTY },
+        });
+      }
+
+      return resolved;
     });
   }
 

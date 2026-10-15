@@ -3,7 +3,16 @@
 ## Theme
 
 Light mode by default, optimised for bright daylight conditions on mid-range
-Android devices. The visual language is "quiet operational competence": calm,
+Android devices. A **manual dark mode** is available (Settings → Appearance),
+applied by the `.dark` class on `<html>`; it overrides the same CSS custom
+properties rather than using separate components. The preference is persisted
+in `localStorage` (`hisaflow.theme`) and applied before first paint by the
+no-flash script in `app/layout.tsx`; see `lib/theme.ts` and
+`components/providers/ThemeProvider.tsx`. Prefer the semantic token classes so
+screens work in both modes; a small transitional bridge in `globals.css`
+remaps legacy `bg-white`/`gray` utilities.
+
+The visual language is "quiet operational competence": calm,
 readable, trustworthy. Not a startup dashboard. Not a crypto terminal. Not an
 enterprise ERP. Every design decision should serve operational clarity —
 helping a business owner understand what is happening and what to do next

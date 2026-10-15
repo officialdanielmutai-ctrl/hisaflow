@@ -31,6 +31,24 @@ function build(options: { items?: Array<Record<string, unknown>> } = {}) {
     send: jest.fn(async () => ({ status: 'MOCKED', recipient: 'x' })),
   };
   const unsupported = { record: jest.fn(async () => ({ recorded: true })) };
+  const finance = {
+    getBreakdown: jest.fn(async () => ({
+      businessType: 'DUKA',
+      revenue: 1000,
+      cogs: 400,
+      grossProfit: 600,
+      grossMarginPct: 60,
+      otherIncome: 50,
+      operatingExpenses: 200,
+      maintenanceCosts: 0,
+      netProfit: 450,
+      netMarginPct: 42.9,
+      dailyTrend: [],
+      expensesByCategory: [],
+      breakdowns: [],
+      leaks: [],
+    })),
+  };
   const service = new AssistantToolsService(
     { db } as never,
     inventory as never,
@@ -38,13 +56,14 @@ function build(options: { items?: Array<Record<string, unknown>> } = {}) {
     transactions as never,
     comms as never,
     unsupported as never,
+    finance as never,
   );
   const byName = (name: string): ToolDefinition => {
     const tool = service.all().find((entry) => entry.name === name);
     if (!tool) throw new Error(`missing tool ${name}`);
     return tool;
   };
-  return { service, db, inventory, notes, transactions, comms, unsupported, byName };
+  return { service, db, inventory, notes, transactions, comms, unsupported, finance, byName };
 }
 
 describe('AssistantToolsService.get_low_stock', () => {
@@ -492,5 +511,23 @@ describe('AssistantToolsService.log_unsupported_intent', () => {
       'file my KRA return for last month',
     );
     expect(result).toEqual({ recorded: true });
+  });
+});
+
+describe('AssistantToolsService.get_financial_breakdown', () => {
+  it('reads the org-scoped vertical breakdown and returns it to the model', async () => {
+    const { byName, finance } = build();
+
+    const tool = byName('get_financial_breakdown');
+    expect(tool.kind).toBe('read');
+
+    const result: any = await tool.execute?.({}, CTX);
+
+    expect(finance.getBreakdown).toHaveBeenCalledWith('org_1', 'rolling30');
+    expect(result).toMatchObject({
+      businessType: 'DUKA',
+      revenue: 1000,
+      netProfit: 450,
+    });
   });
 });

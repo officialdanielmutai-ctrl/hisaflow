@@ -84,6 +84,7 @@ export class GuestHouseAssistantToolsService implements AssistantToolProvider {
       this.updateRoom(),
       this.setRoomStatus('mark_room_dirty', 'dirty', RoomStatus.VACANT_DIRTY),
       this.setRoomStatus('mark_room_clean', 'clean', RoomStatus.VACANT_CLEAN),
+      this.reportRoomIssue(),
       this.createBooking(),
       this.checkInBooking(),
       this.checkOutBooking(),
@@ -606,6 +607,64 @@ export class GuestHouseAssistantToolsService implements AssistantToolProvider {
           ctx.organizationId,
           asString(args.roomId, 'roomId', 100),
           { status },
+        );
+      },
+    };
+  }
+
+  // ── write: report a room fault ──────────────────────────────────────────
+  private reportRoomIssue(): ToolDefinition {
+    return {
+      name: 'report_room_issue',
+      description:
+        'Report a broken or faulty room. The description of what broke is required and the optional cost is the repair cost; reporting takes the room out of service. Requires approval. Use list_rooms first.',
+      kind: 'write',
+      riskLevel: 'medium',
+      roles: MANAGER_ROLES,
+      verticals: GUEST_HOUSE,
+      parameters: {
+        type: 'object',
+        properties: {
+          roomId: { type: 'string' },
+          description: { type: 'string', description: 'What broke (required).' },
+          category: {
+            type: 'string',
+            enum: ['REPAIR', 'PLUMBING', 'ELECTRICAL', 'APPLIANCE', 'CLEANING', 'OTHER'],
+          },
+          cost: { type: 'number', description: 'Repair cost, if known.' },
+        },
+        required: ['roomId', 'description'],
+        additionalProperties: false,
+      },
+      buildProposal: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const roomId = asString(args.roomId, 'roomId', 100);
+        const description = asString(args.description, 'description', 1000);
+        const category = asOptionalString(args.category, 'category', 30);
+        const cost = asOptionalNonNegative(args.cost, 'cost');
+        const room = await this.findRoom(ctx.organizationId, roomId);
+        return {
+          args: { roomId: room.id, description, category, cost },
+          summary: `Report a fault in room ${room.name} and take it out of service`,
+          diff: {
+            status: { before: room.status, after: RoomStatus.OUT_OF_ORDER },
+            fault: { before: null, after: description },
+            ...(cost !== undefined ? { cost: { before: null, after: kes(cost) } } : {}),
+          },
+          riskLevel: 'medium',
+        };
+      },
+      commit: async (raw, ctx) => {
+        const args = asRecord(raw);
+        return this.rooms.reportIssue(
+          ctx.organizationId,
+          asString(args.roomId, 'roomId', 100),
+          {
+            description: asString(args.description, 'description', 1000),
+            category: asOptionalString(args.category, 'category', 30),
+            cost: asOptionalNonNegative(args.cost, 'cost'),
+          },
+          { id: ctx.userId },
         );
       },
     };

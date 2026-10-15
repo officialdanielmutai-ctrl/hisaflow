@@ -1,15 +1,28 @@
 'use client';
 
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { Bell, BellOff, Download, Receipt, Smartphone } from 'lucide-react';
+import {
+  Bell,
+  BellOff,
+  CreditCard,
+  Download,
+  Loader2,
+  Palette,
+  Receipt,
+  Smartphone,
+  Users,
+  Wifi,
+} from 'lucide-react';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { apiPost } from '@/lib/api-client';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
 import StaffManagementCard from '@/components/settings/StaffManagementCard';
 import RouterSettingsCard from '@/components/settings/RouterSettingsCard';
+import { SettingsActionRow, SettingsLinkRow } from '@/components/settings/SettingsRow';
+import { SettingsGroup } from '@/components/settings/SettingsGroup';
+import { ThemeToggle } from '@/components/settings/ThemeToggle';
 
 export default function SettingsPage() {
   const { isSupported, subscription, subscribe, isSubscribing, orgLoading, error } = usePushNotifications();
@@ -53,136 +66,167 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 pb-24">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">App Settings</h1>
-        <p className="text-[var(--color-text-secondary)] text-sm mt-1">
-          Manage your device preferences and notifications.
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 pb-24">
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+          Manage your business, device and preferences.
         </p>
       </header>
 
-      {/* ── Tax / KRA eTIMS registration ──────────────────────────────────── */}
+      {/* ── Appearance ──────────────────────────────────────────────────────── */}
+      <SettingsGroup title="Appearance">
+        <SettingsActionRow
+          icon={Palette}
+          iconClassName="bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+          title="Theme"
+          description="Choose light or dark mode for the app."
+          trailing={<ThemeToggle />}
+        />
+      </SettingsGroup>
+
+      {/* ── Business admin ──────────────────────────────────────────────────── */}
       {canManageStaff && (
-        <Link
-          href="/settings/tax"
-          className="flex items-center justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5 transition-colors hover:border-[var(--color-accent)]/60"
-        >
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-amber-100 p-2 text-amber-600">
-              <Receipt className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold">Tax &amp; eTIMS</h2>
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                Register your KRA PIN and track eTIMS approval status.
-              </p>
-            </div>
-          </div>
-          <span className="text-sm font-semibold text-[var(--color-accent)]">
-            Open
-          </span>
-        </Link>
+        <SettingsGroup title="Business" description="Owner and manager tools.">
+          <SettingsLinkRow
+            href="/settings/tax"
+            icon={Receipt}
+            iconClassName="bg-amber-100 text-amber-600"
+            title="Tax & eTIMS"
+            description="Register your KRA PIN and track eTIMS approval."
+          />
+          <SettingsLinkRow
+            href="/settings/billing"
+            icon={CreditCard}
+            iconClassName="bg-indigo-100 text-indigo-600"
+            title="Billing & plan"
+            description="Your subscription, seats and payment method."
+          />
+        </SettingsGroup>
       )}
 
-      {/* ── Staff Management (owners/managers only) ───────────────────────── */}
+      {/* ── Team & hardware ─────────────────────────────────────────────────── */}
       {canManageStaff && orgId && (
-        <StaffManagementCard orgId={orgId} isOwner={isOwner} />
-      )}
-
-      {/* ── MikroTik Routers (ISP access routers) ─────────────────────────── */}
-      {canManageStaff && orgId && (
-        <RouterSettingsCard orgId={orgId} isOwner={isOwner} />
-      )}
-
-      {/* ── Push Notifications ─────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="rounded-full bg-blue-100 p-2 text-blue-600">
-            <Bell className="h-5 w-5" />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <Users className="h-4 w-4 text-[var(--color-text-muted)]" />
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+              Team
+            </h2>
           </div>
-          <div>
-            <h2 className="font-semibold">Push Notifications</h2>
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              {isSupported ? 'Supported on this device' : 'Not supported on this browser/OS'}
-            </p>
+          <StaffManagementCard orgId={orgId} isOwner={isOwner} />
+
+          <div className="flex items-center gap-2 px-1 pt-2">
+            <Wifi className="h-4 w-4 text-[var(--color-text-muted)]" />
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+              Hardware
+            </h2>
           </div>
+          <RouterSettingsCard orgId={orgId} isOwner={isOwner} />
         </div>
+      )}
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-[var(--color-bg-base)] rounded-xl border border-[var(--color-border)]">
-            <div className="flex items-center gap-2">
-              {subscription ? (
-                <Bell className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <BellOff className="h-4 w-4 text-red-500" />
-              )}
-              <span className="text-sm font-medium">
-                Status: {subscription ? 'Subscribed' : 'Not Subscribed'}
-              </span>
-            </div>
-
-            {!subscription && isSupported && (
+      {/* ── Notifications ───────────────────────────────────────────────────── */}
+      <SettingsGroup title="Notifications">
+        <SettingsActionRow
+          icon={subscription ? Bell : BellOff}
+          iconClassName={
+            subscription
+              ? 'bg-emerald-100 text-emerald-600'
+              : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)]'
+          }
+          title={subscription ? 'Push notifications on' : 'Push notifications off'}
+          description={
+            isSupported
+              ? subscription
+                ? 'You will receive low-stock and summary alerts.'
+                : 'Enable alerts on this device.'
+              : 'Not supported on this browser or OS.'
+          }
+          trailing={
+            !subscription && isSupported ? (
               <button
                 onClick={subscribe}
                 disabled={isSubscribing || orgLoading}
-                className="bg-[var(--color-accent)] text-white px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                className="shrink-0 rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-semibold text-white transition-opacity disabled:opacity-50"
               >
-                {isSubscribing ? 'Enabling...' : orgLoading ? 'Loading...' : 'Enable Now'}
+                {isSubscribing ? 'Enabling…' : orgLoading ? 'Loading…' : 'Enable'}
               </button>
+            ) : (
+              <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                {subscription ? 'On' : '—'}
+              </span>
+            )
+          }
+        />
+
+        {subscription && (
+          <SettingsActionRow
+            icon={Bell}
+            title="Test notification"
+            description="Send a test alert to this device."
+            trailing={
+              <button
+                onClick={handleTestNotification}
+                className="shrink-0 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--color-bg-elevated)]"
+              >
+                {testStatus === 'Sending...' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Send test'
+                )}
+              </button>
+            }
+          />
+        )}
+
+        {(error || testStatus) && (
+          <div className="px-4 py-3 text-xs">
+            {error && <p className="text-red-500">{error}</p>}
+            {testStatus && testStatus !== 'Sending...' && (
+              <p className={testStatus.startsWith('✅') ? 'text-emerald-600' : 'text-red-500'}>
+                {testStatus}
+              </p>
             )}
           </div>
+        )}
+      </SettingsGroup>
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
-          {testStatus && <p className="text-xs text-emerald-600 font-medium">{testStatus}</p>}
-
-          {subscription && (
-            <button
-              onClick={handleTestNotification}
-              className="w-full border border-[var(--color-border)] px-4 py-2 rounded-xl text-sm font-medium hover:bg-[var(--color-bg-base)] transition-colors"
-            >
-              Test Notification System
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* ── Install App ─────────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="rounded-full bg-emerald-100 p-2 text-emerald-600">
-            <Smartphone className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-semibold">Install App (PWA)</h2>
-            <p className="text-xs text-[var(--color-text-secondary)]">
-              Add HisaFlow to your home screen
-            </p>
-          </div>
-        </div>
-
-        <div className="p-4 bg-[var(--color-bg-base)] rounded-xl border border-[var(--color-border)]">
-          {installPrompt ? (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--color-text-secondary)]">Ready to install</span>
+      {/* ── App ─────────────────────────────────────────────────────────────── */}
+      <SettingsGroup title="App">
+        <SettingsActionRow
+          icon={Smartphone}
+          iconClassName="bg-emerald-100 text-emerald-600"
+          title="Install HisaFlow"
+          description="Add the app to your home screen for offline access."
+          trailing={
+            installPrompt ? (
               <button
                 onClick={handleInstall}
-                className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700"
+                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
               >
                 <Download className="h-4 w-4" />
-                Install Now
+                Install
               </button>
-            </div>
-          ) : (
-            <div className="text-sm text-[var(--color-text-secondary)]">
-              <p>App is already installed, or your browser handles installation differently.</p>
-              <ul className="list-disc pl-5 mt-2 text-xs space-y-1">
-                <li><strong>iOS (Safari):</strong> Tap the Share button at the bottom, then &quot;Add to Home Screen&quot;.</li>
-                <li><strong>Android (Chrome):</strong> Tap the 3 dots menu, then &quot;Install App&quot;.</li>
-              </ul>
-            </div>
-          )}
-        </div>
-      </section>
+            ) : (
+              <span className="text-xs text-[var(--color-text-muted)]">Installed</span>
+            )
+          }
+        />
+        {!installPrompt && (
+          <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
+            <p>To install manually:</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5">
+              <li>
+                <strong>iOS (Safari):</strong> Share → Add to Home Screen.
+              </li>
+              <li>
+                <strong>Android (Chrome):</strong> ⋮ menu → Install app.
+              </li>
+            </ul>
+          </div>
+        )}
+      </SettingsGroup>
     </div>
   );
 }

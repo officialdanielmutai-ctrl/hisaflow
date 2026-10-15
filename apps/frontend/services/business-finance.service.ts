@@ -39,7 +39,8 @@ export interface BusinessOverview {
   unpricedCount: number;
   dailyTrend: DailyFinancialPoint[];
   totalOperatingExpenses: number;
-  totalManualIncome: number;
+  totalOtherIncome: number;
+  totalManualIncome?: number;
   netProfit: number;
   netMarginPct: number | null;
   expensesByCategory: ExpenseCategoryBreakdown[];
@@ -48,6 +49,45 @@ export interface BusinessOverview {
   dateMode: 'rolling30' | 'calendar';
   periodStart: string;
   periodEnd: string;
+}
+
+export interface BreakdownRow {
+  key: string;
+  label: string;
+  amount: number;
+  count?: number;
+  detail?: string;
+}
+
+export interface BreakdownGroup {
+  key: string;
+  title: string;
+  rows: BreakdownRow[];
+}
+
+export interface FinanceLeak {
+  key: string;
+  label: string;
+  amount: number;
+  detail?: string;
+}
+
+/** Vertical-aware P&L plus the breakdowns that explain it. */
+export interface FinanceBreakdown {
+  businessType: string;
+  revenue: number;
+  cogs: number;
+  grossProfit: number;
+  grossMarginPct: number | null;
+  otherIncome: number;
+  operatingExpenses: number;
+  maintenanceCosts: number;
+  netProfit: number;
+  netMarginPct: number | null;
+  dailyTrend: DailyFinancialPoint[];
+  expensesByCategory: ExpenseCategoryBreakdown[];
+  breakdowns: BreakdownGroup[];
+  leaks: FinanceLeak[];
 }
 
 export interface CreateBusinessTransactionPayload {
@@ -73,6 +113,8 @@ export const EXPENSE_CATEGORIES = [
   { value: 'MARKETING', label: 'Marketing', emoji: '📢' },
   { value: 'TAX', label: 'Tax', emoji: '🧾' },
   { value: 'SERVICES', label: 'Services', emoji: '🔧' },
+  { value: 'MAINTENANCE', label: 'Maintenance & repairs', emoji: '🛠️' },
+  { value: 'WASTAGE', label: 'Stock written off', emoji: '🗑️' },
   { value: 'OTHER_EXPENSE', label: 'Other', emoji: '📝' },
 ] as const;
 
@@ -105,6 +147,14 @@ export async function getBusinessOverview(
     token,
     organizationId,
   );
+}
+
+export async function getFinanceBreakdown(
+  token: string,
+  organizationId: string,
+  mode: 'rolling30' | 'calendar' = 'rolling30',
+): Promise<FinanceBreakdown> {
+  return apiGet<FinanceBreakdown>(`/finance/breakdown?mode=${mode}`, token, organizationId);
 }
 
 export async function getBusinessTransactions(

@@ -56,3 +56,15 @@ chats pile on. See `hisaflow-assistant-resilience-memory-notes.md`
 with no production seed, so no tool was offered; read/write/communicate now
 default on when no flag row exists, and the shared inventory tools were widened
 to every vertical. See `hisaflow-assistant-vertical-enablement.md`.
+
+## 6. Post-phase update (2026-10-15)
+
+Two additions from the rooms/finance/settings upgrade
+(`hisaflow-rooms-finance-settings-upgrade.md`):
+
+- **`get_financial_breakdown`** (foundation, all verticals, read-only) exposes
+  the new vertical-aware `FinanceBreakdownService`, so the assistant can answer
+  revenue/profit/margin/leak questions from live figures.
+- **`report_room_issue`** (guest house, manager roles) records a mandatory fault
+  note plus optional repair cost and takes the room out of service through
+  `RoomsService.reportIssue`.

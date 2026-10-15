@@ -33,6 +33,7 @@ model Organization {
 
   // ── Guest House relations ────────────────────────────────────
   rooms                 Room[]
+  roomIssues            RoomIssue[]
   guests                Guest[]
   bookings              Booking[]
   invoices              Invoice[]
@@ -574,6 +575,12 @@ enum RoomStatus {
   VACANT_DIRTY
   OCCUPIED
   MAINTENANCE
+  OUT_OF_ORDER
+}
+
+enum RoomIssueStatus {
+  OPEN
+  RESOLVED
 }
 
 model Room {
@@ -590,9 +597,36 @@ model Room {
 
   organization Organization @relation(fields: [organizationId], references: [id])
   bookings     Booking[]
+  issues       RoomIssue[]
 
   @@index([organizationId])
   @@map("rooms")
+}
+
+// A reported fault/maintenance event for a room. The description is mandatory
+// (written by whoever reports it) and the cost lets Finance account for the
+// repair. Reporting sets the room OUT_OF_ORDER; resolving restores VACANT_DIRTY.
+model RoomIssue {
+  id             String          @id @default(cuid())
+  organizationId String          @map("organization_id")
+  roomId         String          @map("room_id")
+  description    String          @db.Text
+  category       String          @default("REPAIR")
+  cost           Decimal?        @db.Decimal(12, 2)
+  status         RoomIssueStatus @default(OPEN)
+  reportedById   String?         @map("reported_by_id")
+  reportedByName String?         @map("reported_by_name")
+  resolvedById   String?         @map("resolved_by_id")
+  resolvedAt     DateTime?       @map("resolved_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  room         Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, roomId])
+  @@index([organizationId, status])
+  @@map("room_issues")
 }
 
 model Guest {

@@ -9,20 +9,7 @@ import { roomsService, type Room } from '@/services/rooms.service';
 import { Plus, Bed, Search, Settings2, MoreVertical } from 'lucide-react';
 import Link from 'next/link';
 import { AddRoomSheet } from '@/components/guesthouse/AddRoomSheet';
-
-const STATUS_COLORS: Record<string, string> = {
-  VACANT_CLEAN: 'bg-green-100 text-green-700',
-  VACANT_DIRTY: 'bg-orange-100 text-orange-700',
-  OCCUPIED: 'bg-blue-100 text-blue-700',
-  MAINTENANCE: 'bg-red-100 text-red-700',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  VACANT_CLEAN: 'Clean',
-  VACANT_DIRTY: 'Dirty',
-  OCCUPIED: 'Occupied',
-  MAINTENANCE: 'Maintenance',
-};
+import { ROOM_STATUS_BADGE, ROOM_STATUS_LABELS } from '@/lib/room-status';
 
 export default function RoomsPage() {
   const { getToken } = useAuth();
@@ -119,10 +106,10 @@ export default function RoomsPage() {
                     <Bed className="h-5 w-5" />
                   </div>
                   <div
-                    className={`text-[10px] font-bold rounded-md uppercase tracking-wider text-center ${STATUS_COLORS[room.status]}`}
+                    className={`text-[10px] font-bold rounded-md uppercase tracking-wider text-center ${ROOM_STATUS_BADGE[room.status] ?? ROOM_STATUS_BADGE.VACANT_CLEAN}`}
                     style={{ padding: '2px 8px', flexShrink: 0, whiteSpace: 'nowrap' }}
                   >
-                    {STATUS_LABELS[room.status]}
+                    {ROOM_STATUS_LABELS[room.status] ?? room.status}
                   </div>
                 </div>
 
