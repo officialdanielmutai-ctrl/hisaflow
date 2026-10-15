@@ -1,9 +1,9 @@
 # HisaFlow — Rooms, Finance Breakdowns, Settings & Theme Upgrade
 
 **Directive:** continuation of `hisaflow-quality-and-assistant-overhaul.md` (Duty 1 layout/UX, Duty 2 assistant, Duty 3 correctness).
-**Status:** Implemented, tested. Four independently reviewable layers, each gated (lint, type-check, unit tests).
-**Date:** 2026-10-15.
-**Defects:** Q-018 (room states/faults), Q-019 (finance accounting/ledger) — `hisaflow-overhaul-defect-log.md`.
+**Status:** Implemented, tested. Five independently reviewable layers, each gated (lint, type-check, unit tests).
+**Date:** 2026-10-15 (Layer 5 correction added same day).
+**Defects:** Q-018 (room states/faults), Q-019 (finance accounting/ledger), Q-021 (finance Ledger explorer + dark contrast) — `hisaflow-overhaul-defect-log.md`.
 
 This note records a session that added: a manual dark/light theme, a mobile
 admin-panel Settings screen, changeable guest-house room states with mandatory
@@ -133,6 +133,8 @@ Breakdown all use the same vertical-aware numbers. New endpoint:
   `totalOtherIncome` field.
 - `components/finance/FinanceBreakdownPanel.tsx` (new) — period P&L, each
   vertical group as a labelled bar list, and a "Where money is leaking" card.
+  *(Superseded in Layer 5: the panel repeated the Overview, so it was replaced
+  by `FinanceExplorer`.)*
 - `app/(dashboard)/finance/page.tsx` — the Ledger tab renders the panel above
   the existing commodity drill-down.
 
@@ -143,8 +145,58 @@ instead of inventing them.
 
 **Guards:** `finance-breakdown.service.spec.ts` (4 vertical scenarios),
 `finance.service.spec.ts` (updated fixtures + assertions),
-`components/finance/FinanceBreakdownPanel.spec.tsx` (2),
 `assistant-tools.service.spec.ts` (+1).
+
+## Layer 5 — Finance Ledger explorer, inline assistant & dark contrast (Q-021)
+
+**Problem (Q-021, Sev3):** Layer 4 placed `FinanceBreakdownPanel` at the top of
+the Ledger tab. It was a near-copy of the Overview's P&L, so it added
+scroll without adding information, and the Ledger still offered no way to look
+up a single financial attribute. The dark palette's secondary/muted text and
+borders were also low-contrast.
+
+**Backend**
+
+| Piece | Detail |
+|---|---|
+| `FinanceSearchService` (new) | Builds a searchable index of financial attributes from the existing vertical-aware breakdown (revenue by room/plan/class/commodity, expenses, maintenance) plus unpaid credit records and period ledger entries. Empty query returns the largest attributes; results are sorted by amount and capped at 25 with the full match count. Org-scoped. |
+| `GET /finance/search?q=&mode=` | OWNER/MANAGER, returns `{ businessType, period, totalMatched, results }`. |
+| `FinanceModule` | Registers and exports `FinanceSearchService`. |
+| Assistant `search_business_finances` | Foundation read tool (all verticals) so the assistant can answer "how much did X earn/cost?" from live figures; maps to `{ type, label, context, amount, sharePct }`. |
+
+**Frontend**
+
+- `services/business-finance.service.ts` — `FinanceAttribute` /
+  `FinanceSearchResult` types and `searchFinances`; removed the now-unused
+  `FinanceBreakdown` UI types.
+- `lib/finance-search.ts` (new) — attribute presentation metadata and the
+  category-code → human-label helper, with tests.
+- `components/finance/FinanceExplorer.tsx` (new) — debounced search over the
+  financial attributes with type badges, amounts, share-of-total bars and
+  example chips; the finance counterpart of the commodity breakdown.
+- `components/finance/FinanceAskBox.tsx` (new) — inline "Ask about your
+  finances" chat, prompt suggestions, and a link to `/assistant` when the
+  assistant drafts a change.
+- `app/(dashboard)/finance/page.tsx` — the Ledger tab drops the duplicated
+  P&L panel and renders `FinanceExplorer` next to the commodity breakdown,
+  followed by `FinanceAskBox`.
+- `lib/assistant.ts` — `search_business_finances` label + suggestion chip.
+
+**Dark mode contrast** — `.dark` tokens retuned and `--color-accent-foreground`
+added, so body text is AAA and secondary/muted text and white-on-accent are AA
+on the card surface; borders were lifted from `#2a343f` to `#3e4a57`.
+`lib/dark-contrast.spec.ts` parses the `.dark` block and asserts the WCAG
+ratios (primary ≥ 7:1, secondary/muted ≥ 4.5:1, white-on-accent ≥ 4.5:1,
+accent/border UI ≥ 3:1 / 1.5:1), so the palette cannot silently regress.
+
+**Guards:** `finance-search.service.spec.ts` (3), `FinanceExplorer.spec.tsx`
+(1), `FinanceAskBox.spec.tsx` (1), `lib/finance-search.spec.ts` (3),
+`lib/dark-contrast.spec.ts` (5), `assistant-tools.service.spec.ts` (+1).
+
+**Gates (Layer 5):** backend `tsc --noEmit` pass; backend `eslint` on changed
+modules 0 errors; `jest src/modules/finance src/modules/assistant` **26 suites /
+257 tests** pass; frontend `tsc --noEmit` pass; `next lint` 0 errors; vitest
+**33 files / 189 tests** pass.
 
 ---
 

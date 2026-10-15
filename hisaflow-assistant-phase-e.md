@@ -59,12 +59,16 @@ to every vertical. See `hisaflow-assistant-vertical-enablement.md`.
 
 ## 6. Post-phase update (2026-10-15)
 
-Two additions from the rooms/finance/settings upgrade
+Additions from the rooms/finance/settings upgrade
 (`hisaflow-rooms-finance-settings-upgrade.md`):
 
 - **`get_financial_breakdown`** (foundation, all verticals, read-only) exposes
   the new vertical-aware `FinanceBreakdownService`, so the assistant can answer
   revenue/profit/margin/leak questions from live figures.
+- **`search_business_finances`** (foundation, all verticals, read-only, Layer 5)
+  answers "how much did X earn/cost?" for a named room, plan, class, commodity,
+  expense category, client, leak or ledger entry, using the same
+  `FinanceSearchService` as the Finance explorer. Defect Q-021.
 - **`report_room_issue`** (guest house, manager roles) records a mandatory fault
   note plus optional repair cost and takes the room out of service through
   `RoomsService.reportIssue`.
