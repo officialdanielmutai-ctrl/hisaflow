@@ -26,13 +26,12 @@ import {
   createBusinessTransaction,
   updateBusinessTransaction,
   deleteBusinessTransaction,
-  getFinanceBreakdown,
   getCategoryLabel,
   getCategoryEmoji,
   type BusinessTransactionRecord,
-  type FinanceBreakdown,
 } from '@/services/business-finance.service';
-import { FinanceBreakdownPanel } from '@/components/finance/FinanceBreakdownPanel';
+import { FinanceExplorer } from '@/components/finance/FinanceExplorer';
+import { FinanceAskBox } from '@/components/finance/FinanceAskBox';
 import { getInventoryItems, type InventoryItem } from '@/services/inventory.service';
 import dynamic from 'next/dynamic';
 import {
@@ -458,15 +457,6 @@ function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
     fetchLedger
   );
 
-  const { data: breakdown } = useSWR<FinanceBreakdown>(
-    orgId ? ['finance-breakdown', orgId] : null,
-    async () => {
-      const token = await getToken();
-      if (!token) throw new Error('No token');
-      return getFinanceBreakdown(token, orgId);
-    }
-  );
-
   const entries = data?.entries ?? [];
   const items = data?.items ?? [];
 
@@ -491,14 +481,6 @@ function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
 
   return (
     <div className="flex flex-col gap-4 pt-2">
-      {/* Vertical-aware financial breakdown */}
-      {breakdown && (
-        <div>
-          <p className="mb-3 font-semibold text-sm">Financial breakdown</p>
-          <FinanceBreakdownPanel breakdown={breakdown} />
-        </div>
-      )}
-
       {/* Filter chips */}
       <div className="flex gap-2">
         {(['ALL', 'EXPENSE', 'INCOME'] as const).map((f) => (
@@ -535,6 +517,15 @@ function LedgerTab({ orgId, getToken }: { orgId: string; getToken: () => Promise
           ))}
         </div>
       )}
+
+      {/* Finance attribute search (the finance equivalent of the commodity
+          breakdown below) */}
+      <div className="pt-4 border-t border-[var(--color-border)]">
+        <FinanceExplorer orgId={orgId} getToken={getToken} />
+      </div>
+
+      {/* Ask the assistant about the business */}
+      <FinanceAskBox orgId={orgId} getToken={getToken} />
 
       {/* Item drill-down */}
       <div className="pt-2 border-t border-[var(--color-border)]">
