@@ -51,43 +51,30 @@ export interface BusinessOverview {
   periodEnd: string;
 }
 
-export interface BreakdownRow {
-  key: string;
+export type FinanceAttributeType =
+  | 'REVENUE'
+  | 'EXPENSE'
+  | 'LEAK'
+  | 'CREDIT'
+  | 'LEDGER';
+
+/** A searchable financial attribute (room, plan, class, commodity, expense,
+ * leak, credit or ledger entry) returned by the finance explorer. */
+export interface FinanceAttribute {
+  id: string;
+  type: FinanceAttributeType;
   label: string;
+  subtitle: string | null;
   amount: number;
-  count?: number;
-  detail?: string;
+  sharePct: number | null;
+  detail: string | null;
 }
 
-export interface BreakdownGroup {
-  key: string;
-  title: string;
-  rows: BreakdownRow[];
-}
-
-export interface FinanceLeak {
-  key: string;
-  label: string;
-  amount: number;
-  detail?: string;
-}
-
-/** Vertical-aware P&L plus the breakdowns that explain it. */
-export interface FinanceBreakdown {
+export interface FinanceSearchResult {
   businessType: string;
-  revenue: number;
-  cogs: number;
-  grossProfit: number;
-  grossMarginPct: number | null;
-  otherIncome: number;
-  operatingExpenses: number;
-  maintenanceCosts: number;
-  netProfit: number;
-  netMarginPct: number | null;
-  dailyTrend: DailyFinancialPoint[];
-  expensesByCategory: ExpenseCategoryBreakdown[];
-  breakdowns: BreakdownGroup[];
-  leaks: FinanceLeak[];
+  period: 'rolling30' | 'calendar';
+  totalMatched: number;
+  results: FinanceAttribute[];
 }
 
 export interface CreateBusinessTransactionPayload {
@@ -149,12 +136,18 @@ export async function getBusinessOverview(
   );
 }
 
-export async function getFinanceBreakdown(
+export async function searchFinances(
   token: string,
   organizationId: string,
+  query: string,
   mode: 'rolling30' | 'calendar' = 'rolling30',
-): Promise<FinanceBreakdown> {
-  return apiGet<FinanceBreakdown>(`/finance/breakdown?mode=${mode}`, token, organizationId);
+): Promise<FinanceSearchResult> {
+  const params = new URLSearchParams({ q: query, mode });
+  return apiGet<FinanceSearchResult>(
+    `/finance/search?${params.toString()}`,
+    token,
+    organizationId,
+  );
 }
 
 export async function getBusinessTransactions(

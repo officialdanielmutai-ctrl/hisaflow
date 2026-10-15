@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Delete, Patch, Param, Body, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { FinanceService } from './finance.service';
+import { FinanceSearchService } from './finance-search.service';
 import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles, AppRole } from '../../core/decorators/roles.decorator';
@@ -10,7 +11,10 @@ import { UpdateBusinessTransactionDto } from './dto/update-business-transaction.
 @UseGuards(ClerkAuthGuard, RolesGuard)
 @Controller('finance')
 export class FinanceController {
-  constructor(private readonly financeService: FinanceService) {}
+  constructor(
+    private readonly financeService: FinanceService,
+    private readonly financeSearch: FinanceSearchService,
+  ) {}
 
   // ── Inventory-only overview (legacy, kept for backward compat) ───────────
   @Roles(AppRole.OWNER, AppRole.MANAGER)
@@ -37,6 +41,17 @@ export class FinanceController {
     @Query('mode') mode: 'rolling30' | 'calendar' = 'rolling30',
   ) {
     return this.financeService.getBreakdown(orgId, mode);
+  }
+
+  // ── Searchable financial attributes (Ledger explorer) ─────────────────────
+  @Roles(AppRole.OWNER, AppRole.MANAGER)
+  @Get('search')
+  search(
+    @OrgContext() orgId: string,
+    @Query('q') q = '',
+    @Query('mode') mode: 'rolling30' | 'calendar' = 'rolling30',
+  ) {
+    return this.financeSearch.search(orgId, q, mode);
   }
 
   // ── AI forecast (now opex-aware) ─────────────────────────────────────────

@@ -49,6 +49,24 @@ function build(options: { items?: Array<Record<string, unknown>> } = {}) {
       leaks: [],
     })),
   };
+  const financeSearch = {
+    search: jest.fn(async () => ({
+      businessType: 'DUKA',
+      period: 'rolling30',
+      totalMatched: 1,
+      results: [
+        {
+          id: 'revenue:revenue-source:Sugar',
+          type: 'REVENUE',
+          label: 'Sugar',
+          subtitle: 'Revenue by commodity',
+          amount: 300,
+          sharePct: 30,
+          detail: null,
+        },
+      ],
+    })),
+  };
   const service = new AssistantToolsService(
     { db } as never,
     inventory as never,
@@ -57,13 +75,14 @@ function build(options: { items?: Array<Record<string, unknown>> } = {}) {
     comms as never,
     unsupported as never,
     finance as never,
+    financeSearch as never,
   );
   const byName = (name: string): ToolDefinition => {
     const tool = service.all().find((entry) => entry.name === name);
     if (!tool) throw new Error(`missing tool ${name}`);
     return tool;
   };
-  return { service, db, inventory, notes, transactions, comms, unsupported, finance, byName };
+  return { service, db, inventory, notes, transactions, comms, unsupported, finance, financeSearch, byName };
 }
 
 describe('AssistantToolsService.get_low_stock', () => {
@@ -529,5 +548,20 @@ describe('AssistantToolsService.get_financial_breakdown', () => {
       revenue: 1000,
       netProfit: 450,
     });
+  });
+});
+
+describe('AssistantToolsService.search_business_finances', () => {
+  it('searches the org-scoped financial attributes', async () => {
+    const { byName, financeSearch } = build();
+
+    const tool = byName('search_business_finances');
+    expect(tool.kind).toBe('read');
+
+    const result: any = await tool.execute?.({ query: 'sugar' }, CTX);
+
+    expect(financeSearch.search).toHaveBeenCalledWith('org_1', 'sugar', 'rolling30');
+    expect(result.totalMatched).toBe(1);
+    expect(result.results[0]).toMatchObject({ label: 'Sugar', amount: 300 });
   });
 });

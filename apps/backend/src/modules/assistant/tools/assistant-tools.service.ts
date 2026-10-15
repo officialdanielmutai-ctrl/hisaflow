@@ -6,6 +6,7 @@ import { NoteImportance } from '../../notes/dto/create-note.dto';
 import { TransactionsService } from '../../transactions/transactions.service';
 import { TransactionTypeDto } from '../../transactions/dto/create-transaction.dto';
 import { FinanceService } from '../../finance/finance.service';
+import { FinanceSearchService } from '../../finance/finance-search.service';
 import { AppRole } from '../../../core/decorators/roles.decorator';
 import { AssistantCommsService } from '../comms/assistant-comms.service';
 import { AssistantUnsupportedService } from '../unsupported/assistant-unsupported.service';
@@ -102,6 +103,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     private readonly comms: AssistantCommsService,
     private readonly unsupported: AssistantUnsupportedService,
     private readonly finance: FinanceService,
+    private readonly financeSearch: FinanceSearchService,
   ) {}
 
   all(): ToolDefinition[] {
@@ -110,6 +112,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       this.searchInventory(),
       this.listInventory(),
       this.getFinancialBreakdown(),
+      this.searchBusinessFinances(),
       this.createNote(),
       this.transactionTool({
         name: 'record_sale',
@@ -179,6 +182,48 @@ export class AssistantToolsService implements AssistantToolProvider {
           })),
           expensesByCategory: breakdown.expensesByCategory,
           leaks: breakdown.leaks,
+        };
+      },
+    };
+  }
+
+  // ── read: searchable financial attributes ───────────────────────────────
+  private searchBusinessFinances(): ToolDefinition {
+    return {
+      name: 'search_business_finances',
+      description:
+        'Search the organisation\u2019s finances for a specific attribute: a room, service, subscription plan, class, commodity, expense category, client, leak (wastage, repairs, unpaid credit/invoices/fees, expiring stock) or ledger entry. Read-only. Use this to answer \u201chow much did X earn/cost?\u201d or \u201cwhat did we spend on X?\u201d; never invent figures.',
+      kind: 'read',
+      riskLevel: 'low',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'What to search for, e.g. a room name, plan, client or category. Empty returns the largest attributes.',
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+      execute: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const query = asOptionalString(args.query, 'query', 120) ?? '';
+        const result = await this.financeSearch.search(
+          ctx.organizationId,
+          query,
+          'rolling30',
+        );
+        return {
+          period: 'last 30 days',
+          totalMatched: result.totalMatched,
+          results: result.results.map((attribute) => ({
+            type: attribute.type,
+            label: attribute.label,
+            context: attribute.subtitle,
+            amount: attribute.amount,
+            sharePct: attribute.sharePct,
+          })),
         };
       },
     };
