@@ -1,6 +1,6 @@
 # HisaFlow — OCR & Barcode Scanning Implementation Plan (Draft v1)
 
-**Status:** Draft for review — no code written yet
+**Status:** Implemented (superseded by `hisaflow-scanning-upgrade.md`, 2026-10-16). The barcode field, shared catalog and external lookups below shipped before this session; the speed, combined OCR+parse endpoint and receipt table shipped in `hisaflow-scanning-upgrade.md`.
 **Scope:** Two distinct capture pipelines that both feed into the existing AI ingestion → confirm → create flow.
 
 ---
@@ -105,3 +105,28 @@ Both end at the same place: either an existing `InventoryItem` gets acted on (st
 | Vision API call fails (simulate network drop) | User sees a retry option, not a silent failure |
 | iOS Safari (no native BarcodeDetector) | Fallback scanner library still decodes correctly |
 | Non-org-scoped barcode lookup | Confirm lookup only matches items within the requesting organization — no cross-tenant leak |
+
+---
+
+## 8. Implementation status (2026-10-16)
+
+Most of this plan is now live. The table maps the original phase order to
+reality; see `hisaflow-scanning-upgrade.md` for the speed and receipt-table
+work, and the defect log Q-022/Q-023.
+
+| Plan item | Status | Where |
+|---|---|---|
+| `InventoryItem.barcode` + index | ✅ Shipped (pre-session) | `prisma/schema.prisma` |
+| Barcode scan + org lookup | ✅ Shipped | `BarcodeScannerSheet.tsx`, `GET /inventory/barcode/:code` |
+| Receipt OCR (vision → raw text) | ✅ Shipped, now cached + `max_tokens`-bounded | `OcrService` |
+| Receipt OCR → AI ingestion bridge | ✅ Shipped, now **one** round trip | `POST /ocr/receipt/parse` |
+| Multi-item bulk edit-before-confirm | ✅ Shipped (editable table) | `ReceiptItemsTable.tsx` |
+| Confidence-score UI treatment | ✅ Shipped | table + accordion low-confidence flags |
+| Retry/error handling | ✅ Shipped | capture sheets |
+| Shared cross-org catalog (cold start) | ✅ Shipped (pre-session), now parallel + negative-cached | `ProductCatalogEntry`, `lookupExternalProduct` |
+| External providers (Open Food Facts, UPCitemdb) | ✅ Shipped | `lookupExternalProduct` |
+| Barcode scan speed | ✅ Shipped (1280×720, throttled, checksum-aware) | `lib/barcode.ts`, `BarcodeScannerSheet.tsx` |
+| Confidence thresholds surfaced from OCR | ✅ (LOW labels flow through to the table) | `AiIngestionPanel` |
+| Usage/cost ceiling tracking | ☐ Not started | — |
+| Bulk barcode CSV import | ☐ Not started (follow-up) | — |
+| True single-pass multimodal extraction | ☐ Deliberately deferred | see `hisaflow-scanning-upgrade.md` §Deferred |
