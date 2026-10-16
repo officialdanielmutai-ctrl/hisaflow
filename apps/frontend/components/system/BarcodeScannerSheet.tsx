@@ -7,6 +7,21 @@ import { BrowserMultiFormatReader } from '@zxing/browser';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRouter } from 'next/navigation';
+import {
+  DETECTION_INTERVAL_MS,
+  isValidBarcode,
+  requiredConfirmations,
+  supportedNativeFormats,
+} from '@/lib/barcode';
+
+interface NativeBarcodeDetector {
+  detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>>;
+}
+
+interface NativeBarcodeDetectorCtor {
+  new (options?: { formats?: string[] }): NativeBarcodeDetector;
+  getSupportedFormats?(): Promise<string[]>;
+}
 
 interface BarcodeScannerSheetProps {
   open: boolean;
@@ -26,11 +41,10 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
   const scanningRef = useRef(false);
   // Guards against handling the same scan twice.
   const handledRef = useRef(false);
-  // Multi-frame confirmation: require the same code N times in a row.
+  // Multi-frame confirmation: require the same code a few times in a row. The
+  // count is per-code — checksum-valid GTINs need fewer frames (lib/barcode.ts).
   const lastCodeRef = useRef<string>('');
   const streakRef = useRef<number>(0);
-  const CONFIRMATION_STREAK = 5;
-  const MIN_CODE_LENGTH = 6;
 
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
@@ -44,16 +58,17 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
   // Validate + debounce: only fire handleScan once the same code
   // appears CONFIRMATION_STREAK frames in a row.
   const tryConfirmCode = (rawValue: string) => {
-    if (rawValue.length < MIN_CODE_LENGTH) return; // ignore garbage partial reads
-    if (rawValue === lastCodeRef.current) {
+    const code = rawValue.trim();
+    if (!isValidBarcode(code)) return; // ignore garbage/partial reads
+    if (code === lastCodeRef.current) {
       streakRef.current += 1;
     } else {
-      lastCodeRef.current = rawValue;
+      lastCodeRef.current = code;
       streakRef.current = 1;
       setConfirming(true);
     }
-    if (streakRef.current >= CONFIRMATION_STREAK) {
-      handleScan(rawValue);
+    if (streakRef.current >= requiredConfirmations(code)) {
+      handleScan(code);
     }
   };
 
@@ -108,8 +123,8 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
 
   useEffect(() => {
     let reader: BrowserMultiFormatReader | null = null;
-    let nativeDetector: any = null;
-    let animationFrameId: number;
+    let nativeDetector: NativeBarcodeDetector | null = null;
+    let detectTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const startScanner = async () => {
       if (!open) return;
@@ -124,11 +139,13 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
           throw new Error('Camera not supported (HTTPS required).');
         }
 
+        // 720p is plenty to resolve a barcode and is decoded much faster
+        // (and with less heat/battery) than a full 1080p stream.
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
+          video: {
             facingMode: 'environment',
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
           }
         });
         
@@ -151,9 +168,20 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
 
         if ('BarcodeDetector' in window) {
           try {
-            // @ts-expect-error BarcodeDetector is not declared in this TS DOM lib
-            nativeDetector = new window.BarcodeDetector({ formats: ['qr_code', 'ean_13', 'upc_a', 'code_128', 'data_matrix'] });
-            
+            const Detector = (window as unknown as {
+              BarcodeDetector: NativeBarcodeDetectorCtor;
+            }).BarcodeDetector;
+
+            // Only ask for formats the browser actually supports; asking for
+            // an unsupported one makes the constructor throw outright.
+            let formats: string[] | undefined;
+            try {
+              const available = await Detector.getSupportedFormats?.();
+              if (available) formats = supportedNativeFormats(available);
+            } catch { /* fall back to the detector defaults */ }
+
+            nativeDetector = new Detector(formats ? { formats } : undefined);
+
             const scanNative = async () => {
               if (!scanningRef.current || !videoRef.current || !nativeDetector) return;
               try {
@@ -162,7 +190,11 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
                   tryConfirmCode(barcodes[0].rawValue);
                 }
               } catch { /* frame not decodable yet */ }
-              animationFrameId = requestAnimationFrame(scanNative);
+              // Throttle rather than run every animation frame (~30–60×/s):
+              // decoding that often burns battery and heat for no accuracy gain.
+              if (scanningRef.current) {
+                detectTimeoutId = setTimeout(scanNative, DETECTION_INTERVAL_MS);
+              }
             };
             scanNative();
             return;
@@ -203,7 +235,7 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
       scanningRef.current = false;
       streakRef.current = 0;
       lastCodeRef.current = '';
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (detectTimeoutId) clearTimeout(detectTimeoutId);
 
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;

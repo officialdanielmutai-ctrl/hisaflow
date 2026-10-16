@@ -100,6 +100,19 @@ describe('InventoryService — listing and barcode lookup', () => {
 
     await expect(service.lookupExternalProduct('333')).resolves.toBeNull();
   });
+
+  it('remembers a confirmed miss so a repeated scan skips the external APIs', async () => {
+    const { service } = build();
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(service.lookupExternalProduct('555')).resolves.toBeNull();
+    const callsAfterFirst = fetchMock.mock.calls.length;
+    expect(callsAfterFirst).toBeGreaterThan(0);
+
+    await expect(service.lookupExternalProduct('555')).resolves.toBeNull();
+    expect(fetchMock.mock.calls.length).toBe(callsAfterFirst);
+  });
 });
 
 describe('InventoryService — shared catalog upsert', () => {

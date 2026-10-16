@@ -133,12 +133,25 @@ describe('BarcodeScannerSheet (camera capture logic)', () => {
     );
   });
 
-  it('requires the same code in 5 consecutive frames before scanning', async () => {
+  it('confirms a checksum-valid EAN after only two frames', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ id: 'x' }) }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     const callback = await renderOpen();
-    scan(callback, CODE, 4);
+    scan(callback, '4006381333931', 1);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    scan(callback, '4006381333931', 1);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  });
+
+  it('needs three frames for a code without a checksum', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ id: 'x' }) }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const callback = await renderOpen();
+    scan(callback, CODE, 2);
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(fetchMock).not.toHaveBeenCalled();
 

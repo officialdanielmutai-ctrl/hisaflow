@@ -4,8 +4,20 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto, UpdateVariantDto } from './dto/update-product.dto';
 import { StockStatus, CatalogSource } from '@prisma/client';
 
+/**
+ * How long a barcode that both external providers missed is remembered before
+ * asking again. Long enough that re-scanning an unknown local good does not
+ * hammer the APIs; short enough that a product added to Open Food Facts later
+ * is picked up within the hour.
+ */
+const MISSING_BARCODE_TTL_MS = 60 * 60 * 1000;
+/** Keep the miss cache from growing without bound on a busy instance. */
+const MISSING_BARCODE_MAX = 1000;
+
 @Injectable()
 export class InventoryService {
+  private readonly missingBarcodes = new Map<string, number>();
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(organizationId: string) {
@@ -87,7 +99,21 @@ export class InventoryService {
       };
     }
 
-    const offResult = await this.lookupOpenFoodFacts(barcode);
+    // A recent confirmed miss means we already asked; don't ask again yet.
+    const missingUntil = this.missingBarcodes.get(barcode);
+    if (missingUntil !== undefined) {
+      if (missingUntil > Date.now()) return null;
+      this.missingBarcodes.delete(barcode);
+    }
+
+    // Query both providers concurrently: the worst case becomes one provider
+    // timeout (~4s) rather than two back-to-back (~8s). Open Food Facts wins
+    // when both have the product because its food coverage is better.
+    const [offResult, upcResult] = await Promise.all([
+      this.lookupOpenFoodFacts(barcode),
+      this.lookupUPCitemdb(barcode),
+    ]);
+
     if (offResult) {
       // First hit for this barcode anywhere in HisaFlow - seed the catalog
       // so the next org (or this one, on a different item) skips the
@@ -104,19 +130,28 @@ export class InventoryService {
       return { ...offResult, unit: null, source: 'OPEN_FOOD_FACTS' };
     }
 
-    const upcResult = await this.lookupUPCitemdb(barcode);
-    if (!upcResult) return null;
+    if (upcResult) {
+      await this.upsertCatalogEntry(barcode, {
+        name: upcResult.name!,
+        brand: upcResult.brand,
+        category: upcResult.category,
+        unit: null,
+        imageUrl: upcResult.imageUrl,
+        source: CatalogSource.UPC_ITEM_DB,
+      }).catch((error) => console.error('Catalog seed from UPCitemdb failed:', error));
 
-    await this.upsertCatalogEntry(barcode, {
-      name: upcResult.name!,
-      brand: upcResult.brand,
-      category: upcResult.category,
-      unit: null,
-      imageUrl: upcResult.imageUrl,
-      source: CatalogSource.UPC_ITEM_DB,
-    }).catch((error) => console.error('Catalog seed from UPCitemdb failed:', error));
+      return { ...upcResult, unit: null, source: 'UPC_ITEM_DB' };
+    }
 
-    return { ...upcResult, unit: null, source: 'UPC_ITEM_DB' };
+    this.rememberMissingBarcode(barcode);
+    return null;
+  }
+
+  private rememberMissingBarcode(barcode: string): void {
+    if (this.missingBarcodes.size >= MISSING_BARCODE_MAX) {
+      this.missingBarcodes.clear();
+    }
+    this.missingBarcodes.set(barcode, Date.now() + MISSING_BARCODE_TTL_MS);
   }
 
   private async lookupOpenFoodFacts(barcode: string): Promise<{
