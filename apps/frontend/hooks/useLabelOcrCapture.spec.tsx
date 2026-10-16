@@ -16,39 +16,38 @@ vi.mock('browser-image-compression', () => ({
   default: vi.fn(async (blob: Blob) => blob),
 }));
 
-vi.mock('@/services/ai-ingestion.service', () => ({
-  parseInventoryText: vi.fn(),
+vi.mock('@/services/ocr.service', () => ({
+  ocrAndParseImage: vi.fn(),
 }));
 
 import imageCompression from 'browser-image-compression';
-import { parseInventoryText } from '@/services/ai-ingestion.service';
+import { ocrAndParseImage } from '@/services/ocr.service';
 import { useLabelOcrCapture } from './useLabelOcrCapture';
-
-const ocrResponse = (body: unknown, ok = true) =>
-  Promise.resolve({ ok, json: async () => body } as Response);
 
 describe('useLabelOcrCapture (OCR / label-scan flow)', () => {
   beforeEach(() => {
     mockMembership = { organization: { id: 'org_1' } };
     mockToken = 'token';
-    vi.mocked(parseInventoryText).mockReset();
+    vi.mocked(ocrAndParseImage).mockReset();
     vi.mocked(imageCompression).mockClear();
   });
 
   it('maps a CREATE action from the label OCR into a normalized draft', async () => {
-    globalThis.fetch = vi.fn(() => ocrResponse({ text: 'SUGAR 2KG EXP 12/2027 BATCH B1' })) as unknown as typeof fetch;
-    vi.mocked(parseInventoryText).mockResolvedValue([
-      {
-        itemId: null,
-        itemName: 'Sugar',
-        type: 'CREATE',
-        quantity: 1,
-        confidence: 'HIGH',
-        category: 'dry goods',
-        unit: 'kg',
-        metadata: { expiryDate: '2027-12', batchNumber: 'B1' },
-      },
-    ]);
+    vi.mocked(ocrAndParseImage).mockResolvedValue({
+      text: 'SUGAR 2KG EXP 12/2027 BATCH B1',
+      actions: [
+        {
+          itemId: null,
+          itemName: 'Sugar',
+          type: 'CREATE',
+          quantity: 1,
+          confidence: 'HIGH',
+          category: 'dry goods',
+          unit: 'kg',
+          metadata: { expiryDate: '2027-12', batchNumber: 'B1' },
+        },
+      ],
+    });
 
     const { result } = renderHook(() => useLabelOcrCapture());
     let returned: Awaited<ReturnType<typeof result.current.processImage>> = null;
@@ -64,8 +63,8 @@ describe('useLabelOcrCapture (OCR / label-scan flow)', () => {
       batchNumber: 'B1',
     });
     expect(imageCompression).toHaveBeenCalledTimes(1);
-    expect(parseInventoryText).toHaveBeenCalledWith(
-      'SUGAR 2KG EXP 12/2027 BATCH B1',
+    expect(ocrAndParseImage).toHaveBeenCalledWith(
+      expect.any(Blob),
       'token',
       'org_1',
       'LABEL_OCR',
@@ -73,17 +72,19 @@ describe('useLabelOcrCapture (OCR / label-scan flow)', () => {
   });
 
   it('drops an unparseable expiry date instead of sending a bad value', async () => {
-    globalThis.fetch = vi.fn(() => ocrResponse({ text: 'some text' })) as unknown as typeof fetch;
-    vi.mocked(parseInventoryText).mockResolvedValue([
-      {
-        itemId: null,
-        itemName: 'Milk',
-        type: 'CREATE',
-        quantity: 1,
-        confidence: 'LOW',
-        metadata: { expiryDate: 'sometime soon' },
-      },
-    ]);
+    vi.mocked(ocrAndParseImage).mockResolvedValue({
+      text: 'some text',
+      actions: [
+        {
+          itemId: null,
+          itemName: 'Milk',
+          type: 'CREATE',
+          quantity: 1,
+          confidence: 'LOW',
+          metadata: { expiryDate: 'sometime soon' },
+        },
+      ],
+    });
 
     const { result } = renderHook(() => useLabelOcrCapture());
     const captured: { value: Awaited<ReturnType<typeof result.current.processImage>> } = {
@@ -98,7 +99,6 @@ describe('useLabelOcrCapture (OCR / label-scan flow)', () => {
 
   it('returns null when there is no active organisation', async () => {
     mockMembership = null;
-    globalThis.fetch = vi.fn() as unknown as typeof fetch;
 
     const { result } = renderHook(() => useLabelOcrCapture());
     let returned: unknown = 'unset';
@@ -107,11 +107,11 @@ describe('useLabelOcrCapture (OCR / label-scan flow)', () => {
     });
 
     expect(returned).toBeNull();
-    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(ocrAndParseImage).not.toHaveBeenCalled();
   });
 
-  it('returns null when the OCR endpoint fails', async () => {
-    globalThis.fetch = vi.fn(() => ocrResponse({}, false)) as unknown as typeof fetch;
+  it('returns null when the OCR service fails', async () => {
+    vi.mocked(ocrAndParseImage).mockRejectedValue(new Error('Failed to process image'));
 
     const { result } = renderHook(() => useLabelOcrCapture());
     let returned: unknown = 'unset';
@@ -123,7 +123,7 @@ describe('useLabelOcrCapture (OCR / label-scan flow)', () => {
   });
 
   it('returns null when OCR returns no text', async () => {
-    globalThis.fetch = vi.fn(() => ocrResponse({ text: '   ' })) as unknown as typeof fetch;
+    vi.mocked(ocrAndParseImage).mockResolvedValue({ text: '   ', actions: [] });
 
     const { result } = renderHook(() => useLabelOcrCapture());
     let returned: unknown = 'unset';
@@ -135,10 +135,12 @@ describe('useLabelOcrCapture (OCR / label-scan flow)', () => {
   });
 
   it('returns null when the AI parser finds no CREATE action', async () => {
-    globalThis.fetch = vi.fn(() => ocrResponse({ text: 'some text' })) as unknown as typeof fetch;
-    vi.mocked(parseInventoryText).mockResolvedValue([
-      { itemId: 'i1', itemName: 'Sugar', type: 'SALE', quantity: 1, confidence: 'HIGH' },
-    ]);
+    vi.mocked(ocrAndParseImage).mockResolvedValue({
+      text: 'some text',
+      actions: [
+        { itemId: 'i1', itemName: 'Sugar', type: 'SALE', quantity: 1, confidence: 'HIGH' },
+      ],
+    });
 
     const { result } = renderHook(() => useLabelOcrCapture());
     let returned: unknown = 'unset';

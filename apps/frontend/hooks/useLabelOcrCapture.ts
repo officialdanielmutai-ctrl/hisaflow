@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import imageCompression from 'browser-image-compression';
 import { useMyOrganization } from './useMyOrganization';
-import { parseInventoryText } from '@/services/ai-ingestion.service';
+import { ocrAndParseImage } from '@/services/ocr.service';
 
 export interface LabelOcrResult {
   name: string | null;
@@ -67,36 +67,20 @@ export function useLabelOcrCapture() {
 
         const compressed = await imageCompression(imageBlob as File, {
           maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
+          maxWidthOrHeight: 1600,
+          initialQuality: 0.85,
           useWebWorker: true,
         });
 
-        const formData = new FormData();
-        formData.append('image', compressed, 'label.jpg');
-
-        const ocrRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/ocr/receipt`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'x-organization-id': membership.organization.id,
-            },
-            body: formData,
-          },
-        );
-
-        if (!ocrRes.ok) return null;
-
-        const { text } = await ocrRes.json();
-        if (!text?.trim()) return null;
-
-        const actions = await parseInventoryText(
-          text,
+        // One round trip (OCR + AI parse) instead of the old two.
+        const { text, actions } = await ocrAndParseImage(
+          compressed,
           token,
           membership.organization.id,
           'LABEL_OCR',
         );
+        if (!text.trim()) return null;
+
         const createAction = actions.find((a) => a.type === 'CREATE');
         if (!createAction) return null;
 

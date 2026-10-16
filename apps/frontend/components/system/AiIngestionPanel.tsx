@@ -11,6 +11,8 @@ import { guestsService } from '@/services/guests.service';
 import { roomsService } from '@/services/rooms.service';
 import { Trash2, ChevronDown, ChevronUp, Camera, CheckCircle2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import { ocrAndParseImage } from '@/services/ocr.service';
+import { ReceiptItemsTable } from './ReceiptItemsTable';
 import {
   commitParsedActions,
   completionRoute,
@@ -37,6 +39,8 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
   const [confirming, setConfirming] = useState(false);
   const [actions, setActions] = useState<EditableAction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Receipt scans get the line-item table; free text keeps the accordion.
+  const [source, setSource] = useState<'TEXT' | 'RECEIPT_OCR'>('TEXT');
   const [captureConsent, setCaptureConsent] = useState(false);
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
@@ -62,6 +66,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     if (!membership?.organization.id || !text.trim()) return;
     setActions([]);
     setError(null);
+    setSource('TEXT');
     setParsing(true);
     try {
       const token = await getToken();
@@ -89,46 +94,31 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
 
-      // 1. Compress image client-side
+      setSource('RECEIPT_OCR');
+
+      // Compress before upload: a phone photo is 5–15MB and the vision model
+      // does not need more than a 1600px edge to read a receipt.
       const compressedFile = await imageCompression(file, {
-        maxSizeMB: 3,
-        maxWidthOrHeight: 2560,
+        maxSizeMB: 2,
+        maxWidthOrHeight: 1600,
+        initialQuality: 0.8,
         useWebWorker: true,
       });
 
-      // 2. Upload to OCR endpoint
-      const formData = new FormData();
-      formData.append('image', compressedFile);
+      // One round trip: the backend OCRs then parses, overlapping its
+      // inventory-context fetch with the slow vision call.
+      const { text: extractedText, actions: result } = await ocrAndParseImage(
+        compressedFile,
+        token,
+        membership.organization.id,
+        'RECEIPT_OCR',
+      );
 
-      const ocrRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/ocr/receipt`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'x-organization-id': membership.organization.id,
-        },
-        body: formData,
-      });
-
-      if (!ocrRes.ok) {
-        let errMsg = 'Failed to process receipt image';
-        try {
-          const errBody = await ocrRes.json();
-          errMsg = errBody?.message || errMsg;
-        } catch {
-          /* keep the default message */
-        }
-        throw new Error(errMsg);
-      }
-
-      const { text: extractedText } = await ocrRes.json();
-      
       if (!extractedText.trim()) {
         throw new Error('No text detected in this image. Try better lighting, hold the camera steady, and make sure the receipt fills the frame.');
       }
 
-      // 3. Feed extracted text (with confidence flags) to AI
       setText(extractedText);
-      const result = await parseInventoryText(extractedText, token, membership.organization.id, 'RECEIPT_OCR');
       setActions(result.map(a => ({ ...a, _removed: false, _status: 'pending' as const, _expanded: false })));
       void captureUtterance(extractedText, token, membership.organization.id, 'RECEIPT_OCR', captureConsent);
 
@@ -380,9 +370,18 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
 
       {actions.length > 0 && (
         <div className="mt-2">
-          <h3 className="mb-1 text-base font-semibold">Review & Edit Actions</h3>
-          <p className="text-xs text-gray-500 mb-3">Tap any action to expand and edit its fields before confirming.</p>
+          <h3 className="mb-1 text-base font-semibold">
+            {source === 'RECEIPT_OCR' ? 'Review scanned items' : 'Review & Edit Actions'}
+          </h3>
+          <p className="text-xs text-gray-500 mb-3">
+            {source === 'RECEIPT_OCR'
+              ? 'Edit any line, remove what is not real, then confirm the batch.'
+              : 'Tap any action to expand and edit its fields before confirming.'}
+          </p>
 
+          {source === 'RECEIPT_OCR' ? (
+            <ReceiptItemsTable actions={actions} onUpdate={updateAction} onRemove={removeAction} />
+          ) : (
           <div className="flex flex-col gap-3">
             {actions.map((action, i) => {
               if (action._removed) return null;
@@ -592,6 +591,7 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
               );
             })}
           </div>
+          )}
 
           <button
             onClick={handleConfirmAll}
