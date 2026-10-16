@@ -109,6 +109,20 @@ export class AiIngestionService {
   }
 
   /**
+   * Best-effort warm-up of the per-org inventory context. Callers that know a
+   * slow OCR call is about to happen (the combined receipt pipeline) start this
+   * first so the DB fetch overlaps the vision model instead of following it.
+   * Never throws: a failure just means parseInventoryText fetches it itself.
+   */
+  async warmInventoryContext(orgId: string): Promise<void> {
+    try {
+      await this.getInventoryContext(orgId);
+    } catch (error) {
+      console.error('Inventory context warm-up failed:', error);
+    }
+  }
+
+  /**
    * Store a consented, anonymised utterance for golden-set capture
    * (overhaul Duty 2, Section 3.8). Never stores organization/user identity.
    * Returns `{ captured: false }` without a consent flag or if the redacted

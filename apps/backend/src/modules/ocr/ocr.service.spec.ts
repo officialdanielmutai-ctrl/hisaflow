@@ -81,4 +81,54 @@ describe('OcrService', () => {
       'quota exceeded',
     );
   });
+
+  it('bounds the vision model output with max_tokens', async () => {
+    const { service, create } = build({ ...CONFIGURED, content: 'text' });
+
+    await service.extractTextFromImage(Buffer.from('x'));
+
+    expect(create.mock.calls[0][0].max_tokens).toBeGreaterThan(0);
+  });
+
+  it('serves a repeated identical image from cache without a second gateway call', async () => {
+    const { service, create } = build({ ...CONFIGURED, content: '[CONFIDENCE: HIGH] Rice' });
+    const image = Buffer.from('same-image-bytes');
+
+    const first = await service.extractTextFromImage(image);
+    const second = await service.extractTextFromImage(image);
+
+    expect(first).toEqual({ text: '[CONFIDENCE: HIGH] Rice' });
+    expect(second).toEqual(first);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('keys the cache by image content, so a different photo is re-scanned', async () => {
+    const { service, create } = build({ ...CONFIGURED, content: 'text' });
+
+    await service.extractTextFromImage(Buffer.from('image-a'));
+    await service.extractTextFromImage(Buffer.from('image-b'));
+
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it('dedupes concurrent identical uploads into a single gateway call', async () => {
+    const { service, create } = build({ ...CONFIGURED, content: 'text' });
+    let resolveRequest!: (value: unknown) => void;
+    const pending = new Promise((resolve) => {
+      resolveRequest = resolve;
+    });
+    create.mockReturnValueOnce(pending);
+
+    const image = Buffer.from('concurrent-image');
+    const first = service.extractTextFromImage(image);
+    const second = service.extractTextFromImage(image);
+
+    resolveRequest({ choices: [{ message: { content: 'text' } }] });
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { text: 'text' },
+      { text: 'text' },
+    ]);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
 });
