@@ -64,6 +64,9 @@ model Organization {
   // ── HisaFlow Billing (Paywall) ───────────────────────────────
   subscription          Subscription?
 
+  // ── Home workspace customisation ─────────────────────────────
+  userWorkspaces        UserWorkspace[]
+
   // ── Tax / KRA eTIMS ──────────────────────────────────────────
   taxRegistration       TaxRegistration?
   taxInvoiceRecords     TaxInvoiceRecord[]
@@ -87,6 +90,7 @@ model User {
   pushSubscriptions  PushSubscription[]
   notes              Note[]
   noteRestrictions   NoteRestriction[]
+  workspaces         UserWorkspace[]
 
   @@map("users")
 }
@@ -1833,4 +1837,23 @@ model AssistantOutboundMessage {
 
   @@index([organizationId, createdAt])
   @@map("assistant_outbound_messages")
+}
+
+/// Home workspace customisation: one validated JSON document per (user, org).
+/// The server is authoritative; a localStorage cache gives instant paint and
+/// edits are saved on Done, not on every drag. Additive only.
+model UserWorkspace {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  organizationId String   @map("organization_id")
+  schemaVersion  Int      @default(1) @map("schema_version")
+  data           Json
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("user_workspaces")
 }

@@ -39,6 +39,8 @@ import { PaywallModule } from './modules/paywall/paywall.module';
 import { TaxModule } from './modules/tax/tax.module';
 // ── Admin Panel Core ─────────────────────────────────────────────────────────
 import { AdminModule } from './modules/admin/admin.module';
+// ── Home workspace customisation ─────────────────────────────────────────────
+import { WorkspaceModule } from './modules/workspace/workspace.module';
 
 @Module({
   imports: [
@@ -76,6 +78,8 @@ import { AdminModule } from './modules/admin/admin.module';
     TaxModule,
     // Admin Module
     AdminModule,
+    // Home workspace customisation
+    WorkspaceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

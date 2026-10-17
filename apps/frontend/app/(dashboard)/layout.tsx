@@ -6,6 +6,7 @@ import NotificationPrompt from '@/components/system/NotificationPrompt';
 import InstallPrompt from '@/components/system/InstallPrompt';
 import BillingStatusBanner from '@/components/paywall/BillingStatusBanner';
 import { OrganizationProvider } from '@/hooks/useMyOrganization';
+import { WorkspaceProvider } from '@/hooks/useWorkspace';
 import SWRProvider from '@/components/system/SWRProvider';
 
 export default function DashboardLayout({
@@ -16,17 +17,19 @@ export default function DashboardLayout({
   return (
     <OrganizationProvider>
       <SWRProvider>
-        <ImpersonationBanner />
-        <div className="min-h-screen bg-[var(--color-bg-base)] pb-20">
-          <TopBar />
-          <main className="max-w-lg mx-auto px-4 pt-20">
-            <BillingStatusBanner />
-            <OrgGate>{children}</OrgGate>
-          </main>
-          <BottomNav />
-          <NotificationPrompt />
-          <InstallPrompt />
-        </div>
+        <WorkspaceProvider>
+          <ImpersonationBanner />
+          <div className="min-h-screen bg-[var(--color-bg-base)] pb-20">
+            <TopBar />
+            <main className="max-w-lg mx-auto px-4 pt-20">
+              <BillingStatusBanner />
+              <OrgGate>{children}</OrgGate>
+            </main>
+            <BottomNav />
+            <NotificationPrompt />
+            <InstallPrompt />
+          </div>
+        </WorkspaceProvider>
       </SWRProvider>
     </OrganizationProvider>
   );
