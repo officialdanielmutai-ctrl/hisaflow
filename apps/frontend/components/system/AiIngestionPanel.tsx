@@ -12,6 +12,7 @@ import { roomsService } from '@/services/rooms.service';
 import { Trash2, ChevronDown, ChevronUp, Camera, CheckCircle2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { ocrAndParseImage } from '@/services/ocr.service';
+import { RECEIPT_DRAFT_STORAGE_KEY, RECEIPT_DRAFT_EVENT, type ReceiptOcrResult } from '@/hooks/useReceiptOcrCapture';
 import { ReceiptItemsTable } from './ReceiptItemsTable';
 import {
   commitParsedActions,
@@ -51,6 +52,46 @@ export default function AiIngestionPanel({ onCompleted }: AiIngestionPanelProps)
     } catch {
       // Storage unavailable (private mode) — keep consent off.
     }
+  }, []);
+
+  // A receipt/list captured from TopBar's global scan is stashed in
+  // sessionStorage because TopBar cannot reach this page's component tree.
+  // Reading it here means the global "Scan List / Receipt" flow reuses the
+  // same batch review table and commit path as the in-panel camera button.
+  // The event covers the case where this panel is already mounted on `/ai`
+  // (the route push then does not remount it).
+  useEffect(() => {
+    const applyStashedReceipt = () => {
+      let raw: string | null = null;
+      try {
+        raw = sessionStorage.getItem(RECEIPT_DRAFT_STORAGE_KEY);
+        if (raw) sessionStorage.removeItem(RECEIPT_DRAFT_STORAGE_KEY);
+      } catch {
+        return;
+      }
+      if (!raw) return;
+
+      try {
+        const draft = JSON.parse(raw) as Partial<ReceiptOcrResult>;
+        if (!draft?.actions?.length) return;
+        setText(draft.text ?? '');
+        setSource('RECEIPT_OCR');
+        setActions(
+          draft.actions.map((a) => ({
+            ...a,
+            _removed: false,
+            _status: 'pending' as const,
+            _expanded: false,
+          })),
+        );
+      } catch (err) {
+        console.error('Could not read receipt draft:', err);
+      }
+    };
+
+    applyStashedReceipt();
+    window.addEventListener(RECEIPT_DRAFT_EVENT, applyStashedReceipt);
+    return () => window.removeEventListener(RECEIPT_DRAFT_EVENT, applyStashedReceipt);
   }, []);
 
   const updateCaptureConsent = (value: boolean) => {

@@ -4,7 +4,9 @@ import {
   isValidBarcode,
   requiredConfirmations,
   supportedNativeFormats,
+  timeUntilNextDetection,
   CHECKSUM_CONFIRMATIONS,
+  DETECTION_INTERVAL_MS,
   UNCERTAIN_CONFIRMATIONS,
 } from './barcode';
 
@@ -33,5 +35,11 @@ describe('barcode validation', () => {
   it('intersects the requested formats with what the browser supports', () => {
     expect(supportedNativeFormats(['ean_13', 'qr_code'])).toEqual(['qr_code', 'ean_13']);
     expect(supportedNativeFormats(['unknown_format'])).toBeUndefined();
+  });
+
+  it('does not add the interval on top of a slow detection pass', () => {
+    expect(timeUntilNextDetection(0)).toBe(DETECTION_INTERVAL_MS);
+    expect(timeUntilNextDetection(DETECTION_INTERVAL_MS - 20)).toBe(20);
+    expect(timeUntilNextDetection(DETECTION_INTERVAL_MS + 500)).toBe(0);
   });
 });

@@ -26,9 +26,26 @@ export const UNCERTAIN_CONFIRMATIONS = 3;
 export const CHECKSUM_CONFIRMATIONS = 2;
 
 /** How long to wait between detection attempts. */
-export const DETECTION_INTERVAL_MS = 120;
+export const DETECTION_INTERVAL_MS = 90;
+
+/**
+ * Upper bound for the camera stream we ask for. Phones happily hand back
+ * 1920×1080 or larger when only an `ideal` is given; decoding that is slower
+ * and hotter for no accuracy gain, so the stream is capped here.
+ */
+export const SCAN_STREAM_WIDTH = 1280;
+export const SCAN_STREAM_HEIGHT = 720;
 
 export const MIN_BARCODE_LENGTH = 6;
+
+/**
+ * Time to wait after a detection pass. The detector itself is asynchronous and
+ * can take tens of milliseconds, so subtract that from the interval instead of
+ * always sleeping the full delay on top of it.
+ */
+export function timeUntilNextDetection(elapsedMs: number): number {
+  return Math.max(0, DETECTION_INTERVAL_MS - elapsedMs);
+}
 
 /**
  * Validates a numeric GTIN by its check digit. Accepts the payload *without*

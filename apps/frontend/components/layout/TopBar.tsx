@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Menu, Bell, ScanLine } from 'lucide-react';
 import { OCR_DRAFT_STORAGE_KEY, type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
+import { RECEIPT_DRAFT_STORAGE_KEY, RECEIPT_DRAFT_EVENT, type ReceiptOcrResult } from '@/hooks/useReceiptOcrCapture';
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -11,6 +12,7 @@ import SideMenu from './SideMenu';
 import BarcodeScannerSheet from '../system/BarcodeScannerSheet';
 import ScanModeSheet from '../system/ScanModeSheet';
 import LabelCaptureSheet from '../system/LabelCaptureSheet';
+import ReceiptCaptureSheet from '../system/ReceiptCaptureSheet';
 import { OrgSwitcher } from './OrgSwitcher';
 
 export default function TopBar() {
@@ -18,6 +20,7 @@ export default function TopBar() {
   const [scanModeOpen, setScanModeOpen] = React.useState(false);
   const [scannerOpen, setScannerOpen] = React.useState(false);
   const [labelCaptureOpen, setLabelCaptureOpen] = React.useState(false);
+  const [receiptCaptureOpen, setReceiptCaptureOpen] = React.useState(false);
   const { data: alerts } = useAlerts();
   const router = useRouter();
 
@@ -29,6 +32,22 @@ export default function TopBar() {
       return;
     }
     router.push('/inventory?action=add&fromOcr=1');
+  };
+
+  // A receipt/list parse is handed to the /ai page's review table, which owns
+  // the batch-commit path. Stash it (TopBar cannot reach that page's tree) and
+  // clear it on read so a refresh cannot re-apply a stale draft.
+  const handleReceiptCapture = (result: ReceiptOcrResult) => {
+    try {
+      sessionStorage.setItem(RECEIPT_DRAFT_STORAGE_KEY, JSON.stringify(result));
+    } catch (error) {
+      console.error('Could not stash receipt draft:', error);
+      return;
+    }
+    // The panel may already be mounted on `/ai`; notify it directly and let the
+    // route push no-op in that case.
+    window.dispatchEvent(new Event(RECEIPT_DRAFT_EVENT));
+    router.push('/ai');
   };
 
   return (
@@ -76,12 +95,18 @@ export default function TopBar() {
         onOpenChange={setScanModeOpen}
         onSelectBarcode={() => setScannerOpen(true)}
         onSelectLabel={() => setLabelCaptureOpen(true)}
+        onSelectReceipt={() => setReceiptCaptureOpen(true)}
       />
       <BarcodeScannerSheet open={scannerOpen} onOpenChange={setScannerOpen} />
       <LabelCaptureSheet
         open={labelCaptureOpen}
         onOpenChange={setLabelCaptureOpen}
         onCapture={handleLabelCapture}
+      />
+      <ReceiptCaptureSheet
+        open={receiptCaptureOpen}
+        onOpenChange={setReceiptCaptureOpen}
+        onCapture={handleReceiptCapture}
       />
     </>
   );

@@ -1,6 +1,6 @@
 # HisaFlow — OCR & Barcode Scanning Implementation Plan (Draft v1)
 
-**Status:** Implemented (superseded by `hisaflow-scanning-upgrade.md`, 2026-10-16). The barcode field, shared catalog and external lookups below shipped before this session; the speed, combined OCR+parse endpoint and receipt table shipped in `hisaflow-scanning-upgrade.md`.
+**Status:** Implemented (superseded by `hisaflow-scanning-upgrade.md`, 2026-10-16). The barcode field, shared catalog and external lookups below shipped before this session; the speed, combined OCR+parse endpoint and receipt table shipped in `hisaflow-scanning-upgrade.md`. A production follow-up (global list/receipt scan entry point, receipt reconciliation, in-form barcode scan) is recorded in `hisaflow-scanning-upgrade.md` §Production follow-up (Q-024–Q-027).
 **Scope:** Two distinct capture pipelines that both feed into the existing AI ingestion → confirm → create flow.
 
 ---
@@ -127,6 +127,8 @@ work, and the defect log Q-022/Q-023.
 | External providers (Open Food Facts, UPCitemdb) | ✅ Shipped | `lookupExternalProduct` |
 | Barcode scan speed | ✅ Shipped (1280×720, throttled, checksum-aware) | `lib/barcode.ts`, `BarcodeScannerSheet.tsx` |
 | Confidence thresholds surfaced from OCR | ✅ (LOW labels flow through to the table) | `AiIngestionPanel` |
+| Global list/receipt scan entry point | ✅ Shipped (post-session) | `ScanModeSheet`, `ReceiptCaptureSheet`, `useReceiptOcrCapture` → `/ai` table |
+| Receipt keeps every line (matched CREATE → PURCHASE) | ✅ Shipped (post-session) | `ai-ingestion.service.ts` reconciler + RECEIPT_OCR prompt |
 | Usage/cost ceiling tracking | ☐ Not started | — |
 | Bulk barcode CSV import | ☐ Not started (follow-up) | — |
 | True single-pass multimodal extraction | ☐ Deliberately deferred | see `hisaflow-scanning-upgrade.md` §Deferred |

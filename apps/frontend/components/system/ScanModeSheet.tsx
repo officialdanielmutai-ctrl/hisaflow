@@ -1,13 +1,14 @@
 'use client';
 
 import { Drawer } from 'vaul';
-import { ScanLine, Camera } from 'lucide-react';
+import { ScanLine, Camera, ReceiptText } from 'lucide-react';
 
 interface ScanModeSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectBarcode: () => void;
   onSelectLabel: () => void;
+  onSelectReceipt: () => void;
 }
 
 export default function ScanModeSheet({
@@ -15,6 +16,7 @@ export default function ScanModeSheet({
   onOpenChange,
   onSelectBarcode,
   onSelectLabel,
+  onSelectReceipt,
 }: ScanModeSheetProps) {
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
@@ -59,7 +61,26 @@ export default function ScanModeSheet({
             <div>
               <p className="text-sm font-semibold">Scan Label / Packaging</p>
               <p className="text-xs text-[var(--color-text-secondary)]">
-                Photograph the product to read its name, category and expiry
+                Photograph a single product to read its name, category and expiry
+              </p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              onSelectReceipt();
+            }}
+            className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--color-border)] p-4 text-left transition-colors hover:bg-[var(--color-bg-secondary)]"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-bg-secondary)]">
+              <ReceiptText className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Scan List / Receipt</p>
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                Photograph a receipt or stock list and review every line before saving
               </p>
             </div>
           </button>

@@ -133,6 +133,25 @@ describe('BarcodeScannerSheet (camera capture logic)', () => {
     );
   });
 
+  it('hands the raw code to `onScan` without a lookup or navigation', async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const onScan = vi.fn();
+
+    render(
+      <BarcodeScannerSheet open onOpenChange={onOpenChange} onScan={onScan} />,
+    );
+    await waitFor(() => expect(decodeMock).toHaveBeenCalled());
+    const callback = decodeMock.mock.calls[0][1] as (result: { getText: () => string }) => void;
+
+    scan(callback, '4006381333931');
+
+    await waitFor(() => expect(onScan).toHaveBeenCalledWith('4006381333931'));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it('confirms a checksum-valid EAN after only two frames', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ id: 'x' }) }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;

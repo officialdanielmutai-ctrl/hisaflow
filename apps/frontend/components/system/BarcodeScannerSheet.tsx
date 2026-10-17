@@ -8,10 +8,12 @@ import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRouter } from 'next/navigation';
 import {
-  DETECTION_INTERVAL_MS,
+  SCAN_STREAM_HEIGHT,
+  SCAN_STREAM_WIDTH,
   isValidBarcode,
   requiredConfirmations,
   supportedNativeFormats,
+  timeUntilNextDetection,
 } from '@/lib/barcode';
 
 interface NativeBarcodeDetector {
@@ -26,9 +28,15 @@ interface NativeBarcodeDetectorCtor {
 interface BarcodeScannerSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * When provided, the scanner hands the decoded code straight to the caller
+   * instead of looking it up and navigating. Used by in-form "Scan Barcode"
+   * buttons (e.g. AddItemSheet) that only want to fill a field.
+   */
+  onScan?: (code: string) => void;
 }
 
-export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScannerSheetProps) {
+export default function BarcodeScannerSheet({ open, onOpenChange, onScan }: BarcodeScannerSheetProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [scanning, setScanning] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -49,6 +57,14 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
   const router = useRouter();
+
+  // `onScan` is read inside the long-lived detection loop, which only starts
+  // when `open` flips true; keep it in a ref so a later render's callback is
+  // the one that runs.
+  const onScanRef = useRef(onScan);
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
 
   const setScanningState = (value: boolean) => {
     scanningRef.current = value;
@@ -73,7 +89,6 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
   };
 
   const handleScan = async (code: string) => {
-    if (!membership?.organization.id) return;
     if (handledRef.current) return;
     handledRef.current = true;
 
@@ -82,6 +97,18 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
     setError(null);
     streakRef.current = 0;
     lastCodeRef.current = '';
+
+    // In-form scan: hand the code to the caller and close, no lookup/navigate.
+    if (onScanRef.current) {
+      onScanRef.current(code);
+      onOpenChange(false);
+      return;
+    }
+
+    if (!membership?.organization.id) {
+      handledRef.current = false;
+      return;
+    }
 
     try {
       const token = await getToken();
@@ -140,12 +167,13 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
         }
 
         // 720p is plenty to resolve a barcode and is decoded much faster
-        // (and with less heat/battery) than a full 1080p stream.
+        // (and with less heat/battery) than a full 1080p stream. `max` (not
+        // just `ideal`) stops devices from upgrading to a larger sensor mode.
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
+            width: { ideal: SCAN_STREAM_WIDTH, max: SCAN_STREAM_WIDTH },
+            height: { ideal: SCAN_STREAM_HEIGHT, max: SCAN_STREAM_HEIGHT },
           }
         });
         
@@ -184,6 +212,7 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
 
             const scanNative = async () => {
               if (!scanningRef.current || !videoRef.current || !nativeDetector) return;
+              const startedAt = Date.now();
               try {
                 const barcodes = await nativeDetector.detect(videoRef.current);
                 if (barcodes.length > 0) {
@@ -192,8 +221,13 @@ export default function BarcodeScannerSheet({ open, onOpenChange }: BarcodeScann
               } catch { /* frame not decodable yet */ }
               // Throttle rather than run every animation frame (~30–60×/s):
               // decoding that often burns battery and heat for no accuracy gain.
+              // The detection call itself can be slow, so only sleep the
+              // remaining part of the interval instead of the full delay.
               if (scanningRef.current) {
-                detectTimeoutId = setTimeout(scanNative, DETECTION_INTERVAL_MS);
+                detectTimeoutId = setTimeout(
+                  scanNative,
+                  timeUntilNextDetection(Date.now() - startedAt),
+                );
               }
             };
             scanNative();

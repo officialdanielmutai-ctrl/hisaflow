@@ -1,9 +1,9 @@
 # HisaFlow — Scanning & Barcode Upgrade
 
 **Directive:** continuation of `hisaflow-quality-and-assistant-overhaul.md` (Duty 1 layout/UX, Duty 2 assistant, Duty 3 correctness) and the draft `hisaflow-ocr-scanning-plan.md`.
-**Status:** Implemented, tested. Four independently reviewable layers, each gated (lint, type-check, unit tests, build).
+**Status:** Implemented, tested. Four independently reviewable layers, each gated (lint, type-check, unit tests, build), plus a production follow-up pass.
 **Date:** 2026-10-16.
-**Defects:** Q-022 (OCR latency/repeat cost), Q-023 (barcode scan & external-lookup latency) — `hisaflow-overhaul-defect-log.md`.
+**Defects:** Q-022 (OCR latency/repeat cost), Q-023 (barcode scan & external-lookup latency), Q-024 (global list scan had no table), Q-025 (stale scan form), Q-026 (in-form barcode scan / name example), Q-027 (remaining scanner latency) — `hisaflow-overhaul-defect-log.md`.
 
 This note records a session that made the existing OCR capture and barcode
 scanner faster and more efficient, and turned a scanned receipt into an
@@ -155,3 +155,75 @@ checksum-less, partial reads, error recovery), `inventory.service.spec.ts`
   Safari 17+) that this is acceptable.
 - Regional data for Open Food Facts is thin; seeding a curated East-African
   catalog remains a content task, not an engineering one.
+
+---
+
+## Production follow-up (2026-10-16)
+
+Production testing of the first pass surfaced four gaps. All are now fixed and
+gated; defect register Q-024–Q-027.
+
+### 1. Scanning a list recorded only the first item (Q-024)
+
+The batch table shipped in `AiIngestionPanel`, but the primary scan entry point —
+the top-bar scan icon — only offered **Scan Label**, whose `LABEL_OCR` prompt
+intentionally returns exactly one `CREATE`. Pointing it at a receipt/list
+therefore saved one item and never rendered a table.
+
+- `ScanModeSheet` now offers **Scan List / Receipt** alongside barcode and label.
+- `useReceiptOcrCapture` + `ReceiptCaptureSheet` capture in-page (the same
+  `ScanCaptureSheet` camera surface as the label flow; see below) and run the
+  combined `POST /ocr/receipt/parse` in `RECEIPT_OCR` mode.
+- The parse is stashed in `sessionStorage` and `/ai`'s `AiIngestionPanel` reads
+  it once, so the global scan reuses the existing `ReceiptItemsTable` and the
+  idempotent commit path rather than duplicating both.
+- **Backend:** the `RECEIPT_OCR` prompt now says every distinct product line is
+  a separate action and that a receipt is stock **in** (PURCHASE when matched,
+  else CREATE). The reconciliation layer no longer drops a matched `CREATE` in
+  receipt mode — it converts it to a `PURCHASE` with the same quantity, so a
+  multi-line receipt can no longer silently lose every line but the first.
+  Outside receipt capture the original drop-on-match behaviour is unchanged.
+
+### 2. Closing the scan output left stale results (Q-025)
+
+`AddItemSheet` reset its fields only on successful submit. Closing with “×”
+kept the previous scan's name/category/variants, so the next scan appeared to be
+ignored until the old values were cleared by hand. It now resets on close.
+
+### 3. Scan Barcode from the output form, and the name example (Q-026)
+
+- `BarcodeScannerSheet` gained an optional `onScan(code)` mode: when provided it
+  hands back the raw decoded code and closes, instead of looking the code up and
+  navigating. The top-bar barcode scan path is unchanged.
+- `AddItemSheet` renders a **Scan Barcode** button next to **Scan Label**; it
+  fills the first variant's barcode field.
+- The Name label is now `Name *`; the `(e.g. Margarine)` example was removed.
+
+### 4. Scanner latency (Q-027)
+
+- Camera constraints now use `max` (1280×720) rather than only `ideal`, so a
+  phone cannot quietly hand back a larger sensor mode that decodes slower.
+- Detection interval lowered 120ms → 90ms, and the next pass is scheduled as
+  `interval − elapsed` instead of sleeping the full interval *after* a decode
+  that may already have taken tens of milliseconds.
+
+### Sharing the camera surface
+
+The label and receipt sheets previously each owned a copy of the camera
+lifecycle. It now lives once in `ScanCaptureSheet<T>`; `LabelCaptureSheet` and
+`ReceiptCaptureSheet` are thin wrappers over their respective hooks.
+
+### Follow-up gates
+
+| Gate | Result |
+|---|---|
+| Backend `tsc --noEmit` | Pass |
+| Backend unit tests | **107 suites / 848 tests** |
+| Backend `nest build` | Pass (via turbo `build`) |
+| Backend `eslint` | 0 errors (warnings only) |
+| Frontend `tsc --noEmit` | Pass |
+| Frontend `next lint` (repo-wide) | 0 errors (warnings only) |
+| Frontend tests | **38 files / 207 tests** |
+| Frontend `next build` | Pass |
+| Admin typecheck / tests | Pass / 2 files · 12 tests |
+| E2E typecheck | Pass |

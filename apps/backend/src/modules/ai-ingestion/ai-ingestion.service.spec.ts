@@ -192,6 +192,49 @@ describe('AiIngestionService', () => {
       expect(actions[0]).toMatchObject({ type: 'CREATE', itemName: 'Cooking Oil' });
     });
 
+    it('keeps every receipt line, converting a matched CREATE into a PURCHASE', async () => {
+      const { service } = build({
+        ...CONFIGURED,
+        items: [{ id: 'item_1', name: 'Sugar', unit: 'kg', packaging: [] }],
+        aiContent: JSON.stringify([
+          { itemId: null, itemName: 'Sugar', type: 'CREATE', quantity: 3, confidence: 'HIGH' },
+          { itemId: null, itemName: 'Cooking Oil', type: 'CREATE', quantity: 2, confidence: 'HIGH', unit: 'litres' },
+        ]),
+      });
+
+      const actions = await service.parseInventoryText('receipt text', ORG, 'RECEIPT_OCR');
+
+      expect(actions).toHaveLength(2);
+      expect(actions[0]).toMatchObject({
+        type: 'PURCHASE',
+        itemId: 'item_1',
+        itemName: 'Sugar',
+        quantity: 3,
+      });
+      expect(actions[1]).toMatchObject({ type: 'CREATE', itemName: 'Cooking Oil' });
+    });
+
+    it('still drops a matched CREATE outside receipt capture', async () => {
+      const { service } = build({
+        ...CONFIGURED,
+        items: [{ id: 'item_1', name: 'Sugar', unit: 'kg', packaging: [] }],
+        aiContent: JSON.stringify([
+          { itemId: null, itemName: 'Sugar', type: 'CREATE', quantity: 3, confidence: 'HIGH' },
+        ]),
+      });
+
+      await expect(service.parseInventoryText('add sugar', ORG, 'TEXT')).resolves.toEqual([]);
+    });
+
+    it('tells the model each receipt line is a separate action', async () => {
+      const { service, create } = build({ ...CONFIGURED, aiContent: '[]' });
+
+      await service.parseInventoryText('receipt text', ORG, 'RECEIPT_OCR');
+
+      const prompt = create.mock.calls[0][0].messages[0].content as string;
+      expect(prompt).toContain('SEPARATE action');
+    });
+
     it('passes non-inventory actions through untouched', async () => {
       const { service } = build({
         ...CONFIGURED,

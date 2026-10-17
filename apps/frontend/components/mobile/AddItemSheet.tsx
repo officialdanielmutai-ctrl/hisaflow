@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
 import { type LabelOcrResult } from '@/hooks/useLabelOcrCapture';
-import { Plus, Trash2, PackageOpen, ScanLine } from 'lucide-react';
+import { Plus, Trash2, ScanLine } from 'lucide-react';
 import LabelCaptureSheet from '@/components/system/LabelCaptureSheet';
+import BarcodeScannerSheet from '@/components/system/BarcodeScannerSheet';
 
 import {
   createInventoryItem,
@@ -96,8 +97,42 @@ export default function AddItemSheet({
   const [lookupStatus, setLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
   const [lookupSource, setLookupSource] = useState<'CATALOG' | 'OPEN_FOOD_FACTS' | 'UPC_ITEM_DB' | null>(null);
   const [labelCaptureOpen, setLabelCaptureOpen] = useState(false);
+  const [barcodeCaptureOpen, setBarcodeCaptureOpen] = useState(false);
   const [ocrApplied, setOcrApplied] = useState(false);
   const [usedOcrSource, setUsedOcrSource] = useState(false);
+
+  // A closed sheet must forget the previous scan: reopening it (often after a
+  // fresh global scan) used to inherit stale name/category/variant state, so
+  // the new capture appeared to be ignored until the old values were cleared
+  // by hand.
+  const resetForm = useCallback(() => {
+    setName('');
+    setCategory('');
+    setDescription('');
+    setVariants([{
+      name: '',
+      unit: 'can',
+      measureValue: undefined,
+      measureUnit: '',
+      inputQuantity: 0,
+      inputUnitIndex: 0,
+      reorderThreshold: 10,
+      costPrice: undefined,
+      sellingPrice: undefined,
+      barcode: undefined,
+      packaging: [],
+      isComposite: false,
+      recipeLines: [],
+    }]);
+    setLookupStatus('idle');
+    setLookupSource(null);
+    setOcrApplied(false);
+    setUsedOcrSource(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open) resetForm();
+  }, [open, resetForm]);
 
   // Best-effort prefill from Open Food Facts for a barcode this org hasn't
   // seen before. Only fills fields the user hasn't already typed into, and
@@ -203,6 +238,10 @@ export default function AddItemSheet({
     setLabelCaptureOpen(true);
   };
 
+  const handleScanBarcode = () => {
+    setBarcodeCaptureOpen(true);
+  };
+
   const handleAddVariant = () => {
     setVariants([...variants, {
       name: '',
@@ -304,14 +343,7 @@ export default function AddItemSheet({
       await createInventoryItem(payload, token, membership.organization.id);
       
       // Reset form
-      setName('');
-      setCategory('');
-      setDescription('');
-      setVariants([{ name: '', unit: 'can', inputQuantity: 0, inputUnitIndex: 0, reorderThreshold: 10, barcode: undefined, packaging: [], isComposite: false, recipeLines: [] }]);
-      setLookupStatus('idle');
-      setLookupSource(null);
-      setOcrApplied(false);
-      setUsedOcrSource(false);
+      resetForm();
       
       onSuccess();
       onOpenChange(false);
@@ -358,20 +390,30 @@ export default function AddItemSheet({
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2">
-            <span className="text-xs text-[var(--color-text-secondary)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2">
+            <span className="min-w-0 flex-1 text-xs text-[var(--color-text-secondary)]">
               {ocrApplied
                 ? 'Details applied from label scan — please verify.'
-                : 'No barcode match? Scan the packaging/label instead.'}
+                : 'Speed things up: scan the barcode or the product label.'}
             </span>
-            <button
-              type="button"
-              onClick={handleScanLabel}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[#FAFAFA] px-3 py-1.5 text-xs font-medium"
-            >
-              <ScanLine className="h-3.5 w-3.5" />
-              Scan Label
-            </button>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={handleScanBarcode}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[#FAFAFA] px-3 py-1.5 text-xs font-medium"
+              >
+                <ScanLine className="h-3.5 w-3.5" />
+                Scan Barcode
+              </button>
+              <button
+                type="button"
+                onClick={handleScanLabel}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[#FAFAFA] px-3 py-1.5 text-xs font-medium"
+              >
+                <ScanLine className="h-3.5 w-3.5" />
+                Scan Label
+              </button>
+            </div>
           </div>
 
           {/* Product Basic Info */}
@@ -379,7 +421,7 @@ export default function AddItemSheet({
             <h3 className="font-semibold text-sm text-[var(--color-text-secondary)] uppercase tracking-wider">Product Info</h3>
             
             <div>
-              <label className="mb-1 block text-sm font-medium">Name * (e.g. Margarine)</label>
+              <label className="mb-1 block text-sm font-medium">Name *</label>
               <input
                 type="text"
                 className="w-full rounded-xl border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm"
@@ -599,6 +641,12 @@ export default function AddItemSheet({
         open={labelCaptureOpen}
         onOpenChange={setLabelCaptureOpen}
         onCapture={applyOcrResult}
+      />
+
+      <BarcodeScannerSheet
+        open={barcodeCaptureOpen}
+        onOpenChange={setBarcodeCaptureOpen}
+        onScan={(code) => handleUpdateVariant(0, 'barcode', code)}
       />
     </>
   );

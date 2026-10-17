@@ -282,6 +282,12 @@ RECEIPT OCR MODE ACTIVE
 - If a line item has a [CONFIDENCE: LOW] label next to it, you MUST set the output action's \`confidence\` field to "LOW".
 - DO NOT derive your own confidence threshold; purely pass through the [CONFIDENCE: LOW/HIGH] label attached to the text.
 - If there are no confidence labels, default to "HIGH".
+- Every distinct product line on the receipt is a SEPARATE action. NEVER merge
+  multiple products into one action, even when they share a printed line.
+- A receipt is stock coming IN, not a sale. For each line, if it matches an
+  item in the available inventory, output a PURCHASE for that item (stock
+  arriving); otherwise output a CREATE. Emit one action per line so the user
+  can review them all in the batch table.
 ` : source === 'LABEL_OCR' ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRODUCT LABEL OCR MODE ACTIVE
@@ -519,6 +525,17 @@ RULES:
 
         if (action.type === 'CREATE') {
           if (bestMatch && bestScore >= MATCH_THRESHOLD) {
+            // A receipt line for a product this org already stocks is stock
+            // arriving, not a duplicate: keep its quantity as a PURCHASE. The
+            // old behaviour dropped it, which made a multi-line receipt
+            // silently keep only the first truly-new item. Outside receipt
+            // capture a matched CREATE is still dropped to avoid duplicating
+            // an item the model should have matched.
+            if (source === 'RECEIPT_OCR') {
+              console.log(`[Reconciler] Converted CREATE for "${nameToMatch}" → PURCHASE of "${bestMatch.name}" (score ${bestScore.toFixed(2)})`);
+              acc.push({ ...action, type: 'PURCHASE', itemId: bestMatch.id, itemName: bestMatch.name });
+              return acc;
+            }
             // AI wrongly created something that already exists — drop the CREATE
             // (the corresponding SALE/PURCHASE action should already be in the list,
             //  or we'd have no action, which is safer than a duplicate)
