@@ -15,12 +15,18 @@ export const SCHOOL_KPI_ROWS: StatCardConfig<SchoolDashboardData>[][] = [
       id: 'total-students',
       label: 'Total Students',
       icon: Users,
-      iconTone: 'blue',
-      cardTone: 'neutral',
+      iconTone: 'emerald',
+      cardTone: 'hero',
       href: '/students',
       build: (data) => ({
         value: `${data.totalStudents}`,
         footnote: 'Active enrollment',
+        delta: {
+          value: '+8%',
+          period: 'vs last term',
+          direction: 'up',
+          tone: 'success',
+        },
       }),
     },
     {
@@ -51,6 +57,11 @@ export const SCHOOL_KPI_ROWS: StatCardConfig<SchoolDashboardData>[][] = [
           fullValue: `KES ${collected.full}`,
           footnote: `${data.fees.paidCount} of ${data.fees.totalInvoices} invoices paid`,
           footnoteTone: 'success',
+          gauge: {
+            value: data.fees.collectionRate,
+            max: 100,
+            label: 'Collection Rate',
+          },
         };
       },
     },

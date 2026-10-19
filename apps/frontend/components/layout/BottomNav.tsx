@@ -13,6 +13,7 @@ import {
   Users
 } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
+import { cn } from '@/lib/utils';
 
 const ownerTabs = [
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -70,7 +71,7 @@ const ispTabs = [
   { href: '/finance', label: 'Billing', icon: TrendingUp },
 ];
 
-export default function BottomNav() {
+export default function BottomNav({ className }: { className?: string } = {}) {
   const pathname = usePathname();
   const { isStaff, isGuestHouse, isRestaurant, isSchool, isIsp } = useRole();
 
@@ -86,7 +87,13 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-100 pb-safe shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] rounded-t-3xl pb-4">
+    <nav
+      aria-label="Mobile Navigation"
+      className={cn(
+        'lg:hidden fixed bottom-0 inset-x-0 z-30 bg-[var(--color-bg-surface)] border-t border-[var(--color-border)] pb-safe shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] rounded-t-3xl pb-4 transition-colors',
+        className,
+      )}
+    >
       <div className="flex items-center justify-around h-20 px-2">
         {visibleTabs.map((tab) => {
           const isActive =

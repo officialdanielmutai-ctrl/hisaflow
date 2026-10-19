@@ -1,33 +1,41 @@
 import Link from 'next/link';
-import { ArrowUpRight, type LucideIcon } from 'lucide-react';
+import React from 'react';
+import { ArrowUpRight, TrendingUp, TrendingDown, Minus, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * Shared KPI/stat card (overhaul Duty 1, Section 2.5).
+ * Shared KPI/stat card (HisaFlow KPI Inspo Overhaul).
  *
- * This is the single building block every vertical's dashboard uses: it owns
- * sizing, padding, alignment, tabular figures, truncation, the slot layout and
- * the loading/empty/error states, so a fix here reaches every vertical. The
- * *arrangement* (which cards, how many, in what order and how wide) lives in
- * each vertical's config, not here.
+ * Sizing, padding, alignment, tabular figures, truncation, slot layout,
+ * dark theme compliance, and adversarial states (loading / empty / error).
  *
- * Slots: icon, label, sublabel, value, unit (valueSuffix), trailing, footnote.
- * A vertical fills the slots it needs; empty slots are skipped without leaving
- * gaps, and the footnote row is always reserved so siblings stay aligned.
+ * Supported Slots & Capabilities:
+ * - Surface Variants: neutral, blue, emerald, amber, rose, and **hero** (deep dark brand contrast)
+ * - Temporal Delta Badge: explicit time-comparison indicator (e.g. "+ 22% vs last month")
+ * - Micro-Visualizations: Area Spline Sparklines, Semi-Radial Arc Gauges, Segmented Velocity Bars
+ * - In-card Quick Actions: Contextual trigger buttons (e.g. "Record Sale", "Check In")
  */
-export type StatTone = 'blue' | 'emerald' | 'amber' | 'rose' | 'neutral';
+export type StatTone = 'blue' | 'emerald' | 'amber' | 'rose' | 'neutral' | 'hero';
 export type StatVariant = 'default' | 'compact';
 export type StatState = 'default' | 'loading' | 'empty' | 'error';
-/**
- * Reusable emphasis for the value/footnote slots. A vertical uses this when a
- * metric carries a status meaning (healthy/low/overdue) instead of forking the
- * card to colour a single line.
- */
 export type StatEmphasis = 'default' | 'success' | 'warning' | 'critical';
 
 export type StatTrailing =
   | { kind: 'arrow' }
   | { kind: 'badge'; text: string; tone: StatTone };
+
+export interface StatDelta {
+  value: string; // e.g. "+22%" or "-8%"
+  period?: string; // e.g. "vs last month"
+  direction?: 'up' | 'down' | 'flat';
+  tone?: 'success' | 'warning' | 'critical' | 'neutral';
+}
+
+export interface StatAction {
+  label: string;
+  href?: string;
+  onClick?: (e: React.MouseEvent) => void;
+}
 
 export interface StatCardContent {
   value: string;
@@ -38,9 +46,14 @@ export interface StatCardContent {
   footnote?: string;
   footnoteTone?: StatEmphasis;
   trailing?: StatTrailing;
+  delta?: StatDelta;
+  sparklineData?: number[];
+  gauge?: { value: number; max?: number; label?: string };
+  progress?: { value: number; max?: number; label?: string; targetLabel?: string };
+  action?: StatAction;
 }
 
-/** One card in a vertical's arrangement (Section 2.5). */
+/** One card in a vertical's arrangement. */
 export interface StatCardConfig<TData = unknown> {
   id: string;
   label: string;
@@ -49,7 +62,7 @@ export interface StatCardConfig<TData = unknown> {
   cardTone?: StatTone;
   variant?: StatVariant;
   href?: string;
-  /** Grid span at `sm` and up; the row grid is 2 columns. */
+  /** Grid span at `sm` and up; the row grid is 2 columns on mobile, up to 4 on desktop. */
   span?: 1 | 2;
   build: (data: TData) => StatCardContent;
 }
@@ -68,52 +81,56 @@ export interface StatCardProps extends StatCardContent {
 }
 
 const ICON_TONES: Record<StatTone, string> = {
-  blue: 'bg-blue-100 text-blue-700',
-  emerald: 'bg-emerald-100 text-emerald-700',
-  amber: 'bg-amber-100 text-amber-700',
-  rose: 'bg-rose-100 text-rose-700',
+  hero: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+  blue: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
+  emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
+  amber: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+  rose: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
   neutral:
     'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)]',
 };
 
 const CARD_TONES: Record<StatTone, string> = {
-  blue: 'border-blue-200/80 bg-gradient-to-br from-blue-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-blue-400',
+  hero: 'border-emerald-900/40 bg-gradient-to-br from-[#09221B] via-[#0E2E25] to-[#154336] text-white shadow-md hover:border-emerald-500/50 dark:from-[#061B15] dark:via-[#0A261E] dark:to-[#10382D] dark:border-emerald-600/50',
+  blue: 'border-blue-200/80 bg-gradient-to-br from-blue-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-blue-400 dark:border-blue-900/50',
   emerald:
-    'border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-emerald-400',
+    'border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-emerald-400 dark:border-emerald-900/50',
   amber:
-    'border-amber-200/80 bg-gradient-to-br from-amber-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-amber-400',
-  rose: 'border-rose-200/80 bg-gradient-to-br from-rose-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-rose-400',
+    'border-amber-200/80 bg-gradient-to-br from-amber-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-amber-400 dark:border-amber-900/50',
+  rose: 'border-rose-200/80 bg-gradient-to-br from-rose-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-rose-400 dark:border-rose-900/50',
   neutral:
     'border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)]',
 };
 
 const ARROW_TONES: Record<StatTone, string> = {
-  blue: 'group-hover:text-blue-600',
-  emerald: 'group-hover:text-emerald-600',
-  amber: 'group-hover:text-amber-600',
-  rose: 'group-hover:text-rose-600',
+  hero: 'text-emerald-300 group-hover:text-emerald-200',
+  blue: 'group-hover:text-blue-600 dark:group-hover:text-blue-400',
+  emerald: 'group-hover:text-emerald-600 dark:group-hover:text-emerald-400',
+  amber: 'group-hover:text-amber-600 dark:group-hover:text-amber-400',
+  rose: 'group-hover:text-rose-600 dark:group-hover:text-rose-400',
   neutral: 'group-hover:text-[var(--color-accent)]',
 };
 
 const VALUE_TONES: Record<StatEmphasis, string> = {
   default: 'text-[var(--color-text-primary)]',
-  success: 'text-emerald-600',
-  warning: 'text-amber-600',
+  success: 'text-emerald-600 dark:text-emerald-400',
+  warning: 'text-amber-600 dark:text-amber-400',
   critical: 'text-[var(--color-status-critical)]',
 };
 
 const FOOTNOTE_TONES: Record<StatEmphasis, string> = {
   default: 'text-[var(--color-text-secondary)]',
-  success: 'text-emerald-600',
-  warning: 'text-amber-600',
+  success: 'text-emerald-600 dark:text-emerald-400',
+  warning: 'text-amber-600 dark:text-amber-400',
   critical: 'text-[var(--color-status-critical)]',
 };
 
 const BADGE_TONES: Record<StatTone, string> = {
-  blue: 'bg-blue-50 text-blue-700 border border-blue-200',
-  emerald: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  amber: 'bg-amber-100 text-amber-800 border border-amber-200',
-  rose: 'bg-rose-100 text-rose-800 border border-rose-200',
+  hero: 'bg-white/10 text-emerald-200 border border-white/20',
+  blue: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800',
+  emerald: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800',
+  amber: 'bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800',
+  rose: 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800',
   neutral:
     'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] border border-[var(--color-border)]',
 };
@@ -149,11 +166,138 @@ function TrailingSlot({
   );
 }
 
+function DeltaBadge({ delta, isHero }: { delta: StatDelta; isHero?: boolean }) {
+  const isUp = delta.direction === 'up' || delta.value.startsWith('+');
+  const isDown = delta.direction === 'down' || delta.value.startsWith('-');
+  const tone = delta.tone ?? (isUp ? 'success' : isDown ? 'critical' : 'neutral');
+
+  const toneClasses = isHero
+    ? 'bg-white/10 text-emerald-200 border-white/15'
+    : tone === 'success'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50'
+      : tone === 'critical'
+        ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50'
+        : tone === 'warning'
+          ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50'
+          : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] border-[var(--color-border)]';
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold border transition-colors shrink-0',
+        toneClasses,
+      )}
+    >
+      {isUp ? (
+        <TrendingUp className="h-3 w-3" />
+      ) : isDown ? (
+        <TrendingDown className="h-3 w-3" />
+      ) : (
+        <Minus className="h-3 w-3" />
+      )}
+      <span>{delta.value}</span>
+      {delta.period && <span className="opacity-80 font-normal">{delta.period}</span>}
+    </span>
+  );
+}
+
+function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
+  if (!data || data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const width = 120;
+  const height = 36;
+  const points = data.map((val, idx) => {
+    const x = (idx / (data.length - 1)) * width;
+    const y = height - ((val - min) / range) * (height - 6) - 3;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const pathD = `M ${points.join(' L ')}`;
+  const fillD = `${pathD} L ${width},${height} L 0,${height} Z`;
+
+  const strokeColor = isHero ? '#34d399' : '#10b981';
+  const gradId = `spark-grad-${Math.abs(data.reduce((a, b) => a + b, 0))}`;
+
+  return (
+    <div className="w-full h-8 my-1">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full h-full overflow-visible"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.35} />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity={0.0} />
+          </linearGradient>
+        </defs>
+        <path d={fillD} fill={`url(#${gradId})`} />
+        <path d={pathD} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: number; label?: string; isHero?: boolean }) {
+  const pct = Math.min(Math.max((value / max) * 100, 0), 100);
+  const radius = 34;
+  const circumference = Math.PI * radius;
+  const strokeDashoffset = circumference - (pct / 100) * circumference;
+  const strokeColor = isHero ? '#34d399' : '#10b981';
+
+  return (
+    <div className="relative flex flex-col items-center justify-center my-1">
+      <svg viewBox="0 0 90 52" className="w-24 h-14">
+        <path
+          d="M 11,46 A 34,34 0 0,1 79,46"
+          fill="none"
+          stroke={isHero ? 'rgba(255,255,255,0.15)' : 'var(--color-border)'}
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M 11,46 A 34,34 0 0,1 79,46"
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          className="transition-all duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute bottom-0 text-center">
+        <span className={cn('text-xs font-black', isHero ? 'text-white' : 'text-[var(--color-text-primary)]')}>
+          {Math.round(pct)}%
+        </span>
+        {label && <p className="text-[9px] text-[var(--color-text-muted)] truncate">{label}</p>}
+      </div>
+    </div>
+  );
+}
+
+function StatProgressBar({ value, max = 100, label, targetLabel, isHero }: { value: number; max?: number; label?: string; targetLabel?: string; isHero?: boolean }) {
+  const pct = Math.min(Math.max((value / max) * 100, 0), 100);
+  return (
+    <div className="w-full my-1.5 flex flex-col gap-1">
+      <div className={cn('h-2 w-full rounded-full overflow-hidden', isHero ? 'bg-white/10' : 'bg-[var(--color-bg-elevated)]')}>
+        <div
+          className={cn('h-full rounded-full transition-all duration-500', isHero ? 'bg-emerald-400' : 'bg-gradient-to-r from-[var(--color-accent)] to-emerald-400')}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {(label || targetLabel) && (
+        <div className={cn('flex items-center justify-between text-[10px]', isHero ? 'text-emerald-200/70' : 'text-[var(--color-text-muted)]')}>
+          {label && <span>{label}</span>}
+          {targetLabel && <span>{targetLabel}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatSkeleton({ compact }: { compact: boolean }) {
-  // Mirrors the loaded card's line boxes (label / optional sublabel / value /
-  // footnote) using the same typographic classes, so the skeleton and the
-  // loaded card stay the same height at every root font size and the card
-  // cannot shift when data arrives (Section 2.4).
   return (
     <>
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -196,6 +340,11 @@ export function StatCard({
   footnote,
   footnoteTone = 'default',
   trailing,
+  delta,
+  sparklineData,
+  gauge,
+  progress,
+  action,
   icon: Icon,
   iconTone,
   cardTone = 'neutral',
@@ -207,6 +356,7 @@ export function StatCard({
 }: StatCardProps) {
   const compact = variant === 'compact';
   const resolvedIconTone = iconTone ?? cardTone;
+  const isHero = cardTone === 'hero';
 
   if (state === 'loading') {
     return (
@@ -237,7 +387,8 @@ export function StatCard({
 
   const body = (
     <>
-      <div className="mb-3 flex items-center justify-between gap-3">
+      {/* Top Header Slot */}
+      <div className="mb-2 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <div
             className={cn(
@@ -248,11 +399,21 @@ export function StatCard({
             <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
           </div>
           <div className="min-w-0">
-            <span className="block truncate text-xs font-bold uppercase tracking-wider text-[var(--color-text-primary)]">
+            <span
+              className={cn(
+                'block truncate text-xs font-bold uppercase tracking-wider',
+                isHero ? 'text-emerald-300' : 'text-[var(--color-text-primary)]',
+              )}
+            >
               {label}
             </span>
             {sublabel ? (
-              <span className="block truncate text-[11px] text-[var(--color-text-secondary)]">
+              <span
+                className={cn(
+                  'block truncate text-[11px]',
+                  isHero ? 'text-emerald-200/80' : 'text-[var(--color-text-secondary)]',
+                )}
+              >
                 {sublabel}
               </span>
             ) : null}
@@ -261,34 +422,84 @@ export function StatCard({
         <TrailingSlot trailing={trailing} tone={cardTone} />
       </div>
 
+      {/* Main Metric Value */}
       <div className="my-1 min-w-0">
         <p
           data-stat-value
           title={fullValue}
           className={cn(
             'truncate font-black tracking-tight tabular-nums',
-            VALUE_TONES[valueTone],
+            isHero ? 'text-white' : VALUE_TONES[valueTone],
             compact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl',
           )}
         >
           {displayValue}
           {!isError && !isEmpty && valueSuffix ? (
-            <span className="ml-1 text-base font-medium text-[var(--color-text-secondary)] sm:text-lg">
+            <span
+              className={cn(
+                'ml-1 text-base font-medium sm:text-lg',
+                isHero ? 'text-emerald-200/80' : 'text-[var(--color-text-secondary)]',
+              )}
+            >
               {valueSuffix}
             </span>
           ) : null}
         </p>
       </div>
 
-      {/* Footnote row is always reserved so cards with and without one align. */}
-      <p
-        className={cn(
-          'min-h-[18px] truncate text-xs',
-          isError ? FOOTNOTE_TONES.critical : FOOTNOTE_TONES[footnoteTone],
+      {/* Optional Micro-Visualizations */}
+      {!isError && !isEmpty && gauge && (
+        <StatGauge value={gauge.value} max={gauge.max} label={gauge.label} isHero={isHero} />
+      )}
+      {!isError && !isEmpty && sparklineData && sparklineData.length > 1 && (
+        <StatSparkline data={sparklineData} isHero={isHero} />
+      )}
+      {!isError && !isEmpty && progress && (
+        <StatProgressBar
+          value={progress.value}
+          max={progress.max}
+          label={progress.label}
+          targetLabel={progress.targetLabel}
+          isHero={isHero}
+        />
+      )}
+
+      {/* Footer / Delta / Action Row */}
+      <div className="mt-2 flex items-center justify-between gap-2 min-h-[22px]">
+        {delta && !isError && !isEmpty ? (
+          <DeltaBadge delta={delta} isHero={isHero} />
+        ) : hasFootnote ? (
+          <p
+            className={cn(
+              'truncate text-xs',
+              isHero
+                ? 'text-emerald-200/90'
+                : isError
+                  ? FOOTNOTE_TONES.critical
+                  : FOOTNOTE_TONES[footnoteTone],
+            )}
+          >
+            {displayFootnote}
+          </p>
+        ) : (
+          <span />
         )}
-      >
-        {hasFootnote ? displayFootnote : ''}
-      </p>
+
+        {action && (
+          <Link
+            href={action.href ?? '#'}
+            onClick={action.onClick}
+            className={cn(
+              'shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border transition-colors',
+              isHero
+                ? 'border-emerald-400/40 text-emerald-200 bg-white/5 hover:bg-white/15'
+                : 'border-[var(--color-border)] text-[var(--color-accent)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-surface-hover)]',
+            )}
+          >
+            {action.label}
+          </Link>
+        )}
+      </div>
     </>
   );
 

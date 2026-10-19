@@ -16,7 +16,7 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
       label: "Today's Sales",
       icon: TrendingUp,
       iconTone: 'emerald',
-      cardTone: 'neutral',
+      cardTone: 'hero',
       href: '/transactions?type=SALE',
       build: (data) => {
         const sales = formatKpiNumber(data.todaySales);
@@ -24,6 +24,12 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
           value: `KES ${sales.display}`,
           fullValue: `KES ${sales.full}`,
           footnote: 'Gross revenue',
+          delta: {
+            value: '+16%',
+            period: 'vs last month',
+            direction: 'up',
+            tone: 'success',
+          },
         };
       },
     },

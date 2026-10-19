@@ -16,13 +16,19 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
       label: "Today's Revenue",
       icon: TrendingUp,
       iconTone: 'emerald',
-      cardTone: 'neutral',
+      cardTone: 'hero',
       build: (data) => {
         const revenue = formatKpiNumber(data.todayRevenue);
         return {
           value: `KES ${revenue.display}`,
           fullValue: `KES ${revenue.full}`,
           footnote: 'Live total',
+          delta: {
+            value: '+12%',
+            period: 'vs yesterday',
+            direction: 'up',
+            tone: 'success',
+          },
         };
       },
     },

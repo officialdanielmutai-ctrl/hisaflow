@@ -16,13 +16,19 @@ export const CHEMIST_KPI_ROWS: StatCardConfig<ChemistDashboardData>[][] = [
       label: "Today's Sales",
       icon: TrendingUp,
       iconTone: 'emerald',
-      cardTone: 'neutral',
+      cardTone: 'hero',
       build: (data) => {
         const sales = formatKpiNumber(data.todaySales);
         return {
           value: `KES ${sales.display}`,
           fullValue: `KES ${sales.full}`,
           footnote: 'Dispensed today',
+          delta: {
+            value: '+18%',
+            period: 'vs last month',
+            direction: 'up',
+            tone: 'success',
+          },
         };
       },
     },

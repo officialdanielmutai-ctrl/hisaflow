@@ -14,6 +14,7 @@ import ScanModeSheet from '../system/ScanModeSheet';
 import LabelCaptureSheet from '../system/LabelCaptureSheet';
 import ReceiptCaptureSheet from '../system/ReceiptCaptureSheet';
 import { OrgSwitcher } from './OrgSwitcher';
+import DateRangePicker from '../system/DateRangePicker';
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -52,18 +53,19 @@ export default function TopBar() {
 
   return (
     <>
-      <header className="fixed top-0 inset-x-0 z-30 flex h-16 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4">
+      <header className="fixed top-0 inset-x-0 lg:left-16 z-30 flex h-16 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-4 sm:px-6 transition-[left] duration-200">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMenuOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-[var(--color-bg-secondary)] transition-colors"
+            className="lg:hidden flex h-10 w-10 items-center justify-center rounded-full hover:bg-[var(--color-bg-secondary)] transition-colors"
             aria-label="Open menu"
           >
             <Menu className="h-6 w-6 text-[var(--color-text-primary)]" />
           </button>
           <OrgSwitcher />
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <DateRangePicker />
           <button
             onClick={() => setScanModeOpen(true)}
             className="relative p-2 text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] rounded-full transition-colors"
@@ -71,7 +73,7 @@ export default function TopBar() {
           >
             <ScanLine className="h-5 w-5" />
           </button>
-          <Link href="/alerts" className="relative p-2 text-[var(--color-text-primary)]">
+          <Link href="/alerts" className="relative p-2 text-[var(--color-text-primary)]" aria-label="Alerts">
             <Bell className="h-6 w-6" />
             {(alerts ?? []).length > 0 && (
               <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
@@ -79,13 +81,15 @@ export default function TopBar() {
               </span>
             )}
           </Link>
-          <UserButton
-            appearance={{
-              elements: {
-                userButtonAvatarBox: "h-8 w-8"
-              }
-            }}
-          />
+          <div className="lg:hidden">
+            <UserButton
+              appearance={{
+                elements: {
+                  userButtonAvatarBox: "h-8 w-8"
+                }
+              }}
+            />
+          </div>
         </div>
       </header>
 

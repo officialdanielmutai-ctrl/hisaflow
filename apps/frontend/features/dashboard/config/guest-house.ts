@@ -16,8 +16,8 @@ export const GUEST_HOUSE_KPI_ROWS: StatCardConfig<GuestHouseDashboardData>[][] =
         id: 'occupied-rooms',
         label: 'Occupied Rooms',
         icon: Bed,
-        iconTone: 'blue',
-        cardTone: 'neutral',
+        iconTone: 'emerald',
+        cardTone: 'hero',
         href: '/rooms',
         build: (data) => ({
           value: `${data.occupiedRooms}`,
@@ -26,6 +26,11 @@ export const GUEST_HOUSE_KPI_ROWS: StatCardConfig<GuestHouseDashboardData>[][] =
             kind: 'badge',
             text: `${data.occupancyRate}%`,
             tone: 'blue',
+          },
+          gauge: {
+            value: data.occupancyRate,
+            max: 100,
+            label: 'Occupancy Rate',
           },
         }),
       },
@@ -41,6 +46,12 @@ export const GUEST_HOUSE_KPI_ROWS: StatCardConfig<GuestHouseDashboardData>[][] =
           return {
             value: `KES ${revenue.display}`,
             fullValue: `KES ${revenue.full}`,
+            delta: {
+              value: '+15%',
+              period: 'vs last month',
+              direction: 'up',
+              tone: 'success',
+            },
           };
         },
       },

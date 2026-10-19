@@ -134,4 +134,88 @@ describe('StatCard (shared building block)', () => {
       'text-amber-600',
     );
   });
+
+  it('renders hero dark surface tone with contrast typography', () => {
+    render(
+      <StatCard
+        label="Total Sales"
+        value="KES 542,376"
+        icon={Wallet}
+        cardTone="hero"
+      />,
+    );
+
+    const card = screen.getByTestId('stat-card');
+    expect(card.className).toContain('from-[#09221B]');
+    expect(screen.getByText('Total Sales').className).toContain('text-emerald-300');
+    expect(screen.getByText('KES 542,376').className).toContain('text-white');
+  });
+
+  it('renders delta comparison badge with upward arrow and period label', () => {
+    render(
+      <StatCard
+        label="Today's Sales"
+        value="KES 120,000"
+        icon={Wallet}
+        delta={{
+          value: '+22%',
+          period: 'vs last month',
+          direction: 'up',
+          tone: 'success',
+        }}
+      />,
+    );
+
+    expect(screen.getByText('+22%')).toBeInTheDocument();
+    expect(screen.getByText('vs last month')).toBeInTheDocument();
+  });
+
+  it('renders micro-visualizations (sparkline, gauge, and progress)', () => {
+    const { container, rerender } = render(
+      <StatCard
+        label="Sales Velocity"
+        value="KES 80,000"
+        icon={Wallet}
+        sparklineData={[10, 25, 40, 30, 60, 55, 90]}
+      />,
+    );
+
+    expect(container.querySelector('svg')).toBeInTheDocument();
+
+    rerender(
+      <StatCard
+        label="Occupancy Rate"
+        value="84"
+        icon={Wallet}
+        gauge={{ value: 84, max: 100, label: 'Occupied' }}
+      />,
+    );
+    expect(screen.getByText('Occupied')).toBeInTheDocument();
+
+    rerender(
+      <StatCard
+        label="User Growth"
+        value="205,890"
+        icon={Wallet}
+        progress={{ value: 65, max: 100, label: 'Checking totally', targetLabel: '+210 today' }}
+      />,
+    );
+    expect(screen.getByText('Checking totally')).toBeInTheDocument();
+    expect(screen.getByText('+210 today')).toBeInTheDocument();
+  });
+
+  it('renders in-card quick action button', () => {
+    render(
+      <StatCard
+        label="Total Balance"
+        value="KES 32,678"
+        icon={Wallet}
+        action={{ label: '+ Quick Sale', href: '/transactions?action=new' }}
+      />,
+    );
+
+    const actionBtn = screen.getByText('+ Quick Sale');
+    expect(actionBtn).toBeInTheDocument();
+    expect(actionBtn.closest('a')).toHaveAttribute('href', '/transactions?action=new');
+  });
 });

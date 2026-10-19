@@ -1,5 +1,6 @@
 import BottomNav from '@/components/layout/BottomNav';
 import TopBar from '@/components/layout/TopBar';
+import DesktopSidebar from '@/components/layout/DesktopSidebar';
 import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
 import OrgGate from '@/components/system/OrgGate';
 import NotificationPrompt from '@/components/system/NotificationPrompt';
@@ -9,6 +10,7 @@ import { OrganizationProvider } from '@/hooks/useMyOrganization';
 import { WorkspaceProvider } from '@/hooks/useWorkspace';
 import { WorkspaceBackdrop } from '@/components/workspace/WorkspaceBackdrop';
 import SWRProvider from '@/components/system/SWRProvider';
+import { DateRangeProvider } from '@/components/providers/DateRangeProvider';
 
 export default function DashboardLayout({
   children,
@@ -18,21 +20,24 @@ export default function DashboardLayout({
   return (
     <OrganizationProvider>
       <SWRProvider>
-        <WorkspaceProvider>
-          <ImpersonationBanner />
-          <div className="min-h-screen bg-[var(--color-bg-base)] pb-20">
-            <TopBar />
-            <main className="max-w-lg mx-auto px-4 pt-20">
-              <WorkspaceBackdrop>
-                <BillingStatusBanner />
-                <OrgGate>{children}</OrgGate>
-              </WorkspaceBackdrop>
-            </main>
-            <BottomNav />
-            <NotificationPrompt />
-            <InstallPrompt />
-          </div>
-        </WorkspaceProvider>
+        <DateRangeProvider>
+          <WorkspaceProvider>
+            <ImpersonationBanner />
+            <div className="min-h-screen bg-[var(--color-bg-base)] flex flex-col lg:pl-16 transition-[padding] duration-200">
+              <DesktopSidebar />
+              <TopBar />
+              <main className="w-full max-w-lg lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 lg:pt-24 pb-20 lg:pb-10 flex-1">
+                <WorkspaceBackdrop>
+                  <BillingStatusBanner />
+                  <OrgGate>{children}</OrgGate>
+                </WorkspaceBackdrop>
+              </main>
+              <BottomNav />
+              <NotificationPrompt />
+              <InstallPrompt />
+            </div>
+          </WorkspaceProvider>
+        </DateRangeProvider>
       </SWRProvider>
     </OrganizationProvider>
   );

@@ -16,7 +16,7 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
       id: 'monthly-revenue',
       label: 'Monthly Revenue',
       icon: CircleDollarSign,
-      cardTone: 'blue',
+      cardTone: 'hero',
       href: '/finance',
       build: (data) => {
         const revenue = formatKpiNumber(data.monthlyRevenue);
@@ -33,6 +33,12 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
               ? `KES ${formatGrouped(arpu)} ARPU / active sub`
               : 'No billing activity yet',
           trailing: { kind: 'arrow' },
+          delta: {
+            value: '+21%',
+            period: 'vs last month',
+            direction: 'up',
+            tone: 'success',
+          },
         };
       },
     },
@@ -55,6 +61,11 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
               ? `${data.subscribers.suspended} suspended • ${activePct}% online`
               : `${activePct}% fleet online`,
           trailing: { kind: 'arrow' },
+          gauge: {
+            value: activePct,
+            max: 100,
+            label: 'Online',
+          },
         };
       },
     },

@@ -20,12 +20,18 @@ export const STAFF_KPI_ROWS: StatCardConfig<StaffDashboardData>[][] = [
       label: "Today's Sales",
       icon: TrendingUp,
       iconTone: 'amber',
-      cardTone: 'neutral',
+      cardTone: 'hero',
       build: (data) => ({
         value: `${data.kpis.todaySalesCount}`,
         valueSuffix: 'units',
         footnote: data.kpis.todaySalesTrendLabel,
         footnoteTone: data.kpis.todaySalesTrend >= 0 ? 'success' : 'critical',
+        delta: {
+          value: `${data.kpis.todaySalesTrend >= 0 ? '+' : ''}${data.kpis.todaySalesTrend}%`,
+          period: 'vs yesterday',
+          direction: data.kpis.todaySalesTrend >= 0 ? 'up' : 'down',
+          tone: data.kpis.todaySalesTrend >= 0 ? 'success' : 'critical',
+        },
       }),
     },
     {

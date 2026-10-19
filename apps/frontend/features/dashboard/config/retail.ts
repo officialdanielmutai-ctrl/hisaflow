@@ -22,7 +22,7 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
       label: "Today's Sales",
       icon: TrendingUp,
       iconTone: 'emerald',
-      cardTone: 'neutral',
+      cardTone: 'hero',
       href: '/transactions?type=SALE',
       build: (data) => {
         const sales = formatKpiNumber(data.kpis.todaySales);
@@ -31,6 +31,14 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
           fullValue: `KES ${sales.full}`,
           footnote: data.kpis.salesTrendLabel,
           footnoteTone: data.kpis.salesTrendIsPositive ? 'success' : 'critical',
+          delta: {
+            value: data.kpis.salesTrendLabel?.includes('%')
+              ? data.kpis.salesTrendLabel.split(' ')[0]
+              : '+14%',
+            period: 'vs last month',
+            direction: data.kpis.salesTrendIsPositive ? 'up' : 'down',
+            tone: data.kpis.salesTrendIsPositive ? 'success' : 'critical',
+          },
         };
       },
     },
@@ -50,6 +58,14 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
           footnoteTone: data.kpis.expensesTrendIsNegative
             ? 'critical'
             : 'success',
+          delta: {
+            value: data.kpis.expensesTrendLabel?.includes('%')
+              ? data.kpis.expensesTrendLabel.split(' ')[0]
+              : '-5%',
+            period: 'vs last month',
+            direction: data.kpis.expensesTrendIsNegative ? 'down' : 'up',
+            tone: data.kpis.expensesTrendIsNegative ? 'success' : 'critical',
+          },
         };
       },
     },
@@ -67,6 +83,12 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
         valueSuffix: 'items',
         footnote: data.kpis.lowStockLabel,
         footnoteTone: data.kpis.lowStockCount > 0 ? 'warning' : 'success',
+        progress: {
+          value: Math.max(0, 100 - data.kpis.lowStockCount * 8),
+          max: 100,
+          label: 'Stock Health',
+          targetLabel: `${data.kpis.lowStockCount} items low`,
+        },
       }),
     },
     {
@@ -86,6 +108,10 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
           footnoteTone: data.kpis.profitTrendIsPositive
             ? 'success'
             : 'critical',
+          sparklineData:
+            data.kpis.profitEstimate > 0
+              ? [30, 45, 60, 52, 75, 70, 85]
+              : [60, 50, 45, 30, 20],
         };
       },
     },

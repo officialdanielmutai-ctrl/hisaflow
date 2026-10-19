@@ -1,8 +1,10 @@
 'use client';
 
 import useSWR from 'swr';
+import dynamic from 'next/dynamic';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { useDateRange } from '@/components/providers/DateRangeProvider';
 import Link from 'next/link';
 import {
   TrendingUp, AlertTriangle, Package, StickyNote, Sparkles,
@@ -19,6 +21,8 @@ import { IspDashboard } from '@/components/isp/IspDashboard';
 import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
 import { RETAIL_KPI_ROWS, RETAIL_INVENTORY_ROWS } from '@/features/dashboard/config/retail';
 import { STAFF_KPI_ROWS } from '@/features/dashboard/config/staff';
+
+const ModernAnalyticsChart = dynamic(() => import('@/components/charts/ModernAnalyticsChart'), { ssr: false });
 
 // ── Staff Dashboard ───────────────────────────────────────────────────────────
 function StaffDashboard() {
@@ -189,6 +193,7 @@ function RetailDashboard() {
   const { membership } = useMyOrganization();
   const { user } = useUser();
   const { canViewAnalytics } = useRole();
+  const { preset } = useDateRange();
 
   const orgId = membership?.organization.id;
 
@@ -200,7 +205,7 @@ function RetailDashboard() {
   };
 
   const { data, error, isLoading } = useSWR<DashboardData>(
-    canViewAnalytics && orgId ? ['dashboard', orgId] : null,
+    canViewAnalytics && orgId ? ['dashboard', orgId, preset] : null,
     fetcher
   );
 
@@ -229,91 +234,117 @@ function RetailDashboard() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-xl font-bold">
+          <h1 className="text-xl lg:text-2xl font-bold text-[var(--color-text-primary)]">
             Good {timeLabel}, {firstName} {greetingEmoji}
           </h1>
           <p className="text-sm text-[var(--color-text-secondary)]">
             {membership?.organization.name}
           </p>
         </div>
+        <div className="hidden sm:flex items-center gap-2">
+          <Link
+            href="/transactions?type=SALE"
+            className="flex items-center gap-1.5 rounded-full bg-[var(--color-accent)] px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90 transition-opacity"
+          >
+            + Record Sale
+          </Link>
+        </div>
       </div>
 
-      {/* KPI Grid — shared StatCard, per-vertical retail arrangement */}
-      <div className="mb-6">
+      {/* Top Row: KPI Metric Cards */}
+      <div className="mb-2">
         <DashboardKpiRows rows={RETAIL_KPI_ROWS} data={data} />
       </div>
 
-      {/* Attention Feed */}
-      {data.attentionFeed.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-base">Attention Feed</h2>
-            <Link href="/alerts" className="text-sm text-[var(--color-accent)]">
-              View all
-            </Link>
-          </div>
-          {data.attentionFeed.map((alert) => (
-            <div key={alert.id} className="rounded-2xl border p-4 mb-2 flex items-start gap-3">
-              <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                  alert.severity === 'CRITICAL' ? 'bg-red-100' : 'bg-yellow-100'
-                }`}
-              >
-                <AlertTriangle
-                  className={`h-5 w-5 ${
-                    alert.severity === 'CRITICAL' ? 'text-red-600' : 'text-yellow-600'
-                  }`}
-                />
-              </div>
-              <p className="text-sm font-medium">{alert.message}</p>
+      {/* Main Analytical & Operational Desktop Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Section (8 cols on desktop): Modern Chart & Inventory Snapshot */}
+        <div className="lg:col-span-8 flex flex-col gap-6">
+          <ModernAnalyticsChart />
+
+          {/* Inventory Snapshot */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-base text-[var(--color-text-primary)]">Inventory Snapshot</h2>
+              <Link href="/inventory" className="text-sm text-[var(--color-accent)] font-semibold hover:underline">
+                View all
+              </Link>
             </div>
-          ))}
+            <DashboardKpiRows rows={RETAIL_INVENTORY_ROWS} data={data} />
+          </div>
         </div>
-      )}
 
-      {/* Inventory Snapshot */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-base">Inventory Snapshot</h2>
-          <Link href="/inventory" className="text-sm text-[var(--color-accent)]">
-            View all
-          </Link>
-        </div>
-        {/* Shared StatCard, per-vertical retail inventory arrangement */}
-        <DashboardKpiRows rows={RETAIL_INVENTORY_ROWS} data={data} />
-      </div>
-
-      {/* Recommended Actions */}
-      <div className="mb-6">
-        <h2 className="font-bold text-base mb-3">
-          Recommended Actions
-        </h2>
-        {data.recommendedActions.map((rec, i) => (
-          <div
-            key={i}
-            className="rounded-2xl border p-4 mb-2 flex items-start gap-3"
-          >
-            <span
-              className={`h-2 w-2 rounded-full mt-2 flex-shrink-0 ${
-                rec.priority === 'HIGH'
-                  ? 'bg-red-500'
-                  : rec.priority === 'MEDIUM'
-                    ? 'bg-yellow-500'
-                    : 'bg-green-500'
-              }`}
-            />
+        {/* Right Rail (4 cols on desktop): Attention Feed & Recommendations */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          {/* Attention Feed */}
+          {data.attentionFeed.length > 0 && (
             <div>
-              <p className="text-sm font-semibold">{rec.action}</p>
-              <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                {rec.reason}
-              </p>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-bold text-base text-[var(--color-text-primary)]">Attention Feed</h2>
+                <Link href="/alerts" className="text-sm text-[var(--color-accent)] font-semibold hover:underline">
+                  View all
+                </Link>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                {data.attentionFeed.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 flex items-start gap-3 shadow-sm"
+                  >
+                    <div
+                      className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        alert.severity === 'CRITICAL'
+                          ? 'bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400'
+                          : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-950/40 dark:text-yellow-400'
+                      }`}
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                    </div>
+                    <p className="text-xs font-semibold text-[var(--color-text-primary)] leading-relaxed">
+                      {alert.message}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          )}
 
+          {/* Recommended Actions */}
+          {data.recommendedActions.length > 0 && (
+            <div>
+              <h2 className="font-bold text-base text-[var(--color-text-primary)] mb-3">
+                Recommended Actions
+              </h2>
+              <div className="flex flex-col gap-2.5">
+                {data.recommendedActions.map((rec, i) => (
+                  <div
+                    key={i}
+                    className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 flex items-start gap-3 shadow-sm"
+                  >
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full mt-1.5 flex-shrink-0 ${
+                        rec.priority === 'HIGH'
+                          ? 'bg-red-500'
+                          : rec.priority === 'MEDIUM'
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
+                      }`}
+                    />
+                    <div>
+                      <p className="text-xs font-bold text-[var(--color-text-primary)] leading-tight">{rec.action}</p>
+                      <p className="text-[11px] text-[var(--color-text-secondary)] mt-1 leading-relaxed">
+                        {rec.reason}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
