@@ -169,6 +169,12 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-19 — Home customisation production follow-up.** Fixed the four
+  reported blockers: customisation changes now preview live on Home; widget
+  long-press/right-click/⋯ opens the menu; widgets can be reordered (drag,
+  buttons, keyboard) and added from a full gallery; and wallpaper is applied
+  Home-wide with a live preview. See `hisaflow-workspace-customisation.md`
+  §12.1 and `hisaflow-overhaul-defect-log.md` Q-028–Q-031.
 - This is a greenfield build. No existing codebase.
 - The six context files represent the complete architectural blueprint.
   Implementation should follow the staged build order strictly.

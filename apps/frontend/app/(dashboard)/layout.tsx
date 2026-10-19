@@ -7,6 +7,7 @@ import InstallPrompt from '@/components/system/InstallPrompt';
 import BillingStatusBanner from '@/components/paywall/BillingStatusBanner';
 import { OrganizationProvider } from '@/hooks/useMyOrganization';
 import { WorkspaceProvider } from '@/hooks/useWorkspace';
+import { WorkspaceBackdrop } from '@/components/workspace/WorkspaceBackdrop';
 import SWRProvider from '@/components/system/SWRProvider';
 
 export default function DashboardLayout({
@@ -22,8 +23,10 @@ export default function DashboardLayout({
           <div className="min-h-screen bg-[var(--color-bg-base)] pb-20">
             <TopBar />
             <main className="max-w-lg mx-auto px-4 pt-20">
-              <BillingStatusBanner />
-              <OrgGate>{children}</OrgGate>
+              <WorkspaceBackdrop>
+                <BillingStatusBanner />
+                <OrgGate>{children}</OrgGate>
+              </WorkspaceBackdrop>
             </main>
             <BottomNav />
             <NotificationPrompt />

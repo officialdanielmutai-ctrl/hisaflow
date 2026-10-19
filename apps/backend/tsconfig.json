@@ -20,5 +20,6 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "types": ["node", "jest", "multer", "express"]
-  }
+  },
+  "exclude": ["node_modules", "dist", "generated"]
 }

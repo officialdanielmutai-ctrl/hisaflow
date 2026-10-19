@@ -38,18 +38,21 @@ import {
   type DashboardWidget,
 } from '@/lib/workspace';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useTheme } from '@/components/providers/ThemeProvider';
 import { cn } from '@/lib/utils';
 
-type TabId = 'widgets' | 'layout' | 'appearance' | 'wallpaper';
+export type WorkspaceTabId = 'widgets' | 'layout' | 'appearance' | 'wallpaper';
 
 interface WorkspaceSheetProps<TData> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   widgets: DashboardWidget<TData>[];
   breakpoint: WorkspaceBreakpoint;
+  initialTab?: WorkspaceTabId;
+  initialSelectedId?: string | null;
 }
 
-const TABS: { id: TabId; label: string; icon: typeof LayoutGrid }[] = [
+const TABS: { id: WorkspaceTabId; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'widgets', label: 'Widgets', icon: LayoutGrid },
   { id: 'layout', label: 'Layout', icon: SlidersHorizontal },
   { id: 'appearance', label: 'Style', icon: Palette },
@@ -61,23 +64,30 @@ function uid(prefix: string): string {
 }
 
 /**
- * Home customisation editor. All edits are local to this session; nothing is
- * persisted until Done. Cancel discards, Undo walks the in-memory history, and
- * Reset is always available. Built on the same vaul sheet the rest of the app
- * uses, so it is a bottom sheet on mobile and a tall sheet on desktop.
+ * Home customisation panel. It edits the provider's live `preview`, so every
+ * change is visible on Home immediately; Done persists, Cancel discards, and
+ * closing with X returns to the inline editor without losing the draft.
  */
 export function WorkspaceSheet<TData>({
   open,
   onOpenChange,
   widgets,
   breakpoint,
+  initialTab = 'widgets',
+  initialSelectedId = null,
 }: WorkspaceSheetProps<TData>) {
-  const { workspace, save } = useWorkspace();
+  const { workspace, preview, setPreview, save, pendingSync } = useWorkspace();
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
 
-  const [draft, setDraft] = useState<UserWorkspace>(() => defaultWorkspace());
-  const [instances, setInstances] = useState<WidgetInstance[]>([]);
+  const draft: UserWorkspace = preview ?? workspace ?? defaultWorkspace();
+  const instances = useMemo(
+    () => resolveInstances(draft, breakpoint, widgets),
+    [draft, breakpoint, widgets],
+  );
+
   const [history, setHistory] = useState<WidgetInstance[][]>([]);
-  const [tab, setTab] = useState<TabId>('widgets');
+  const [tab, setTab] = useState<WorkspaceTabId>(initialTab);
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -85,31 +95,24 @@ export function WorkspaceSheet<TData>({
   const [saveName, setSaveName] = useState('');
   const [editingLayoutId, setEditingLayoutId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
 
   useEffect(() => {
     if (!open) return;
-    const base = workspace ?? defaultWorkspace();
-    setDraft(base);
-    setInstances(resolveInstances(base, breakpoint, widgets));
     setHistory([]);
-    setTab('widgets');
+    setTab(initialTab);
     setMessage('');
     setError(null);
     setSaving(false);
     setConfirmReset(null);
     setSaveName('');
     setEditingLayoutId(null);
-    setSelectedId(null);
-  }, [open, workspace, breakpoint, widgets]);
+    setSelectedId(initialSelectedId);
+  }, [open, initialTab, initialSelectedId]);
 
   const visibleIds = useMemo(
     () => new Set(instances.map((instance) => instance.widgetId)),
     [instances],
-  );
-  const available = useMemo(
-    () => widgets.filter((widget) => !visibleIds.has(widget.id)),
-    [widgets, visibleIds],
   );
   const widgetById = useMemo(
     () => new Map(widgets.map((widget) => [widget.id, widget])),
@@ -122,15 +125,17 @@ export function WorkspaceSheet<TData>({
     updater: (current: WidgetInstance[]) => WidgetInstance[],
     announcement: string,
   ) => {
+    const next = updater(instances);
     setHistory((entries) => [...entries, instances]);
-    setInstances(updater(instances));
+    setPreview(withInstances(draft, breakpoint, next));
     setMessage(announcement);
     setError(null);
   };
 
   const undo = () => {
     if (history.length === 0) return;
-    setInstances(history[history.length - 1]);
+    const previous = history[history.length - 1];
+    setPreview(withInstances(draft, breakpoint, previous));
     setHistory(history.slice(0, -1));
     setMessage('Change undone.');
   };
@@ -184,9 +189,7 @@ export function WorkspaceSheet<TData>({
 
   const handleUseLayout = (layoutId: string) => {
     const committed = withInstances(draft, breakpoint, instances);
-    const next: UserWorkspace = { ...committed, activeLayoutId: layoutId };
-    setDraft(next);
-    setInstances(resolveInstances(next, breakpoint, widgets));
+    setPreview({ ...committed, activeLayoutId: layoutId });
     setHistory([]);
     setMessage('Layout switched.');
     setError(null);
@@ -205,7 +208,7 @@ export function WorkspaceSheet<TData>({
         [breakpoint]: instances,
       },
     };
-    setDraft({
+    setPreview({
       ...draft,
       activeLayoutId: layout.id,
       layouts: [...draft.layouts, layout],
@@ -220,9 +223,7 @@ export function WorkspaceSheet<TData>({
       draft.activeLayoutId === layoutId
         ? (layouts[0]?.id ?? 'default')
         : draft.activeLayoutId;
-    const next: UserWorkspace = { ...draft, layouts, activeLayoutId };
-    setDraft(next);
-    setInstances(resolveInstances(next, breakpoint, widgets));
+    setPreview({ ...draft, layouts, activeLayoutId });
     setHistory([]);
     setMessage('Layout deleted.');
   };
@@ -235,13 +236,11 @@ export function WorkspaceSheet<TData>({
       id: uid('personal'),
       name: `${existing.name.slice(0, 55)} copy`,
     };
-    const next: UserWorkspace = {
+    setPreview({
       ...draft,
       activeLayoutId: copy.id,
       layouts: [...draft.layouts, copy],
-    };
-    setDraft(next);
-    setInstances(resolveInstances(next, breakpoint, widgets));
+    });
     setHistory([]);
     setMessage('Layout duplicated.');
   };
@@ -249,7 +248,7 @@ export function WorkspaceSheet<TData>({
   const handleRenameLayout = (layoutId: string) => {
     const name = editingName.trim();
     if (!name) return;
-    setDraft({
+    setPreview({
       ...draft,
       layouts: draft.layouts.map((layout) =>
         layout.id === layoutId ? { ...layout, name: name.slice(0, 60) } : layout,
@@ -272,8 +271,7 @@ export function WorkspaceSheet<TData>({
 
   const handleResetAll = () => {
     const reset = defaultWorkspace();
-    setDraft({ ...reset, layouts: draft.layouts });
-    setInstances(defaultInstances(widgets));
+    setPreview({ ...reset, layouts: draft.layouts });
     setHistory([]);
     setConfirmReset(null);
     setMessage('Everything reset to defaults. Saved layouts were kept.');
@@ -283,7 +281,8 @@ export function WorkspaceSheet<TData>({
     setSaving(true);
     setError(null);
     try {
-      await save(withInstances(draft, breakpoint, instances));
+      await save(draft);
+      setPreview(null);
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your workspace.');
@@ -292,32 +291,40 @@ export function WorkspaceSheet<TData>({
     }
   };
 
+  const handleCancel = () => {
+    setPreview(null);
+    onOpenChange(false);
+  };
+
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex h-[92vh] flex-col rounded-t-[28px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] outline-none">
+        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/30" />
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex h-[78vh] flex-col rounded-t-[28px] border border-[var(--color-border)] bg-[var(--color-bg-surface)] outline-none sm:left-auto sm:right-4 sm:bottom-4 sm:h-[92vh] sm:w-[440px] sm:rounded-[28px]">
           <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
             <div>
               <Drawer.Title className="text-base font-bold text-[var(--color-text-primary)]">
                 Customise Home
               </Drawer.Title>
               <p className="text-xs text-[var(--color-text-secondary)]">
-                Saved when you tap Done. Cancel discards this session.
+                Changes preview live on Home. Close this panel to see them, then Done
+                saves or Cancel discards.
               </p>
             </div>
             <Drawer.Close
-              aria-label="Close customisation"
+              aria-label="Close panel and preview Home"
               className="rounded-full p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-base)]"
             >
               <X className="h-5 w-5" />
             </Drawer.Close>
           </div>
 
-          {/* Live preview with sample data (never customer data). */}
           <div
             className="mx-4 mt-3 overflow-hidden rounded-2xl border border-[var(--color-border)] p-3"
-            style={wallpaperLayers(wallpaper.light, wallpaper.baseLight)}
+            style={wallpaperLayers(
+              dark ? wallpaper.dark : wallpaper.light,
+              dark ? wallpaper.baseDark : wallpaper.baseLight,
+            )}
             aria-label="Preview"
           >
             <div className="flex gap-2">
@@ -328,7 +335,7 @@ export function WorkspaceSheet<TData>({
                   <div
                     key={instance.instanceId}
                     className="min-w-0 flex-1 rounded-xl border px-2 py-1.5"
-                    style={previewStyle(instance, draft)}
+                    style={previewStyle(instance, draft, dark)}
                   >
                     <p className="truncate text-[10px] font-bold uppercase tracking-wide opacity-80">
                       {widget.title}
@@ -441,29 +448,44 @@ export function WorkspaceSheet<TData>({
                   );
                 })}
 
-                {available.length > 0 && (
-                  <div className="mt-2">
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">
-                      Add a widget
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      {available.map((widget) => (
-                        <button
+                <div className="mt-2">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">
+                    Widget gallery
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {widgets.map((widget) => {
+                      const onHome = visibleIds.has(widget.id);
+                      return (
+                        <div
                           key={widget.id}
-                          type="button"
-                          onClick={() => handleAdd(widget)}
-                          className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--color-border)] px-3 py-2 text-left text-sm"
+                          className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--color-border)] px-3 py-2 text-sm"
                         >
-                          <Plus className="h-4 w-4 text-[var(--color-accent)]" />
-                          <span className="min-w-0 flex-1 truncate font-medium">{widget.title}</span>
-                          <span className="text-[11px] text-[var(--color-text-secondary)]">
-                            {widget.defaultSize}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">
+                              {widget.title}
+                            </span>
+                            <span className="block truncate text-[11px] text-[var(--color-text-secondary)]">
+                              {widget.description} · {widget.defaultSize}
+                            </span>
                           </span>
-                        </button>
-                      ))}
-                    </div>
+                          {onHome ? (
+                            <span className="shrink-0 rounded-full bg-[var(--color-bg-elevated)] px-2 py-1 text-[10px] font-semibold text-[var(--color-text-secondary)]">
+                              On Home
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleAdd(widget)}
+                              className="shrink-0 rounded-full border border-[var(--color-accent)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-accent)]"
+                            >
+                              <Plus className="mr-1 inline h-3 w-3" /> Add
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
               </div>
             )}
 
@@ -605,7 +627,7 @@ export function WorkspaceSheet<TData>({
                         aria-label={option.label}
                         aria-pressed={draft.theme.accent === option.id}
                         onClick={() => {
-                          setDraft({ ...draft, theme: { ...draft.theme, accent: option.id } });
+                          setPreview({ ...draft, theme: { ...draft.theme, accent: option.id } });
                           setMessage(`${option.label} accent selected.`);
                         }}
                         className={cn(
@@ -636,7 +658,7 @@ export function WorkspaceSheet<TData>({
                     step={5}
                     value={draft.theme.transparency ?? 0}
                     onChange={(event) =>
-                      setDraft({
+                      setPreview({
                         ...draft,
                         theme: { ...draft.theme, transparency: Number(event.target.value) },
                       })
@@ -647,7 +669,7 @@ export function WorkspaceSheet<TData>({
                     type="button"
                     aria-pressed={draft.theme.blur !== false}
                     onClick={() =>
-                      setDraft({
+                      setPreview({
                         ...draft,
                         theme: { ...draft.theme, blur: draft.theme.blur === false },
                       })
@@ -656,6 +678,10 @@ export function WorkspaceSheet<TData>({
                   >
                     Blur {draft.theme.blur === false ? 'off' : 'on'}
                   </button>
+                  <p className="mt-2 text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
+                    Transparency and blur apply to widgets using the Glass surface.
+                    Solid and tinted widgets stay fully readable.
+                  </p>
                 </section>
 
                 <section>
@@ -753,7 +779,7 @@ export function WorkspaceSheet<TData>({
                       type="button"
                       aria-pressed={draft.wallpaper.id === preset.id}
                       onClick={() => {
-                        setDraft({
+                        setPreview({
                           ...draft,
                           wallpaper: { type: 'preset', id: preset.id },
                         });
@@ -772,7 +798,9 @@ export function WorkspaceSheet<TData>({
                           background:
                             preset.id === 'default'
                               ? 'repeating-linear-gradient(45deg, #e5e7eb 0 6px, #f8fafc 6px 12px)'
-                              : preset.light,
+                              : dark
+                                ? preset.dark
+                                : preset.light,
                         }}
                       />
                       <span className="block px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)]">
@@ -790,6 +818,11 @@ export function WorkspaceSheet<TData>({
             {error && (
               <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
                 {error}
+              </p>
+            )}
+            {pendingSync && !error && (
+              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                Saved on this device — waiting for a connection to sync.
               </p>
             )}
             <p aria-live="polite" className="sr-only">
@@ -846,7 +879,7 @@ export function WorkspaceSheet<TData>({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onOpenChange(false)}
+                  onClick={handleCancel}
                   className="ml-auto rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-secondary)]"
                 >
                   Cancel
@@ -877,9 +910,10 @@ function wallpaperLayers(background: string, fallback: string): React.CSSPropert
 function previewStyle(
   instance: WidgetInstance,
   draft: UserWorkspace,
+  dark: boolean,
 ): React.CSSProperties {
   const chosen = accentById(instance.style?.colour ?? draft.theme.accent);
-  const pair = draft.theme.mode === 'dark' ? chosen.dark : chosen.light;
+  const pair = dark ? chosen.dark : chosen.light;
   return {
     backgroundColor: pair.surface,
     color: pair.text,

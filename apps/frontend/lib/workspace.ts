@@ -406,6 +406,27 @@ export function moveInstance(
   return next.map((instance, order) => ({ ...instance, order }));
 }
 
+/** Moves an instance to an explicit index (drag-and-drop reorder). */
+export function reorderInstance(
+  instances: WidgetInstance[],
+  from: number,
+  to: number,
+): WidgetInstance[] {
+  if (
+    from < 0 ||
+    from >= instances.length ||
+    to < 0 ||
+    to >= instances.length ||
+    from === to
+  ) {
+    return instances;
+  }
+  const next = [...instances];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next.map((instance, order) => ({ ...instance, order }));
+}
+
 export function removeInstance(
   instances: WidgetInstance[],
   instanceId: string,

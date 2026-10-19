@@ -17,6 +17,7 @@ import {
   nearestSupportedSize,
   parseCachedWorkspace,
   relativeLuminance,
+  reorderInstance,
   removeInstance,
   resolveBreakpoint,
   resolveInstances,
@@ -195,6 +196,14 @@ describe('instance operations', () => {
     const next = removeInstance(base, 'b');
     expect(next.map((i) => i.instanceId)).toEqual(['a', 'c']);
     expect(next.map((i) => i.order)).toEqual([0, 1]);
+  });
+
+  it('reorders an instance to an explicit index (drag and drop)', () => {
+    const next = reorderInstance(base, 0, 2);
+    expect(next.map((i) => i.instanceId)).toEqual(['b', 'c', 'a']);
+    expect(next.map((i) => i.order)).toEqual([0, 1, 2]);
+    expect(reorderInstance(base, 1, 1)).toBe(base);
+    expect(reorderInstance(base, -1, 2)).toBe(base);
   });
 
   it('adds an instance and respects the per-breakpoint cap', () => {

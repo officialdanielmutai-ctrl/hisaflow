@@ -1,6 +1,6 @@
 # HisaFlow — Workspace Customisation: Agent Directive
 
-**Status:** In progress — C-0 and C-1 complete; C-2–C-5 partially implemented (see §12 and §12.1). Decisions defaulted to industry standard (Section 11).
+**Status:** In progress — C-0 and C-1 complete; C-2–C-5 implemented with the 2026-10-19 production follow-up (see §12 and §12.1). Decisions defaulted to industry standard (Section 11).
 **Supersedes:** the customisation parts of `hisaflow-ui-feel-and-workspace.md`. That file's sections on default Home content, table arrangement, KPI/Home redesign, and the full widget catalog are **out of scope and already handled — agents must not act on them.** Use this document only.
 
 **Ground rules:** `hisaflow-agent-build-briefs.md` Part 1 and `hisaflow-quality-and-assistant-overhaul.md` Section 1 apply in full: every change passes lint, type-check, the existing test suite, and CI using the repo's own commands, with no suppressions, skipped tests, or loosened configs. "Green" is necessary, not sufficient — behaviour and feel must be verified.
@@ -287,10 +287,10 @@ Every prompt begins: *Read `hisaflow-workspace-customisation.md` in full, `hisaf
 |---|---|---|---|
 | C-0 Discovery report | — | ✅ Done (2026-10-17) | Read-only; `hisaflow-workspace-c0-discovery.md` |
 | C-1 Foundations (schema, types, API, registry, cache) | ✅ Done | ✅ Done | `user_workspaces` + `/workspace` API + validation + `buildWidgetRegistry` + `useWorkspace` cache; Home unchanged for non-customisers |
-| C-2 Edit mode (add/remove/replace/move/resize/reset) | — | 🟡 In progress | Add/remove/move (button + keyboard)/resize/reset/undo/cancel/save done; drag ghost, Replace… and redo pending |
-| C-3 Layout switching + templates + saved layouts | ✅ (limits) | 🟡 In progress | Templates + save-as/rename/duplicate/delete + switcher done; crossfade and per-breakpoint template editing pending |
-| C-4 Widget customisation + theming + contrast guard | — | 🟡 In progress | Colour/surface/size/accent/transparency/blur + AA palette guard done; title/icon/configSchema/mode/live-Home preview pending |
-| C-5 Wallpaper presets + picker + safeguards | — | 🟡 In progress | CSS presets (light/dark) + live picker + bounded surfaces done; crossfade/fallback matrix/upload pending |
+| C-2 Edit mode (add/remove/replace/move/resize/reset) | — | 🟡 In progress | **Production slice complete (2026-10-19):** inline drag reorder with drop indicator, keyboard pick-up/move, long-press/right-click/⋯ menu, mobile reorder controls, undo/cancel/reset, and a gallery that shows every widget with Add / On Home. Ghost placeholder, free-form collision, Replace… and redo pending. |
+| C-3 Layout switching + templates + saved layouts | ✅ (limits) | 🟡 In progress | Templates + save-as/rename/duplicate/delete + switcher done and preview live; crossfade and per-breakpoint template editing pending |
+| C-4 Widget customisation + theming + contrast guard | — | 🟡 In progress | Colour/surface/size/accent/transparency/blur + AA palette guard + **live Home preview (2026-10-19)** done; title/icon/configSchema/mode pending |
+| C-5 Wallpaper presets + picker + safeguards | — | 🟡 In progress | CSS presets (light/dark), live picker, **Home-wide wallpaper and live preview (2026-10-19)**, bounded surfaces done; crossfade/fallback matrix/upload pending |
 | C-6 Team depth (+ upload, stacks, adaptive accent if agreed) | ☐ Not started | ☐ Not started | Tier-gated |
 | C-7 Feel polish, performance, accessibility | — | ☐ Not started | |
 
@@ -298,7 +298,7 @@ Every prompt begins: *Read `hisaflow-workspace-customisation.md` in full, `hisaf
 
 ---
 
-## 12.1 Implementation status (2026-10-17)
+## 12.1 Implementation status (2026-10-17; updated 2026-10-19)
 
 ### C-0 — Discovery (Done, read-only)
 
@@ -336,46 +336,68 @@ unknown widgets, tier limits, and cross-tenant reads.
 | `components/workspace/WidgetErrorBoundary.tsx` | One failing widget can never take down Home. |
 | `features/dashboard/DashboardKpiRows.tsx` | Builds the registry from the vertical's existing config; renders the original markup when no workspace is saved, the customised ordered grid when one is. |
 
-Guards: `lib/workspace.spec.ts` (24) and `DashboardKpiRows.spec.tsx` (3,
-including “no workspace → original arrangement” and empty-breakpoint fallback).
+Guards: `lib/workspace.spec.ts` (25) and `DashboardKpiRows.spec.tsx` (12,
+including “no workspace → original arrangement”, empty-breakpoint fallback,
+live-preview theme, long-press, drag and keyboard reorder).
 
 ### C-2–C-5 — Implemented slice (In progress)
 
 `components/workspace/WorkspaceSheet.tsx` is the editor: widget list with
-add/remove/move (up/down buttons, keyboard-operable) and S/M/L size; built-in
-templates; personal layouts (save-as, rename, duplicate, delete, switch); accent
-palette; transparency/blur; per-widget colour/surface; wallpaper presets; Undo,
-Cancel, Reset layout/Reset all (with inline confirmation) and Done. Every change
-is previewed in the sheet and persisted only on Done. A quiet **Customise**
-entry sits above the KPI grid on every dashboard.
+add/remove/move (up/down buttons, keyboard-operable) and S/M/L size; a gallery
+listing every widget with Add / On Home; built-in templates; personal layouts
+(save-as, rename, duplicate, delete, switch); accent palette;
+transparency/blur; per-widget colour/surface; wallpaper presets; Undo, Cancel,
+Reset layout/Reset all (with inline confirmation) and Done. Every change is
+previewed live on Home (via the provider's `preview`) and persisted only on
+Done. A quiet **Customise** entry sits above the KPI grid on every dashboard;
+editing itself happens inline on the grid (long-press/right-click menu, drag,
+buttons, keyboard), with the sheet used for deeper panels.
+
+`components/workspace/WorkspaceBackdrop.tsx` applies the chosen wallpaper to the
+Home content area and follows the live draft, while every other dashboard
+screen keeps solid surfaces.
+
+### Production follow-up (2026-10-19)
+
+The owner checked the deployed Home and reported four blockers. Each is fixed
+in the current working tree and has a regression guard:
+
+| Report | Root cause | Fix | Regression guard |
+|---|---|---|---|
+| **A. Changes in the Customise panel were not visible on Home.** | The panel edited a local draft, and the Home edit surface read theme values from `workspace` (server state) rather than the live `preview`; wallpaper was applied only inside the KPI grid. | `WorkspaceSheet` and `DashboardKpiRows` now share the provider's `preview`. The Home grid reads `rendered.theme` (the preview while editing), and `WorkspaceBackdrop` applies wallpaper across the Home content area. The panel also states that closing it reveals the live preview. | `DashboardKpiRows.spec.tsx` (“previews theme and colour changes on the live Home grid”), `WorkspaceBackdrop.spec.tsx` (“follows the live preview…”) |
+| **B. Long-press on a widget did not offer customisation options.** | Only the ⋯ button opened the menu; there was no pointer long-press or context-menu/keyboard path, and the ⋯ affordance was hidden on touch devices. | Long-press (550ms, cancelled by >10px movement/scroll), right-click, and `Shift+F10`/ContextMenu open the widget menu with Edit Home, Move, Resize, Style & colour, and Remove. The ⋯ button is visible on mobile, and menu focus/Escape are handled. | `DashboardKpiRows.spec.tsx` (long press, scroll cancellation, right-click, ⋯ menu) |
+| **C. Widgets could not be moved or added at will.** | No drag reorder; reorder was only available through controls, and the gallery only listed widgets that were not already on Home (so it appeared empty on the default layout). | Edit mode now supports pointer drag with a drop indicator, a keyboard pick-up/arrow-move/Enter-drop alternative with live announcements, and the existing up/down/resize/remove controls on every device. The gallery lists **all** widgets, marking those on Home and offering Add for the rest. | `DashboardKpiRows.spec.tsx` (drag reorder, keyboard pick-up, controls), `reorderInstance` tests in `lib/workspace.spec.ts` |
+| **D. Wallpaper could not be changed on the Home screen.** | Wallpaper was limited to the KPI grid/local panel draft, so choosing a preset did not change the Home background and did not survive as a Home-wide surface. | New `WorkspaceBackdrop` wraps the Home content, follows `preview ?? workspace`, applies light/dark presets with a stable minimum height, and leaves every other dashboard screen solid. The picker previews the actual wallpaper variant. | `WorkspaceBackdrop.spec.tsx` (Home wallpaper, live preview, non-Home screens, default wallpaper) |
 
 ### Deliberate v1 constraints (recorded, not silent)
 
-- **Ordered flow + preset sizes**, not free-form `x/y` drag. There is no
-  drag ghost/collision engine yet; move/resize are explicit controls with a
-  keyboard path. Free-form drag remains a C-2 increment (evaluate `dnd-kit`).
+- **Ordered flow + preset sizes**, not free-form `x/y` drag. Pointer drag
+  reorders the flow with a drop indicator and every move has a button and
+  keyboard path; there is still no free-form collision engine or drag ghost.
+  Free-form positioning remains a later C-2 increment (evaluate `dnd-kit`).
 - **Replace… and redo** are not implemented yet (remove + add and Undo cover
   the recovery need).
 - **Per-breakpoint editing** edits one device class at a time; templates apply
   to the current breakpoint. Other breakpoints keep their saved/default state.
-- **Wallpaper** uses CSS gradient presets (no image assets, no upload).
-  Crossfade and the full preset × surface × mode contrast matrix are pending.
+- **Wallpaper** uses CSS gradient presets (no image assets, no upload). It is
+  applied Home-wide and previews live, but crossfade and the full preset ×
+  surface × mode contrast matrix are still pending.
 - **Title/icon and configSchema display options** are in the data model but not
   surfaced in the editor yet. App light/dark stays under Settings.
 - Backend types mirror `@hisaflow/types`; the frontend consumes the shared
   package type-only. Keep the two in sync when the contract changes.
 
-### Gates (2026-10-17)
+### Gates (re-run 2026-10-19 after the production follow-up)
 
 | Gate | Result |
 |---|---|
 | Backend `tsc --noEmit` | Pass |
-| Backend lint | 0 errors |
+| Backend lint | 0 errors (warnings only) |
 | Backend tests | **110 suites / 878 tests** |
 | Backend `nest build` | Pass |
 | Frontend `tsc --noEmit` | Pass |
-| Frontend lint (repo-wide) | 0 errors |
-| Frontend tests | **40 files / 234 tests** |
+| Frontend lint (repo-wide) | 0 errors (warnings only) |
+| Frontend tests | **41 files / 248 tests** |
 | Frontend `next build` | Pass |
 | Admin typecheck / tests | Pass / 12 tests |
 | E2E typecheck | Pass |
