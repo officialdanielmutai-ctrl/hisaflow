@@ -146,8 +146,8 @@ describe('StatCard (shared building block)', () => {
     );
 
     const card = screen.getByTestId('stat-card');
-    expect(card.className).toContain('from-[#09221B]');
-    expect(screen.getByText('Total Sales').className).toContain('text-emerald-300');
+    expect(card.className).toContain('bg-[#0C1831]');
+    expect(screen.getByText('Total Sales').className).toContain('text-slate-300');
     expect(screen.getByText('KES 542,376').className).toContain('text-white');
   });
 

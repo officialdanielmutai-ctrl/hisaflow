@@ -14,7 +14,6 @@ import ScanModeSheet from '../system/ScanModeSheet';
 import LabelCaptureSheet from '../system/LabelCaptureSheet';
 import ReceiptCaptureSheet from '../system/ReceiptCaptureSheet';
 import { OrgSwitcher } from './OrgSwitcher';
-import DateRangePicker from '../system/DateRangePicker';
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -65,7 +64,6 @@ export default function TopBar() {
           <OrgSwitcher />
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
-          <DateRangePicker />
           <button
             onClick={() => setScanModeOpen(true)}
             className="relative p-2 text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] rounded-full transition-colors"

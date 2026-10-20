@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import React from 'react';
-import { ArrowUpRight, TrendingUp, TrendingDown, Minus, type LucideIcon } from 'lucide-react';
+import { MoreHorizontal, TrendingUp, TrendingDown, Minus, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
  * dark theme compliance, and adversarial states (loading / empty / error).
  *
  * Supported Slots & Capabilities:
- * - Surface Variants: neutral, blue, emerald, amber, rose, and **hero** (deep dark brand contrast)
+ * - Surface Variants: neutral, blue, emerald, amber, rose, and **hero** (deep dark midnight navy contrast)
  * - Temporal Delta Badge: explicit time-comparison indicator (e.g. "+ 22% vs last month")
  * - Micro-Visualizations: Area Spline Sparklines, Semi-Radial Arc Gauges, Segmented Velocity Bars
  * - In-card Quick Actions: Contextual trigger buttons (e.g. "Record Sale", "Check In")
@@ -22,6 +22,7 @@ export type StatEmphasis = 'default' | 'success' | 'warning' | 'critical';
 
 export type StatTrailing =
   | { kind: 'arrow' }
+  | { kind: 'menu'; onClick?: (e: React.MouseEvent) => void }
   | { kind: 'badge'; text: string; tone: StatTone };
 
 export interface StatDelta {
@@ -81,7 +82,7 @@ export interface StatCardProps extends StatCardContent {
 }
 
 const ICON_TONES: Record<StatTone, string> = {
-  hero: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+  hero: 'bg-white/10 text-white border border-white/20',
   blue: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
   emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
   amber: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
@@ -91,7 +92,7 @@ const ICON_TONES: Record<StatTone, string> = {
 };
 
 const CARD_TONES: Record<StatTone, string> = {
-  hero: 'border-emerald-900/40 bg-gradient-to-br from-[#09221B] via-[#0E2E25] to-[#154336] text-white shadow-md hover:border-emerald-500/50 dark:from-[#061B15] dark:via-[#0A261E] dark:to-[#10382D] dark:border-emerald-600/50',
+  hero: 'border-slate-800 bg-[#0C1831] text-white shadow-md hover:border-slate-700 dark:bg-[#070D1E] dark:border-slate-800',
   blue: 'border-blue-200/80 bg-gradient-to-br from-blue-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-blue-400 dark:border-blue-900/50',
   emerald:
     'border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-emerald-400 dark:border-emerald-900/50',
@@ -100,15 +101,6 @@ const CARD_TONES: Record<StatTone, string> = {
   rose: 'border-rose-200/80 bg-gradient-to-br from-rose-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-rose-400 dark:border-rose-900/50',
   neutral:
     'border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)]',
-};
-
-const ARROW_TONES: Record<StatTone, string> = {
-  hero: 'text-emerald-300 group-hover:text-emerald-200',
-  blue: 'group-hover:text-blue-600 dark:group-hover:text-blue-400',
-  emerald: 'group-hover:text-emerald-600 dark:group-hover:text-emerald-400',
-  amber: 'group-hover:text-amber-600 dark:group-hover:text-amber-400',
-  rose: 'group-hover:text-rose-600 dark:group-hover:text-rose-400',
-  neutral: 'group-hover:text-[var(--color-accent)]',
 };
 
 const VALUE_TONES: Record<StatEmphasis, string> = {
@@ -126,7 +118,7 @@ const FOOTNOTE_TONES: Record<StatEmphasis, string> = {
 };
 
 const BADGE_TONES: Record<StatTone, string> = {
-  hero: 'bg-white/10 text-emerald-200 border border-white/20',
+  hero: 'bg-white/10 text-slate-200 border border-white/20',
   blue: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800',
   emerald: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800',
   amber: 'bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800',
@@ -143,27 +135,32 @@ function TrailingSlot({
   tone: StatTone;
 }) {
   if (!trailing) return null;
-  if (trailing.kind === 'arrow') {
+  if (trailing.kind === 'menu') {
     return (
-      <ArrowUpRight
-        aria-hidden="true"
-        className={cn(
-          'h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-colors',
-          ARROW_TONES[tone],
-        )}
-      />
+      <button
+        type="button"
+        onClick={trailing.onClick}
+        aria-label="Options"
+        className="p-1 rounded-lg text-slate-400 hover:text-slate-200 dark:hover:text-white transition-colors"
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
     );
   }
-  return (
-    <span
-      className={cn(
-        'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold',
-        BADGE_TONES[trailing.tone],
-      )}
-    >
-      {trailing.text}
-    </span>
-  );
+  if (trailing.kind === 'badge') {
+    return (
+      <span
+        className={cn(
+          'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold',
+          BADGE_TONES[trailing.tone],
+        )}
+      >
+        {trailing.text}
+      </span>
+    );
+  }
+  // kind === 'arrow' deliberately renders nothing to eliminate non-functional arrows
+  return null;
 }
 
 function DeltaBadge({ delta, isHero }: { delta: StatDelta; isHero?: boolean }) {
@@ -172,7 +169,7 @@ function DeltaBadge({ delta, isHero }: { delta: StatDelta; isHero?: boolean }) {
   const tone = delta.tone ?? (isUp ? 'success' : isDown ? 'critical' : 'neutral');
 
   const toneClasses = isHero
-    ? 'bg-white/10 text-emerald-200 border-white/15'
+    ? 'bg-teal-500/20 text-teal-300 border-teal-500/30'
     : tone === 'success'
       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50'
       : tone === 'critical'
@@ -182,22 +179,33 @@ function DeltaBadge({ delta, isHero }: { delta: StatDelta; isHero?: boolean }) {
           : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] border-[var(--color-border)]';
 
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold border transition-colors shrink-0',
-        toneClasses,
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold border transition-colors shrink-0',
+          toneClasses,
+        )}
+      >
+        {isUp ? (
+          <TrendingUp className="h-3 w-3" />
+        ) : isDown ? (
+          <TrendingDown className="h-3 w-3" />
+        ) : (
+          <Minus className="h-3 w-3" />
+        )}
+        <span>{delta.value}</span>
+      </span>
+      {delta.period && (
+        <span
+          className={cn(
+            'text-xs font-normal',
+            isHero ? 'text-slate-400' : 'text-[var(--color-text-secondary)]',
+          )}
+        >
+          {delta.period}
+        </span>
       )}
-    >
-      {isUp ? (
-        <TrendingUp className="h-3 w-3" />
-      ) : isDown ? (
-        <TrendingDown className="h-3 w-3" />
-      ) : (
-        <Minus className="h-3 w-3" />
-      )}
-      <span>{delta.value}</span>
-      {delta.period && <span className="opacity-80 font-normal">{delta.period}</span>}
-    </span>
+    </div>
   );
 }
 
@@ -402,7 +410,7 @@ export function StatCard({
             <span
               className={cn(
                 'block truncate text-xs font-bold uppercase tracking-wider',
-                isHero ? 'text-emerald-300' : 'text-[var(--color-text-primary)]',
+                isHero ? 'text-slate-300' : 'text-[var(--color-text-primary)]',
               )}
             >
               {label}
@@ -411,7 +419,7 @@ export function StatCard({
               <span
                 className={cn(
                   'block truncate text-[11px]',
-                  isHero ? 'text-emerald-200/80' : 'text-[var(--color-text-secondary)]',
+                  isHero ? 'text-slate-400' : 'text-[var(--color-text-secondary)]',
                 )}
               >
                 {sublabel}
@@ -438,7 +446,7 @@ export function StatCard({
             <span
               className={cn(
                 'ml-1 text-base font-medium sm:text-lg',
-                isHero ? 'text-emerald-200/80' : 'text-[var(--color-text-secondary)]',
+                isHero ? 'text-slate-400' : 'text-[var(--color-text-secondary)]',
               )}
             >
               {valueSuffix}
@@ -473,7 +481,7 @@ export function StatCard({
             className={cn(
               'truncate text-xs',
               isHero
-                ? 'text-emerald-200/90'
+                ? 'text-slate-400'
                 : isError
                   ? FOOTNOTE_TONES.critical
                   : FOOTNOTE_TONES[footnoteTone],
@@ -492,7 +500,7 @@ export function StatCard({
             className={cn(
               'shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border transition-colors',
               isHero
-                ? 'border-emerald-400/40 text-emerald-200 bg-white/5 hover:bg-white/15'
+                ? 'border-slate-700 text-slate-200 bg-white/5 hover:bg-white/15'
                 : 'border-[var(--color-border)] text-[var(--color-accent)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-surface-hover)]',
             )}
           >

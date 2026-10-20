@@ -6,14 +6,17 @@ export interface DashboardData {
     todaySales: number;
     salesTrendLabel: string;
     salesTrendIsPositive: boolean;
+    salesTrendPct?: number;
     todayExpenses: number;
     expensesTrendLabel: string;
     expensesTrendIsNegative: boolean;
+    expensesTrendPct?: number;
     lowStockCount: number;
     lowStockLabel: string;
     profitEstimate: number;
     profitTrendLabel: string;
     profitTrendIsPositive: boolean;
+    profitTrendPct?: number;
   };
   attentionFeed: Array<{
     id: string;

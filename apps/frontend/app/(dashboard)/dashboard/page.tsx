@@ -23,6 +23,11 @@ import { RETAIL_KPI_ROWS, RETAIL_INVENTORY_ROWS } from '@/features/dashboard/con
 import { STAFF_KPI_ROWS } from '@/features/dashboard/config/staff';
 
 const ModernAnalyticsChart = dynamic(() => import('@/components/charts/ModernAnalyticsChart'), { ssr: false });
+const BentoSalesPair = dynamic(() => import('@/components/dashboard/bento/BentoSalesPair'), { ssr: false });
+const BentoGrowthCard = dynamic(() => import('@/components/dashboard/bento/BentoGrowthCard'), { ssr: false });
+const BentoGaugeCard = dynamic(() => import('@/components/dashboard/bento/BentoGaugeCard'), { ssr: false });
+const BentoStatisticsCard = dynamic(() => import('@/components/dashboard/bento/BentoStatisticsCard'), { ssr: false });
+const BentoActivityFeed = dynamic(() => import('@/components/dashboard/bento/BentoActivityFeed'), { ssr: false });
 
 // ── Staff Dashboard ───────────────────────────────────────────────────────────
 function StaffDashboard() {
@@ -253,15 +258,56 @@ function RetailDashboard() {
         </div>
       </div>
 
-      {/* Top Row: KPI Metric Cards */}
-      <div className="mb-2">
-        <DashboardKpiRows rows={RETAIL_KPI_ROWS} data={data} />
+      {/* ── Desktop Bento Grid (lg+) ─────────────────────────────────────────── */}
+      <div className="hidden lg:grid lg:grid-cols-12 gap-5">
+        {/* Row 1 */}
+        <div className="lg:col-span-4 flex flex-col">
+          <BentoSalesPair
+            salesAmount={data.kpis.todaySales}
+            purchaseAmount={data.kpis.todayExpenses}
+            salesTrendPct={data.kpis.salesTrendPct}
+            salesTrendLabel={data.kpis.salesTrendLabel}
+            purchaseTrendPct={data.kpis.expensesTrendPct}
+            purchaseTrendLabel={data.kpis.expensesTrendLabel}
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-4">
+          <BentoGrowthCard className="h-full" />
+        </div>
+        <div className="lg:col-span-4">
+          <BentoGaugeCard
+            value={data.kpis.lowStockCount}
+            label="Low Stock Items"
+            totalCapacity={Math.max(data.kpis.lowStockCount + 45, 100)}
+            className="h-full"
+          />
+        </div>
+
+        {/* Row 2 */}
+        <div className="lg:col-span-7">
+          <BentoStatisticsCard className="h-full" />
+        </div>
+        <div className="lg:col-span-5">
+          <BentoActivityFeed className="h-full" />
+        </div>
+
+        {/* Row 3 — Chart spans full width on desktop */}
+        <div className="lg:col-span-12">
+          <ModernAnalyticsChart />
+        </div>
       </div>
 
-      {/* Main Analytical & Operational Desktop Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Section (8 cols on desktop): Modern Chart & Inventory Snapshot */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
+      {/* ── Mobile Layout (below lg) ─────────────────────────────────────────── */}
+      <div className="lg:hidden flex flex-col gap-6">
+        {/* Top Row: KPI Metric Cards */}
+        <div className="mb-2">
+          <DashboardKpiRows rows={RETAIL_KPI_ROWS} data={data} />
+        </div>
+
+        {/* Main Analytical & Operational Grid */}
+        <div className="grid grid-cols-1 gap-6">
+          {/* Chart */}
           <ModernAnalyticsChart />
 
           {/* Inventory Snapshot */}
@@ -274,10 +320,7 @@ function RetailDashboard() {
             </div>
             <DashboardKpiRows rows={RETAIL_INVENTORY_ROWS} data={data} />
           </div>
-        </div>
 
-        {/* Right Rail (4 cols on desktop): Attention Feed & Recommendations */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
           {/* Attention Feed */}
           {data.attentionFeed.length > 0 && (
             <div>
@@ -348,6 +391,7 @@ function RetailDashboard() {
     </div>
   );
 }
+
 
 export default function DashboardPage() {
   const { canViewAnalytics, isGuestHouse, isSchool, isChemist, isRestaurant, isWholesaler, isIsp } = useRole();

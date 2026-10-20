@@ -26,7 +26,7 @@ export default function DashboardLayout({
             <div className="min-h-screen bg-[var(--color-bg-base)] flex flex-col lg:pl-16 transition-[padding] duration-200">
               <DesktopSidebar />
               <TopBar />
-              <main className="w-full max-w-lg lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 lg:pt-24 pb-20 lg:pb-10 flex-1">
+              <main className="w-full max-w-lg lg:max-w-none mx-auto lg:mx-0 px-4 sm:px-6 lg:px-8 2xl:px-10 pt-20 lg:pt-22 pb-20 lg:pb-10 flex-1">
                 <WorkspaceBackdrop>
                   <BillingStatusBanner />
                   <OrgGate>{children}</OrgGate>

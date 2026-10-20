@@ -32,9 +32,11 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
           footnote: data.kpis.salesTrendLabel,
           footnoteTone: data.kpis.salesTrendIsPositive ? 'success' : 'critical',
           delta: {
-            value: data.kpis.salesTrendLabel?.includes('%')
-              ? data.kpis.salesTrendLabel.split(' ')[0]
-              : '+14%',
+            value: data.kpis.salesTrendPct != null
+              ? `${data.kpis.salesTrendPct >= 0 ? '+' : ''}${data.kpis.salesTrendPct}%`
+              : data.kpis.salesTrendLabel?.includes('%')
+                ? data.kpis.salesTrendLabel.split(' ')[0]
+                : '0%',
             period: 'vs last month',
             direction: data.kpis.salesTrendIsPositive ? 'up' : 'down',
             tone: data.kpis.salesTrendIsPositive ? 'success' : 'critical',
@@ -59,9 +61,11 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
             ? 'critical'
             : 'success',
           delta: {
-            value: data.kpis.expensesTrendLabel?.includes('%')
-              ? data.kpis.expensesTrendLabel.split(' ')[0]
-              : '-5%',
+            value: data.kpis.expensesTrendPct != null
+              ? `${data.kpis.expensesTrendPct >= 0 ? '+' : ''}${data.kpis.expensesTrendPct}%`
+              : data.kpis.expensesTrendLabel?.includes('%')
+                ? data.kpis.expensesTrendLabel.split(' ')[0]
+                : '0%',
             period: 'vs last month',
             direction: data.kpis.expensesTrendIsNegative ? 'down' : 'up',
             tone: data.kpis.expensesTrendIsNegative ? 'success' : 'critical',

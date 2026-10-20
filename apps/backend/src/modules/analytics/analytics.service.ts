@@ -15,11 +15,19 @@ export class AnalyticsService {
   async getDashboardSummary(organizationId: string) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
 
-    const [todayTransactions, allItems, activeAlerts, recommendedActions] =
+    const [todayTransactions, yesterdayTransactions, allItems, activeAlerts, recommendedActions] =
       await Promise.all([
         this.prisma.db.inventoryTransaction.findMany({
           where: { organizationId, createdAt: { gte: todayStart } },
+          include: {
+            item: { select: { sellingPrice: true, costPrice: true } },
+          },
+        }),
+        this.prisma.db.inventoryTransaction.findMany({
+          where: { organizationId, createdAt: { gte: yesterdayStart, lt: todayStart } },
           include: {
             item: { select: { sellingPrice: true, costPrice: true } },
           },
@@ -53,11 +61,52 @@ export class AnalyticsService {
       }
     }
 
+    let yesterdaySales = 0;
+    let yesterdayExpenses = 0;
+
+    for (const tx of yesterdayTransactions) {
+      const qty = Math.abs(Number(tx.quantityChange));
+      if (tx.type === 'SALE' && tx.item.sellingPrice != null) {
+        yesterdaySales += qty * Number(tx.item.sellingPrice);
+      } else if (tx.type === 'PURCHASE' && tx.item.costPrice != null) {
+        yesterdayExpenses += qty * Number(tx.item.costPrice);
+      }
+    }
+
+    // Dynamic sales trend calculation (vs previous period)
+    let salesTrendPct = 0;
+    if (yesterdaySales === 0 && todaySales > 0) {
+      salesTrendPct = 100;
+    } else if (yesterdaySales > 0) {
+      salesTrendPct = Math.round(((todaySales - yesterdaySales) / yesterdaySales) * 100);
+    }
+    const salesTrendIsPositive = salesTrendPct >= 0;
+    const salesTrendLabel = salesTrendPct > 0 ? `+${salesTrendPct}%` : `${salesTrendPct}%`;
+
+    // Dynamic expenses trend calculation
+    let expensesTrendPct = 0;
+    if (yesterdayExpenses === 0 && todayExpenses > 0) {
+      expensesTrendPct = 100;
+    } else if (yesterdayExpenses > 0) {
+      expensesTrendPct = Math.round(((todayExpenses - yesterdayExpenses) / yesterdayExpenses) * 100);
+    }
+    const expensesTrendIsNegative = expensesTrendPct > 0;
+    const expensesTrendLabel = expensesTrendPct > 0 ? `+${expensesTrendPct}%` : `${expensesTrendPct}%`;
+
     const lowStockCount = allItems.filter(
       (p) => Number(p.quantity) <= Number(p.reorderThreshold) && Number(p.reorderThreshold) > 0,
     ).length;
 
     const profitEstimate = todaySales - todayExpenses;
+    const yesterdayProfit = yesterdaySales - yesterdayExpenses;
+    let profitTrendPct = 0;
+    if (yesterdayProfit === 0 && profitEstimate > 0) {
+      profitTrendPct = 100;
+    } else if (yesterdayProfit !== 0) {
+      profitTrendPct = Math.round(((profitEstimate - yesterdayProfit) / Math.abs(yesterdayProfit)) * 100);
+    }
+    const profitTrendIsPositive = profitTrendPct >= 0;
+    const profitTrendLabel = profitTrendPct > 0 ? `+${profitTrendPct}%` : `${profitTrendPct}%`;
 
     const total = allItems.length;
     const healthy = allItems.filter(
@@ -77,7 +126,21 @@ export class AnalyticsService {
 
     return {
       greeting: { timeOfDay },
-      kpis: { todaySales, todayExpenses, lowStockCount, profitEstimate },
+      kpis: {
+        todaySales,
+        salesTrendLabel,
+        salesTrendIsPositive,
+        salesTrendPct,
+        todayExpenses,
+        expensesTrendLabel,
+        expensesTrendIsNegative,
+        expensesTrendPct,
+        lowStockCount,
+        profitEstimate,
+        profitTrendLabel,
+        profitTrendIsPositive,
+        profitTrendPct,
+      },
       attentionFeed: activeAlerts.map((a) => ({
         id: a.id,
         message: a.title,
