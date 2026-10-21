@@ -121,13 +121,16 @@ export default function BentoStatisticsCard({
         {/* Right 7 Vertical Capsule Bars */}
         <div className="md:col-span-8 flex items-end justify-between gap-2 pt-8">
           {bars.map((bar) => (
-            <div key={bar.day} className="flex flex-col items-center gap-2 group flex-1">
+            <div
+              key={bar.day}
+              className="flex flex-col items-center gap-2 group flex-1 cursor-pointer transition-transform duration-300 hover:-translate-y-1"
+            >
               {/* Floating Pill Tag Above Pillar */}
               <div
                 className={cn(
-                  'rounded-full px-1.5 py-0.5 text-[10px] font-bold transition-all shadow-sm shrink-0 whitespace-nowrap',
+                  'rounded-full px-1.5 py-0.5 text-[10px] font-bold transition-all shadow-sm shrink-0 whitespace-nowrap group-hover:scale-110 group-hover:shadow-md',
                   bar.isHighlight
-                    ? 'bg-emerald-500 text-white dark:bg-emerald-400 dark:text-slate-950 font-black scale-105'
+                    ? 'bg-emerald-500 text-white dark:bg-emerald-400 dark:text-slate-950 font-black scale-105 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
                     : 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/25',
                 )}
               >
@@ -135,10 +138,10 @@ export default function BentoStatisticsCard({
               </div>
 
               {/* Vertical Capsule Pillar Track */}
-              <div className="w-8 sm:w-10 h-36 sm:h-40 rounded-full bg-[var(--color-bg-elevated)] p-1 flex flex-col justify-end overflow-hidden transition-all group-hover:bg-[var(--color-border)]/60">
+              <div className="relative w-8 sm:w-10 h-36 sm:h-40 rounded-full bg-[var(--color-bg-elevated)] p-1 flex flex-col justify-end overflow-hidden transition-all group-hover:bg-[var(--color-border)]/60 group-hover:shadow-inner">
                 <div
                   className={cn(
-                    'w-full rounded-full transition-all duration-700 ease-out',
+                    'w-full rounded-full transition-all duration-700 ease-out group-hover:brightness-110',
                     bar.isHighlight
                       ? 'bg-gradient-to-t from-cyan-400 via-teal-400 to-emerald-400 shadow-sm'
                       : 'bg-gradient-to-t from-cyan-300/80 via-teal-300/80 to-emerald-300/80 dark:from-cyan-500/50 dark:to-emerald-500/50',
@@ -148,7 +151,7 @@ export default function BentoStatisticsCard({
               </div>
 
               {/* Day Axis Label */}
-              <span className="text-xs font-semibold text-[var(--color-text-secondary)] mt-1">
+              <span className="text-xs font-semibold text-[var(--color-text-secondary)] mt-1 transition-colors group-hover:text-[var(--color-text-primary)]">
                 {bar.day}
               </span>
             </div>

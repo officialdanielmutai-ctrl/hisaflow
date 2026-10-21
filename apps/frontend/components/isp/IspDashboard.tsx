@@ -140,7 +140,7 @@ export function IspDashboard() {
   const churnedPct = totalSubs > 0 ? Math.round((data.subscribers.churned / totalSubs) * 100) : 0;
 
   return (
-    <div className="flex flex-col gap-6 pb-24 max-w-4xl mx-auto">
+    <div className="w-full flex flex-col gap-6 pb-24">
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -178,204 +178,212 @@ export function IspDashboard() {
 
       {/* ── KPI cards: shared StatCard, per-vertical ISP arrangement ──── */}
       <DashboardKpiRows rows={ISP_KPI_ROWS} data={data} />
-      {/* ── AI Operational Recommendations (Smart Recommendations) ──────── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-lg bg-[var(--color-accent)] flex items-center justify-center text-white shadow-sm">
-              <Sparkles className="h-3.5 w-3.5" />
-            </div>
-            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
-              AI Smart Recommendations
-            </h2>
-          </div>
-          <span className="text-[10px] font-bold text-[var(--color-accent)] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-            Autonomous Insights
-          </span>
-        </div>
 
-        <div className="flex flex-col rounded-2xl border border-green-200 bg-[#F4FCF7] p-4 sm:p-5 shadow-sm">
-          {/* Featured / Top Priority Recommendation */}
-          {topRec && (
-            <div className="flex items-start gap-3 sm:gap-4 pb-4 border-b border-green-200/70">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-accent)] shadow-sm text-white">
-                <Sparkles className="h-5 w-5" />
+      {/* ── Operational Bento Grid (12 cols on desktop) ────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (7 cols): Network Health / Subscriber Fleet Status */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Wifi className="h-4 w-4 text-[var(--color-accent)]" />
+                <h2 className="text-sm font-bold text-[var(--color-text-primary)]">
+                  Subscriber Fleet Status
+                </h2>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span
-                    className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full tracking-wide ${
-                      topRec.priority === 'HIGH'
-                        ? 'bg-red-100 text-red-700 border border-red-200'
-                        : topRec.priority === 'MEDIUM'
-                        ? 'bg-amber-100 text-amber-700 border border-amber-200'
-                        : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                    }`}
-                  >
-                    {topRec.priority} PRIORITY
-                  </span>
-                </div>
-                <p className="text-sm sm:text-base font-bold text-[var(--color-text-primary)] leading-tight">
-                  {topRec.action}
-                </p>
-                <p className="text-xs text-[var(--color-text-secondary)] mt-1.5 leading-relaxed">
-                  {topRec.reason}
-                </p>
-                {topRec.href && (
-                  <div className="mt-3">
-                    <Link
-                      href={topRec.href}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-accent)] bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-accent)]/30 hover:bg-emerald-50 transition-colors shadow-sm"
-                    >
-                      Take action <ArrowUpRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                )}
-              </div>
+              <Link
+                href="/subscribers"
+                className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center gap-1"
+              >
+                Manage subscribers <ArrowUpRight className="h-3 w-3" />
+              </Link>
             </div>
-          )}
 
-          {/* Secondary Recommendations */}
-          {otherRecs.length > 0 && (
-            <div className="pt-3.5 space-y-2.5">
-              {otherRecs.map((rec, i) => (
+            {/* Multi-segmented health bar */}
+            <div className="h-3.5 w-full rounded-full bg-[var(--color-bg-elevated)] overflow-hidden flex gap-0.5 mb-4 p-0.5 border border-[var(--color-border)]/60">
+              {activePct > 0 && (
                 <div
-                  key={i}
-                  className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white/80 border border-green-100/80 shadow-sm hover:bg-white transition-colors"
-                >
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <span
-                      className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${
-                        rec.priority === 'HIGH'
-                          ? 'bg-red-500'
-                          : rec.priority === 'MEDIUM'
-                          ? 'bg-amber-500'
-                          : 'bg-emerald-500'
-                      }`}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-[var(--color-text-primary)] truncate">
-                        {rec.action}
-                      </p>
-                      <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5 line-clamp-1 leading-normal">
-                        {rec.reason}
-                      </p>
-                    </div>
-                  </div>
-                  {rec.href && (
-                    <Link
-                      href={rec.href}
-                      className="text-xs font-bold text-[var(--color-accent)] hover:underline shrink-0 flex items-center gap-0.5 pt-0.5"
-                    >
-                      Resolve →
-                    </Link>
-                  )}
+                  style={{ width: `${activePct}%` }}
+                  className="bg-emerald-500 h-full rounded-l-full transition-all duration-500"
+                  title={`Active: ${data.subscribers.active}`}
+                />
+              )}
+              {suspendedPct > 0 && (
+                <div
+                  style={{ width: `${suspendedPct}%` }}
+                  className="bg-amber-500 h-full transition-all duration-500"
+                  title={`Suspended: ${data.subscribers.suspended}`}
+                />
+              )}
+              {churnedPct > 0 && (
+                <div
+                  style={{ width: `${churnedPct}%` }}
+                  className="bg-rose-500 h-full rounded-r-full transition-all duration-500"
+                  title={`Churned: ${data.subscribers.churned}`}
+                />
+              )}
+            </div>
+
+            {/* 3 Status Tiers */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center sm:text-left">
+              <Link
+                href="/subscribers?filter=ACTIVE"
+                className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 hover:bg-emerald-50 transition-colors"
+              >
+                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-xs font-semibold text-emerald-800">Active</span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+                <span className="text-xl font-black text-emerald-900 block mt-1">
+                  {data.subscribers.active}
+                </span>
+                <span className="text-[10px] text-emerald-700 font-medium">
+                  {activePct}% of fleet
+                </span>
+              </Link>
 
-      {/* ── Network Health / Subscriber Fleet Status ────────────────────── */}
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Wifi className="h-4 w-4 text-[var(--color-accent)]" />
-            <h2 className="text-sm font-bold text-[var(--color-text-primary)]">
-              Subscriber Fleet Status
-            </h2>
+              <Link
+                href="/subscribers?filter=SUSPENDED"
+                className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 hover:bg-amber-50 transition-colors"
+              >
+                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                  <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                  <span className="text-xs font-semibold text-amber-800">Suspended</span>
+                </div>
+                <span className="text-xl font-black text-amber-900 block mt-1">
+                  {data.subscribers.suspended}
+                </span>
+                <span className="text-[10px] text-amber-700 font-medium">
+                  Payment overdue
+                </span>
+              </Link>
+
+              <Link
+                href="/subscribers?filter=CHURNED"
+                className="rounded-xl border border-rose-100 bg-rose-50/50 p-3 hover:bg-rose-50 transition-colors"
+              >
+                <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                  <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
+                  <span className="text-xs font-semibold text-rose-800">Churned</span>
+                </div>
+                <span className="text-xl font-black text-rose-900 block mt-1">
+                  {data.subscribers.churned}
+                </span>
+                <span className="text-[10px] text-rose-700 font-medium">
+                  Decommissioned
+                </span>
+              </Link>
+            </div>
           </div>
-          <Link
-            href="/subscribers"
-            className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center gap-1"
-          >
-            Manage subscribers <ArrowUpRight className="h-3 w-3" />
-          </Link>
         </div>
 
-        {/* Multi-segmented health bar */}
-        <div className="h-3 w-full rounded-full bg-gray-100 overflow-hidden flex gap-0.5 mb-4">
-          {activePct > 0 && (
-            <div
-              style={{ width: `${activePct}%` }}
-              className="bg-emerald-500 h-full rounded-l-full transition-all duration-500"
-              title={`Active: ${data.subscribers.active}`}
-            />
-          )}
-          {suspendedPct > 0 && (
-            <div
-              style={{ width: `${suspendedPct}%` }}
-              className="bg-amber-500 h-full transition-all duration-500"
-              title={`Suspended: ${data.subscribers.suspended}`}
-            />
-          )}
-          {churnedPct > 0 && (
-            <div
-              style={{ width: `${churnedPct}%` }}
-              className="bg-rose-500 h-full rounded-r-full transition-all duration-500"
-              title={`Churned: ${data.subscribers.churned}`}
-            />
-          )}
-        </div>
-
-        {/* 3 Status Tiers */}
-        <div className="grid grid-cols-3 gap-3 text-center sm:text-left">
-          <Link
-            href="/subscribers?filter=ACTIVE"
-            className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 hover:bg-emerald-50 transition-colors"
-          >
-            <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-              <span className="text-xs font-semibold text-emerald-800">Active</span>
+        {/* Right Column (5 cols): AI Operational Recommendations */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-lg bg-[var(--color-accent)] flex items-center justify-center text-white shadow-sm">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </div>
+                <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
+                  AI Smart Recommendations
+                </h2>
+              </div>
+              <span className="text-[10px] font-bold text-[var(--color-accent)] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                Autonomous Insights
+              </span>
             </div>
-            <span className="text-lg font-black text-emerald-900 block mt-1">
-              {data.subscribers.active}
-            </span>
-            <span className="text-[10px] text-emerald-700 font-medium">
-              {activePct}% of fleet
-            </span>
-          </Link>
 
-          <Link
-            href="/subscribers?filter=SUSPENDED"
-            className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 hover:bg-amber-50 transition-colors"
-          >
-            <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-              <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
-              <span className="text-xs font-semibold text-amber-800">Suspended</span>
-            </div>
-            <span className="text-lg font-black text-amber-900 block mt-1">
-              {data.subscribers.suspended}
-            </span>
-            <span className="text-[10px] text-amber-700 font-medium">
-              Payment overdue
-            </span>
-          </Link>
+            <div className="flex flex-col rounded-2xl border border-green-200 bg-[#F4FCF7] p-4 sm:p-5 shadow-sm">
+              {/* Featured / Top Priority Recommendation */}
+              {topRec && (
+                <div className="flex items-start gap-3 sm:gap-4 pb-4 border-b border-green-200/70">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-accent)] shadow-sm text-white">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span
+                        className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full tracking-wide ${
+                          topRec.priority === 'HIGH'
+                            ? 'bg-red-100 text-red-700 border border-red-200'
+                            : topRec.priority === 'MEDIUM'
+                            ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                            : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                        }`}
+                      >
+                        {topRec.priority} PRIORITY
+                      </span>
+                    </div>
+                    <p className="text-sm font-bold text-[var(--color-text-primary)] leading-tight">
+                      {topRec.action}
+                    </p>
+                    <p className="text-xs text-[var(--color-text-secondary)] mt-1.5 leading-relaxed">
+                      {topRec.reason}
+                    </p>
+                    {topRec.href && (
+                      <div className="mt-3">
+                        <Link
+                          href={topRec.href}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-accent)] bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-accent)]/30 hover:bg-emerald-50 transition-colors shadow-sm"
+                        >
+                          Take action <ArrowUpRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-          <Link
-            href="/subscribers?filter=CHURNED"
-            className="rounded-xl border border-rose-100 bg-rose-50/50 p-3 hover:bg-rose-50 transition-colors"
-          >
-            <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-              <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
-              <span className="text-xs font-semibold text-rose-800">Churned</span>
+              {/* Secondary Recommendations */}
+              {otherRecs.length > 0 && (
+                <div className="pt-3.5 space-y-2.5">
+                  {otherRecs.map((rec, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white/80 border border-green-100/80 shadow-sm hover:bg-white transition-colors"
+                    >
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <span
+                          className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${
+                            rec.priority === 'HIGH'
+                              ? 'bg-red-500'
+                              : rec.priority === 'MEDIUM'
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                          }`}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-[var(--color-text-primary)] truncate">
+                            {rec.action}
+                          </p>
+                          <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5 line-clamp-1 leading-normal">
+                            {rec.reason}
+                          </p>
+                        </div>
+                      </div>
+                      {rec.href && (
+                        <Link
+                          href={rec.href}
+                          className="text-xs font-bold text-[var(--color-accent)] hover:underline shrink-0 flex items-center gap-0.5 pt-0.5"
+                        >
+                          Resolve →
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <span className="text-lg font-black text-rose-900 block mt-1">
-              {data.subscribers.churned}
-            </span>
-            <span className="text-[10px] text-rose-700 font-medium">
-              Decommissioned
-            </span>
-          </Link>
+          </section>
         </div>
       </div>
 
       {/* ── Quick Navigation Hub ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Link
           href="/service-plans"
-          className="flex flex-col p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)] transition-all group"
+          className="flex flex-col p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)] transition-all group shadow-sm hover:-translate-y-0.5"
         >
           <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
             <Wifi className="h-4 w-4" />
@@ -386,7 +394,7 @@ export function IspDashboard() {
 
         <Link
           href="/work-orders"
-          className="flex flex-col p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)] transition-all group"
+          className="flex flex-col p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)] transition-all group shadow-sm hover:-translate-y-0.5"
         >
           <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
             <Wrench className="h-4 w-4" />
@@ -397,7 +405,7 @@ export function IspDashboard() {
 
         <Link
           href="/tickets"
-          className="flex flex-col p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)] transition-all group"
+          className="flex flex-col p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)] transition-all group shadow-sm hover:-translate-y-0.5"
         >
           <div className="h-8 w-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
             <Headphones className="h-4 w-4" />
@@ -408,7 +416,7 @@ export function IspDashboard() {
 
         <Link
           href="/inventory"
-          className="flex flex-col p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)] transition-all group"
+          className="flex flex-col p-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)] transition-all group shadow-sm hover:-translate-y-0.5"
         >
           <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
             <Package className="h-4 w-4" />

@@ -16,7 +16,7 @@ export const GUEST_HOUSE_KPI_ROWS: StatCardConfig<GuestHouseDashboardData>[][] =
         id: 'occupied-rooms',
         label: 'Occupied Rooms',
         icon: Bed,
-        iconTone: 'emerald',
+        iconTone: 'hero',
         cardTone: 'hero',
         href: '/rooms',
         build: (data) => ({
@@ -52,6 +52,7 @@ export const GUEST_HOUSE_KPI_ROWS: StatCardConfig<GuestHouseDashboardData>[][] =
               direction: 'up',
               tone: 'success',
             },
+            sparklineData: [40, 55, 60, 78, 65, 88, 92],
           };
         },
       },

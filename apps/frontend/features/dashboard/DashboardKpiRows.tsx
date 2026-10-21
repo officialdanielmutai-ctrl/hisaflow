@@ -67,9 +67,9 @@ function useBreakpoint(): WorkspaceBreakpoint {
 }
 
 function spanClass(instance: WidgetInstance, config: { span?: 1 | 2 }): string | undefined {
-  if (instance.size === 'L') return 'sm:col-span-2';
+  if (instance.size === 'L') return 'sm:col-span-2 lg:col-span-2';
   if (instance.size === 'S') return undefined;
-  return config.span === 2 ? 'sm:col-span-2' : undefined;
+  return config.span === 2 ? 'sm:col-span-2 lg:col-span-2' : undefined;
 }
 
 function nextSize(size: WidgetSize): WidgetSize {
@@ -83,7 +83,20 @@ function cardSurface(
   transparency: number | undefined,
   blur: boolean | undefined,
   dark: boolean,
+  isHero?: boolean,
 ): SurfaceStyle {
+  if (isHero) {
+    return {
+      backgroundColor: dark ? '#070D1E' : '#0C1831',
+      borderColor: '#1e293b',
+      color: '#ffffff',
+      '--color-text-primary': '#ffffff',
+      '--color-text-secondary': '#94a3b8',
+      '--color-text-muted': '#64748b',
+      '--color-border': '#1e293b',
+    };
+  }
+
   const accent = accentById(instance.style?.colour ?? accentId);
   const pair = dark ? accent.dark : accent.light;
   const surface = instance.style?.surface ?? 'solid';
@@ -597,7 +610,7 @@ export function DashboardKpiRows<TData>({
             cardTone={widget.config.cardTone}
             variant={instance.size === 'S' ? 'compact' : widget.config.variant}
             href={editing ? undefined : widget.config.href}
-            className={options.transparent ? '!border-transparent !bg-transparent shadow-none' : undefined}
+            className={options.transparent && widget.config.cardTone !== 'hero' ? '!border-transparent !bg-transparent shadow-none' : undefined}
             {...widget.config.build(data)}
           />
         </WidgetErrorBoundary>
@@ -738,33 +751,25 @@ export function DashboardKpiRows<TData>({
       </p>
 
       {!customised ? (
-        <div className="flex flex-col gap-4">
-          {rows.map((row, rowIndex) => (
-            <div
-              // eslint-disable-next-line react/no-array-index-key
-              key={rowIndex}
-              className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-            >
-              {row.map((card) => {
-                const flatIndex = defaultInstances(widgets).findIndex(
-                  (instance) => instance.widgetId === card.id,
-                );
-                const instance: WidgetInstance = {
-                  instanceId: `default:${card.id}`,
-                  widgetId: card.id,
-                  size: card.span === 2 ? 'L' : 'M',
-                  order: flatIndex,
-                };
-                return renderWidget(instance, flatIndex, {
-                  span: card.span === 2 ? 'sm:col-span-2' : undefined,
-                  transparent: false,
-                });
-              })}
-            </div>
-          ))}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+          {rows.flat().map((card) => {
+            const flatIndex = defaultInstances(widgets).findIndex(
+              (instance) => instance.widgetId === card.id,
+            );
+            const instance: WidgetInstance = {
+              instanceId: `default:${card.id}`,
+              widgetId: card.id,
+              size: card.span === 2 ? 'L' : 'M',
+              order: flatIndex,
+            };
+            return renderWidget(instance, flatIndex, {
+              span: card.span === 2 ? 'sm:col-span-2 lg:col-span-2' : undefined,
+              transparent: false,
+            });
+          })}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="custom-kpi-grid">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5" data-testid="custom-kpi-grid">
           {instances.map((instance, index) => {
             const widget = widgetById.get(instance.widgetId);
             if (!widget) return null;
@@ -777,6 +782,7 @@ export function DashboardKpiRows<TData>({
                 rendered?.theme.transparency,
                 rendered?.theme.blur,
                 dark,
+                widget.config.cardTone === 'hero',
               ),
             });
           })}

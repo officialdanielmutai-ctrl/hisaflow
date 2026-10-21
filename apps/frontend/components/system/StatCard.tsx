@@ -135,6 +135,7 @@ function TrailingSlot({
   tone: StatTone;
 }) {
   if (!trailing) return null;
+  const isHero = tone === 'hero';
   if (trailing.kind === 'menu') {
     return (
       <button
@@ -151,8 +152,10 @@ function TrailingSlot({
     return (
       <span
         className={cn(
-          'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold',
-          BADGE_TONES[trailing.tone],
+          'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold border transition-all',
+          isHero
+            ? 'bg-teal-500/20 text-teal-300 border-teal-500/30'
+            : BADGE_TONES[trailing.tone],
         )}
       >
         {trailing.text}
@@ -216,22 +219,28 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
   const range = max - min || 1;
   const width = 120;
   const height = 36;
+  let maxIdx = 0;
+  data.forEach((val, idx) => {
+    if (val > data[maxIdx]) maxIdx = idx;
+  });
+
   const points = data.map((val, idx) => {
     const x = (idx / (data.length - 1)) * width;
-    const y = height - ((val - min) / range) * (height - 6) - 3;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+    const y = height - ((val - min) / range) * (height - 8) - 4;
+    return { x, y, str: `${x.toFixed(1)},${y.toFixed(1)}` };
   });
-  const pathD = `M ${points.join(' L ')}`;
+  const pathD = `M ${points.map((p) => p.str).join(' L ')}`;
   const fillD = `${pathD} L ${width},${height} L 0,${height} Z`;
 
   const strokeColor = isHero ? '#34d399' : '#10b981';
   const gradId = `spark-grad-${Math.abs(data.reduce((a, b) => a + b, 0))}`;
+  const peakPoint = points[maxIdx];
 
   return (
-    <div className="w-full h-8 my-1">
+    <div className="w-full h-9 my-1 group/spark">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-full overflow-visible"
+        className="w-full h-full overflow-visible transition-all duration-300 group-hover/spark:drop-shadow-[0_2px_8px_rgba(16,185,129,0.35)]"
         preserveAspectRatio="none"
       >
         <defs>
@@ -241,7 +250,14 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
           </linearGradient>
         </defs>
         <path d={fillD} fill={`url(#${gradId})`} />
-        <path d={pathD} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathD} fill="none" stroke={strokeColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Mountain Peak Beacon Ring Indicator (Inspo 2 style) */}
+        {peakPoint && (
+          <g transform={`translate(${peakPoint.x.toFixed(1)}, ${peakPoint.y.toFixed(1)})`}>
+            <circle r="4" fill="none" stroke={strokeColor} strokeWidth="1.5" className="animate-peak-beacon" />
+            <circle r="2.5" fill={strokeColor} />
+          </g>
+        )}
       </svg>
     </div>
   );
@@ -249,37 +265,66 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
 
 function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: number; label?: string; isHero?: boolean }) {
   const pct = Math.min(Math.max((value / max) * 100, 0), 100);
-  const radius = 34;
-  const circumference = Math.PI * radius;
-  const strokeDashoffset = circumference - (pct / 100) * circumference;
-  const strokeColor = isHero ? '#34d399' : '#10b981';
+  const totalTicks = 20;
+  const activeTicksCount = Math.round((pct / 100) * totalTicks);
+
+  const cx = 50;
+  const cy = 46;
+  const rInner = 28;
+  const rOuter = 40;
+
+  const ticks = Array.from({ length: totalTicks }).map((_, i) => {
+    const angleDeg = 180 - (i / (totalTicks - 1)) * 180;
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const x1 = cx + rInner * Math.cos(angleRad);
+    const y1 = cy - rInner * Math.sin(angleRad);
+    const x2 = cx + rOuter * Math.cos(angleRad);
+    const y2 = cy - rOuter * Math.sin(angleRad);
+
+    const isActive = i < activeTicksCount;
+    const ratio = i / totalTicks;
+    let strokeColor = isHero ? 'rgba(255,255,255,0.14)' : 'var(--color-bg-elevated)';
+    if (isActive) {
+      if (ratio < 0.35) strokeColor = '#06b6d4';
+      else if (ratio < 0.7) strokeColor = '#14b8a6';
+      else strokeColor = '#10b981';
+    }
+    return { id: i, x1, y1, x2, y2, isActive, strokeColor };
+  });
 
   return (
-    <div className="relative flex flex-col items-center justify-center my-1">
-      <svg viewBox="0 0 90 52" className="w-24 h-14">
-        <path
-          d="M 11,46 A 34,34 0 0,1 79,46"
-          fill="none"
-          stroke={isHero ? 'rgba(255,255,255,0.15)' : 'var(--color-border)'}
-          strokeWidth="6"
-          strokeLinecap="round"
-        />
-        <path
-          d="M 11,46 A 34,34 0 0,1 79,46"
-          fill="none"
-          stroke={strokeColor}
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          className="transition-all duration-700 ease-out"
-        />
+    <div className="relative flex flex-col items-center justify-center my-1 group/gauge">
+      <svg
+        viewBox="0 0 100 56"
+        className="w-28 h-16 overflow-visible select-none transition-transform duration-300 group-hover/gauge:scale-105"
+      >
+        {ticks.map((tick) => (
+          <line
+            key={tick.id}
+            x1={tick.x1.toFixed(1)}
+            y1={tick.y1.toFixed(1)}
+            x2={tick.x2.toFixed(1)}
+            y2={tick.y2.toFixed(1)}
+            stroke={tick.strokeColor}
+            strokeWidth="3"
+            strokeLinecap="round"
+            className={cn(
+              'transition-all duration-500 ease-out',
+              tick.isActive && 'animate-gauge-pulse',
+              !tick.isActive && 'opacity-40',
+            )}
+          />
+        ))}
       </svg>
-      <div className="absolute bottom-0 text-center">
-        <span className={cn('text-xs font-black', isHero ? 'text-white' : 'text-[var(--color-text-primary)]')}>
+      <div className="absolute bottom-0 text-center pointer-events-none">
+        <span className={cn('text-xs font-black tracking-tight tabular-nums', isHero ? 'text-white' : 'text-[var(--color-text-primary)]')}>
           {Math.round(pct)}%
         </span>
-        {label && <p className="text-[9px] text-[var(--color-text-muted)] truncate">{label}</p>}
+        {label && (
+          <p className={cn('text-[9px] font-semibold truncate', isHero ? 'text-slate-400' : 'text-[var(--color-text-muted)]')}>
+            {label}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -288,17 +333,26 @@ function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: n
 function StatProgressBar({ value, max = 100, label, targetLabel, isHero }: { value: number; max?: number; label?: string; targetLabel?: string; isHero?: boolean }) {
   const pct = Math.min(Math.max((value / max) * 100, 0), 100);
   return (
-    <div className="w-full my-1.5 flex flex-col gap-1">
-      <div className={cn('h-2 w-full rounded-full overflow-hidden', isHero ? 'bg-white/10' : 'bg-[var(--color-bg-elevated)]')}>
+    <div className="w-full my-2 flex flex-col gap-1.5 group/progress">
+      <div
+        className={cn(
+          'relative h-3 sm:h-3.5 w-full rounded-full border p-0.5 overflow-hidden transition-all duration-300 group-hover/progress:shadow-sm',
+          isHero
+            ? 'border-white/15 bg-white/5'
+            : 'border-[var(--color-border)]/80 bg-[var(--color-bg-elevated)]',
+        )}
+      >
         <div
-          className={cn('h-full rounded-full transition-all duration-500', isHero ? 'bg-emerald-400' : 'bg-gradient-to-r from-[var(--color-accent)] to-emerald-400')}
+          className="relative h-full rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 animate-liquid-shimmer transition-all duration-700 ease-out shadow-sm"
           style={{ width: `${pct}%` }}
-        />
+        >
+          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/progress:opacity-100 transition-opacity rounded-full animate-liquid-wave" />
+        </div>
       </div>
       {(label || targetLabel) && (
-        <div className={cn('flex items-center justify-between text-[10px]', isHero ? 'text-emerald-200/70' : 'text-[var(--color-text-muted)]')}>
+        <div className={cn('flex items-center justify-between text-[10px] font-medium', isHero ? 'text-slate-400' : 'text-[var(--color-text-muted)]')}>
           {label && <span>{label}</span>}
-          {targetLabel && <span>{targetLabel}</span>}
+          {targetLabel && <span className="font-semibold text-emerald-600 dark:text-emerald-400">{targetLabel}</span>}
         </div>
       )}
     </div>

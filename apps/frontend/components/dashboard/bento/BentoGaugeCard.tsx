@@ -80,10 +80,10 @@ export default function BentoGaugeCard({
       </div>
 
       {/* ── Segmented Radial Arch Gauge Canvas ── */}
-      <div className="relative flex flex-col items-center justify-center my-1">
+      <div className="relative flex flex-col items-center justify-center my-1 group/gauge">
         <svg
           viewBox="0 0 200 115"
-          className="w-full max-w-[240px] h-auto overflow-visible select-none"
+          className="w-full max-w-[240px] h-auto overflow-visible select-none transition-transform duration-300 group-hover/gauge:scale-105"
         >
           {ticks.map((tick) => (
             <line
@@ -97,14 +97,15 @@ export default function BentoGaugeCard({
               strokeLinecap="round"
               className={cn(
                 'transition-all duration-500 ease-out',
-                !tick.isActive && 'opacity-60',
+                tick.isActive && 'animate-gauge-pulse',
+                !tick.isActive && 'opacity-40',
               )}
             />
           ))}
         </svg>
 
         {/* Center Metric Callout */}
-        <div className="absolute bottom-2 text-center pointer-events-none">
+        <div className="absolute bottom-2 text-center pointer-events-none transition-transform duration-300 group-hover/gauge:scale-105">
           <p className="text-3xl sm:text-4xl font-black text-[var(--color-text-primary)] tracking-tight tabular-nums">
             {value}
           </p>

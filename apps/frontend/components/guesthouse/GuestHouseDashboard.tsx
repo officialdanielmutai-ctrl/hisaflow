@@ -107,118 +107,132 @@ export function GuestHouseDashboard() {
         </div>
       </div>
 
-      {/* ── Layer 2: Quick Actions ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3">
-        <Link 
-          href="/bookings/new"
-          className="flex flex-col items-center justify-center p-4 rounded-2xl bg-[var(--color-primary)] text-white shadow-sm hover:opacity-90 transition-opacity"
-        >
-          <CalendarDays className="h-6 w-6 mb-2" />
-          <span className="text-xs font-bold text-center leading-tight">New Booking</span>
-        </Link>
-        <button
-          onClick={() => setShowAddGuest(true)}
-          className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <Users className="h-6 w-6 mb-2 text-[var(--color-primary)]" />
-          <span className="text-xs font-bold text-center leading-tight">Add Guest</span>
-        </button>
-        <button
-          onClick={() => setShowAddRoom(true)}
-          className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <Bed className="h-6 w-6 mb-2 text-[var(--color-primary)]" />
-          <span className="text-xs font-bold text-center leading-tight">Add Room</span>
-        </button>
-      </div>
-
       {/* ── Layer 1: KPIs — shared StatCard, per-vertical arrangement ─────── */}
       <DashboardKpiRows rows={GUEST_HOUSE_KPI_ROWS} data={data} />
 
-      {/* AI Recommendations */}
-      <AiRecommendationsCard recommendations={buildGuestHouseRecommendations(data)} />
-
-      {/* ── Layer 2: Departures ────────────────────────────────────────────────────── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Departures</h2>
-          <Link href="/bookings" className="text-xs font-semibold text-[var(--color-accent)] hover:underline">
-            View bookings <span className="ml-1 text-lg leading-none mt-0.5">›</span>
-          </Link>
-        </div>
-        
-        <div className="flex flex-col gap-3">
-          {data.departureAlerts.overdue.length === 0 && 
-           data.departureAlerts.today.length === 0 && 
-           data.departureAlerts.tomorrow.length === 0 ? (
-            <div className="text-center text-sm text-[var(--color-text-muted)] py-6 border rounded-2xl bg-[var(--color-bg-surface)]">
-              No departures scheduled for today or tomorrow.
+      {/* ── Main Analytical & Operational Grid (12 cols on desktop) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (7 cols): Departures */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Departures</h2>
+              <Link href="/bookings" className="text-xs font-semibold text-[var(--color-accent)] hover:underline">
+                View bookings <span className="ml-1 text-lg leading-none mt-0.5">›</span>
+              </Link>
             </div>
-          ) : (
-            <>
-              {/* Overdue */}
-              {data.departureAlerts.overdue.map((b) => (
-                <div key={b.id} className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50/50 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
-                      <AlertTriangle className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{b.guestName}</p>
-                      <p className="text-xs text-gray-500">{b.roomName}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="inline-flex items-center rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
-                      Overdue
-                    </span>
-                  </div>
+            
+            <div className="flex flex-col gap-3">
+              {data.departureAlerts.overdue.length === 0 && 
+               data.departureAlerts.today.length === 0 && 
+               data.departureAlerts.tomorrow.length === 0 ? (
+                <div className="text-center text-sm text-[var(--color-text-muted)] py-6 border rounded-2xl bg-[var(--color-bg-surface)]">
+                  No departures scheduled for today or tomorrow.
                 </div>
-              ))}
-              
-              {/* Today */}
-              {data.departureAlerts.today.map((b) => (
-                <div key={b.id} className="flex items-center justify-between rounded-2xl border border-yellow-200 bg-yellow-50/50 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
-                      <CalendarClock className="h-5 w-5" />
+              ) : (
+                <>
+                  {/* Overdue */}
+                  {data.departureAlerts.overdue.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50/50 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+                          <AlertTriangle className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{b.guestName}</p>
+                          <p className="text-xs text-gray-500">{b.roomName}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="inline-flex items-center rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+                          Overdue
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{b.guestName}</p>
-                      <p className="text-xs text-gray-500">{b.roomName}</p>
+                  ))}
+                  
+                  {/* Today */}
+                  {data.departureAlerts.today.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between rounded-2xl border border-yellow-200 bg-yellow-50/50 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
+                          <CalendarClock className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{b.guestName}</p>
+                          <p className="text-xs text-gray-500">{b.roomName}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="inline-flex items-center rounded-md bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800">
+                          Today
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="inline-flex items-center rounded-md bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800">
-                      Today
-                    </span>
-                  </div>
-                </div>
-              ))}
-              
-              {/* Tomorrow */}
-              {data.departureAlerts.tomorrow.map((b) => (
-                <div key={b.id} className="flex items-center justify-between rounded-2xl border bg-[var(--color-bg-surface)] p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-500">
-                      <CalendarDays className="h-5 w-5" />
+                  ))}
+                  
+                  {/* Tomorrow */}
+                  {data.departureAlerts.tomorrow.map((b) => (
+                    <div key={b.id} className="flex items-center justify-between rounded-2xl border bg-[var(--color-bg-surface)] p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-500">
+                          <CalendarDays className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{b.guestName}</p>
+                          <p className="text-xs text-gray-500">{b.roomName}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
+                          Tomorrow
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{b.guestName}</p>
-                      <p className="text-xs text-gray-500">{b.roomName}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                      Tomorrow
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
+                  ))}
+                </>
+              )}
+            </div>
+          </section>
         </div>
-      </section>
+
+        {/* Right Column (5 cols): AI Recommendations & Quick Actions */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          <AiRecommendationsCard recommendations={buildGuestHouseRecommendations(data)} />
+
+          {/* Quick Actions Panel */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-[var(--color-text-secondary)] mb-3">
+              Operations Shortcuts
+            </h3>
+            <div className="grid grid-cols-3 gap-2.5">
+              <Link 
+                href="/bookings/new"
+                className="flex flex-col items-center justify-center p-3 rounded-xl bg-[var(--color-primary)] text-white shadow-sm hover:opacity-90 transition-opacity"
+              >
+                <CalendarDays className="h-5 w-5 mb-1.5" />
+                <span className="text-[11px] font-bold text-center leading-tight">New Booking</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowAddGuest(true)}
+                className="flex flex-col items-center justify-center p-3 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-base)] transition-colors"
+              >
+                <Users className="h-5 w-5 mb-1.5 text-[var(--color-primary)]" />
+                <span className="text-[11px] font-bold text-center leading-tight">Add Guest</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddRoom(true)}
+                className="flex flex-col items-center justify-center p-3 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-base)] transition-colors"
+              >
+                <Bed className="h-5 w-5 mb-1.5 text-[var(--color-primary)]" />
+                <span className="text-[11px] font-bold text-center leading-tight">Add Room</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ── Layer 3: Stock Intelligence ────────────────────────────────────────────── */}
       <section>

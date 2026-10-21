@@ -633,11 +633,78 @@
   animation: mk-step-swap var(--mk-dur-slow) var(--mk-ease) both;
 }
 
+/* ── KPI & Bento Micro-Animations ── */
+@keyframes liquid-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes liquid-wave {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+@keyframes gauge-tick-pulse {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px rgba(16, 185, 129, 0.4));
+  }
+  50% {
+    opacity: 0.82;
+    filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.7));
+  }
+}
+
+@keyframes peak-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+.animate-liquid-shimmer {
+  background-size: 200% 100%;
+  animation: liquid-shimmer 3s ease-in-out infinite;
+}
+
+.animate-liquid-wave {
+  animation: liquid-wave 2.2s ease-in-out infinite;
+}
+
+.animate-gauge-pulse {
+  animation: gauge-tick-pulse 2.8s ease-in-out infinite;
+}
+
+.animate-peak-beacon {
+  transform-origin: center;
+  animation: peak-pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mk-camera-drift,
   .mk-scan-sweep,
   .mk-shimmer,
-  .mk-step-swap {
+  .mk-step-swap,
+  .animate-liquid-shimmer,
+  .animate-liquid-wave,
+  .animate-gauge-pulse,
+  .animate-peak-beacon {
     animation: none;
   }
 }

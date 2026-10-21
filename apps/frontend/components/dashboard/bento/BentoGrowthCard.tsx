@@ -128,13 +128,26 @@ export default function BentoGrowthCard({
           </span>
         </div>
 
-        {/* ── Gradient Volume Progress Bar ── */}
-        <div className="mt-4 mb-2">
-          <div className="h-4 w-full rounded-full bg-[var(--color-bg-elevated)] p-0.5 overflow-hidden">
+        {/* ── Liquid-like Animated Progress Bar ── */}
+        <div className="mt-4 mb-2 group/liquid relative">
+          {/* Floating Hover Indicator Tooltip */}
+          <div
+            className="absolute -top-6 transition-all duration-300 opacity-0 group-hover/liquid:opacity-100 pointer-events-none transform -translate-x-1/2"
+            style={{ left: `${activeData.progressPct}%` }}
+          >
+            <span className="rounded-full bg-[#0C1831] text-white px-2 py-0.5 text-[10px] font-black shadow-md border border-slate-700">
+              {activeData.progressPct}%
+            </span>
+          </div>
+
+          <div className="h-4 w-full rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-0.5 overflow-hidden transition-all duration-300 group-hover/liquid:shadow-md">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 transition-all duration-700 ease-out"
+              className="relative h-full rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 animate-liquid-shimmer transition-all duration-700 ease-out shadow-sm"
               style={{ width: `${activeData.progressPct}%` }}
-            />
+            >
+              {/* Undulating liquid wave sheen */}
+              <div className="absolute inset-0 bg-white/25 rounded-full animate-liquid-wave opacity-60" />
+            </div>
           </div>
         </div>
       </div>

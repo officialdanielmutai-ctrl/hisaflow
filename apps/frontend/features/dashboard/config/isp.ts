@@ -16,6 +16,7 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
       id: 'monthly-revenue',
       label: 'Monthly Revenue',
       icon: CircleDollarSign,
+      iconTone: 'hero',
       cardTone: 'hero',
       href: '/finance',
       build: (data) => {
