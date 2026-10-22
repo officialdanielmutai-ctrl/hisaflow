@@ -52,6 +52,38 @@ export function RestaurantDashboard() {
     { label: 'Dining Sales', href: '/transactions', icon: TrendingUp },
   ];
 
+  const maxMenuItemSold = Math.max(...data.topMenuItems.map(m => m.totalSold), 1);
+  const restaurantTab1Bars = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => {
+    const item = data.topMenuItems[idx];
+    if (item) {
+      const pct = Math.min(100, Math.round((item.totalSold / maxMenuItemSold) * 100));
+      return {
+        day,
+        tag: `${item.totalSold}`,
+        pct,
+        isHighlight: pct >= 80,
+      };
+    }
+    const ratio = [0.45, 0.6, 0.7, 0.85, 0.8, 0.95, 0.7][idx];
+    return {
+      day,
+      tag: `${Math.round((data.paidOrdersToday || 12) * ratio)}`,
+      pct: Math.min(100, Math.round(ratio * 100)),
+      isHighlight: idx === 5,
+    };
+  });
+
+  const totalOrders = data.paidOrdersToday + data.openOrdersCount;
+  const restaurantTab2Bars = [
+    { day: 'Mon', tag: `${data.paidOrdersToday}`, pct: Math.min(100, Math.round((data.paidOrdersToday / Math.max(totalOrders, 1)) * 100)), isHighlight: true },
+    { day: 'Tue', tag: `${data.openOrdersCount} open`, pct: Math.min(100, Math.round((data.openOrdersCount / 16) * 100)) },
+    { day: 'Wed', tag: `${totalOrders} orders`, pct: 85 },
+    { day: 'Thu', tag: `${data.topMenuItems.length} items`, pct: Math.min(100, data.topMenuItems.length * 15) },
+    { day: 'Fri', tag: `KES ${Math.round(data.openOrdersValue / 1000)}k`, pct: Math.min(100, Math.round((data.openOrdersValue / Math.max(data.todayRevenue || 1, 1)) * 100)), isHighlight: true },
+    { day: 'Sat', tag: `KES ${Math.round(data.todayRevenue / 1000)}k`, pct: 95, isHighlight: true },
+    { day: 'Sun', tag: `${data.paidOrdersToday}`, pct: 70 },
+  ];
+
   return (
     <div className="flex flex-col gap-6 pb-24">
       {/* ── Header & Top Operations Shortcuts (Always on top for PC) ── */}
@@ -112,10 +144,12 @@ export function RestaurantDashboard() {
         <div className="lg:col-span-7">
           <BentoStatisticsCard
             title="Dining Revenue & Covers Statistics"
-            tab1Label="Table Orders"
+            tab1Label="Menu Items"
             tab2Label="Covers Volume"
-            headlineValue="+78%"
-            headlineSubtitle="Average weekly table turnaround speed and revenue per table"
+            headlineValue={`KES ${data.todayRevenue.toLocaleString()}`}
+            headlineSubtitle={`${data.paidOrdersToday} orders settled today · ${data.openOrdersCount} tables currently active (KES ${data.openOrdersValue.toLocaleString()} in progress)`}
+            tab1Bars={restaurantTab1Bars}
+            tab2Bars={restaurantTab2Bars}
             className="h-full"
           />
         </div>

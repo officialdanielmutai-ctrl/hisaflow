@@ -19,47 +19,36 @@ export interface ActivityOrder {
 const DEFAULT_ORDERS: ActivityOrder[] = [
   {
     id: 'ord-1',
-    name: 'Jenny placed a large total order',
-    avatarText: 'J',
+    name: 'Operating stream active',
+    avatarText: '✓',
     avatarColor: 'bg-emerald-500',
-    description: 'total order processed at 18:20',
-    time: '18:20',
-    value: 'KES 28,400',
-    badgeText: 'San Francisco',
-    badgeTone: 'sky',
+    description: 'All point-of-sale and transaction channels active',
+    time: 'Live',
+    value: 'Ready',
+    badgeText: 'Active',
+    badgeTone: 'emerald',
   },
   {
     id: 'ord-2',
-    name: 'Paul purchased items',
-    avatarText: 'P',
-    avatarColor: 'bg-amber-500',
-    description: 'value order in KES 19,800',
-    time: '17:45',
-    value: 'KES 19,800',
-    badgeText: 'Los Angeles',
+    name: 'Daily inventory ledger verified',
+    avatarText: 'I',
+    avatarColor: 'bg-teal-500',
+    description: 'Stock deductions synchronized with recent sales',
+    time: 'Recent',
+    value: 'In Sync',
+    badgeText: 'Verified',
     badgeTone: 'teal',
   },
   {
     id: 'ord-3',
-    name: 'Mike made repeat order',
-    avatarText: 'M',
+    name: 'Audit telemetry operational',
+    avatarText: 'A',
     avatarColor: 'bg-blue-500',
-    description: 'value order in KES 6,880',
-    time: '16:15',
-    value: 'KES 6,880',
-    badgeText: 'San Diego',
+    description: 'Transaction logs and alerts monitored',
+    time: 'Recent',
+    value: 'Logged',
+    badgeText: 'Secure',
     badgeTone: 'indigo',
-  },
-  {
-    id: 'ord-4',
-    name: 'Sarah completed order pickup',
-    avatarText: 'S',
-    avatarColor: 'bg-purple-500',
-    description: 'in-store checkout verified',
-    time: '15:30',
-    value: 'KES 14,200',
-    badgeText: 'Nairobi West',
-    badgeTone: 'emerald',
   },
 ];
 
@@ -79,10 +68,12 @@ interface BentoActivityFeedProps {
 
 export default function BentoActivityFeed({
   title = 'Live Operations Stream',
-  orders = DEFAULT_ORDERS,
+  orders,
   className,
   onMenuClick,
 }: BentoActivityFeedProps) {
+  const displayOrders = orders && orders.length > 0 ? orders : DEFAULT_ORDERS;
+
   return (
     <div
       className={cn(
@@ -90,7 +81,7 @@ export default function BentoActivityFeed({
         className,
       )}
     >
-      {/* Subtle ambient gradient backdrop (matching the geographic map nuance from Inspo 1) */}
+      {/* Subtle ambient gradient backdrop */}
       <div className="pointer-events-none absolute -right-12 -top-12 h-64 w-64 rounded-full bg-gradient-to-br from-cyan-400/10 via-teal-400/10 to-transparent blur-2xl" />
 
       {/* ── Header Row ── */}
@@ -108,42 +99,47 @@ export default function BentoActivityFeed({
         </button>
       </div>
 
-      {/* ── Order Rows ── */}
-      <div className="flex flex-col gap-3 z-10 flex-1 justify-center">
-        {orders.map((item) => (
+      {/* ── Orders List ── */}
+      <div className="flex flex-col gap-3 z-10">
+        {displayOrders.slice(0, 4).map((order) => (
           <div
-            key={item.id}
-            className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-[var(--color-bg-elevated)]/60 border border-[var(--color-border)]/50 hover:bg-[var(--color-bg-elevated)] transition-colors"
+            key={order.id}
+            className="flex items-center justify-between gap-3 p-2 rounded-2xl transition-colors hover:bg-[var(--color-bg-elevated)]/60 group/item"
           >
-            {/* Left: Avatar + Details */}
+            {/* Avatar + Main Details */}
             <div className="flex items-center gap-3 min-w-0">
               <div
                 className={cn(
-                  'h-9 w-9 rounded-full text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm',
-                  item.avatarColor,
+                  'h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm transition-transform group-hover/item:scale-105',
+                  order.avatarColor,
                 )}
               >
-                {item.avatarText}
+                {order.avatarText}
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-[var(--color-text-primary)] truncate">
-                  {item.name}
+                  {order.name}
                 </p>
                 <p className="text-[11px] text-[var(--color-text-secondary)] truncate">
-                  {item.description}
+                  {order.description}
                 </p>
               </div>
             </div>
 
-            {/* Right: Vibrant Location Capsule Pill */}
-            <span
-              className={cn(
-                'shrink-0 rounded-full px-3 py-1 text-[11px] font-bold',
-                BADGE_TONES[item.badgeTone],
-              )}
-            >
-              {item.badgeText}
-            </span>
+            {/* Price Tag & Tone Capsule */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-bold text-[var(--color-text-primary)] tabular-nums">
+                {order.value}
+              </span>
+              <span
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-tight',
+                  BADGE_TONES[order.badgeTone] ?? BADGE_TONES.teal,
+                )}
+              >
+                {order.badgeText}
+              </span>
+            </div>
           </div>
         ))}
       </div>

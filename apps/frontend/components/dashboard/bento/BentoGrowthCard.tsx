@@ -6,44 +6,13 @@ import { cn } from '@/lib/utils';
 
 export type GrowthTimeframe = '24h' | '12h' | 'week' | 'month';
 
-interface GrowthData {
+export interface GrowthData {
   count: string;
   delta: string;
   progressPct: number;
   footerTotal: string;
   footerAdd: string;
 }
-
-const TIMEFRAME_PRESETS: Record<GrowthTimeframe, GrowthData> = {
-  '24h': {
-    count: '205,890',
-    delta: '+ 22%',
-    progressPct: 68,
-    footerTotal: 'Checking totally',
-    footerAdd: '+210 today',
-  },
-  '12h': {
-    count: '114,320',
-    delta: '+ 14%',
-    progressPct: 48,
-    footerTotal: 'Checking totally',
-    footerAdd: '+95 today',
-  },
-  week: {
-    count: '864,250',
-    delta: '+ 36%',
-    progressPct: 82,
-    footerTotal: 'Checking totally',
-    footerAdd: '+1,420 this week',
-  },
-  month: {
-    count: '2,490,100',
-    delta: '+ 48%',
-    progressPct: 94,
-    footerTotal: 'Checking totally',
-    footerAdd: '+4,890 this month',
-  },
-};
 
 interface BentoGrowthCardProps {
   title?: string;
@@ -55,28 +24,34 @@ interface BentoGrowthCardProps {
   currentProgressPct?: number;
   footerLeftLabel?: string;
   footerRightLabel?: string;
+  onTimeframeChange?: (timeframe: GrowthTimeframe) => void;
 }
 
 export default function BentoGrowthCard({
-  title = 'User Growth',
+  title = 'Growth Velocity',
   className,
   onMenuClick,
   customData,
-  currentCount,
-  currentDelta,
-  currentProgressPct,
-  footerLeftLabel,
-  footerRightLabel,
+  currentCount = '100%',
+  currentDelta = '+12%',
+  currentProgressPct = 75,
+  footerLeftLabel = 'Operating velocity',
+  footerRightLabel = 'Paced steadily',
+  onTimeframeChange,
 }: BentoGrowthCardProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState<GrowthTimeframe>('24h');
 
-  const preset = TIMEFRAME_PRESETS[selectedTimeframe];
   const activeData: GrowthData = {
-    count: currentCount ?? customData?.[selectedTimeframe]?.count ?? preset.count,
-    delta: currentDelta ?? customData?.[selectedTimeframe]?.delta ?? preset.delta,
-    progressPct: currentProgressPct ?? customData?.[selectedTimeframe]?.progressPct ?? preset.progressPct,
-    footerTotal: footerLeftLabel ?? customData?.[selectedTimeframe]?.footerTotal ?? preset.footerTotal,
-    footerAdd: footerRightLabel ?? customData?.[selectedTimeframe]?.footerAdd ?? preset.footerAdd,
+    count: customData?.[selectedTimeframe]?.count ?? currentCount,
+    delta: customData?.[selectedTimeframe]?.delta ?? currentDelta,
+    progressPct: customData?.[selectedTimeframe]?.progressPct ?? currentProgressPct,
+    footerTotal: customData?.[selectedTimeframe]?.footerTotal ?? footerLeftLabel,
+    footerAdd: customData?.[selectedTimeframe]?.footerAdd ?? footerRightLabel,
+  };
+
+  const handleTimeframeClick = (tf: GrowthTimeframe) => {
+    setSelectedTimeframe(tf);
+    onTimeframeChange?.(tf);
   };
 
   return (
@@ -117,7 +92,7 @@ export default function BentoGrowthCard({
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setSelectedTimeframe(tab.key)}
+                onClick={() => handleTimeframeClick(tab.key)}
                 className={cn(
                   'rounded-full px-3 py-1 text-xs font-semibold transition-all',
                   isActive

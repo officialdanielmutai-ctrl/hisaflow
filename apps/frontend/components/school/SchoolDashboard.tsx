@@ -100,6 +100,26 @@ export function SchoolDashboard() {
 
   const defaulters = data.overdueInvoices.slice(0, 3);
 
+  const schoolTab1Bars = [
+    { day: 'Mon', tag: `${data.totalStudents}`, pct: 100, isHighlight: true },
+    { day: 'Tue', tag: `${data.totalClasses} cls`, pct: Math.min(100, data.totalClasses * 12) },
+    { day: 'Wed', tag: `${data.fees.paidCount} paid`, pct: Math.min(100, Math.round((data.fees.paidCount / Math.max(data.fees.totalInvoices, 1)) * 100)) },
+    { day: 'Thu', tag: `${data.fees.collectionRate}%`, pct: data.fees.collectionRate, isHighlight: data.fees.collectionRate >= 60 },
+    { day: 'Fri', tag: `${data.overdueInvoices.length} due`, pct: Math.min(100, data.overdueInvoices.length * 15) },
+    { day: 'Sat', tag: `${data.recentPayments.length} rcpt`, pct: Math.min(100, data.recentPayments.length * 20) },
+    { day: 'Sun', tag: `${data.totalStudents}`, pct: 90 },
+  ];
+
+  const schoolTab2Bars = [
+    { day: 'Mon', tag: `${data.fees.paidCount}`, pct: Math.min(100, Math.round((data.fees.paidCount / Math.max(data.fees.totalInvoices, 1)) * 100)), isHighlight: true },
+    { day: 'Tue', tag: `${Math.max(0, data.fees.totalInvoices - data.fees.paidCount)} unpaid`, pct: Math.min(100, Math.round((Math.max(0, data.fees.totalInvoices - data.fees.paidCount) / Math.max(data.fees.totalInvoices, 1)) * 100)) },
+    { day: 'Wed', tag: `${data.fees.collectionRate}%`, pct: data.fees.collectionRate },
+    { day: 'Thu', tag: `${data.fees.totalInvoices} inv`, pct: 100, isHighlight: true },
+    { day: 'Fri', tag: `KES ${Math.round(data.fees.totalCollected / 1000)}k`, pct: Math.min(100, Math.round((data.fees.totalCollected / Math.max(data.fees.totalExpected, 1)) * 100)) },
+    { day: 'Sat', tag: `KES ${Math.round(data.fees.outstanding / 1000)}k`, pct: Math.min(100, Math.round((data.fees.outstanding / Math.max(data.fees.totalExpected, 1)) * 100)) },
+    { day: 'Sun', tag: `${data.fees.collectionRate}%`, pct: data.fees.collectionRate, isHighlight: true },
+  ];
+
   return (
     <div className="flex flex-col gap-6 pb-24">
       {/* ── Header & Top Operations Shortcuts (Always On Top on PC) ── */}
@@ -164,8 +184,10 @@ export function SchoolDashboard() {
             title="Enrollment & Fee Statistics"
             tab1Label="Students"
             tab2Label="Fee Invoices"
-            headlineValue={`${data.totalStudents}`}
+            headlineValue={`${data.totalStudents} Students`}
             headlineSubtitle={`${data.totalClasses} active classes · ${data.fees.collectionRate}% fee collection rate this term`}
+            tab1Bars={schoolTab1Bars}
+            tab2Bars={schoolTab2Bars}
             className="h-full"
           />
         </div>

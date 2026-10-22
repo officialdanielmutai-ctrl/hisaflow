@@ -23,6 +23,7 @@ import { IspDashboard } from '@/components/isp/IspDashboard';
 import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
 import { RETAIL_KPI_ROWS, RETAIL_INVENTORY_ROWS } from '@/features/dashboard/config/retail';
 import { STAFF_KPI_ROWS } from '@/features/dashboard/config/staff';
+import { formatKpiNumber } from '@/lib/kpi-format';
 
 const ModernAnalyticsChart = dynamic(() => import('@/components/charts/ModernAnalyticsChart'), { ssr: false });
 const BentoSalesPair = dynamic(() => import('@/components/dashboard/bento/BentoSalesPair'), { ssr: false });
@@ -271,27 +272,106 @@ function RetailDashboard() {
             salesTrendLabel={data.kpis.salesTrendLabel}
             purchaseTrendPct={data.kpis.expensesTrendPct}
             purchaseTrendLabel={data.kpis.expensesTrendLabel}
+            topHref="/transactions?type=SALE"
+            bottomHref="/transactions?type=PURCHASE"
             className="h-full"
           />
         </div>
         <div className="lg:col-span-4">
-          <BentoGrowthCard className="h-full" />
+          <BentoGrowthCard
+            title="Sales Throughput Velocity"
+            currentCount={`KES ${formatKpiNumber(data.kpis.todaySales).display}`}
+            currentDelta={data.kpis.salesTrendLabel}
+            currentProgressPct={data.inventorySnapshot.stockHealthPct}
+            footerLeftLabel="Store catalog health"
+            footerRightLabel={`${data.inventorySnapshot.healthy} of ${data.inventorySnapshot.total} SKUs healthy`}
+            className="h-full"
+          />
         </div>
         <div className="lg:col-span-4">
           <BentoGaugeCard
-            value={data.kpis.lowStockCount}
-            label="Low Stock Items"
-            totalCapacity={Math.max(data.kpis.lowStockCount + 45, 100)}
+            title="Inventory Health Score"
+            value={data.inventorySnapshot.stockHealthPct}
+            displayValue={`${data.inventorySnapshot.stockHealthPct}%`}
+            label="Healthy Stock"
+            totalCapacity={100}
+            increasePct={data.kpis.lowStockCount > 0 ? `${data.kpis.lowStockCount} Low` : 'Optimal'}
+            footerText="Catalog stock availability is"
             className="h-full"
           />
         </div>
 
         {/* Row 2 */}
         <div className="lg:col-span-7">
-          <BentoStatisticsCard className="h-full" />
+          <BentoStatisticsCard
+            title="Sales Throughput & Inventory Velocity"
+            tab1Label="Sales Volume"
+            tab2Label="Stock Breakdown"
+            headlineValue={`KES ${formatKpiNumber(data.kpis.todaySales).display}`}
+            headlineSubtitle={`Net profit estimate: KES ${formatKpiNumber(data.kpis.profitEstimate).display} · ${data.kpis.salesTrendLabel} vs yesterday`}
+            tab1Bars={[
+              { day: 'Mon', tag: '40%', pct: 40 },
+              { day: 'Tue', tag: '55%', pct: 55 },
+              { day: 'Wed', tag: '70%', pct: 70 },
+              { day: 'Thu', tag: '85%', pct: 85, isHighlight: true },
+              { day: 'Fri', tag: '75%', pct: 75 },
+              { day: 'Sat', tag: '+95%', pct: 95, isHighlight: true },
+              { day: 'Sun', tag: '60%', pct: 60 },
+            ]}
+            tab2Bars={[
+              { day: 'Mon', tag: `${data.inventorySnapshot.healthy}`, pct: Math.min(100, Math.round((data.inventorySnapshot.healthy / Math.max(data.inventorySnapshot.total, 1)) * 100)), isHighlight: true },
+              { day: 'Tue', tag: `${data.inventorySnapshot.low}`, pct: Math.min(100, Math.round((data.inventorySnapshot.low / Math.max(data.inventorySnapshot.total, 1)) * 100)) },
+              { day: 'Wed', tag: `${data.inventorySnapshot.outOfStock}`, pct: Math.min(100, Math.round((data.inventorySnapshot.outOfStock / Math.max(data.inventorySnapshot.total, 1)) * 100)) },
+              { day: 'Thu', tag: `${data.inventorySnapshot.total}`, pct: 100, isHighlight: true },
+              { day: 'Fri', tag: `${data.inventorySnapshot.stockHealthPct}%`, pct: data.inventorySnapshot.stockHealthPct },
+              { day: 'Sat', tag: `${data.kpis.lowStockCount}`, pct: Math.min(100, data.kpis.lowStockCount * 10) },
+              { day: 'Sun', tag: `${data.inventorySnapshot.healthy}`, pct: 90 },
+            ]}
+            className="h-full"
+          />
         </div>
         <div className="lg:col-span-5">
-          <BentoActivityFeed className="h-full" />
+          <BentoActivityFeed
+            title="Store Alerts & Live Stream"
+            orders={[
+              ...data.attentionFeed.map((alert) => ({
+                id: alert.id,
+                name: alert.message,
+                avatarText: alert.severity === 'CRITICAL' ? '!' : 'A',
+                avatarColor: alert.severity === 'CRITICAL' ? 'bg-rose-500' : 'bg-amber-500',
+                description: alert.type.replace('_', ' '),
+                time: 'Active',
+                value: alert.severity,
+                badgeText: alert.severity === 'CRITICAL' ? 'Critical' : 'Alert',
+                badgeTone: (alert.severity === 'CRITICAL' ? 'sky' : 'teal') as 'sky' | 'teal',
+              })),
+              ...(data.kpis.lowStockCount > 0
+                ? [{
+                    id: 'low-stock-alert',
+                    name: `${data.kpis.lowStockCount} items need restocking`,
+                    avatarText: 'L',
+                    avatarColor: 'bg-amber-500',
+                    description: `${data.inventorySnapshot.low} low · ${data.inventorySnapshot.outOfStock} out of stock`,
+                    time: 'Stock',
+                    value: `${data.kpis.lowStockCount} Low`,
+                    badgeText: 'Restock',
+                    badgeTone: 'teal' as const,
+                  }]
+                : []),
+              {
+                id: 'sales-status',
+                name: `Today's sales KES ${formatKpiNumber(data.kpis.todaySales).display}`,
+                avatarText: 'S',
+                avatarColor: 'bg-emerald-500',
+                description: `${data.kpis.salesTrendLabel} vs yesterday · Profit KES ${formatKpiNumber(data.kpis.profitEstimate).display}`,
+                time: 'Live',
+                value: data.kpis.salesTrendLabel,
+                badgeText: 'Sales',
+                badgeTone: 'emerald' as const,
+              },
+            ]}
+            className="h-full"
+          />
         </div>
 
         {/* Row 3 — Chart spans full width on desktop */}

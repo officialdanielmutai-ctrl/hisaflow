@@ -190,50 +190,81 @@ export function ChemistDashboard() {
         <div className="lg:col-span-7">
           <BentoStatisticsCard
             title="Dispensing & Pharmacy Flow Statistics"
-            tab1Label="Prescriptions"
-            tab2Label="Over-the-Counter"
-            headlineValue="+82%"
-            headlineSubtitle="Weekly medication dispensing throughput across primary pharmacy categories"
+            tab1Label="Medication Velocity"
+            tab2Label="Stock Breakdown"
+            headlineValue={data.todaySales > 0 ? `KES ${data.todaySales.toLocaleString()}` : `${data.totalItems} SKUs`}
+            headlineSubtitle={`${data.lowStockCount} medications low in stock · ${data.expiringBatches.length} batches expiring soon`}
+            tab1Bars={[
+              { day: 'Mon', tag: '35%', pct: 35 },
+              { day: 'Tue', tag: '50%', pct: 50 },
+              { day: 'Wed', tag: '68%', pct: 68 },
+              { day: 'Thu', tag: '82%', pct: 82, isHighlight: true },
+              { day: 'Fri', tag: '74%', pct: 74 },
+              { day: 'Sat', tag: '+92%', pct: 92, isHighlight: true },
+              { day: 'Sun', tag: '45%', pct: 45 },
+            ]}
+            tab2Bars={[
+              { day: 'Mon', tag: `${Math.max(0, data.totalItems - data.lowStockCount)}`, pct: 85, isHighlight: true },
+              { day: 'Tue', tag: `${data.lowStockCount}`, pct: Math.min(100, data.lowStockCount * 15) },
+              { day: 'Wed', tag: `${data.expiringBatches.length}`, pct: Math.min(100, data.expiringBatches.length * 20) },
+              { day: 'Thu', tag: `${data.expiredBatches.length}`, pct: Math.min(100, data.expiredBatches.length * 25) },
+              { day: 'Fri', tag: `${data.totalItems}`, pct: 100, isHighlight: true },
+              { day: 'Sat', tag: `${data.topSellers.length}`, pct: 60 },
+              { day: 'Sun', tag: 'Optimal', pct: 80 },
+            ]}
             className="h-full"
           />
         </div>
         <div className="lg:col-span-5">
           <BentoActivityFeed
-            title="Recent Dispenses & Stock Movements"
+            title="Live Medication & Batch Movements"
             orders={[
-              {
-                id: 'act-1',
-                name: 'Amoxicillin 500mg dispensed',
-                avatarText: 'A',
-                avatarColor: 'bg-emerald-500',
-                description: '2 packs · Prescription verified',
-                time: '14:20',
-                value: 'KES 1,400',
-                badgeText: 'Dispensed',
-                badgeTone: 'emerald',
-              },
-              {
-                id: 'act-2',
-                name: 'Paracetamol Suspension restocked',
-                avatarText: 'P',
-                avatarColor: 'bg-teal-500',
-                description: 'Batch received · 50 bottles',
-                time: '11:45',
-                value: 'KES 8,500',
-                badgeText: 'Received',
-                badgeTone: 'sky',
-              },
-              {
-                id: 'act-3',
-                name: 'Azithromycin low stock alert',
-                avatarText: 'Z',
+              ...data.expiredBatches.slice(0, 2).map((b) => ({
+                id: `exp-${b.id}`,
+                name: `${b.productName} expired!`,
+                avatarText: b.productName.charAt(0).toUpperCase(),
+                avatarColor: 'bg-rose-500',
+                description: `Batch expired · ${b.quantity} units to retire`,
+                time: 'Expired',
+                value: `${b.quantity} units`,
+                badgeText: 'Expired',
+                badgeTone: 'sky' as const,
+              })),
+              ...data.expiringBatches.slice(0, 2).map((b) => ({
+                id: `near-${b.id}`,
+                name: `${b.productName} near expiry`,
+                avatarText: b.productName.charAt(0).toUpperCase(),
                 avatarColor: 'bg-amber-500',
-                description: 'Only 3 units remaining',
-                time: '09:30',
-                value: 'KES 2,100',
-                badgeText: 'Low Stock',
-                badgeTone: 'teal',
-              },
+                description: `Expires in ${b.daysLeft} days · ${b.quantity} units remaining`,
+                time: `${b.daysLeft}d left`,
+                value: `${b.quantity} units`,
+                badgeText: 'Expiring',
+                badgeTone: 'teal' as const,
+              })),
+              ...data.topSellers.slice(0, 2).map((s) => ({
+                id: `top-${s.itemId}`,
+                name: `${s.name} dispensed`,
+                avatarText: s.name.charAt(0).toUpperCase(),
+                avatarColor: 'bg-emerald-500',
+                description: `High demand · ${s.totalSold} ${s.unit} total dispensed`,
+                time: 'Top Item',
+                value: `${s.totalSold} sold`,
+                badgeText: 'Dispensed',
+                badgeTone: 'emerald' as const,
+              })),
+              ...(data.expiredBatches.length === 0 && data.expiringBatches.length === 0 && data.topSellers.length === 0
+                ? [{
+                    id: 'chem-status',
+                    name: `${data.totalItems} pharmacy medications catalogued`,
+                    avatarText: 'Rx',
+                    avatarColor: 'bg-emerald-500',
+                    description: `${data.lowStockCount} items below threshold · batches in good order`,
+                    time: 'Live',
+                    value: `KES ${data.todaySales.toLocaleString()}`,
+                    badgeText: 'In Stock',
+                    badgeTone: 'emerald' as const,
+                  }]
+                : []),
             ]}
             className="h-full"
           />

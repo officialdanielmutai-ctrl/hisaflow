@@ -50,6 +50,89 @@ export function WholesaleDashboard() {
     { label: 'Debtor Accounts', href: '/finance', icon: Banknote },
   ];
 
+  const maxSold = Math.max(...data.topSellers.map(s => s.totalSold), 1);
+  const wholesaleTab1Bars = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => {
+    const seller = data.topSellers[idx];
+    if (seller) {
+      const pct = Math.min(100, Math.round((seller.totalSold / maxSold) * 100));
+      return {
+        day,
+        tag: `${seller.totalSold} ${seller.unit}`,
+        pct,
+        isHighlight: pct >= 80,
+      };
+    }
+    const ratio = [0.4, 0.55, 0.7, 0.85, 0.8, 0.95, 0.6][idx];
+    const est = Math.round((data.todaySales / 1000) * ratio);
+    return {
+      day,
+      tag: `KES ${est}k`,
+      pct: Math.min(100, Math.round(ratio * 100)),
+      isHighlight: idx === 5,
+    };
+  });
+
+  const healthySkus = Math.max(0, data.totalItems - data.lowStockCount);
+  const wholesaleTab2Bars = [
+    { day: 'Mon', tag: `${healthySkus}`, pct: Math.min(100, Math.round((healthySkus / Math.max(data.totalItems, 1)) * 100)), isHighlight: true },
+    { day: 'Tue', tag: `${data.lowStockCount} low`, pct: Math.min(100, Math.round((data.lowStockCount / Math.max(data.totalItems, 1)) * 100)) },
+    { day: 'Wed', tag: `${data.openCreditCount} credit`, pct: Math.min(100, Math.round((data.openCreditCount / 20) * 100)) },
+    { day: 'Thu', tag: `${data.totalItems} SKUs`, pct: 100, isHighlight: true },
+    { day: 'Fri', tag: `KES ${Math.round(data.totalOutstanding / 1000)}k`, pct: Math.min(100, Math.round((data.totalOutstanding / Math.max(data.monthSales || 1, 1)) * 100)) },
+    { day: 'Sat', tag: `${data.topSellers.length} sellers`, pct: Math.min(100, data.topSellers.length * 15) },
+    { day: 'Sun', tag: `KES ${Math.round(data.todaySales / 1000)}k`, pct: 85, isHighlight: true },
+  ];
+
+  const wholesaleActivityOrders = [
+    ...data.alerts.slice(0, 2).map((alt) => ({
+      id: `alt-${alt.id}`,
+      name: alt.message,
+      avatarText: '!',
+      avatarColor: alt.severity === 'CRITICAL' ? 'bg-rose-500' : 'bg-amber-500',
+      description: `Warehouse alert · ${alt.severity.toLowerCase()}`,
+      time: 'Now',
+      value: alt.severity,
+      badgeText: 'Alert',
+      badgeTone: (alt.severity === 'CRITICAL' ? 'indigo' : 'teal') as 'indigo' | 'teal',
+    })),
+    ...data.topDebtors.slice(0, 2).map((debtor) => ({
+      id: `debt-${debtor.id}`,
+      name: debtor.clientName,
+      avatarText: debtor.clientName.charAt(0).toUpperCase(),
+      avatarColor: debtor.status === 'OVERDUE' ? 'bg-rose-500' : 'bg-amber-500',
+      description: `${debtor.status} account · Payment follow-up needed`,
+      time: 'Credit',
+      value: `KES ${debtor.amountOwed.toLocaleString()}`,
+      badgeText: debtor.status === 'PARTIAL' ? 'Partial' : 'Debtor',
+      badgeTone: (debtor.status === 'PARTIAL' ? 'teal' : 'sky') as 'teal' | 'sky',
+    })),
+    ...data.topSellers.slice(0, 2).map((seller) => ({
+      id: `seller-${seller.itemId}`,
+      name: seller.name,
+      avatarText: seller.name.charAt(0).toUpperCase(),
+      avatarColor: 'bg-emerald-500',
+      description: `${seller.totalSold} ${seller.unit} dispatched (7 days)`,
+      time: 'Fast-Moving',
+      value: `${seller.totalSold} ${seller.unit}`,
+      badgeText: 'Top SKU',
+      badgeTone: 'emerald' as const,
+    })),
+  ];
+
+  const finalWholesaleActivity = wholesaleActivityOrders.length > 0 ? wholesaleActivityOrders : [
+    {
+      id: 'wh-healthy',
+      name: 'Warehouse Operations Synchronized',
+      avatarText: '✓',
+      avatarColor: 'bg-emerald-500',
+      description: `${data.totalItems} total active SKUs · ${data.openCreditCount} credit accounts`,
+      time: 'Live',
+      value: `KES ${data.todaySales.toLocaleString()}`,
+      badgeText: 'Optimal',
+      badgeTone: 'emerald' as const,
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6 pb-24">
       {/* ── Header & Top Operations Shortcuts (Always on top for PC) ── */}
@@ -126,49 +209,17 @@ export function WholesaleDashboard() {
             title="Wholesale Revenue & Volume Statistics"
             tab1Label="Bulk Orders"
             tab2Label="Freight Volume"
-            headlineValue="+86%"
-            headlineSubtitle="Weekly dispatch volume and fulfillment speed across regional retailers"
+            headlineValue={`KES ${data.todaySales.toLocaleString()}`}
+            headlineSubtitle={`Month sales KES ${data.monthSales.toLocaleString()} · ${data.openCreditCount} open credit accounts (KES ${data.totalOutstanding.toLocaleString()} outstanding)`}
+            tab1Bars={wholesaleTab1Bars}
+            tab2Bars={wholesaleTab2Bars}
             className="h-full"
           />
         </div>
         <div className="lg:col-span-5">
           <BentoActivityFeed
-            title="Large Customer Shipments & Pickups"
-            orders={[
-              {
-                id: 'wh-1',
-                name: 'Metro Supermarket dispatch',
-                avatarText: 'M',
-                avatarColor: 'bg-emerald-500',
-                description: '40 cartons · Invoice paid via RTGS',
-                time: '15:20',
-                value: 'KES 145,000',
-                badgeText: 'Dispatched',
-                badgeTone: 'emerald',
-              },
-              {
-                id: 'wh-2',
-                name: 'Apex Wholesalers bulk order',
-                avatarText: 'A',
-                avatarColor: 'bg-teal-500',
-                description: 'Pallet pickup scheduled',
-                time: '13:45',
-                value: 'KES 88,000',
-                badgeText: 'Ready',
-                badgeTone: 'sky',
-              },
-              {
-                id: 'wh-3',
-                name: 'Kibera Retailers credit invoice',
-                avatarText: 'K',
-                avatarColor: 'bg-amber-500',
-                description: 'Payment due in 7 days',
-                time: '10:00',
-                value: 'KES 35,000',
-                badgeText: 'Credit',
-                badgeTone: 'teal',
-              },
-            ]}
+            title="Large Customer Shipments & Accounts"
+            orders={finalWholesaleActivity}
             className="h-full"
           />
         </div>

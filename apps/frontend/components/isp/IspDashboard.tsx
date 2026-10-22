@@ -155,6 +155,26 @@ export function IspDashboard() {
     { label: 'Service Plans', href: '/service-plans', icon: Wifi },
   ];
 
+  const ispTab1Bars = [
+    { day: 'Mon', tag: `${data.subscribers.active} on`, pct: activePct, isHighlight: true },
+    { day: 'Tue', tag: `${data.subscribers.suspended} susp`, pct: suspendedPct },
+    { day: 'Wed', tag: `${data.subscribers.churned} off`, pct: churnedPct },
+    { day: 'Thu', tag: `${totalSubs} fleet`, pct: 100, isHighlight: true },
+    { day: 'Fri', tag: `${data.scheduledWorkOrders} jobs`, pct: Math.min(100, data.scheduledWorkOrders * 15) },
+    { day: 'Sat', tag: `${data.openTickets} tix`, pct: Math.min(100, data.openTickets * 20) },
+    { day: 'Sun', tag: `${data.subscribers.active}`, pct: activePct, isHighlight: true },
+  ];
+
+  const ispTab2Bars = [
+    { day: 'Mon', tag: `${activePct}%`, pct: activePct, isHighlight: true },
+    { day: 'Tue', tag: `${suspendedPct}%`, pct: suspendedPct },
+    { day: 'Wed', tag: `KES ${Math.round(data.monthlyRevenue / 1000)}k`, pct: 85, isHighlight: true },
+    { day: 'Thu', tag: `${totalSubs}`, pct: 100, isHighlight: true },
+    { day: 'Fri', tag: `${data.scheduledWorkOrders}`, pct: Math.min(100, data.scheduledWorkOrders * 20) },
+    { day: 'Sat', tag: `${data.openTickets}`, pct: Math.min(100, data.openTickets * 20) },
+    { day: 'Sun', tag: `${activePct}%`, pct: activePct },
+  ];
+
   return (
     <div className="w-full flex flex-col gap-6 pb-24">
       {/* ── Header & Top Operations Bar ───────────────────────────────────────── */}
@@ -226,8 +246,10 @@ export function IspDashboard() {
             title="Subscriber Fleet Statistics"
             tab1Label="By Status"
             tab2Label="By Plan"
-            headlineValue={`${totalSubs}`}
+            headlineValue={`${totalSubs} Subscribers`}
             headlineSubtitle={`${activePct}% active · ${suspendedPct}% suspended · ${churnedPct}% churned across the subscriber fleet`}
+            tab1Bars={ispTab1Bars}
+            tab2Bars={ispTab2Bars}
             className="h-full"
           />
         </div>
