@@ -5,19 +5,23 @@ import { MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BentoGaugeCardProps {
+  title?: string;
   value?: number;
   label?: string;
   totalCapacity?: number;
   increasePct?: string;
+  footerText?: string;
   className?: string;
   onMenuClick?: () => void;
 }
 
 export default function BentoGaugeCard({
+  title = 'Customers Volume',
   value = 145,
   label = 'New Customers',
   totalCapacity = 190,
   increasePct = '+ 25%',
+  footerText = 'Your customer volume has increased',
   className,
   onMenuClick,
 }: BentoGaugeCardProps) {
@@ -67,13 +71,13 @@ export default function BentoGaugeCard({
       {/* ── Header Row ── */}
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-base font-bold text-[var(--color-text-primary)]">
-          Customers Volume
+          {title}
         </h3>
         <button
           type="button"
           onClick={onMenuClick}
           className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-          aria-label="Customers volume options"
+          aria-label="Gauge options"
         >
           <MoreHorizontal className="h-4 w-4" />
         </button>
@@ -117,7 +121,7 @@ export default function BentoGaugeCard({
 
       {/* ── Footer Caption Row ── */}
       <div className="mt-3 pt-3 border-t border-[var(--color-border)]/60 flex items-center justify-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
-        <span>Your customer volume has increased</span>
+        <span>{footerText}</span>
         <span className="inline-flex items-center rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/25 px-2 py-0.5 text-xs font-bold shrink-0">
           {increasePct}
         </span>

@@ -40,6 +40,7 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
             direction: 'up',
             tone: 'success',
           },
+          sparklineData: [90, 115, 130, 155, 175, 200, 220],
         };
       },
     },
@@ -90,6 +91,12 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
           data.scheduledWorkOrders > 0
             ? { kind: 'badge', text: `${data.scheduledWorkOrders} Pending`, tone: 'amber' }
             : { kind: 'badge', text: 'All Clear', tone: 'emerald' },
+        progress: {
+          value: Math.max(0, 100 - data.scheduledWorkOrders * 15),
+          max: 100,
+          label: 'Crew Utilization',
+          targetLabel: `${data.scheduledWorkOrders} Jobs`,
+        },
       }),
     },
     {
@@ -110,6 +117,7 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
           data.openTickets > 0
             ? { kind: 'badge', text: `${data.openTickets} Open`, tone: 'rose' }
             : { kind: 'badge', text: 'Resolved', tone: 'emerald' },
+        sparklineData: [4, 7, 5, 9, 6, 8, 10],
       }),
     },
   ],

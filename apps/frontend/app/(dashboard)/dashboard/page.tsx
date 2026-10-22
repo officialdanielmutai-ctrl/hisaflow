@@ -8,7 +8,9 @@ import { useDateRange } from '@/components/providers/DateRangeProvider';
 import Link from 'next/link';
 import {
   TrendingUp, AlertTriangle, Package, StickyNote, Sparkles,
+  ShoppingCart, QrCode,
 } from 'lucide-react';
+import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar';
 import { getDashboardData, DashboardData, getStaffDashboardData, StaffDashboardData } from '@/services/analytics.service';
 import { useRole } from '@/hooks/useRole';
 import DashboardLoading from '../loading';
@@ -238,8 +240,8 @@ function RetailDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+      {/* Header & Top Operations Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold text-[var(--color-text-primary)]">
             Good {timeLabel}, {firstName} {greetingEmoji}
@@ -248,14 +250,14 @@ function RetailDashboard() {
             {membership?.organization.name}
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-2">
-          <Link
-            href="/transactions?type=SALE"
-            className="flex items-center gap-1.5 rounded-full bg-[var(--color-accent)] px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90 transition-opacity"
-          >
-            + Record Sale
-          </Link>
-        </div>
+        <TopOperationsBar
+          shortcuts={[
+            { label: '+ Record Sale', href: '/transactions?type=SALE', icon: TrendingUp, primary: true },
+            { label: '+ Receive Stock', href: '/inventory?action=receive', icon: Package },
+            { label: '+ Add SKU', href: '/inventory?action=add', icon: ShoppingCart },
+            { label: 'Barcode Scan', href: '/inventory?action=scan', icon: QrCode },
+          ]}
+        />
       </div>
 
       {/* ── Desktop Bento Grid (lg+) ─────────────────────────────────────────── */}

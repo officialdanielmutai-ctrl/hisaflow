@@ -32,15 +32,21 @@ const INSIGHT_BARS: DayBarData[] = [
 ];
 
 interface BentoStatisticsCardProps {
+  title?: string;
+  tab1Label?: string;
+  tab2Label?: string;
   className?: string;
   headlineValue?: string;
   headlineSubtitle?: string;
 }
 
 export default function BentoStatisticsCard({
+  title = 'Statistics',
+  tab1Label = 'Customer Satisfaction',
+  tab2Label = 'Operational Insights',
   className,
   headlineValue = '+76%',
-  headlineSubtitle = 'Customer satisfaction increases every week',
+  headlineSubtitle = 'Weekly throughput increases steadily',
 }: BentoStatisticsCardProps) {
   const [activeTab, setActiveTab] = useState<'satisfaction' | 'insight'>('satisfaction');
   const [period, setPeriod] = useState<'Weekly' | 'Monthly'>('Weekly');
@@ -50,7 +56,7 @@ export default function BentoStatisticsCard({
   const displaySubtitle =
     activeTab === 'satisfaction'
       ? headlineSubtitle
-      : 'Visitor insight volume has scaled across all channels';
+      : 'Weekly operational metrics scaled across all active streams';
 
   return (
     <div
@@ -62,11 +68,11 @@ export default function BentoStatisticsCard({
       {/* ── Top Header Controls ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h3 className="text-base font-bold text-[var(--color-text-primary)]">
-          Statistics
+          {title}
         </h3>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Pill Tabs: Customer Satisfaction / Visitor Insight */}
+          {/* Pill Tabs */}
           <div className="inline-flex items-center gap-1 p-1 rounded-full bg-[var(--color-bg-elevated)] border border-[var(--color-border)]">
             <button
               type="button"
@@ -78,7 +84,7 @@ export default function BentoStatisticsCard({
                   : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
               )}
             >
-              Customer Satisfaction
+              {tab1Label}
             </button>
             <button
               type="button"
@@ -90,7 +96,7 @@ export default function BentoStatisticsCard({
                   : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
               )}
             >
-              Visitor Insight
+              {tab2Label}
             </button>
           </div>
 

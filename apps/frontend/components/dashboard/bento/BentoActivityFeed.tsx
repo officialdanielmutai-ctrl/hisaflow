@@ -71,12 +71,14 @@ const BADGE_TONES = {
 };
 
 interface BentoActivityFeedProps {
+  title?: string;
   orders?: ActivityOrder[];
   className?: string;
   onMenuClick?: () => void;
 }
 
 export default function BentoActivityFeed({
+  title = 'Live Operations Stream',
   orders = DEFAULT_ORDERS,
   className,
   onMenuClick,
@@ -94,7 +96,7 @@ export default function BentoActivityFeed({
       {/* ── Header Row ── */}
       <div className="flex items-center justify-between mb-4 z-10">
         <h3 className="text-base font-bold text-[var(--color-text-primary)]">
-          Most Order by Country &amp; City
+          {title}
         </h3>
         <button
           type="button"

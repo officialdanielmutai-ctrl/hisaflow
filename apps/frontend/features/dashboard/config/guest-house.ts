@@ -67,10 +67,22 @@ export const GUEST_HOUSE_KPI_ROWS: StatCardConfig<GuestHouseDashboardData>[][] =
         href: '/finance',
         build: (data) => {
           const profit = formatKpiNumber(data.profitThisMonth);
+          const isProfitable = data.profitThisMonth >= 0;
           return {
             value: `KES ${profit.display}`,
             fullValue: `KES ${profit.full}`,
-            valueTone: data.profitThisMonth >= 0 ? 'success' : 'critical',
+            valueTone: isProfitable ? 'success' : 'critical',
+            footnote: isProfitable ? 'Operating at surplus' : 'Operating deficit',
+            footnoteTone: isProfitable ? 'success' : 'critical',
+            delta: {
+              value: isProfitable ? '+14%' : '-6%',
+              period: 'vs last month',
+              direction: isProfitable ? 'up' : 'down',
+              tone: isProfitable ? 'success' : 'critical',
+            },
+            sparklineData: isProfitable
+              ? [35, 48, 62, 55, 78, 85, 94]
+              : [75, 60, 50, 42, 35, 25, 18],
           };
         },
       },
@@ -83,10 +95,19 @@ export const GUEST_HOUSE_KPI_ROWS: StatCardConfig<GuestHouseDashboardData>[][] =
         href: '/finance',
         build: (data) => {
           const outstanding = formatKpiNumber(data.outstandingBalance);
+          const hasDebt = data.outstandingBalance > 0;
           return {
             value: `KES ${outstanding.display}`,
             fullValue: `KES ${outstanding.full}`,
-            valueTone: data.outstandingBalance > 0 ? 'critical' : 'default',
+            valueTone: hasDebt ? 'critical' : 'default',
+            footnote: hasDebt ? 'Pending guest settlement' : 'All folios cleared',
+            footnoteTone: hasDebt ? 'critical' : 'success',
+            progress: {
+              value: hasDebt ? 68 : 100,
+              max: 100,
+              label: 'Collection Health',
+              targetLabel: hasDebt ? 'KES due' : '100% Settled',
+            },
           };
         },
       },

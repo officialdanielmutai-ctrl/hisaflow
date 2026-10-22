@@ -217,8 +217,8 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
-  const width = 120;
-  const height = 36;
+  const width = 140;
+  const height = 44;
   let maxIdx = 0;
   data.forEach((val, idx) => {
     if (val > data[maxIdx]) maxIdx = idx;
@@ -226,7 +226,7 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
 
   const points = data.map((val, idx) => {
     const x = (idx / (data.length - 1)) * width;
-    const y = height - ((val - min) / range) * (height - 8) - 4;
+    const y = height - ((val - min) / range) * (height - 10) - 5;
     return { x, y, str: `${x.toFixed(1)},${y.toFixed(1)}` };
   });
   const pathD = `M ${points.map((p) => p.str).join(' L ')}`;
@@ -237,25 +237,25 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
   const peakPoint = points[maxIdx];
 
   return (
-    <div className="w-full h-9 my-1 group/spark">
+    <div className="w-full h-11 sm:h-12 my-1.5 group/spark relative">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-full overflow-visible transition-all duration-300 group-hover/spark:drop-shadow-[0_2px_8px_rgba(16,185,129,0.35)]"
+        className="w-full h-full overflow-visible transition-all duration-300 group-hover/spark:drop-shadow-[0_4px_12px_rgba(16,185,129,0.4)]"
         preserveAspectRatio="none"
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.35} />
-            <stop offset="100%" stopColor={strokeColor} stopOpacity={0.0} />
+            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.4} />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity={0.02} />
           </linearGradient>
         </defs>
         <path d={fillD} fill={`url(#${gradId})`} />
-        <path d={pathD} fill="none" stroke={strokeColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pathD} fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         {/* Mountain Peak Beacon Ring Indicator (Inspo 2 style) */}
         {peakPoint && (
           <g transform={`translate(${peakPoint.x.toFixed(1)}, ${peakPoint.y.toFixed(1)})`}>
-            <circle r="4" fill="none" stroke={strokeColor} strokeWidth="1.5" className="animate-peak-beacon" />
-            <circle r="2.5" fill={strokeColor} />
+            <circle r="5" fill="none" stroke={strokeColor} strokeWidth="1.75" className="animate-peak-beacon" />
+            <circle r="3" fill={strokeColor} />
           </g>
         )}
       </svg>
@@ -265,13 +265,13 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
 
 function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: number; label?: string; isHero?: boolean }) {
   const pct = Math.min(Math.max((value / max) * 100, 0), 100);
-  const totalTicks = 20;
+  const totalTicks = 22;
   const activeTicksCount = Math.round((pct / 100) * totalTicks);
 
-  const cx = 50;
-  const cy = 46;
-  const rInner = 28;
-  const rOuter = 40;
+  const cx = 60;
+  const cy = 54;
+  const rInner = 34;
+  const rOuter = 48;
 
   const ticks = Array.from({ length: totalTicks }).map((_, i) => {
     const angleDeg = 180 - (i / (totalTicks - 1)) * 180;
@@ -283,7 +283,7 @@ function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: n
 
     const isActive = i < activeTicksCount;
     const ratio = i / totalTicks;
-    let strokeColor = isHero ? 'rgba(255,255,255,0.14)' : 'var(--color-bg-elevated)';
+    let strokeColor = isHero ? 'rgba(255,255,255,0.12)' : 'var(--color-bg-elevated)';
     if (isActive) {
       if (ratio < 0.35) strokeColor = '#06b6d4';
       else if (ratio < 0.7) strokeColor = '#14b8a6';
@@ -293,10 +293,10 @@ function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: n
   });
 
   return (
-    <div className="relative flex flex-col items-center justify-center my-1 group/gauge">
+    <div className="relative flex flex-col items-center justify-center my-2 group/gauge">
       <svg
-        viewBox="0 0 100 56"
-        className="w-28 h-16 overflow-visible select-none transition-transform duration-300 group-hover/gauge:scale-105"
+        viewBox="0 0 120 66"
+        className="w-36 h-20 overflow-visible select-none transition-transform duration-300 group-hover/gauge:scale-105"
       >
         {ticks.map((tick) => (
           <line
@@ -306,18 +306,18 @@ function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: n
             x2={tick.x2.toFixed(1)}
             y2={tick.y2.toFixed(1)}
             stroke={tick.strokeColor}
-            strokeWidth="3"
+            strokeWidth="3.5"
             strokeLinecap="round"
             className={cn(
               'transition-all duration-500 ease-out',
               tick.isActive && 'animate-gauge-pulse',
-              !tick.isActive && 'opacity-40',
+              !tick.isActive && 'opacity-35',
             )}
           />
         ))}
       </svg>
-      <div className="absolute bottom-0 text-center pointer-events-none">
-        <span className={cn('text-xs font-black tracking-tight tabular-nums', isHero ? 'text-white' : 'text-[var(--color-text-primary)]')}>
+      <div className="absolute bottom-0 text-center pointer-events-none transition-transform duration-300 group-hover/gauge:scale-105">
+        <span className={cn('text-sm font-black tracking-tight tabular-nums', isHero ? 'text-white' : 'text-[var(--color-text-primary)]')}>
           {Math.round(pct)}%
         </span>
         {label && (
@@ -333,26 +333,26 @@ function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: n
 function StatProgressBar({ value, max = 100, label, targetLabel, isHero }: { value: number; max?: number; label?: string; targetLabel?: string; isHero?: boolean }) {
   const pct = Math.min(Math.max((value / max) * 100, 0), 100);
   return (
-    <div className="w-full my-2 flex flex-col gap-1.5 group/progress">
+    <div className="w-full my-2.5 flex flex-col gap-1.5 group/progress">
       <div
         className={cn(
-          'relative h-3 sm:h-3.5 w-full rounded-full border p-0.5 overflow-hidden transition-all duration-300 group-hover/progress:shadow-sm',
+          'relative h-4 w-full rounded-full border p-0.5 overflow-hidden transition-all duration-300 group-hover/progress:shadow-md',
           isHero
-            ? 'border-white/15 bg-white/5'
-            : 'border-[var(--color-border)]/80 bg-[var(--color-bg-elevated)]',
+            ? 'border-white/20 bg-white/10'
+            : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]',
         )}
       >
         <div
           className="relative h-full rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 animate-liquid-shimmer transition-all duration-700 ease-out shadow-sm"
           style={{ width: `${pct}%` }}
         >
-          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/progress:opacity-100 transition-opacity rounded-full animate-liquid-wave" />
+          <div className="absolute inset-0 bg-white/25 rounded-full animate-liquid-wave opacity-70" />
         </div>
       </div>
       {(label || targetLabel) && (
-        <div className={cn('flex items-center justify-between text-[10px] font-medium', isHero ? 'text-slate-400' : 'text-[var(--color-text-muted)]')}>
+        <div className={cn('flex items-center justify-between text-[11px] font-medium', isHero ? 'text-slate-300' : 'text-[var(--color-text-secondary)]')}>
           {label && <span>{label}</span>}
-          {targetLabel && <span className="font-semibold text-emerald-600 dark:text-emerald-400">{targetLabel}</span>}
+          {targetLabel && <span className="font-bold text-emerald-600 dark:text-emerald-400">{targetLabel}</span>}
         </div>
       )}
     </div>

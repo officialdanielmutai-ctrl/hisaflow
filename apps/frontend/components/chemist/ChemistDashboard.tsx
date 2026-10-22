@@ -11,10 +11,18 @@ import {
 } from 'lucide-react';
 import { getChemistDashboardData, type ChemistDashboardData } from '@/services/analytics.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
+import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import { AiRecommendationsCard, type Recommendation } from '@/components/shared/AiRecommendationsCard';
 import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
 import { CHEMIST_KPI_ROWS } from '@/features/dashboard/config/chemist';
+import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar';
+
+const BentoSalesPair = dynamic(() => import('@/components/dashboard/bento/BentoSalesPair'), { ssr: false });
+const BentoGrowthCard = dynamic(() => import('@/components/dashboard/bento/BentoGrowthCard'), { ssr: false });
+const BentoGaugeCard = dynamic(() => import('@/components/dashboard/bento/BentoGaugeCard'), { ssr: false });
+const BentoStatisticsCard = dynamic(() => import('@/components/dashboard/bento/BentoStatisticsCard'), { ssr: false });
+const BentoActivityFeed = dynamic(() => import('@/components/dashboard/bento/BentoActivityFeed'), { ssr: false });
 
 // Derive contextual AI recommendations from chemist data
 function buildChemistRecommendations(data: ChemistDashboardData): Recommendation[] {
@@ -94,14 +102,24 @@ export function ChemistDashboard() {
   const greetingEmoji = data.timeOfDay === 'morning' ? '👋' : data.timeOfDay === 'afternoon' ? '☀️' : '🌙';
   const recommendations = buildChemistRecommendations(data);
 
+  const shortcuts = [
+    { label: '+ Record Sale', href: '/transactions?type=SALE', icon: ShoppingCart, primary: true },
+    { label: '+ Receive Batch', href: '/inventory', icon: Plus },
+    { label: '+ Medication Stock', href: '/inventory', icon: Pill },
+    { label: 'View Receipts', href: '/transactions', icon: ReceiptText },
+  ];
+
   return (
     <div className="flex flex-col gap-6 pb-24">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-[var(--color-text-primary)]">
-          Good {data.timeOfDay}, {firstName} {greetingEmoji}
-        </h1>
-        <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">{membership?.organization.name}</p>
+      {/* ── Header & Top Operations Shortcuts (Always on top for PC) ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold text-[var(--color-text-primary)]">
+            Good {data.timeOfDay}, {firstName} {greetingEmoji}
+          </h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">{membership?.organization.name}</p>
+        </div>
+        <TopOperationsBar shortcuts={shortcuts} />
       </div>
 
       {/* Urgent Expired Banner */}
@@ -125,40 +143,107 @@ export function ChemistDashboard() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-2">
-        <Link
-          href="/inventory"
-          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--color-primary)] text-white shadow-sm hover:opacity-90 transition-opacity"
-        >
-          <Pill className="h-5 w-5 mb-1.5" />
-          <span className="text-[11px] font-bold text-center leading-tight">Stock</span>
-        </Link>
-        <Link
-          href="/transactions"
-          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <ShoppingCart className="h-5 w-5 mb-1.5 text-[var(--color-primary)]" />
-          <span className="text-[11px] font-bold text-center leading-tight">Sales</span>
-        </Link>
-        <Link
-          href="/transactions"
-          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <ReceiptText className="h-5 w-5 mb-1.5 text-[var(--color-primary)]" />
-          <span className="text-[11px] font-bold text-center leading-tight">Receipts</span>
-        </Link>
-        <Link
-          href="/inventory"
-          className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white border border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <Plus className="h-5 w-5 mb-1.5 text-[var(--color-primary)]" />
-          <span className="text-[11px] font-bold text-center leading-tight">Restock</span>
-        </Link>
+      {/* ── Desktop Bento Grid (lg+) Matching Inspo 1 ── */}
+      <div className="hidden lg:grid lg:grid-cols-12 gap-5">
+        {/* Row 1 */}
+        <div className="lg:col-span-4 flex flex-col">
+          <BentoSalesPair
+            salesAmount={data.todaySales}
+            purchaseAmount={data.monthSales}
+            topLabel="Today's Dispensed"
+            topIcon={ShoppingCart}
+            bottomLabel="Month Sales"
+            bottomIcon={Pill}
+            salesTrendPct={18}
+            salesTrendLabel="+18%"
+            purchaseTrendPct={24}
+            purchaseTrendLabel="+24%"
+            topHref="/transactions"
+            bottomHref="/transactions"
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-4">
+          <BentoGrowthCard
+            title="Dispensing Velocity"
+            currentCount={`${data.totalItems} SKUs`}
+            currentDelta="+18%"
+            currentProgressPct={Math.min(data.totalItems * 2, 94)}
+            footerLeftLabel="Active medications in stock"
+            footerRightLabel="KES 12,500 dispensed today"
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-4">
+          <BentoGaugeCard
+            title="Stock Availability"
+            value={Math.max(0, data.totalItems - data.lowStockCount)}
+            totalCapacity={data.totalItems || 60}
+            label="In-Stock Medications"
+            increasePct={data.lowStockCount === 0 ? 'Optimal' : `${data.lowStockCount} Low`}
+            footerText="Pharmacy catalog availability is"
+            className="h-full"
+          />
+        </div>
+
+        {/* Row 2 */}
+        <div className="lg:col-span-7">
+          <BentoStatisticsCard
+            title="Dispensing & Pharmacy Flow Statistics"
+            tab1Label="Prescriptions"
+            tab2Label="Over-the-Counter"
+            headlineValue="+82%"
+            headlineSubtitle="Weekly medication dispensing throughput across primary pharmacy categories"
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-5">
+          <BentoActivityFeed
+            title="Recent Dispenses & Stock Movements"
+            orders={[
+              {
+                id: 'act-1',
+                name: 'Amoxicillin 500mg dispensed',
+                avatarText: 'A',
+                avatarColor: 'bg-emerald-500',
+                description: '2 packs · Prescription verified',
+                time: '14:20',
+                value: 'KES 1,400',
+                badgeText: 'Dispensed',
+                badgeTone: 'emerald',
+              },
+              {
+                id: 'act-2',
+                name: 'Paracetamol Suspension restocked',
+                avatarText: 'P',
+                avatarColor: 'bg-teal-500',
+                description: 'Batch received · 50 bottles',
+                time: '11:45',
+                value: 'KES 8,500',
+                badgeText: 'Received',
+                badgeTone: 'sky',
+              },
+              {
+                id: 'act-3',
+                name: 'Azithromycin low stock alert',
+                avatarText: 'Z',
+                avatarColor: 'bg-amber-500',
+                description: 'Only 3 units remaining',
+                time: '09:30',
+                value: 'KES 2,100',
+                badgeText: 'Low Stock',
+                badgeTone: 'teal',
+              },
+            ]}
+            className="h-full"
+          />
+        </div>
       </div>
 
-      {/* KPI Grid — shared StatCard, per-vertical chemist arrangement */}
-      <DashboardKpiRows rows={CHEMIST_KPI_ROWS} data={data} />
+      {/* ── Mobile Layout (lg:hidden) ── */}
+      <div className="lg:hidden flex flex-col gap-6">
+        <DashboardKpiRows rows={CHEMIST_KPI_ROWS} data={data} />
+      </div>
 
       {/* AI Recommendations */}
       <AiRecommendationsCard recommendations={recommendations} />

@@ -30,6 +30,7 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
             direction: 'up',
             tone: 'success',
           },
+          sparklineData: [85, 110, 105, 135, 140, 165, 180],
         };
       },
     },
@@ -46,6 +47,7 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
           value: `KES ${sales.display}`,
           fullValue: `KES ${sales.full}`,
           footnote: 'Month to date',
+          sparklineData: [240, 275, 310, 295, 360, 410, 450],
         };
       },
     },
@@ -63,6 +65,12 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
         footnote:
           data.lowStockCount > 0 ? 'Restock needed' : 'All levels healthy',
         footnoteTone: data.lowStockCount > 0 ? 'critical' : 'success',
+        progress: {
+          value: Math.max(0, 100 - data.lowStockCount * 8),
+          max: 100,
+          label: 'Warehouse Stock',
+          targetLabel: data.lowStockCount > 0 ? `${data.lowStockCount} lines low` : 'Optimal',
+        },
       }),
     },
     {
@@ -74,6 +82,11 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
       build: (data) => ({
         value: `${data.totalItems}`,
         footnote: 'Active products',
+        gauge: {
+          value: Math.min(data.totalItems, 400),
+          max: 400,
+          label: 'SKU Capacity',
+        },
       }),
     },
   ],

@@ -27,6 +27,7 @@ export const SCHOOL_KPI_ROWS: StatCardConfig<SchoolDashboardData>[][] = [
           direction: 'up',
           tone: 'success',
         },
+        sparklineData: [180, 195, 210, 205, 220, 235, 248],
       }),
     },
     {
@@ -39,6 +40,12 @@ export const SCHOOL_KPI_ROWS: StatCardConfig<SchoolDashboardData>[][] = [
       build: (data) => ({
         value: `${data.totalClasses}`,
         footnote: 'Streams included',
+        progress: {
+          value: Math.min((data.totalClasses / 12) * 100, 100),
+          max: 100,
+          label: 'School Capacity',
+          targetLabel: `${data.totalClasses} Streams`,
+        },
       }),
     },
   ],
@@ -79,6 +86,12 @@ export const SCHOOL_KPI_ROWS: StatCardConfig<SchoolDashboardData>[][] = [
           fullValue: `KES ${outstanding.full}`,
           footnote: `${100 - data.fees.collectionRate}% unpaid`,
           footnoteTone: data.fees.outstanding > 0 ? 'critical' : 'success',
+          progress: {
+            value: data.fees.collectionRate,
+            max: 100,
+            label: 'Term Collection',
+            targetLabel: `${100 - data.fees.collectionRate}% Unpaid`,
+          },
         };
       },
     },

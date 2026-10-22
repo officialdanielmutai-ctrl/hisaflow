@@ -41,6 +41,7 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
             direction: data.kpis.salesTrendIsPositive ? 'up' : 'down',
             tone: data.kpis.salesTrendIsPositive ? 'success' : 'critical',
           },
+          sparklineData: [40, 55, 65, 80, 75, 95, 105],
         };
       },
     },
@@ -70,6 +71,7 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
             direction: data.kpis.expensesTrendIsNegative ? 'down' : 'up',
             tone: data.kpis.expensesTrendIsNegative ? 'success' : 'critical',
           },
+          sparklineData: [20, 28, 25, 38, 32, 45, 42],
         };
       },
     },

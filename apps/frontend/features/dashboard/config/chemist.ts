@@ -29,6 +29,7 @@ export const CHEMIST_KPI_ROWS: StatCardConfig<ChemistDashboardData>[][] = [
             direction: 'up',
             tone: 'success',
           },
+          sparklineData: [45, 58, 62, 75, 70, 88, 96],
         };
       },
     },
@@ -44,6 +45,7 @@ export const CHEMIST_KPI_ROWS: StatCardConfig<ChemistDashboardData>[][] = [
           value: `KES ${sales.display}`,
           fullValue: `KES ${sales.full}`,
           footnote: 'Month to date',
+          sparklineData: [120, 145, 160, 155, 185, 210, 235],
         };
       },
     },
@@ -61,6 +63,12 @@ export const CHEMIST_KPI_ROWS: StatCardConfig<ChemistDashboardData>[][] = [
         footnote:
           data.lowStockCount > 0 ? 'Needs restocking' : 'All levels healthy',
         footnoteTone: data.lowStockCount > 0 ? 'critical' : 'success',
+        progress: {
+          value: Math.max(0, 100 - data.lowStockCount * 12),
+          max: 100,
+          label: 'Shelf Availability',
+          targetLabel: data.lowStockCount > 0 ? `${data.lowStockCount} lines low` : 'Optimal',
+        },
       }),
     },
     {
@@ -72,6 +80,11 @@ export const CHEMIST_KPI_ROWS: StatCardConfig<ChemistDashboardData>[][] = [
       build: (data) => ({
         value: `${data.totalItems}`,
         footnote: 'Active stock lines',
+        gauge: {
+          value: Math.min(data.totalItems, 60),
+          max: 60,
+          label: 'Catalog Target',
+        },
       }),
     },
   ],

@@ -46,21 +46,37 @@ const TIMEFRAME_PRESETS: Record<GrowthTimeframe, GrowthData> = {
 };
 
 interface BentoGrowthCardProps {
+  title?: string;
   className?: string;
   onMenuClick?: () => void;
   customData?: Partial<Record<GrowthTimeframe, GrowthData>>;
+  currentCount?: string;
+  currentDelta?: string;
+  currentProgressPct?: number;
+  footerLeftLabel?: string;
+  footerRightLabel?: string;
 }
 
 export default function BentoGrowthCard({
+  title = 'User Growth',
   className,
   onMenuClick,
   customData,
+  currentCount,
+  currentDelta,
+  currentProgressPct,
+  footerLeftLabel,
+  footerRightLabel,
 }: BentoGrowthCardProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState<GrowthTimeframe>('24h');
 
-  const activeData = {
-    ...TIMEFRAME_PRESETS[selectedTimeframe],
-    ...(customData?.[selectedTimeframe] ?? {}),
+  const preset = TIMEFRAME_PRESETS[selectedTimeframe];
+  const activeData: GrowthData = {
+    count: currentCount ?? customData?.[selectedTimeframe]?.count ?? preset.count,
+    delta: currentDelta ?? customData?.[selectedTimeframe]?.delta ?? preset.delta,
+    progressPct: currentProgressPct ?? customData?.[selectedTimeframe]?.progressPct ?? preset.progressPct,
+    footerTotal: footerLeftLabel ?? customData?.[selectedTimeframe]?.footerTotal ?? preset.footerTotal,
+    footerAdd: footerRightLabel ?? customData?.[selectedTimeframe]?.footerAdd ?? preset.footerAdd,
   };
 
   return (
@@ -74,7 +90,7 @@ export default function BentoGrowthCard({
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-bold text-[var(--color-text-primary)]">
-            User Growth
+            {title}
           </h3>
           <button
             type="button"

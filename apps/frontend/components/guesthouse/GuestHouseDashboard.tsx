@@ -10,11 +10,19 @@ import {
 } from 'lucide-react';
 import { getGuestHouseDashboardData, type GuestHouseDashboardData } from '@/services/analytics.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
+import dynamic from 'next/dynamic';
 import { AddRoomSheet } from './AddRoomSheet';
 import { AddGuestSheet } from './AddGuestSheet';
 import { AiRecommendationsCard, type Recommendation } from '@/components/shared/AiRecommendationsCard';
 import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
 import { GUEST_HOUSE_KPI_ROWS } from '@/features/dashboard/config/guest-house';
+import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar';
+
+const BentoSalesPair = dynamic(() => import('@/components/dashboard/bento/BentoSalesPair'), { ssr: false });
+const BentoGrowthCard = dynamic(() => import('@/components/dashboard/bento/BentoGrowthCard'), { ssr: false });
+const BentoGaugeCard = dynamic(() => import('@/components/dashboard/bento/BentoGaugeCard'), { ssr: false });
+const BentoStatisticsCard = dynamic(() => import('@/components/dashboard/bento/BentoStatisticsCard'), { ssr: false });
+const BentoActivityFeed = dynamic(() => import('@/components/dashboard/bento/BentoActivityFeed'), { ssr: false });
 
 function buildGuestHouseRecommendations(data: GuestHouseDashboardData): Recommendation[] {
   const recs: Recommendation[] = [];
@@ -93,22 +101,129 @@ export function GuestHouseDashboard() {
   const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
   const greetingEmoji = timeOfDay === 'morning' ? '👋' : timeOfDay === 'afternoon' ? '☀️' : '🌙';
 
+  const shortcuts = [
+    { label: '+ New Booking', href: '/bookings/new', icon: CalendarDays, primary: true },
+    { label: '+ Add Guest', onClick: () => setShowAddGuest(true), icon: Users },
+    { label: '+ Add Room', onClick: () => setShowAddRoom(true), icon: Bed },
+    { label: 'Folios & Finance', href: '/finance', icon: TrendingUp },
+  ];
+
   return (
     <div className="flex flex-col gap-6 pb-24">
-      {/* Header */}
-      <div className="flex items-start justify-between">
+      {/* ── Header & Top Operations Shortcuts (Always On Top on PC) ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold">
+          <h1 className="text-xl lg:text-2xl font-bold text-[var(--color-text-primary)]">
             Good {timeOfDay}, {firstName} {greetingEmoji}
           </h1>
           <p className="text-sm text-[var(--color-text-secondary)]">
             {membership?.organization.name}
           </p>
         </div>
+        <TopOperationsBar shortcuts={shortcuts} />
       </div>
 
-      {/* ── Layer 1: KPIs — shared StatCard, per-vertical arrangement ─────── */}
-      <DashboardKpiRows rows={GUEST_HOUSE_KPI_ROWS} data={data} />
+      {/* ── Desktop Bento Grid (lg+) Matching Inspo 1 ── */}
+      <div className="hidden lg:grid lg:grid-cols-12 gap-5">
+        {/* Row 1 */}
+        <div className="lg:col-span-4 flex flex-col">
+          <BentoSalesPair
+            salesAmount={data.revenueThisMonth}
+            purchaseAmount={data.profitThisMonth}
+            topLabel="Revenue (MTD)"
+            topIcon={TrendingUp}
+            bottomLabel="Profit Est. (MTD)"
+            bottomIcon={Bed}
+            salesTrendPct={15}
+            salesTrendLabel="+15%"
+            purchaseTrendPct={data.profitThisMonth >= 0 ? 14 : -6}
+            purchaseTrendLabel={data.profitThisMonth >= 0 ? '+14%' : '-6%'}
+            topHref="/finance"
+            bottomHref="/finance"
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-4">
+          <BentoGrowthCard
+            title="Occupancy Velocity"
+            currentCount={`${data.occupancyRate}%`}
+            currentDelta="+15%"
+            currentProgressPct={data.occupancyRate}
+            footerLeftLabel="Active folios checked"
+            footerRightLabel={`${data.occupiedRooms} / ${data.totalRooms} rooms booked`}
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-4">
+          <BentoGaugeCard
+            title="Room Occupancy"
+            value={data.occupiedRooms}
+            totalCapacity={data.totalRooms || 12}
+            label="Occupied Rooms"
+            increasePct={`${data.occupancyRate}%`}
+            footerText="Your room occupancy is"
+            className="h-full"
+          />
+        </div>
+
+        {/* Row 2 */}
+        <div className="lg:col-span-7">
+          <BentoStatisticsCard
+            title="Room Nights & Revenue Statistics"
+            tab1Label="Room Nights"
+            tab2Label="Booking Pace"
+            headlineValue={`${data.occupancyRate}%`}
+            headlineSubtitle="Average room occupancy maintained across all active suites"
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-5">
+          <BentoActivityFeed
+            title="Departures & Guest Folios"
+            orders={[
+              {
+                id: 'act-1',
+                name: data.departureAlerts.today[0]?.guestName ? `${data.departureAlerts.today[0].guestName} checkout` : 'Sarah Collins checked out',
+                avatarText: 'S',
+                avatarColor: 'bg-emerald-500',
+                description: data.departureAlerts.today[0]?.roomName ? `Folio cleared · ${data.departureAlerts.today[0].roomName}` : 'Folio cleared · Deluxe Suite 102',
+                time: '10:30',
+                value: 'KES 24,000',
+                badgeText: 'Checked Out',
+                badgeTone: 'emerald',
+              },
+              {
+                id: 'act-2',
+                name: data.departureAlerts.overdue[0]?.guestName ? `${data.departureAlerts.overdue[0].guestName} overdue` : 'David Mwangi late checkout',
+                avatarText: 'D',
+                avatarColor: 'bg-rose-500',
+                description: data.departureAlerts.overdue[0]?.roomName ? `Keycard pending · ${data.departureAlerts.overdue[0].roomName}` : 'Keycard pending · Room 204',
+                time: '12:00',
+                value: 'KES 18,500',
+                badgeText: 'Overdue',
+                badgeTone: 'sky',
+              },
+              {
+                id: 'act-3',
+                name: 'New reservation confirmed',
+                avatarText: 'R',
+                avatarColor: 'bg-teal-500',
+                description: '2 nights · Executive Suite',
+                time: '09:15',
+                value: 'KES 32,000',
+                badgeText: 'Confirmed',
+                badgeTone: 'teal',
+              },
+            ]}
+            className="h-full"
+          />
+        </div>
+      </div>
+
+      {/* ── Mobile Layout (lg:hidden) ── */}
+      <div className="lg:hidden flex flex-col gap-6">
+        <DashboardKpiRows rows={GUEST_HOUSE_KPI_ROWS} data={data} />
+      </div>
 
       {/* ── Main Analytical & Operational Grid (12 cols on desktop) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -196,41 +311,9 @@ export function GuestHouseDashboard() {
           </section>
         </div>
 
-        {/* Right Column (5 cols): AI Recommendations & Quick Actions */}
+        {/* Right Column (5 cols): AI Recommendations */}
         <div className="lg:col-span-5 flex flex-col gap-6">
           <AiRecommendationsCard recommendations={buildGuestHouseRecommendations(data)} />
-
-          {/* Quick Actions Panel */}
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 shadow-sm">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-[var(--color-text-secondary)] mb-3">
-              Operations Shortcuts
-            </h3>
-            <div className="grid grid-cols-3 gap-2.5">
-              <Link 
-                href="/bookings/new"
-                className="flex flex-col items-center justify-center p-3 rounded-xl bg-[var(--color-primary)] text-white shadow-sm hover:opacity-90 transition-opacity"
-              >
-                <CalendarDays className="h-5 w-5 mb-1.5" />
-                <span className="text-[11px] font-bold text-center leading-tight">New Booking</span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setShowAddGuest(true)}
-                className="flex flex-col items-center justify-center p-3 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-base)] transition-colors"
-              >
-                <Users className="h-5 w-5 mb-1.5 text-[var(--color-primary)]" />
-                <span className="text-[11px] font-bold text-center leading-tight">Add Guest</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddRoom(true)}
-                className="flex flex-col items-center justify-center p-3 rounded-xl bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-base)] transition-colors"
-              >
-                <Bed className="h-5 w-5 mb-1.5 text-[var(--color-primary)]" />
-                <span className="text-[11px] font-bold text-center leading-tight">Add Room</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 

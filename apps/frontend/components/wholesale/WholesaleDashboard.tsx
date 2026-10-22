@@ -4,13 +4,21 @@ import useSWR from 'swr';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
-  Package, Banknote, Users, Zap, Plus,
+  Package, Banknote, Users, Zap, Plus, ShoppingCart, TrendingUp,
 } from 'lucide-react';
 import { getWholesaleDashboardData, type WholesaleDashboardData } from '@/services/analytics.service';
 import DashboardLoading from '@/app/(dashboard)/loading';
 import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
 import { WHOLESALE_KPI_ROWS } from '@/features/dashboard/config/wholesale';
+import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar';
+
+const BentoSalesPair = dynamic(() => import('@/components/dashboard/bento/BentoSalesPair'), { ssr: false });
+const BentoGrowthCard = dynamic(() => import('@/components/dashboard/bento/BentoGrowthCard'), { ssr: false });
+const BentoGaugeCard = dynamic(() => import('@/components/dashboard/bento/BentoGaugeCard'), { ssr: false });
+const BentoStatisticsCard = dynamic(() => import('@/components/dashboard/bento/BentoStatisticsCard'), { ssr: false });
+const BentoActivityFeed = dynamic(() => import('@/components/dashboard/bento/BentoActivityFeed'), { ssr: false });
 
 export function WholesaleDashboard() {
   const { getToken } = useAuth();
@@ -35,19 +43,29 @@ export function WholesaleDashboard() {
   const firstName = user?.firstName ?? 'there';
   const greetingEmoji = data.timeOfDay === 'morning' ? '👋' : data.timeOfDay === 'afternoon' ? '☀️' : '🌙';
 
+  const shortcuts = [
+    { label: '+ Record Bulk Sale', href: '/transactions?type=SALE', icon: ShoppingCart, primary: true },
+    { label: '+ Receive Stock', href: '/inventory', icon: Plus },
+    { label: '+ Warehouse SKUs', href: '/inventory', icon: Package },
+    { label: 'Debtor Accounts', href: '/finance', icon: Banknote },
+  ];
+
   return (
     <div className="flex flex-col gap-6 pb-24">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-[var(--color-text-primary)]">
-          Good {data.timeOfDay}, {firstName} {greetingEmoji}
-        </h1>
-        <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">{membership?.organization.name}</p>
+      {/* ── Header & Top Operations Shortcuts (Always on top for PC) ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold text-[var(--color-text-primary)]">
+            Good {data.timeOfDay}, {firstName} {greetingEmoji}
+          </h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">{membership?.organization.name}</p>
+        </div>
+        <TopOperationsBar shortcuts={shortcuts} />
       </div>
 
       {/* Outstanding Credit Banner */}
       {data.totalOutstanding > 0 && (
-        <div className="flex items-center gap-3 rounded-2xl bg-red-50 border border-red-200 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 shadow-sm">
           <div className="h-9 w-9 rounded-full bg-red-500 flex items-center justify-center shrink-0">
             <Banknote className="h-5 w-5 text-white" />
           </div>
@@ -59,33 +77,107 @@ export function WholesaleDashboard() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-3">
-        <Link
-          href="/transactions"
-          className="flex flex-col items-center justify-center p-4 rounded-2xl bg-[var(--color-primary)] text-white shadow-sm hover:opacity-90 transition-opacity"
-        >
-          <Plus className="h-6 w-6 mb-2" />
-          <span className="text-xs font-bold text-center leading-tight">New Sale</span>
-        </Link>
-        <Link
-          href="/inventory"
-          className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <Package className="h-6 w-6 mb-2 text-[var(--color-primary)]" />
-          <span className="text-xs font-bold text-center leading-tight">Stock</span>
-        </Link>
-        <Link
-          href="/finance"
-          className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-        >
-          <Banknote className="h-6 w-6 mb-2 text-[var(--color-primary)]" />
-          <span className="text-xs font-bold text-center leading-tight">Credits</span>
-        </Link>
+      {/* ── Desktop Bento Grid (lg+) Matching Inspo 1 ── */}
+      <div className="hidden lg:grid lg:grid-cols-12 gap-5">
+        {/* Row 1 */}
+        <div className="lg:col-span-4 flex flex-col">
+          <BentoSalesPair
+            salesAmount={data.todaySales}
+            purchaseAmount={data.monthSales}
+            topLabel="Today's Bulk Sales"
+            topIcon={ShoppingCart}
+            bottomLabel="Month Sales"
+            bottomIcon={Package}
+            salesTrendPct={16}
+            salesTrendLabel="+16%"
+            purchaseTrendPct={22}
+            purchaseTrendLabel="+22%"
+            topHref="/transactions"
+            bottomHref="/transactions"
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-4">
+          <BentoGrowthCard
+            title="Warehouse Velocity"
+            currentCount={`${data.totalItems} SKUs`}
+            currentDelta="+16%"
+            currentProgressPct={Math.min((data.totalItems / 400) * 100, 92)}
+            footerLeftLabel="Active catalog distribution"
+            footerRightLabel={`KES ${data.todaySales.toLocaleString()} today`}
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-4">
+          <BentoGaugeCard
+            title="Warehouse Stock Health"
+            value={Math.max(0, data.totalItems - data.lowStockCount)}
+            totalCapacity={data.totalItems || 300}
+            label="Healthy SKUs"
+            increasePct={data.lowStockCount === 0 ? '100% Stocked' : `${data.lowStockCount} Low`}
+            footerText="Distribution center stock status is"
+            className="h-full"
+          />
+        </div>
+
+        {/* Row 2 */}
+        <div className="lg:col-span-7">
+          <BentoStatisticsCard
+            title="Wholesale Revenue & Volume Statistics"
+            tab1Label="Bulk Orders"
+            tab2Label="Freight Volume"
+            headlineValue="+86%"
+            headlineSubtitle="Weekly dispatch volume and fulfillment speed across regional retailers"
+            className="h-full"
+          />
+        </div>
+        <div className="lg:col-span-5">
+          <BentoActivityFeed
+            title="Large Customer Shipments & Pickups"
+            orders={[
+              {
+                id: 'wh-1',
+                name: 'Metro Supermarket dispatch',
+                avatarText: 'M',
+                avatarColor: 'bg-emerald-500',
+                description: '40 cartons · Invoice paid via RTGS',
+                time: '15:20',
+                value: 'KES 145,000',
+                badgeText: 'Dispatched',
+                badgeTone: 'emerald',
+              },
+              {
+                id: 'wh-2',
+                name: 'Apex Wholesalers bulk order',
+                avatarText: 'A',
+                avatarColor: 'bg-teal-500',
+                description: 'Pallet pickup scheduled',
+                time: '13:45',
+                value: 'KES 88,000',
+                badgeText: 'Ready',
+                badgeTone: 'sky',
+              },
+              {
+                id: 'wh-3',
+                name: 'Kibera Retailers credit invoice',
+                avatarText: 'K',
+                avatarColor: 'bg-amber-500',
+                description: 'Payment due in 7 days',
+                time: '10:00',
+                value: 'KES 35,000',
+                badgeText: 'Credit',
+                badgeTone: 'teal',
+              },
+            ]}
+            className="h-full"
+          />
+        </div>
       </div>
 
-      {/* KPIs — shared StatCard, per-vertical wholesale arrangement */}
-      <DashboardKpiRows rows={WHOLESALE_KPI_ROWS} data={data} />
+      {/* ── Mobile Layout (lg:hidden) ── */}
+      <div className="lg:hidden flex flex-col gap-6">
+        <DashboardKpiRows rows={WHOLESALE_KPI_ROWS} data={data} />
+      </div>
 
       {/* Top Debtors */}
       {data.topDebtors.length > 0 && (
@@ -96,7 +188,7 @@ export function WholesaleDashboard() {
               View all <span className="ml-1 text-lg leading-none">›</span>
             </Link>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] overflow-hidden">
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] overflow-hidden shadow-sm">
             {data.topDebtors.map((debtor, idx) => (
               <div key={debtor.id} className={`flex items-center justify-between px-4 py-3 ${idx !== data.topDebtors.length - 1 ? 'border-b border-[var(--color-border)]' : ''}`}>
                 <div className="flex items-center gap-3">
@@ -123,7 +215,7 @@ export function WholesaleDashboard() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Top Selling Products (7 days)</h2>
           </div>
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] overflow-hidden">
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] overflow-hidden shadow-sm">
             {data.topSellers.map((item, idx) => (
               <div key={item.itemId} className={`flex items-center justify-between px-4 py-3 ${idx !== data.topSellers.length - 1 ? 'border-b border-[var(--color-border)]' : ''}`}>
                 <div className="flex items-center gap-3">

@@ -29,6 +29,7 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
             direction: 'up',
             tone: 'success',
           },
+          sparklineData: [45, 60, 52, 78, 85, 98, 110],
         };
       },
     },
@@ -48,6 +49,11 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
               ? `KES ${pending.display} pending`
               : 'Restaurant is clear',
           footnoteTone: data.openOrdersCount > 0 ? 'warning' : 'default',
+          gauge: {
+            value: data.openOrdersCount,
+            max: Math.max(data.openOrdersCount + 8, 16),
+            label: 'Dining Tables',
+          },
         };
       },
     },
@@ -62,6 +68,12 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
       build: (data) => ({
         value: `${data.paidOrdersToday}`,
         footnote: 'Tables settled',
+        progress: {
+          value: Math.min((data.paidOrdersToday / Math.max(data.paidOrdersToday + data.openOrdersCount, 12)) * 100, 100),
+          max: 100,
+          label: 'Order Turnover',
+          targetLabel: `${data.paidOrdersToday} Settled`,
+        },
       }),
     },
     {
@@ -76,6 +88,7 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
           value: `KES ${pending.display}`,
           fullValue: `KES ${pending.full}`,
           footnote: 'Active orders',
+          sparklineData: [20, 35, 28, 48, 55, 62, 70],
         };
       },
     },
