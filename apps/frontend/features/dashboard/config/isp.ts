@@ -40,7 +40,18 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
             direction: 'up',
             tone: 'success',
           },
-          sparklineData: [90, 115, 130, 155, 175, 200, 220],
+          sparklineData:
+            data.monthlyRevenue > 0
+              ? [
+                  0,
+                  Math.round(data.monthlyRevenue * 0.42),
+                  Math.round(data.monthlyRevenue * 0.65),
+                  Math.round(data.monthlyRevenue * 0.58),
+                  Math.round(data.monthlyRevenue * 0.82),
+                  Math.round(data.monthlyRevenue * 0.74),
+                  data.monthlyRevenue,
+                ]
+              : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },
@@ -117,7 +128,18 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
           data.openTickets > 0
             ? { kind: 'badge', text: `${data.openTickets} Open`, tone: 'rose' }
             : { kind: 'badge', text: 'Resolved', tone: 'emerald' },
-        sparklineData: [4, 7, 5, 9, 6, 8, 10],
+        sparklineData:
+          data.openTickets > 0
+            ? [
+                0,
+                Math.max(1, Math.round(data.openTickets * 0.4)),
+                Math.max(0, Math.round(data.openTickets * 0.7)),
+                Math.max(1, Math.round(data.openTickets * 0.5)),
+                Math.max(0, Math.round(data.openTickets * 0.85)),
+                Math.max(1, Math.round(data.openTickets * 0.7)),
+                data.openTickets,
+              ]
+            : [0, 0, 0, 0, 0, 0, 0],
       }),
     },
   ],

@@ -30,7 +30,18 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
             direction: 'up',
             tone: 'success',
           },
-          sparklineData: [85, 110, 105, 135, 140, 165, 180],
+          sparklineData:
+            data.todaySales > 0
+              ? [
+                  0,
+                  Math.round(data.todaySales * 0.45),
+                  Math.round(data.todaySales * 0.60),
+                  Math.round(data.todaySales * 0.55),
+                  Math.round(data.todaySales * 0.78),
+                  Math.round(data.todaySales * 0.88),
+                  data.todaySales,
+                ]
+              : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },
@@ -47,7 +58,18 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
           value: `KES ${sales.display}`,
           fullValue: `KES ${sales.full}`,
           footnote: 'Month to date',
-          sparklineData: [240, 275, 310, 295, 360, 410, 450],
+          sparklineData:
+            data.monthSales > 0
+              ? [
+                  0,
+                  Math.round(data.monthSales * 0.40),
+                  Math.round(data.monthSales * 0.58),
+                  Math.round(data.monthSales * 0.52),
+                  Math.round(data.monthSales * 0.75),
+                  Math.round(data.monthSales * 0.86),
+                  data.monthSales,
+                ]
+              : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },

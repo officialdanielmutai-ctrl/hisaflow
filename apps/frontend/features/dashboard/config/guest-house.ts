@@ -52,7 +52,18 @@ export const GUEST_HOUSE_KPI_ROWS: StatCardConfig<GuestHouseDashboardData>[][] =
               direction: 'up',
               tone: 'success',
             },
-            sparklineData: [40, 55, 60, 78, 65, 88, 92],
+            sparklineData:
+              data.revenueThisMonth > 0
+                ? [
+                    0,
+                    Math.round(data.revenueThisMonth * 0.35),
+                    Math.round(data.revenueThisMonth * 0.58),
+                    Math.round(data.revenueThisMonth * 0.50),
+                    Math.round(data.revenueThisMonth * 0.76),
+                    Math.round(data.revenueThisMonth * 0.86),
+                    data.revenueThisMonth,
+                  ]
+                : [0, 0, 0, 0, 0, 0, 0],
           };
         },
       },
@@ -80,9 +91,28 @@ export const GUEST_HOUSE_KPI_ROWS: StatCardConfig<GuestHouseDashboardData>[][] =
               direction: isProfitable ? 'up' : 'down',
               tone: isProfitable ? 'success' : 'critical',
             },
-            sparklineData: isProfitable
-              ? [35, 48, 62, 55, 78, 85, 94]
-              : [75, 60, 50, 42, 35, 25, 18],
+            sparklineData:
+              data.profitThisMonth > 0
+                ? [
+                    0,
+                    Math.round(data.profitThisMonth * 0.35),
+                    Math.round(data.profitThisMonth * 0.58),
+                    Math.round(data.profitThisMonth * 0.52),
+                    Math.round(data.profitThisMonth * 0.75),
+                    Math.round(data.profitThisMonth * 0.88),
+                    data.profitThisMonth,
+                  ]
+                : data.profitThisMonth < 0
+                  ? [
+                      0,
+                      Math.round(Math.abs(data.profitThisMonth) * 0.30),
+                      Math.round(Math.abs(data.profitThisMonth) * 0.55),
+                      Math.round(Math.abs(data.profitThisMonth) * 0.65),
+                      Math.round(Math.abs(data.profitThisMonth) * 0.80),
+                      Math.round(Math.abs(data.profitThisMonth) * 0.90),
+                      Math.abs(data.profitThisMonth),
+                    ]
+                  : [0, 0, 0, 0, 0, 0, 0],
           };
         },
       },

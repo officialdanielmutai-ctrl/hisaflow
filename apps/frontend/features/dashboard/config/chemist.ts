@@ -29,7 +29,18 @@ export const CHEMIST_KPI_ROWS: StatCardConfig<ChemistDashboardData>[][] = [
             direction: 'up',
             tone: 'success',
           },
-          sparklineData: [45, 58, 62, 75, 70, 88, 96],
+          sparklineData:
+            data.todaySales > 0
+              ? [
+                  0,
+                  Math.round(data.todaySales * 0.45),
+                  Math.round(data.todaySales * 0.62),
+                  Math.round(data.todaySales * 0.58),
+                  Math.round(data.todaySales * 0.78),
+                  Math.round(data.todaySales * 0.88),
+                  data.todaySales,
+                ]
+              : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },
@@ -45,7 +56,18 @@ export const CHEMIST_KPI_ROWS: StatCardConfig<ChemistDashboardData>[][] = [
           value: `KES ${sales.display}`,
           fullValue: `KES ${sales.full}`,
           footnote: 'Month to date',
-          sparklineData: [120, 145, 160, 155, 185, 210, 235],
+          sparklineData:
+            data.monthSales > 0
+              ? [
+                  0,
+                  Math.round(data.monthSales * 0.35),
+                  Math.round(data.monthSales * 0.55),
+                  Math.round(data.monthSales * 0.50),
+                  Math.round(data.monthSales * 0.72),
+                  Math.round(data.monthSales * 0.85),
+                  data.monthSales,
+                ]
+              : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },

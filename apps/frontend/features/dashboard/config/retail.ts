@@ -41,7 +41,18 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
             direction: data.kpis.salesTrendIsPositive ? 'up' : 'down',
             tone: data.kpis.salesTrendIsPositive ? 'success' : 'critical',
           },
-          sparklineData: [40, 55, 65, 80, 75, 95, 105],
+          sparklineData:
+            data.kpis.todaySales > 0
+              ? [
+                  0,
+                  Math.round(data.kpis.todaySales * 0.38),
+                  Math.round(data.kpis.todaySales * 0.60),
+                  Math.round(data.kpis.todaySales * 0.52),
+                  Math.round(data.kpis.todaySales * 0.75),
+                  Math.round(data.kpis.todaySales * 0.88),
+                  data.kpis.todaySales,
+                ]
+              : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },
@@ -71,7 +82,18 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
             direction: data.kpis.expensesTrendIsNegative ? 'down' : 'up',
             tone: data.kpis.expensesTrendIsNegative ? 'success' : 'critical',
           },
-          sparklineData: [20, 28, 25, 38, 32, 45, 42],
+          sparklineData:
+            data.kpis.todayExpenses > 0
+              ? [
+                  0,
+                  Math.round(data.kpis.todayExpenses * 0.30),
+                  Math.round(data.kpis.todayExpenses * 0.55),
+                  Math.round(data.kpis.todayExpenses * 0.45),
+                  Math.round(data.kpis.todayExpenses * 0.68),
+                  Math.round(data.kpis.todayExpenses * 0.82),
+                  data.kpis.todayExpenses,
+                ]
+              : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },
@@ -116,8 +138,26 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
             : 'critical',
           sparklineData:
             data.kpis.profitEstimate > 0
-              ? [30, 45, 60, 52, 75, 70, 85]
-              : [60, 50, 45, 30, 20],
+              ? [
+                  0,
+                  Math.round(data.kpis.profitEstimate * 0.32),
+                  Math.round(data.kpis.profitEstimate * 0.55),
+                  Math.round(data.kpis.profitEstimate * 0.48),
+                  Math.round(data.kpis.profitEstimate * 0.70),
+                  Math.round(data.kpis.profitEstimate * 0.85),
+                  data.kpis.profitEstimate,
+                ]
+              : data.kpis.profitEstimate < 0
+                ? [
+                    0,
+                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.20),
+                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.45),
+                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.60),
+                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.75),
+                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.90),
+                    Math.abs(data.kpis.profitEstimate),
+                  ]
+                : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },

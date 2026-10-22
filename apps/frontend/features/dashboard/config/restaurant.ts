@@ -29,7 +29,18 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
             direction: 'up',
             tone: 'success',
           },
-          sparklineData: [45, 60, 52, 78, 85, 98, 110],
+          sparklineData:
+            data.todayRevenue > 0
+              ? [
+                  0,
+                  Math.round(data.todayRevenue * 0.40),
+                  Math.round(data.todayRevenue * 0.62),
+                  Math.round(data.todayRevenue * 0.55),
+                  Math.round(data.todayRevenue * 0.78),
+                  Math.round(data.todayRevenue * 0.85),
+                  data.todayRevenue,
+                ]
+              : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },
@@ -88,7 +99,18 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
           value: `KES ${pending.display}`,
           fullValue: `KES ${pending.full}`,
           footnote: 'Active orders',
-          sparklineData: [20, 35, 28, 48, 55, 62, 70],
+          sparklineData:
+            data.openOrdersValue > 0
+              ? [
+                  0,
+                  Math.round(data.openOrdersValue * 0.35),
+                  Math.round(data.openOrdersValue * 0.58),
+                  Math.round(data.openOrdersValue * 0.48),
+                  Math.round(data.openOrdersValue * 0.72),
+                  Math.round(data.openOrdersValue * 0.82),
+                  data.openOrdersValue,
+                ]
+              : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },

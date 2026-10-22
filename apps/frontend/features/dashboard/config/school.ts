@@ -27,7 +27,18 @@ export const SCHOOL_KPI_ROWS: StatCardConfig<SchoolDashboardData>[][] = [
           direction: 'up',
           tone: 'success',
         },
-        sparklineData: [180, 195, 210, 205, 220, 235, 248],
+        sparklineData:
+          data.totalStudents > 0
+            ? [
+                0,
+                Math.round(data.totalStudents * 0.45),
+                Math.round(data.totalStudents * 0.65),
+                Math.round(data.totalStudents * 0.60),
+                Math.round(data.totalStudents * 0.80),
+                Math.round(data.totalStudents * 0.90),
+                data.totalStudents,
+              ]
+            : [0, 0, 0, 0, 0, 0, 0],
       }),
     },
     {

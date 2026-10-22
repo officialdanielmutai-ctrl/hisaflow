@@ -214,48 +214,90 @@ function DeltaBadge({ delta, isHero }: { delta: StatDelta; isHero?: boolean }) {
 
 function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
   if (!data || data.length < 2) return null;
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
+
   const width = 140;
   const height = 44;
-  let maxIdx = 0;
-  data.forEach((val, idx) => {
-    if (val > data[maxIdx]) maxIdx = idx;
+  const padBottom = 6;
+  const padTop = 6;
+  const baselineY = height - padBottom; // 38
+  const usableHeight = height - padTop - padBottom; // 32
+
+  const maxVal = Math.max(...data, 0);
+  const isAllZeroes = maxVal === 0;
+
+  // Make sure line starts from 0 baseline at x=0 if not already starting at 0
+  const normalizedSeries = data[0] === 0 ? [...data] : [0, ...data];
+  const maxSeriesVal = isAllZeroes ? 1 : Math.max(...normalizedSeries, 1);
+
+  const points = normalizedSeries.map((val, idx) => {
+    const x = (idx / (normalizedSeries.length - 1)) * width;
+    const y = isAllZeroes
+      ? baselineY
+      : baselineY - (Math.max(0, val) / maxSeriesVal) * usableHeight;
+    return { x, y };
   });
 
-  const points = data.map((val, idx) => {
-    const x = (idx / (data.length - 1)) * width;
-    const y = height - ((val - min) / range) * (height - 10) - 5;
-    return { x, y, str: `${x.toFixed(1)},${y.toFixed(1)}` };
-  });
-  const pathD = `M ${points.map((p) => p.str).join(' L ')}`;
+  // Construct smooth cubic bezier spline curve
+  let pathD = `M ${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`;
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const dx = curr.x - prev.x;
+    const cp1x = prev.x + dx * 0.45;
+    const cp1y = prev.y;
+    const cp2x = curr.x - dx * 0.45;
+    const cp2y = curr.y;
+    pathD += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${curr.x.toFixed(1)},${curr.y.toFixed(1)}`;
+  }
+
   const fillD = `${pathD} L ${width},${height} L 0,${height} Z`;
 
   const strokeColor = isHero ? '#34d399' : '#10b981';
   const gradId = `spark-grad-${Math.abs(data.reduce((a, b) => a + b, 0))}`;
-  const peakPoint = points[maxIdx];
+  const latestPoint = points[points.length - 1];
 
   return (
     <div className="w-full h-11 sm:h-12 my-1.5 group/spark relative">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-full overflow-visible transition-all duration-300 group-hover/spark:drop-shadow-[0_4px_12px_rgba(16,185,129,0.4)]"
+        className="w-full h-full overflow-visible transition-all duration-300 group-hover/spark:drop-shadow-[0_4px_12px_rgba(16,185,129,0.35)]"
         preserveAspectRatio="none"
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.4} />
-            <stop offset="100%" stopColor={strokeColor} stopOpacity={0.02} />
+            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.38} />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity={0.01} />
           </linearGradient>
         </defs>
-        <path d={fillD} fill={`url(#${gradId})`} />
-        <path d={pathD} fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        {/* Mountain Peak Beacon Ring Indicator (Inspo 2 style) */}
-        {peakPoint && (
-          <g transform={`translate(${peakPoint.x.toFixed(1)}, ${peakPoint.y.toFixed(1)})`}>
-            <circle r="5" fill="none" stroke={strokeColor} strokeWidth="1.75" className="animate-peak-beacon" />
-            <circle r="3" fill={strokeColor} />
+        <path d={fillD} fill={`url(#${gradId})`} className="animate-trace-fill" />
+        <path
+          d={pathD}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          pathLength="100"
+          className="animate-trace-line"
+        />
+        {/* Latest Data Point Bleep Beacon (traces to the latest point and pulses continuously) */}
+        {latestPoint && (
+          <g transform={`translate(${latestPoint.x.toFixed(1)}, ${latestPoint.y.toFixed(1)})`}>
+            {/* Live radar ripple */}
+            <circle
+              r="3.5"
+              fill="none"
+              stroke={strokeColor}
+              strokeWidth="2"
+              className="animate-bleep-radar"
+            />
+            {/* Center beacon dot */}
+            <circle
+              r="3"
+              fill={strokeColor}
+              className="animate-bleep-beacon shadow-sm"
+            />
+            <circle r="1.2" fill="#ffffff" />
           </g>
         )}
       </svg>
@@ -342,11 +384,36 @@ function StatProgressBar({ value, max = 100, label, targetLabel, isHero }: { val
             : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]',
         )}
       >
+        {/* Liquid filling column surging from 0% to target pct */}
         <div
-          className="relative h-full rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 animate-liquid-shimmer transition-all duration-700 ease-out shadow-sm"
-          style={{ width: `${pct}%` }}
+          className="relative h-full rounded-full bg-gradient-to-r from-sky-500 via-teal-500 to-emerald-400 animate-liquid-fill shadow-sm transition-all duration-500"
+          style={{
+            width: `${pct}%`,
+            ['--liquid-fill-pct' as string]: `${pct}%`,
+          }}
         >
-          <div className="absolute inset-0 bg-white/25 rounded-full animate-liquid-wave opacity-70" />
+          {/* Specular liquid surface reflection */}
+          <div className="absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-full pointer-events-none" />
+
+          {/* Internal undulating fluid sheen */}
+          <div className="absolute inset-0 bg-white/15 rounded-full animate-liquid-wave opacity-75 pointer-events-none" />
+
+          {/* Leading Edge: Meniscus, Rising Bubbles & Fizzle Sparks */}
+          {pct > 5 && (
+            <div className="absolute -right-1 top-0 bottom-0 w-4 pointer-events-none overflow-visible flex items-center justify-center">
+              {/* Meniscus fluid head */}
+              <div className="absolute right-0 h-full w-2 rounded-r-full bg-emerald-200/50 blur-[0.5px] animate-meniscus" />
+
+              {/* Rising micro-bubbles */}
+              <span className="absolute right-1 bottom-0.5 h-1.5 w-1.5 rounded-full bg-white/90 shadow-sm animate-bubble-1" />
+              <span className="absolute right-2 bottom-1 h-1 w-1 rounded-full bg-white/80 animate-bubble-2" />
+              <span className="absolute right-0.5 bottom-0 h-1.5 w-1.5 rounded-full bg-cyan-100 animate-bubble-3" />
+
+              {/* Effervescent fizzle particles */}
+              <span className="absolute -right-0.5 top-0.5 h-1 w-1 rounded-full bg-emerald-100 shadow-[0_0_4px_#34d399] animate-fizzle-1" />
+              <span className="absolute -right-1 bottom-0.5 h-0.5 w-0.5 rounded-full bg-teal-100 shadow-[0_0_3px_#2dd4bf] animate-fizzle-2" />
+            </div>
+          )}
         </div>
       </div>
       {(label || targetLabel) && (
