@@ -1,30 +1,30 @@
-'use client';
+'use client'
 
-import React, { useState } from 'react';
-import { MoreHorizontal, TrendingUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React, { useState } from 'react'
+import { MoreHorizontal, TrendingUp } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export type GrowthTimeframe = '24h' | '12h' | 'week' | 'month';
+export type GrowthTimeframe = '24h' | '12h' | 'week' | 'month'
 
 export interface GrowthData {
-  count: string;
-  delta: string;
-  progressPct: number;
-  footerTotal: string;
-  footerAdd: string;
+  count: string
+  delta: string
+  progressPct: number
+  footerTotal: string
+  footerAdd: string
 }
 
 interface BentoGrowthCardProps {
-  title?: string;
-  className?: string;
-  onMenuClick?: () => void;
-  customData?: Partial<Record<GrowthTimeframe, GrowthData>>;
-  currentCount?: string;
-  currentDelta?: string;
-  currentProgressPct?: number;
-  footerLeftLabel?: string;
-  footerRightLabel?: string;
-  onTimeframeChange?: (timeframe: GrowthTimeframe) => void;
+  title?: string
+  className?: string
+  onMenuClick?: () => void
+  customData?: Partial<Record<GrowthTimeframe, GrowthData>>
+  currentCount?: string
+  currentDelta?: string
+  currentProgressPct?: number
+  footerLeftLabel?: string
+  footerRightLabel?: string
+  onTimeframeChange?: (timeframe: GrowthTimeframe) => void
 }
 
 export default function BentoGrowthCard({
@@ -39,26 +39,29 @@ export default function BentoGrowthCard({
   footerRightLabel = 'Paced steadily',
   onTimeframeChange,
 }: BentoGrowthCardProps) {
-  const [selectedTimeframe, setSelectedTimeframe] = useState<GrowthTimeframe>('24h');
+  const [selectedTimeframe, setSelectedTimeframe] =
+    useState<GrowthTimeframe>('24h')
 
   const activeData: GrowthData = {
     count: customData?.[selectedTimeframe]?.count ?? currentCount,
     delta: customData?.[selectedTimeframe]?.delta ?? currentDelta,
-    progressPct: customData?.[selectedTimeframe]?.progressPct ?? currentProgressPct,
-    footerTotal: customData?.[selectedTimeframe]?.footerTotal ?? footerLeftLabel,
+    progressPct:
+      customData?.[selectedTimeframe]?.progressPct ?? currentProgressPct,
+    footerTotal:
+      customData?.[selectedTimeframe]?.footerTotal ?? footerLeftLabel,
     footerAdd: customData?.[selectedTimeframe]?.footerAdd ?? footerRightLabel,
-  };
+  }
 
   const handleTimeframeClick = (tf: GrowthTimeframe) => {
-    setSelectedTimeframe(tf);
-    onTimeframeChange?.(tf);
-  };
+    setSelectedTimeframe(tf)
+    onTimeframeChange?.(tf)
+  }
 
   return (
     <div
       className={cn(
         'relative rounded-3xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-6 shadow-sm flex flex-col justify-between transition-all hover:border-[var(--color-accent)]',
-        className,
+        className
       )}
     >
       {/* ── Header Row ── */}
@@ -87,7 +90,7 @@ export default function BentoGrowthCard({
               { key: 'month', label: 'Month' },
             ] as const
           ).map((tab) => {
-            const isActive = selectedTimeframe === tab.key;
+            const isActive = selectedTimeframe === tab.key
             return (
               <button
                 key={tab.key}
@@ -96,13 +99,13 @@ export default function BentoGrowthCard({
                 className={cn(
                   'rounded-full px-3 py-1 text-xs font-semibold transition-all',
                   isActive
-                    ? 'bg-[#0C1831] dark:bg-slate-800 text-white shadow-sm'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
+                    ? 'bg-[var(--hf-accent-default)] text-[var(--hf-accent-foreground)] shadow-sm'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
                 )}
               >
                 {tab.label}
               </button>
-            );
+            )
           })}
         </div>
       </div>
@@ -126,7 +129,7 @@ export default function BentoGrowthCard({
             className="absolute -top-6 transition-all duration-300 opacity-0 group-hover/liquid:opacity-100 pointer-events-none transform -translate-x-1/2"
             style={{ left: `${activeData.progressPct}%` }}
           >
-            <span className="rounded-full bg-[#0C1831] text-white px-2 py-0.5 text-[10px] font-black shadow-md border border-slate-700">
+            <span className="rounded-full bg-[var(--hf-accent-default)] text-[var(--hf-accent-foreground)] px-2 py-0.5 text-[10px] font-black shadow-md border border-[var(--hf-accent-hover)]">
               {activeData.progressPct}%
             </span>
           </div>
@@ -176,5 +179,5 @@ export default function BentoGrowthCard({
         </span>
       </div>
     </div>
-  );
+  )
 }

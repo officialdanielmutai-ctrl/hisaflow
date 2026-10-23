@@ -1,10 +1,10 @@
-'use client';
+'use client'
 
-import type { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
-import { useWorkspace } from '@/hooks/useWorkspace';
-import { useTheme } from '@/components/providers/ThemeProvider';
-import { wallpaperById } from '@/lib/workspace';
+import type { ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
+import { useWorkspace } from '@/hooks/useWorkspace'
+import { useTheme } from '@/components/providers/ThemeProvider'
+import { wallpaperById } from '@/lib/workspace'
 
 /**
  * Applies the chosen wallpaper to the whole Home content area (not just the
@@ -12,14 +12,15 @@ import { wallpaperById } from '@/lib/workspace';
  * immediately. Other dashboard screens keep solid surfaces.
  */
 export function WorkspaceBackdrop({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const { workspace, preview } = useWorkspace();
-  const { theme } = useTheme();
+  const pathname = usePathname()
+  const { workspace, preview } = useWorkspace()
+  const { theme } = useTheme()
 
-  const rendered = preview ?? workspace;
-  const isHome = pathname === '/dashboard' || pathname === '/dashboard/';
-  const wallpaper = wallpaperById(rendered?.wallpaper.id);
-  const active = isHome && rendered !== null && rendered.wallpaper.id !== 'default';
+  const rendered = preview ?? workspace
+  const isHome = pathname === '/dashboard' || pathname === '/dashboard/'
+  const wallpaper = wallpaperById(rendered?.wallpaper.id)
+  const active =
+    isHome && rendered !== null && rendered.wallpaper.id !== 'default'
 
   return (
     <div
@@ -32,7 +33,11 @@ export function WorkspaceBackdrop({ children }: { children: ReactNode }) {
       style={
         active
           ? {
-              background: theme === 'dark' ? wallpaper.dark : wallpaper.light,
+              // The theme scrim sits over the wallpaper so widget text keeps its
+              // contrast budget regardless of the chosen artwork.
+              backgroundImage: `linear-gradient(var(--hf-workspace-scrim), var(--hf-workspace-scrim)), ${
+                theme === 'dark' ? wallpaper.dark : wallpaper.light
+              }`,
               backgroundAttachment: 'fixed',
             }
           : undefined
@@ -40,7 +45,7 @@ export function WorkspaceBackdrop({ children }: { children: ReactNode }) {
     >
       {children}
     </div>
-  );
+  )
 }
 
-export default WorkspaceBackdrop;
+export default WorkspaceBackdrop

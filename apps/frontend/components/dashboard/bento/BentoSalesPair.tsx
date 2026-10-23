@@ -1,28 +1,35 @@
-'use client';
+'use client'
 
-import React from 'react';
-import Link from 'next/link';
-import { TrendingUp, TrendingDown, MoreHorizontal, ShoppingBag, CreditCard, type LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { formatKpiNumber } from '@/lib/kpi-format';
+import React from 'react'
+import Link from 'next/link'
+import {
+  TrendingUp,
+  TrendingDown,
+  MoreHorizontal,
+  ShoppingBag,
+  CreditCard,
+  type LucideIcon,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { formatKpiNumber } from '@/lib/kpi-format'
 
 interface BentoSalesPairProps {
-  salesAmount: number;
-  purchaseAmount: number;
-  salesTrendPct?: number;
-  salesTrendLabel?: string;
-  purchaseTrendPct?: number;
-  purchaseTrendLabel?: string;
-  topLabel?: string;
-  topIcon?: LucideIcon;
-  topUnit?: string;
-  topHref?: string;
-  bottomLabel?: string;
-  bottomIcon?: LucideIcon;
-  bottomUnit?: string;
-  bottomHref?: string;
-  className?: string;
-  onMenuClick?: (metric: 'sales' | 'purchase') => void;
+  salesAmount: number
+  purchaseAmount: number
+  salesTrendPct?: number
+  salesTrendLabel?: string
+  purchaseTrendPct?: number
+  purchaseTrendLabel?: string
+  topLabel?: string
+  topIcon?: LucideIcon
+  topUnit?: string
+  topHref?: string
+  bottomLabel?: string
+  bottomIcon?: LucideIcon
+  bottomUnit?: string
+  bottomHref?: string
+  className?: string
+  onMenuClick?: (metric: 'sales' | 'purchase') => void
 }
 
 export default function BentoSalesPair({
@@ -43,46 +50,55 @@ export default function BentoSalesPair({
   className,
   onMenuClick,
 }: BentoSalesPairProps) {
-  const formattedSales = formatKpiNumber(salesAmount);
-  const formattedPurchase = formatKpiNumber(purchaseAmount);
+  const formattedSales = formatKpiNumber(salesAmount)
+  const formattedPurchase = formatKpiNumber(purchaseAmount)
 
   // Dynamic trend computation from live data (or fallback to calculated label)
-  const resolvedSalesPct = salesTrendPct ?? (salesTrendLabel && salesTrendLabel.includes('%') ? parseInt(salesTrendLabel.replace('%', '')) : 22);
-  const isSalesUp = resolvedSalesPct >= 0;
-  const salesDisplayPct = `${isSalesUp ? '+' : ''}${resolvedSalesPct}%`;
+  const resolvedSalesPct =
+    salesTrendPct ??
+    (salesTrendLabel && salesTrendLabel.includes('%')
+      ? parseInt(salesTrendLabel.replace('%', ''))
+      : 22)
+  const isSalesUp = resolvedSalesPct >= 0
+  const salesDisplayPct = `${isSalesUp ? '+' : ''}${resolvedSalesPct}%`
 
-  const resolvedPurchasePct = purchaseTrendPct ?? (purchaseTrendLabel && purchaseTrendLabel.includes('%') ? parseInt(purchaseTrendLabel.replace('%', '')) : 8);
-  const isPurchaseUp = resolvedPurchasePct >= 0;
-  const purchaseDisplayPct = `${isPurchaseUp ? '+' : ''}${resolvedPurchasePct}%`;
+  const resolvedPurchasePct =
+    purchaseTrendPct ??
+    (purchaseTrendLabel && purchaseTrendLabel.includes('%')
+      ? parseInt(purchaseTrendLabel.replace('%', ''))
+      : 8)
+  const isPurchaseUp = resolvedPurchasePct >= 0
+  const purchaseDisplayPct = `${isPurchaseUp ? '+' : ''}${resolvedPurchasePct}%`
 
-  const topCardClass = 'relative rounded-3xl bg-[#0C1831] dark:bg-[#070D1E] border border-slate-800 p-5 shadow-sm text-white flex flex-col justify-between flex-1 transition-all hover:border-slate-700 block group/top';
-  const bottomCardClass = 'relative rounded-3xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-5 shadow-sm flex flex-col justify-between flex-1 transition-all hover:border-[var(--color-accent)] block group/bottom';
+  const topCardClass =
+    'relative rounded-3xl bg-[var(--hf-accent-default)] border border-[var(--hf-accent-hover)] p-5 shadow-sm text-[var(--hf-accent-foreground)] flex flex-col justify-between flex-1 transition-all hover:border-[var(--hf-border-strong)] block group/top'
+  const bottomCardClass =
+    'relative rounded-3xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-5 shadow-sm flex flex-col justify-between flex-1 transition-all hover:border-[var(--color-accent)] block group/bottom'
 
   return (
-    <div className={cn('flex flex-col gap-4 h-full justify-between', className)}>
+    <div
+      className={cn('flex flex-col gap-4 h-full justify-between', className)}
+    >
       {/* ── Top Card: Primary Hero Metric (Deep Midnight Navy) ── */}
       {topHref ? (
-        <Link
-          href={topHref}
-          className={topCardClass}
-        >
+        <Link href={topHref} className={topCardClass}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white shrink-0 group-hover/top:scale-105 transition-transform">
+              <div className="h-8 w-8 rounded-xl bg-[var(--hf-accent-hover)] border border-[var(--hf-accent-foreground)] flex items-center justify-center text-[var(--hf-accent-foreground)] shrink-0 group-hover/top:scale-105 transition-transform">
                 <TopIcon className="h-4 w-4" />
               </div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--hf-accent-foreground)] opacity-80">
                 {topLabel}
               </span>
             </div>
             <button
               type="button"
               onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onMenuClick?.('sales');
+                e.preventDefault()
+                e.stopPropagation()
+                onMenuClick?.('sales')
               }}
-              className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors"
+              className="p-1 rounded-lg text-[var(--hf-accent-foreground)] opacity-75 hover:opacity-100 transition-opacity"
               aria-label="Metric options"
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -91,16 +107,17 @@ export default function BentoSalesPair({
 
           <div className="my-1">
             <p
-              className="text-2xl sm:text-3xl font-black text-white tracking-tight tabular-nums"
+              className="text-2xl sm:text-3xl font-black text-[var(--hf-accent-foreground)] tracking-tight tabular-nums"
               title={`${topUnit} ${formattedSales.full}`}
             >
-              {topUnit ? `${topUnit} ` : ''}{formattedSales.display}
+              {topUnit ? `${topUnit} ` : ''}
+              {formattedSales.display}
             </p>
           </div>
 
           {/* Footer Trend Row */}
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 px-2 py-0.5 text-xs font-bold shrink-0">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--hf-accent-hover)] text-[var(--hf-accent-foreground)] border border-[var(--hf-accent-foreground)] px-2 py-0.5 text-xs font-bold shrink-0">
               {isSalesUp ? (
                 <TrendingUp className="h-3 w-3" />
               ) : (
@@ -108,7 +125,7 @@ export default function BentoSalesPair({
               )}
               <span>{salesDisplayPct}</span>
             </span>
-            <span className="text-xs font-normal text-slate-400">
+            <span className="text-xs font-normal text-[var(--hf-accent-foreground)] opacity-75">
               vs last month
             </span>
           </div>
@@ -117,21 +134,21 @@ export default function BentoSalesPair({
         <div className={topCardClass}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white shrink-0">
+              <div className="h-8 w-8 rounded-xl bg-[var(--hf-accent-hover)] border border-[var(--hf-accent-foreground)] flex items-center justify-center text-[var(--hf-accent-foreground)] shrink-0">
                 <TopIcon className="h-4 w-4" />
               </div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <span className="text-xs font-bold uppercase tracking-wider text-[var(--hf-accent-foreground)] opacity-80">
                 {topLabel}
               </span>
             </div>
             <button
               type="button"
               onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onMenuClick?.('sales');
+                e.preventDefault()
+                e.stopPropagation()
+                onMenuClick?.('sales')
               }}
-              className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors"
+              className="p-1 rounded-lg text-[var(--hf-accent-foreground)] opacity-75 hover:opacity-100 transition-opacity"
               aria-label="Metric options"
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -140,15 +157,16 @@ export default function BentoSalesPair({
 
           <div className="my-1">
             <p
-              className="text-2xl sm:text-3xl font-black text-white tracking-tight tabular-nums"
+              className="text-2xl sm:text-3xl font-black text-[var(--hf-accent-foreground)] tracking-tight tabular-nums"
               title={`${topUnit} ${formattedSales.full}`}
             >
-              {topUnit ? `${topUnit} ` : ''}{formattedSales.display}
+              {topUnit ? `${topUnit} ` : ''}
+              {formattedSales.display}
             </p>
           </div>
 
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 px-2 py-0.5 text-xs font-bold shrink-0">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--hf-accent-hover)] text-[var(--hf-accent-foreground)] border border-[var(--hf-accent-foreground)] px-2 py-0.5 text-xs font-bold shrink-0">
               {isSalesUp ? (
                 <TrendingUp className="h-3 w-3" />
               ) : (
@@ -156,7 +174,7 @@ export default function BentoSalesPair({
               )}
               <span>{salesDisplayPct}</span>
             </span>
-            <span className="text-xs font-normal text-slate-400">
+            <span className="text-xs font-normal text-[var(--hf-accent-foreground)] opacity-75">
               vs last month
             </span>
           </div>
@@ -178,9 +196,9 @@ export default function BentoSalesPair({
             <button
               type="button"
               onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onMenuClick?.('purchase');
+                e.preventDefault()
+                e.stopPropagation()
+                onMenuClick?.('purchase')
               }}
               className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
               aria-label="Metric options"
@@ -194,7 +212,8 @@ export default function BentoSalesPair({
               className="text-2xl sm:text-3xl font-black text-[var(--color-text-primary)] tracking-tight tabular-nums"
               title={`${bottomUnit} ${formattedPurchase.full}`}
             >
-              {bottomUnit ? `${bottomUnit} ` : ''}{formattedPurchase.display}
+              {bottomUnit ? `${bottomUnit} ` : ''}
+              {formattedPurchase.display}
             </p>
           </div>
 
@@ -226,9 +245,9 @@ export default function BentoSalesPair({
             <button
               type="button"
               onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onMenuClick?.('purchase');
+                e.preventDefault()
+                e.stopPropagation()
+                onMenuClick?.('purchase')
               }}
               className="p-1 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
               aria-label="Metric options"
@@ -242,7 +261,8 @@ export default function BentoSalesPair({
               className="text-2xl sm:text-3xl font-black text-[var(--color-text-primary)] tracking-tight tabular-nums"
               title={`${bottomUnit} ${formattedPurchase.full}`}
             >
-              {bottomUnit ? `${bottomUnit} ` : ''}{formattedPurchase.display}
+              {bottomUnit ? `${bottomUnit} ` : ''}
+              {formattedPurchase.display}
             </p>
           </div>
 
@@ -263,5 +283,5 @@ export default function BentoSalesPair({
         </div>
       )}
     </div>
-  );
+  )
 }

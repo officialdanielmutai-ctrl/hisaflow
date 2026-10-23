@@ -135,7 +135,7 @@ describe('StatCard (shared building block)', () => {
     );
   });
 
-  it('renders hero dark surface tone with contrast typography', () => {
+  it('renders the hero tone from theme tokens with contrast typography', () => {
     render(
       <StatCard
         label="Total Sales"
@@ -146,9 +146,14 @@ describe('StatCard (shared building block)', () => {
     );
 
     const card = screen.getByTestId('stat-card');
-    expect(card.className).toContain('bg-[#0C1831]');
-    expect(screen.getByText('Total Sales').className).toContain('text-slate-300');
-    expect(screen.getByText('KES 542,376').className).toContain('text-white');
+    expect(card.className).toContain('bg-[var(--hf-accent-default)]');
+    expect(card.className).toContain('text-[var(--hf-accent-foreground)]');
+    expect(screen.getByText('Total Sales').className).toContain(
+      'text-[var(--hf-accent-foreground)]',
+    );
+    expect(screen.getByText('KES 542,376').className).toContain(
+      'text-[var(--hf-accent-foreground)]',
+    );
   });
 
   it('renders delta comparison badge with upward arrow and period label', () => {

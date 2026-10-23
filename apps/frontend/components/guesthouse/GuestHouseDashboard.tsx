@@ -158,7 +158,7 @@ export function GuestHouseDashboard() {
 
   let statisticsBars: DayBarData[];
   let secondaryBars: DayBarData[];
-  let activityOrders: ActivityOrder[] = [];
+  const activityOrders: ActivityOrder[] = [];
 
   if (!isAll && selectedRoom) {
     const activeBooking = bookings.find((b) => b.roomId === selectedRoom.id && b.status === 'CHECKED_IN');

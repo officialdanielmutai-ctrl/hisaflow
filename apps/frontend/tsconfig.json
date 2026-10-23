@@ -4,7 +4,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@hisaflow/types": ["../../packages/types/src/index.ts"]
+      "@hisaflow/types": ["../../packages/types/src/index.ts"],
+      "@hisaflow/theme": ["../../packages/theme/src/index.ts"]
     },
     "plugins": [
       {

@@ -1,7 +1,13 @@
-import Link from 'next/link';
-import React from 'react';
-import { MoreHorizontal, TrendingUp, TrendingDown, Minus, type LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import Link from 'next/link'
+import React from 'react'
+import {
+  MoreHorizontal,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  type LucideIcon,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 /**
  * Shared KPI/stat card (HisaFlow KPI Inspo Overhaul).
@@ -15,84 +21,95 @@ import { cn } from '@/lib/utils';
  * - Micro-Visualizations: Area Spline Sparklines, Semi-Radial Arc Gauges, Segmented Velocity Bars
  * - In-card Quick Actions: Contextual trigger buttons (e.g. "Record Sale", "Check In")
  */
-export type StatTone = 'blue' | 'emerald' | 'amber' | 'rose' | 'neutral' | 'hero';
-export type StatVariant = 'default' | 'compact';
-export type StatState = 'default' | 'loading' | 'empty' | 'error';
-export type StatEmphasis = 'default' | 'success' | 'warning' | 'critical';
+export type StatTone =
+  | 'blue'
+  | 'emerald'
+  | 'amber'
+  | 'rose'
+  | 'neutral'
+  | 'hero'
+export type StatVariant = 'default' | 'compact'
+export type StatState = 'default' | 'loading' | 'empty' | 'error'
+export type StatEmphasis = 'default' | 'success' | 'warning' | 'critical'
 
 export type StatTrailing =
   | { kind: 'arrow' }
   | { kind: 'menu'; onClick?: (e: React.MouseEvent) => void }
-  | { kind: 'badge'; text: string; tone: StatTone };
+  | { kind: 'badge'; text: string; tone: StatTone }
 
 export interface StatDelta {
-  value: string; // e.g. "+22%" or "-8%"
-  period?: string; // e.g. "vs last month"
-  direction?: 'up' | 'down' | 'flat';
-  tone?: 'success' | 'warning' | 'critical' | 'neutral';
+  value: string // e.g. "+22%" or "-8%"
+  period?: string // e.g. "vs last month"
+  direction?: 'up' | 'down' | 'flat'
+  tone?: 'success' | 'warning' | 'critical' | 'neutral'
 }
 
 export interface StatAction {
-  label: string;
-  href?: string;
-  onClick?: (e: React.MouseEvent) => void;
+  label: string
+  href?: string
+  onClick?: (e: React.MouseEvent) => void
 }
 
 export interface StatCardContent {
-  value: string;
-  sublabel?: string;
-  valueSuffix?: string;
-  fullValue?: string;
-  valueTone?: StatEmphasis;
-  footnote?: string;
-  footnoteTone?: StatEmphasis;
-  trailing?: StatTrailing;
-  delta?: StatDelta;
-  sparklineData?: number[];
-  gauge?: { value: number; max?: number; label?: string };
-  progress?: { value: number; max?: number; label?: string; targetLabel?: string };
-  action?: StatAction;
+  value: string
+  sublabel?: string
+  valueSuffix?: string
+  fullValue?: string
+  valueTone?: StatEmphasis
+  footnote?: string
+  footnoteTone?: StatEmphasis
+  trailing?: StatTrailing
+  delta?: StatDelta
+  sparklineData?: number[]
+  gauge?: { value: number; max?: number; label?: string }
+  progress?: {
+    value: number
+    max?: number
+    label?: string
+    targetLabel?: string
+  }
+  action?: StatAction
 }
 
 /** One card in a vertical's arrangement. */
 export interface StatCardConfig<TData = unknown> {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  iconTone?: StatTone;
-  cardTone?: StatTone;
-  variant?: StatVariant;
-  href?: string;
+  id: string
+  label: string
+  icon: LucideIcon
+  iconTone?: StatTone
+  cardTone?: StatTone
+  variant?: StatVariant
+  href?: string
   /** Grid span at `sm` and up; the row grid is 2 columns on mobile, up to 4 on desktop. */
-  span?: 1 | 2;
-  build: (data: TData) => StatCardContent;
+  span?: 1 | 2
+  build: (data: TData) => StatCardContent
 }
 
 export interface StatCardProps extends StatCardContent {
-  label: string;
-  sublabel?: string;
-  icon: LucideIcon;
-  iconTone?: StatTone;
-  cardTone?: StatTone;
-  variant?: StatVariant;
-  href?: string;
-  state?: StatState;
-  stateMessage?: string;
-  className?: string;
+  label: string
+  sublabel?: string
+  icon: LucideIcon
+  iconTone?: StatTone
+  cardTone?: StatTone
+  variant?: StatVariant
+  href?: string
+  state?: StatState
+  stateMessage?: string
+  className?: string
 }
 
 const ICON_TONES: Record<StatTone, string> = {
-  hero: 'bg-white/10 text-white border border-white/20',
+  hero: 'bg-[var(--hf-accent-hover)] text-[var(--hf-accent-foreground)] border border-[var(--hf-accent-foreground)]',
   blue: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
-  emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
+  emerald:
+    'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
   amber: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
   rose: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
-  neutral:
-    'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)]',
-};
+  neutral: 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)]',
+}
 
 const CARD_TONES: Record<StatTone, string> = {
-  hero: 'border-slate-800 bg-[#0C1831] text-white shadow-md hover:border-slate-700 dark:bg-[#070D1E] dark:border-slate-800',
+  hero: 'border-[var(--hf-accent-hover)] bg-[var(--hf-accent-default)] text-[var(--hf-accent-foreground)] shadow-md hover:border-[var(--hf-border-strong)]',
   blue: 'border-blue-200/80 bg-gradient-to-br from-blue-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-blue-400 dark:border-blue-900/50',
   emerald:
     'border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-emerald-400 dark:border-emerald-900/50',
@@ -101,52 +118,54 @@ const CARD_TONES: Record<StatTone, string> = {
   rose: 'border-rose-200/80 bg-gradient-to-br from-rose-50/40 via-[var(--color-bg-surface)] to-[var(--color-bg-surface)] hover:border-rose-400 dark:border-rose-900/50',
   neutral:
     'border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:border-[var(--color-accent)]',
-};
+}
 
 const VALUE_TONES: Record<StatEmphasis, string> = {
   default: 'text-[var(--color-text-primary)]',
   success: 'text-emerald-600 dark:text-emerald-400',
   warning: 'text-amber-600 dark:text-amber-400',
   critical: 'text-[var(--color-status-critical)]',
-};
+}
 
 const FOOTNOTE_TONES: Record<StatEmphasis, string> = {
   default: 'text-[var(--color-text-secondary)]',
   success: 'text-emerald-600 dark:text-emerald-400',
   warning: 'text-amber-600 dark:text-amber-400',
   critical: 'text-[var(--color-status-critical)]',
-};
+}
 
 const BADGE_TONES: Record<StatTone, string> = {
-  hero: 'bg-white/10 text-slate-200 border border-white/20',
+  hero: 'bg-[var(--hf-accent-hover)] text-[var(--hf-accent-foreground)] border border-[var(--hf-accent-foreground)]',
   blue: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800',
-  emerald: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800',
-  amber: 'bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800',
+  emerald:
+    'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800',
+  amber:
+    'bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800',
   rose: 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800',
   neutral:
     'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] border border-[var(--color-border)]',
-};
+}
 
 function TrailingSlot({
   trailing,
   tone,
 }: {
-  trailing?: StatTrailing;
-  tone: StatTone;
+  trailing?: StatTrailing
+  tone: StatTone
 }) {
-  if (!trailing) return null;
-  const isHero = tone === 'hero';
+  if (!trailing) return null
+  const isHero = tone === 'hero'
   if (trailing.kind === 'menu') {
     return (
       <button
         type="button"
         onClick={trailing.onClick}
         aria-label="Options"
-        className="p-1 rounded-lg text-slate-400 hover:text-slate-200 dark:hover:text-white transition-colors"
+        className="p-1 rounded-lg text-[var(--hf-accent-foreground)] opacity-75 hover:opacity-100 transition-opacity"
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
-    );
+    )
   }
   if (trailing.kind === 'badge') {
     return (
@@ -154,39 +173,40 @@ function TrailingSlot({
         className={cn(
           'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold border transition-all',
           isHero
-            ? 'bg-teal-500/20 text-teal-300 border-teal-500/30'
-            : BADGE_TONES[trailing.tone],
+            ? 'bg-[var(--hf-accent-hover)] text-[var(--hf-accent-foreground)] border-[var(--hf-accent-foreground)]'
+            : BADGE_TONES[trailing.tone]
         )}
       >
         {trailing.text}
       </span>
-    );
+    )
   }
   // kind === 'arrow' deliberately renders nothing to eliminate non-functional arrows
-  return null;
+  return null
 }
 
 function DeltaBadge({ delta, isHero }: { delta: StatDelta; isHero?: boolean }) {
-  const isUp = delta.direction === 'up' || delta.value.startsWith('+');
-  const isDown = delta.direction === 'down' || delta.value.startsWith('-');
-  const tone = delta.tone ?? (isUp ? 'success' : isDown ? 'critical' : 'neutral');
+  const isUp = delta.direction === 'up' || delta.value.startsWith('+')
+  const isDown = delta.direction === 'down' || delta.value.startsWith('-')
+  const tone =
+    delta.tone ?? (isUp ? 'success' : isDown ? 'critical' : 'neutral')
 
   const toneClasses = isHero
-    ? 'bg-teal-500/20 text-teal-300 border-teal-500/30'
+    ? 'bg-[var(--hf-accent-hover)] text-[var(--hf-accent-foreground)] border-[var(--hf-accent-foreground)]'
     : tone === 'success'
       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50'
       : tone === 'critical'
         ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50'
         : tone === 'warning'
           ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50'
-          : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] border-[var(--color-border)]';
+          : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] border-[var(--color-border)]'
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       <span
         className={cn(
           'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold border transition-colors shrink-0',
-          toneClasses,
+          toneClasses
         )}
       >
         {isUp ? (
@@ -202,59 +222,61 @@ function DeltaBadge({ delta, isHero }: { delta: StatDelta; isHero?: boolean }) {
         <span
           className={cn(
             'text-xs font-normal',
-            isHero ? 'text-slate-400' : 'text-[var(--color-text-secondary)]',
+            isHero
+              ? 'text-[var(--hf-accent-foreground)] opacity-75'
+              : 'text-[var(--color-text-secondary)]'
           )}
         >
           {delta.period}
         </span>
       )}
     </div>
-  );
+  )
 }
 
 function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
-  if (!data || data.length < 2) return null;
+  if (!data || data.length < 2) return null
 
-  const width = 140;
-  const height = 44;
-  const padBottom = 6;
-  const padTop = 6;
-  const baselineY = height - padBottom; // 38
-  const usableHeight = height - padTop - padBottom; // 32
+  const width = 140
+  const height = 44
+  const padBottom = 6
+  const padTop = 6
+  const baselineY = height - padBottom // 38
+  const usableHeight = height - padTop - padBottom // 32
 
-  const maxVal = Math.max(...data, 0);
-  const isAllZeroes = maxVal === 0;
+  const maxVal = Math.max(...data, 0)
+  const isAllZeroes = maxVal === 0
 
   // Make sure line starts from 0 baseline at x=0 if not already starting at 0
-  const normalizedSeries = data[0] === 0 ? [...data] : [0, ...data];
-  const maxSeriesVal = isAllZeroes ? 1 : Math.max(...normalizedSeries, 1);
+  const normalizedSeries = data[0] === 0 ? [...data] : [0, ...data]
+  const maxSeriesVal = isAllZeroes ? 1 : Math.max(...normalizedSeries, 1)
 
   const points = normalizedSeries.map((val, idx) => {
-    const x = (idx / (normalizedSeries.length - 1)) * width;
+    const x = (idx / (normalizedSeries.length - 1)) * width
     const y = isAllZeroes
       ? baselineY
-      : baselineY - (Math.max(0, val) / maxSeriesVal) * usableHeight;
-    return { x, y };
-  });
+      : baselineY - (Math.max(0, val) / maxSeriesVal) * usableHeight
+    return { x, y }
+  })
 
   // Construct smooth cubic bezier spline curve
-  let pathD = `M ${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`;
+  let pathD = `M ${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`
   for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const curr = points[i];
-    const dx = curr.x - prev.x;
-    const cp1x = prev.x + dx * 0.45;
-    const cp1y = prev.y;
-    const cp2x = curr.x - dx * 0.45;
-    const cp2y = curr.y;
-    pathD += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${curr.x.toFixed(1)},${curr.y.toFixed(1)}`;
+    const prev = points[i - 1]
+    const curr = points[i]
+    const dx = curr.x - prev.x
+    const cp1x = prev.x + dx * 0.45
+    const cp1y = prev.y
+    const cp2x = curr.x - dx * 0.45
+    const cp2y = curr.y
+    pathD += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${curr.x.toFixed(1)},${curr.y.toFixed(1)}`
   }
 
-  const fillD = `${pathD} L ${width},${height} L 0,${height} Z`;
+  const fillD = `${pathD} L ${width},${height} L 0,${height} Z`
 
-  const strokeColor = isHero ? '#34d399' : '#10b981';
-  const gradId = `spark-grad-${Math.abs(data.reduce((a, b) => a + b, 0))}`;
-  const latestPoint = points[points.length - 1];
+  const strokeColor = isHero ? 'var(--hf-chart-2)' : 'var(--hf-chart-1)'
+  const gradId = `spark-grad-${Math.abs(data.reduce((a, b) => a + b, 0))}`
+  const latestPoint = points[points.length - 1]
 
   return (
     <div className="w-full h-11 sm:h-12 my-1.5 group/spark relative">
@@ -269,7 +291,11 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
             <stop offset="100%" stopColor={strokeColor} stopOpacity={0.01} />
           </linearGradient>
         </defs>
-        <path d={fillD} fill={`url(#${gradId})`} className="animate-trace-fill" />
+        <path
+          d={fillD}
+          fill={`url(#${gradId})`}
+          className="animate-trace-fill"
+        />
         <path
           d={pathD}
           fill="none"
@@ -282,7 +308,9 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
         />
         {/* Latest Data Point Bleep Beacon (traces to the latest point and pulses continuously) */}
         {latestPoint && (
-          <g transform={`translate(${latestPoint.x.toFixed(1)}, ${latestPoint.y.toFixed(1)})`}>
+          <g
+            transform={`translate(${latestPoint.x.toFixed(1)}, ${latestPoint.y.toFixed(1)})`}
+          >
             {/* Live radar ripple */}
             <circle
               r="3.5"
@@ -302,37 +330,49 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
         )}
       </svg>
     </div>
-  );
+  )
 }
 
-function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: number; label?: string; isHero?: boolean }) {
-  const pct = Math.min(Math.max((value / max) * 100, 0), 100);
-  const totalTicks = 22;
-  const activeTicksCount = Math.round((pct / 100) * totalTicks);
+function StatGauge({
+  value,
+  max = 100,
+  label,
+  isHero,
+}: {
+  value: number
+  max?: number
+  label?: string
+  isHero?: boolean
+}) {
+  const pct = Math.min(Math.max((value / max) * 100, 0), 100)
+  const totalTicks = 22
+  const activeTicksCount = Math.round((pct / 100) * totalTicks)
 
-  const cx = 60;
-  const cy = 54;
-  const rInner = 34;
-  const rOuter = 48;
+  const cx = 60
+  const cy = 54
+  const rInner = 34
+  const rOuter = 48
 
   const ticks = Array.from({ length: totalTicks }).map((_, i) => {
-    const angleDeg = 180 - (i / (totalTicks - 1)) * 180;
-    const angleRad = (angleDeg * Math.PI) / 180;
-    const x1 = cx + rInner * Math.cos(angleRad);
-    const y1 = cy - rInner * Math.sin(angleRad);
-    const x2 = cx + rOuter * Math.cos(angleRad);
-    const y2 = cy - rOuter * Math.sin(angleRad);
+    const angleDeg = 180 - (i / (totalTicks - 1)) * 180
+    const angleRad = (angleDeg * Math.PI) / 180
+    const x1 = cx + rInner * Math.cos(angleRad)
+    const y1 = cy - rInner * Math.sin(angleRad)
+    const x2 = cx + rOuter * Math.cos(angleRad)
+    const y2 = cy - rOuter * Math.sin(angleRad)
 
-    const isActive = i < activeTicksCount;
-    const ratio = i / totalTicks;
-    let strokeColor = isHero ? 'rgba(255,255,255,0.12)' : 'var(--color-bg-elevated)';
+    const isActive = i < activeTicksCount
+    const ratio = i / totalTicks
+    let strokeColor = isHero
+      ? 'var(--hf-accent-hover)'
+      : 'var(--color-bg-elevated)'
     if (isActive) {
-      if (ratio < 0.35) strokeColor = '#06b6d4';
-      else if (ratio < 0.7) strokeColor = '#14b8a6';
-      else strokeColor = '#10b981';
+      if (ratio < 0.35) strokeColor = 'var(--hf-chart-6)'
+      else if (ratio < 0.7) strokeColor = 'var(--hf-chart-1)'
+      else strokeColor = 'var(--hf-chart-2)'
     }
-    return { id: i, x1, y1, x2, y2, isActive, strokeColor };
-  });
+    return { id: i, x1, y1, x2, y2, isActive, strokeColor }
+  })
 
   return (
     <div className="relative flex flex-col items-center justify-center my-2 group/gauge">
@@ -353,40 +393,66 @@ function StatGauge({ value, max = 100, label, isHero }: { value: number; max?: n
             className={cn(
               'transition-all duration-500 ease-out',
               tick.isActive && 'animate-gauge-pulse',
-              !tick.isActive && 'opacity-35',
+              !tick.isActive && 'opacity-35'
             )}
           />
         ))}
       </svg>
       <div className="absolute bottom-0 text-center pointer-events-none transition-transform duration-300 group-hover/gauge:scale-105">
-        <span className={cn('text-sm font-black tracking-tight tabular-nums', isHero ? 'text-white' : 'text-[var(--color-text-primary)]')}>
+        <span
+          className={cn(
+            'text-sm font-black tracking-tight tabular-nums',
+            isHero
+              ? 'text-[var(--hf-accent-foreground)]'
+              : 'text-[var(--color-text-primary)]'
+          )}
+        >
           {Math.round(pct)}%
         </span>
         {label && (
-          <p className={cn('text-[9px] font-semibold truncate', isHero ? 'text-slate-400' : 'text-[var(--color-text-muted)]')}>
+          <p
+            className={cn(
+              'text-[9px] font-semibold truncate',
+              isHero
+                ? 'text-[var(--hf-accent-foreground)] opacity-75'
+                : 'text-[var(--color-text-muted)]'
+            )}
+          >
             {label}
           </p>
         )}
       </div>
     </div>
-  );
+  )
 }
 
-function StatProgressBar({ value, max = 100, label, targetLabel, isHero }: { value: number; max?: number; label?: string; targetLabel?: string; isHero?: boolean }) {
-  const pct = Math.min(Math.max((value / max) * 100, 0), 100);
+function StatProgressBar({
+  value,
+  max = 100,
+  label,
+  targetLabel,
+  isHero,
+}: {
+  value: number
+  max?: number
+  label?: string
+  targetLabel?: string
+  isHero?: boolean
+}) {
+  const pct = Math.min(Math.max((value / max) * 100, 0), 100)
   return (
     <div className="w-full my-2.5 flex flex-col gap-1.5 group/progress">
       <div
         className={cn(
           'relative h-4 w-full rounded-full border p-0.5 overflow-hidden transition-all duration-300 group-hover/progress:shadow-md',
           isHero
-            ? 'border-white/20 bg-white/10'
-            : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]',
+            ? 'border-[var(--hf-accent-foreground)] bg-[var(--hf-accent-hover)]'
+            : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]'
         )}
       >
         {/* Liquid filling column surging from 0% to target pct */}
         <div
-          className="relative h-full rounded-full bg-gradient-to-r from-sky-500 via-teal-500 to-emerald-400 animate-liquid-fill shadow-sm transition-all duration-500"
+          className="relative h-full rounded-full bg-gradient-to-r from-[var(--hf-chart-6)] via-[var(--hf-chart-1)] to-[var(--hf-chart-2)] animate-liquid-fill shadow-sm transition-all duration-500"
           style={{
             width: `${pct}%`,
             ['--liquid-fill-pct' as string]: `${pct}%`,
@@ -417,13 +483,24 @@ function StatProgressBar({ value, max = 100, label, targetLabel, isHero }: { val
         </div>
       </div>
       {(label || targetLabel) && (
-        <div className={cn('flex items-center justify-between text-[11px] font-medium', isHero ? 'text-slate-300' : 'text-[var(--color-text-secondary)]')}>
+        <div
+          className={cn(
+            'flex items-center justify-between text-[11px] font-medium',
+            isHero
+              ? 'text-[var(--hf-accent-foreground)] opacity-80'
+              : 'text-[var(--color-text-secondary)]'
+          )}
+        >
           {label && <span>{label}</span>}
-          {targetLabel && <span className="font-bold text-emerald-600 dark:text-emerald-400">{targetLabel}</span>}
+          {targetLabel && (
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+              {targetLabel}
+            </span>
+          )}
         </div>
       )}
     </div>
-  );
+  )
 }
 
 function StatSkeleton({ compact }: { compact: boolean }) {
@@ -446,7 +523,7 @@ function StatSkeleton({ compact }: { compact: boolean }) {
         <p
           className={cn(
             'w-28 truncate rounded bg-[var(--color-bg-elevated)] text-transparent',
-            compact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl',
+            compact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
           )}
         >
           &nbsp;
@@ -456,7 +533,7 @@ function StatSkeleton({ compact }: { compact: boolean }) {
         &nbsp;
       </p>
     </>
-  );
+  )
 }
 
 export function StatCard({
@@ -483,9 +560,9 @@ export function StatCard({
   stateMessage,
   className,
 }: StatCardProps) {
-  const compact = variant === 'compact';
-  const resolvedIconTone = iconTone ?? cardTone;
-  const isHero = cardTone === 'hero';
+  const compact = variant === 'compact'
+  const resolvedIconTone = iconTone ?? cardTone
+  const isHero = cardTone === 'hero'
 
   if (state === 'loading') {
     return (
@@ -496,23 +573,23 @@ export function StatCard({
         className={cn(
           'flex h-full min-w-0 animate-pulse flex-col justify-between rounded-2xl border p-4 shadow-sm sm:p-5',
           CARD_TONES[cardTone],
-          className,
+          className
         )}
       >
         <StatSkeleton compact={compact} />
       </div>
-    );
+    )
   }
 
-  const isError = state === 'error';
-  const isEmpty = state === 'empty';
-  const displayValue = isError || isEmpty ? '—' : value;
+  const isError = state === 'error'
+  const isEmpty = state === 'empty'
+  const displayValue = isError || isEmpty ? '—' : value
   const displayFootnote = isError
     ? (stateMessage ?? 'Could not load this metric.')
     : isEmpty
       ? (stateMessage ?? 'No data yet.')
-      : footnote;
-  const hasFootnote = Boolean(displayFootnote);
+      : footnote
+  const hasFootnote = Boolean(displayFootnote)
 
   const body = (
     <>
@@ -522,7 +599,7 @@ export function StatCard({
           <div
             className={cn(
               'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
-              ICON_TONES[resolvedIconTone],
+              ICON_TONES[resolvedIconTone]
             )}
           >
             <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
@@ -531,7 +608,9 @@ export function StatCard({
             <span
               className={cn(
                 'block truncate text-xs font-bold uppercase tracking-wider',
-                isHero ? 'text-slate-300' : 'text-[var(--color-text-primary)]',
+                isHero
+                  ? 'text-[var(--hf-accent-foreground)] opacity-80'
+                  : 'text-[var(--color-text-primary)]'
               )}
             >
               {label}
@@ -540,7 +619,9 @@ export function StatCard({
               <span
                 className={cn(
                   'block truncate text-[11px]',
-                  isHero ? 'text-slate-400' : 'text-[var(--color-text-secondary)]',
+                  isHero
+                    ? 'text-[var(--hf-accent-foreground)] opacity-75'
+                    : 'text-[var(--color-text-secondary)]'
                 )}
               >
                 {sublabel}
@@ -558,8 +639,10 @@ export function StatCard({
           title={fullValue}
           className={cn(
             'truncate font-black tracking-tight tabular-nums',
-            isHero ? 'text-white' : VALUE_TONES[valueTone],
-            compact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl',
+            isHero
+              ? 'text-[var(--hf-accent-foreground)]'
+              : VALUE_TONES[valueTone],
+            compact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
           )}
         >
           {displayValue}
@@ -567,7 +650,9 @@ export function StatCard({
             <span
               className={cn(
                 'ml-1 text-base font-medium sm:text-lg',
-                isHero ? 'text-slate-400' : 'text-[var(--color-text-secondary)]',
+                isHero
+                  ? 'text-[var(--hf-accent-foreground)] opacity-75'
+                  : 'text-[var(--color-text-secondary)]'
               )}
             >
               {valueSuffix}
@@ -578,7 +663,12 @@ export function StatCard({
 
       {/* Optional Micro-Visualizations */}
       {!isError && !isEmpty && gauge && (
-        <StatGauge value={gauge.value} max={gauge.max} label={gauge.label} isHero={isHero} />
+        <StatGauge
+          value={gauge.value}
+          max={gauge.max}
+          label={gauge.label}
+          isHero={isHero}
+        />
       )}
       {!isError && !isEmpty && sparklineData && sparklineData.length > 1 && (
         <StatSparkline data={sparklineData} isHero={isHero} />
@@ -602,10 +692,10 @@ export function StatCard({
             className={cn(
               'truncate text-xs',
               isHero
-                ? 'text-slate-400'
+                ? 'text-[var(--hf-accent-foreground)] opacity-75'
                 : isError
                   ? FOOTNOTE_TONES.critical
-                  : FOOTNOTE_TONES[footnoteTone],
+                  : FOOTNOTE_TONES[footnoteTone]
             )}
           >
             {displayFootnote}
@@ -621,8 +711,8 @@ export function StatCard({
             className={cn(
               'shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border transition-colors',
               isHero
-                ? 'border-slate-700 text-slate-200 bg-white/5 hover:bg-white/15'
-                : 'border-[var(--color-border)] text-[var(--color-accent)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-surface-hover)]',
+                ? 'border-[var(--hf-accent-foreground)] text-[var(--hf-accent-foreground)] opacity-85 hover:opacity-100'
+                : 'border-[var(--color-border)] text-[var(--color-accent)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-surface-hover)]'
             )}
           >
             {action.label}
@@ -630,13 +720,13 @@ export function StatCard({
         )}
       </div>
     </>
-  );
+  )
 
   const classes = cn(
     'group flex h-full min-w-0 flex-col justify-between rounded-2xl border p-4 shadow-sm transition-all sm:p-5',
     CARD_TONES[cardTone],
-    className,
-  );
+    className
+  )
 
   if (href) {
     return (
@@ -648,12 +738,12 @@ export function StatCard({
       >
         {body}
       </Link>
-    );
+    )
   }
 
   return (
     <div data-testid="stat-card" data-stat-label={label} className={classes}>
       {body}
     </div>
-  );
+  )
 }

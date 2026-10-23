@@ -22,7 +22,6 @@ import StaffManagementCard from '@/components/settings/StaffManagementCard';
 import RouterSettingsCard from '@/components/settings/RouterSettingsCard';
 import { SettingsActionRow, SettingsLinkRow } from '@/components/settings/SettingsRow';
 import { SettingsGroup } from '@/components/settings/SettingsGroup';
-import { ThemeToggle } from '@/components/settings/ThemeToggle';
 
 export default function SettingsPage() {
   const { isSupported, subscription, subscribe, isSubscribing, orgLoading, error } = usePushNotifications();
@@ -76,12 +75,12 @@ export default function SettingsPage() {
 
       {/* ── Appearance ──────────────────────────────────────────────────────── */}
       <SettingsGroup title="Appearance">
-        <SettingsActionRow
+        <SettingsLinkRow
+          href="/settings/appearance"
           icon={Palette}
           iconClassName="bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
           title="Theme"
-          description="Choose light or dark mode for the app."
-          trailing={<ThemeToggle />}
+          description="Choose a named theme, or follow your device light/dark setting."
         />
       </SettingsGroup>
 

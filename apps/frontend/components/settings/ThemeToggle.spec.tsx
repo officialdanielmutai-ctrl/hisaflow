@@ -21,12 +21,13 @@ describe('ThemeToggle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dark mode' }));
 
     expect(document.documentElement.classList.contains('dark')).toBe(true);
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
+    expect(document.documentElement.dataset.theme).toBe('carbon');
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('carbon');
 
     fireEvent.click(screen.getByRole('button', { name: 'Light mode' }));
 
     expect(document.documentElement.classList.contains('dark')).toBe(false);
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
+    expect(document.documentElement.dataset.theme).toBe('ivory');
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('ivory');
   });
 });

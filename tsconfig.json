@@ -20,7 +20,8 @@
       }
     ],
     "paths": {
-      "@hisaflow/types": ["./packages/types/src"]
+      "@hisaflow/types": ["./packages/types/src"],
+      "@hisaflow/theme": ["./packages/theme/src"]
     }
   },
   "include": [

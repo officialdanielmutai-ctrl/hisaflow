@@ -226,6 +226,9 @@ importers:
       '@clerk/nextjs':
         specifier: ^7.4.2
         version: 7.4.2(next@15.2.8(@playwright/test@1.63.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@hisaflow/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@serwist/next':
         specifier: ^9.5.11
         version: 9.5.11(next@15.2.8(@playwright/test@1.63.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.97.1(postcss@8.5.15))
@@ -323,6 +326,27 @@ importers:
       vitest:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@20.19.41)(jsdom@25.0.1)(terser@5.48.0)
+
+  packages/theme:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.3.1
+        version: 20.19.41
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^6.0.0
+        version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^6.0.0
+        version: 6.21.0(eslint@8.57.1)(typescript@5.9.3)
+      eslint:
+        specifier: ^8.42.0
+        version: 8.57.1
+      eslint-config-prettier:
+        specifier: ^9.0.0
+        version: 9.1.2(eslint@8.57.1)
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
 
   packages/types:
     devDependencies:

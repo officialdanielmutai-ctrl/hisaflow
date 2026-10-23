@@ -42,6 +42,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Theme typecheck
+        run: pnpm --filter @hisaflow/theme exec tsc --noEmit -p tsconfig.json
       - name: Backend typecheck
         run: pnpm --filter backend exec tsc --noEmit -p tsconfig.json
       - name: Frontend typecheck
@@ -65,6 +67,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Theme formatting
+        run: pnpm format:check
       - name: Lint all workspaces
         run: pnpm lint
 
@@ -159,6 +163,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Theme contract tests
+        run: pnpm --filter @hisaflow/theme test
+      - name: Theme CSS is generated and committed
+        run: pnpm --filter @hisaflow/theme generate && git diff --exit-code -- apps/frontend/app/theme-tokens.generated.css
       - name: Frontend tests (node:test + vitest)
         run: pnpm --filter frontend test
 

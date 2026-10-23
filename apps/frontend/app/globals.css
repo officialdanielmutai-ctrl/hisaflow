@@ -181,12 +181,54 @@
 
   body {
     @apply bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-sans;
+    font-family: var(--hf-font-family, var(--font-sans), sans-serif);
+    min-height: 100dvh;
+    transition:
+      background-color var(--hf-motion-duration-base) var(--hf-motion-ease),
+      color var(--hf-motion-duration-base) var(--hf-motion-ease);
   }
 }
 
 @layer utilities {
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Shared primitives. Every theme supplies these tokens, so these classes
+     change shape, depth and density together with colour. */
+  .hf-card {
+    border-radius: var(--hf-radius-card);
+    border: var(--hf-border-width) solid var(--hf-border-subtle);
+    background-color: var(--hf-bg-surface);
+    color: var(--hf-text-primary);
+    box-shadow: var(--hf-shadow-card);
+  }
+
+  .hf-control {
+    min-height: var(--hf-control-height-md);
+    border-radius: var(--hf-radius-md);
+    border: var(--hf-border-width) solid var(--hf-border-subtle);
+    background-color: var(--hf-bg-surface);
+    color: var(--hf-text-primary);
+    transition:
+      background-color var(--hf-motion-duration-fast) var(--hf-motion-ease),
+      border-color var(--hf-motion-duration-fast) var(--hf-motion-ease),
+      color var(--hf-motion-duration-fast) var(--hf-motion-ease);
+  }
+
+  .hf-touch-target {
+    min-height: var(--hf-touch-target);
+    min-width: var(--hf-touch-target);
+  }
+
+  .hf-focus-ring:focus-visible {
+    outline: var(--hf-focus-ring-width) solid var(--hf-border-focus);
+    outline-offset: var(--hf-focus-ring-offset);
+  }
+
+  .hf-motion {
+    transition-duration: var(--hf-motion-duration-base);
+    transition-timing-function: var(--hf-motion-ease);
   }
 
   .mk-tabular {
@@ -240,6 +282,19 @@
   }
   .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
     border-color: var(--color-border);
+  }
+}
+
+/* Motion is an enhancement. Every theme also zeroes its motion tokens for
+   reduced-motion users; this guard covers legacy hard-coded animations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

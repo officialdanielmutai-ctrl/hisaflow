@@ -1,9 +1,16 @@
 import './globals.css'
+import './theme-tokens.generated.css'
 import { Inter } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
+import { cookies } from 'next/headers'
 import { ClerkProvider } from '@clerk/nextjs'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
-import { THEME_BOOTSTRAP_SCRIPT } from '@/lib/theme'
+import {
+  THEME_BOOTSTRAP_SCRIPT,
+  THEME_COOKIE_KEY,
+  resolvePreference,
+  resolvePreferenceForSystem,
+} from '@/lib/theme'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
@@ -31,24 +38,34 @@ export const metadata: Metadata = {
     'msapplication-TileImage': '/icons/icon-192.png',
     'msapplication-TileColor': '#1F7A5A',
   },
-};
+}
 
 export const viewport: Viewport = {
-  themeColor: '#1F7A5A',
+  themeColor: '#FAF7F2',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-};
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const cookieStore = await cookies()
+  const preference = resolvePreference(cookieStore.get(THEME_COOKIE_KEY)?.value)
+  const serverTheme = resolvePreferenceForSystem(preference, false)
+
   return (
     <ClerkProvider>
-      <html lang="en" className={inter.variable}>
+      <html
+        lang="en"
+        className={inter.variable}
+        data-theme={serverTheme}
+        data-theme-preference={preference}
+        suppressHydrationWarning
+      >
         <head>
           {/* Apply the saved theme before first paint to avoid a flash. */}
           <script
@@ -100,7 +117,9 @@ export default function RootLayout({
           />
         </head>
         <body>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider initialPreference={preference}>
+            {children}
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

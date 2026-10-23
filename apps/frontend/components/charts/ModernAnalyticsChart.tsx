@@ -1,6 +1,6 @@
-'use client';
+'use client'
 
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 import {
   ResponsiveContainer,
   BarChart,
@@ -10,16 +10,16 @@ import {
   CartesianGrid,
   Tooltip,
   Cell,
-} from 'recharts';
-import { useDateRange } from '@/components/providers/DateRangeProvider';
-import { TrendingUp, ArrowUpRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from 'recharts'
+import { useDateRange } from '@/components/providers/DateRangeProvider'
+import { TrendingUp, ArrowUpRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export interface DailyPerformancePoint {
-  day: string;
-  sales: number;
-  expenses: number;
-  highlight?: boolean;
+  day: string
+  sales: number
+  expenses: number
+  highlight?: boolean
 }
 
 const DEFAULT_DATA: DailyPerformancePoint[] = [
@@ -30,34 +30,34 @@ const DEFAULT_DATA: DailyPerformancePoint[] = [
   { day: 'Fri', sales: 112000, expenses: 42000 },
   { day: 'Sat', sales: 84000, expenses: 29000 },
   { day: 'Sun', sales: 53000, expenses: 15000 },
-];
+]
 
 function formatKES(val: number) {
-  if (val >= 1000000) return `KES ${(val / 1000000).toFixed(1)}M`;
-  if (val >= 1000) return `KES ${(val / 1000).toFixed(0)}k`;
-  return `KES ${val}`;
+  if (val >= 1000000) return `KES ${(val / 1000000).toFixed(1)}M`
+  if (val >= 1000) return `KES ${(val / 1000).toFixed(0)}k`
+  return `KES ${val}`
 }
 
 export default function ModernAnalyticsChart({
   data = DEFAULT_DATA,
   className,
 }: {
-  data?: DailyPerformancePoint[];
-  className?: string;
+  data?: DailyPerformancePoint[]
+  className?: string
 }) {
-  const { label: dateRangeLabel } = useDateRange();
-  const [metric, setMetric] = useState<'sales' | 'expenses'>('sales');
+  const { label: dateRangeLabel } = useDateRange()
+  const [metric, setMetric] = useState<'sales' | 'expenses'>('sales')
 
   const maxPoint = data.reduce(
     (prev, current) => (current[metric] > prev[metric] ? current : prev),
-    data[0] || { day: '', sales: 0, expenses: 0 },
-  );
+    data[0] || { day: '', sales: 0, expenses: 0 }
+  )
 
   return (
     <div
       className={cn(
         'rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5 shadow-sm transition-all',
-        className,
+        className
       )}
     >
       {/* Header & Controls */}
@@ -86,7 +86,7 @@ export default function ModernAnalyticsChart({
               'rounded-lg px-3 py-1 text-xs font-semibold transition-all',
               metric === 'sales'
                 ? 'bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] shadow-sm'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
             )}
           >
             Sales
@@ -98,7 +98,7 @@ export default function ModernAnalyticsChart({
               'rounded-lg px-3 py-1 text-xs font-semibold transition-all',
               metric === 'expenses'
                 ? 'bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] shadow-sm'
-                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
             )}
           >
             Expenses
@@ -109,7 +109,10 @@ export default function ModernAnalyticsChart({
       {/* Chart Canvas */}
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 20, right: 10, left: -15, bottom: 0 }}>
+          <BarChart
+            data={data}
+            margin={{ top: 20, right: 10, left: -15, bottom: 0 }}
+          >
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
@@ -126,41 +129,41 @@ export default function ModernAnalyticsChart({
               tickLine={false}
               axisLine={false}
               tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
-              tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
+              tickFormatter={(v) =>
+                v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`
+              }
             />
             <Tooltip
               cursor={{ fill: 'var(--color-bg-elevated)', opacity: 0.5 }}
-              formatter={(value: any) => [formatKES(Number(value)), metric === 'sales' ? 'Sales' : 'Expenses']}
+              formatter={(value: any) => [
+                formatKES(Number(value)),
+                metric === 'sales' ? 'Sales' : 'Expenses',
+              ]}
               contentStyle={{
-                borderRadius: 12,
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-bg-surface)',
-                color: 'var(--color-text-primary)',
+                borderRadius: 'var(--hf-radius-md)',
+                border: 'var(--hf-border-width) solid var(--hf-border-subtle)',
+                background: 'var(--hf-bg-surface)',
+                color: 'var(--hf-text-primary)',
                 fontSize: 12,
-                boxShadow: 'var(--shadow-raised)',
+                boxShadow: 'var(--hf-shadow-raised)',
               }}
             />
-            <Bar
-              dataKey={metric}
-              radius={[8, 8, 0, 0]}
-              animationDuration={800}
-            >
+            <Bar dataKey={metric} radius={[8, 8, 0, 0]} animationDuration={800}>
               {data.map((entry, index) => {
-                const isPeak = entry.day === maxPoint.day;
-                const fill =
-                  metric === 'sales'
-                    ? isPeak
-                      ? '#059669' // Saturated emerald highlight (Inspo 2)
-                      : '#34d399' // Light sage/mint
-                    : isPeak
-                      ? '#e11d48'
-                      : '#fb7185';
-                return <Cell key={`cell-${index}`} fill={fill} />;
+                const isPeak = entry.day === maxPoint.day
+                const fill = isPeak
+                  ? metric === 'sales'
+                    ? 'var(--hf-chart-1)'
+                    : 'var(--hf-chart-4)'
+                  : metric === 'sales'
+                    ? 'var(--hf-chart-2)'
+                    : 'var(--hf-chart-7)'
+                return <Cell key={`cell-${index}`} fill={fill} />
               })}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
-  );
+  )
 }

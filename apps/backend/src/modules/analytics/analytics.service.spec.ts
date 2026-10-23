@@ -81,9 +81,18 @@ describe('AnalyticsService', () => {
 
       expect(result.kpis).toEqual({
         todaySales: 300,
+        salesTrendLabel: '+100%',
+        salesTrendIsPositive: true,
+        salesTrendPct: 100,
         todayExpenses: 100,
+        expensesTrendLabel: '+100%',
+        expensesTrendIsNegative: true,
+        expensesTrendPct: 100,
         lowStockCount: 2,
         profitEstimate: 200,
+        profitTrendLabel: '+100%',
+        profitTrendIsPositive: true,
+        profitTrendPct: 100,
       });
       expect(result.inventorySnapshot).toEqual({
         total: 3,

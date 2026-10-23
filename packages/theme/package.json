@@ -1,0 +1,23 @@
+{
+  "name": "@hisaflow/theme",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed, generated theme contract for HisaFlow.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "generate": "pnpm build && node scripts/generate-css.mjs",
+    "test": "pnpm build && node --test dist/tests/*.spec.js",
+    "lint": "eslint src/**/*.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.3.1",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.42.0",
+    "eslint-config-prettier": "^9.0.0",
+    "typescript": "^5.4.5"
+  }
+}

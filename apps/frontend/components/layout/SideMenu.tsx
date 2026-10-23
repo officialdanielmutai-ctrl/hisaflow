@@ -1,11 +1,26 @@
-'use client';
+'use client'
 
-import * as React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Settings, Bell, ListTodo, LogOut, TrendingUp, Package, Sparkles, Briefcase, TicketCheck, Tag, Users, CreditCard, Receipt } from 'lucide-react';
-import { SignOutButton, useUser } from '@clerk/nextjs';
-import { useMyOrganization } from '@/hooks/useMyOrganization';
+import * as React from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import {
+  Settings,
+  Bell,
+  ListTodo,
+  LogOut,
+  TrendingUp,
+  Package,
+  Sparkles,
+  Briefcase,
+  TicketCheck,
+  Tag,
+  Users,
+  CreditCard,
+  Receipt,
+  Palette,
+} from 'lucide-react'
+import { SignOutButton, useUser } from '@clerk/nextjs'
+import { useMyOrganization } from '@/hooks/useMyOrganization'
 import {
   Sheet,
   SheetContent,
@@ -13,11 +28,11 @@ import {
   SheetTitle,
   SheetDescription,
   SheetFooter,
-} from '@/components/ui/sheet';
+} from '@/components/ui/sheet'
 
 interface SideMenuProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 const sideNavItems = [
@@ -26,28 +41,29 @@ const sideNavItems = [
   { href: '/alerts', label: 'Alerts', icon: Bell },
   { href: '/tax', label: 'Tax', icon: Receipt },
   { href: '/settings/billing', label: 'Billing', icon: CreditCard },
+  { href: '/settings/appearance', label: 'Appearance', icon: Palette },
   { href: '/settings', label: 'Settings', icon: Settings },
-];
+]
 
 export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
-  const pathname = usePathname();
-  const { user } = useUser();
-  const { membership } = useMyOrganization();
-  const businessType = membership?.organization?.businessType || '';
-  
-  const isHospitality = ['GUEST_HOUSE', 'HOTEL', 'LODGE'].includes(businessType);
-  const isRestaurant = businessType === 'RESTAURANT';
-  const isSchool = businessType === 'SCHOOL';
-  const isIsp = businessType === 'ISP';
+  const pathname = usePathname()
+  const { user } = useUser()
+  const { membership } = useMyOrganization()
+  const businessType = membership?.organization?.businessType || ''
 
-  const dynamicItems = [...sideNavItems];
+  const isHospitality = ['GUEST_HOUSE', 'HOTEL', 'LODGE'].includes(businessType)
+  const isRestaurant = businessType === 'RESTAURANT'
+  const isSchool = businessType === 'SCHOOL'
+  const isIsp = businessType === 'ISP'
+
+  const dynamicItems = [...sideNavItems]
   if (isHospitality || isRestaurant || isSchool) {
     // Add the missing core tabs that couldn't fit in the BottomNav
     dynamicItems.unshift(
       { href: '/finance', label: 'Finance', icon: TrendingUp },
       { href: '/inventory', label: 'Inventory', icon: Package },
       { href: '/ai', label: 'AI Actions', icon: Sparkles }
-    );
+    )
   } else if (isIsp) {
     dynamicItems.unshift(
       { href: '/subscribers', label: 'Subscribers', icon: Users },
@@ -57,12 +73,15 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
       { href: '/inventory', label: 'Hardware', icon: Package },
       { href: '/finance', label: 'Billing & Finance', icon: TrendingUp },
       { href: '/ai', label: 'AI Actions', icon: Sparkles }
-    );
+    )
   }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="flex flex-col border-r bg-white w-[280px] p-0">
+      <SheetContent
+        side="left"
+        className="flex flex-col border-r bg-white w-[280px] p-0"
+      >
         <SheetHeader className="border-b p-6 text-left">
           <SheetTitle className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
             Hisa Flow
@@ -79,7 +98,8 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
             {dynamicItems.map((item) => {
               const isActive =
                 pathname === item.href ||
-                (item.href !== '/settings' && pathname.startsWith(item.href + '/'));
+                (item.href !== '/settings' &&
+                  pathname.startsWith(item.href + '/'))
               return (
                 <Link
                   key={item.href}
@@ -94,7 +114,7 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
                   <item.icon className="h-5 w-5" />
                   {item.label}
                 </Link>
-              );
+              )
             })}
           </div>
         </div>
@@ -109,5 +129,5 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
         </SheetFooter>
       </SheetContent>
     </Sheet>
-  );
+  )
 }
