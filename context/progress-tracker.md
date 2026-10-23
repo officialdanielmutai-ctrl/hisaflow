@@ -172,7 +172,8 @@ Update this file after every meaningful implementation change.
 - **2026-10-23 — Named theme system.** Added `@hisaflow/theme` (typed contract,
   six themes, generated CSS, contrast tests), the no-flash `ThemeProvider`
   (cookie SSR + localStorage + Auto), shape/depth/density/motion tokens, and
-  the responsive Settings → Appearance picker for PC and mobile. Docs live in
+  the responsive Settings → Appearance picker for PC and mobile, with direct
+  palette entry points in the top bar, desktop rail and mobile side menu. Docs live in
   `docs/theme/`; status is in `HISAFLOW_THEME_SYSTEM_DIRECTIVE.md` §10.
 - **2026-10-19 — Home customisation production follow-up.** Fixed the four
   reported blockers: customisation changes now preview live on Home; widget

@@ -14,6 +14,8 @@ change colour, shape, depth, density, type and motion together.
   persistence, no-flash adoption, cross-tab/system listeners.
 - `apps/frontend/components/settings/ThemePicker.tsx` — Appearance picker.
 - `apps/frontend/app/(dashboard)/settings/appearance/page.tsx` — picker screen.
+- Entry points: palette button in `TopBar` (mobile + PC), palette button in
+  `DesktopSidebar`, Appearance item in `SideMenu`, and the Settings row.
 
 Token naming: `--hf-<group>-<token>` (for example `--hf-bg-surface`,
 `--hf-radius-lg`, `--hf-motion-duration-base`). TypeScript should call

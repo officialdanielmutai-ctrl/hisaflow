@@ -1,8 +1,8 @@
-'use client';
+'use client'
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import React from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   TrendingUp,
@@ -21,36 +21,37 @@ import {
   CreditCard,
   Sun,
   Moon,
-} from 'lucide-react';
-import { useMyOrganization } from '@/hooks/useMyOrganization';
-import { useAlerts } from '@/hooks/useAlerts';
-import { useTheme } from '@/components/providers/ThemeProvider';
-import { UserButton } from '@clerk/nextjs';
-import { cn } from '@/lib/utils';
+  Palette,
+} from 'lucide-react'
+import { useMyOrganization } from '@/hooks/useMyOrganization'
+import { useAlerts } from '@/hooks/useAlerts'
+import { useTheme } from '@/components/providers/ThemeProvider'
+import { UserButton } from '@clerk/nextjs'
+import { cn } from '@/lib/utils'
 
 interface NavItem {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  badgeCount?: number;
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  badgeCount?: number
 }
 
 export default function DesktopSidebar() {
-  const pathname = usePathname();
-  const { membership } = useMyOrganization();
-  const { data: alerts } = useAlerts();
-  const { theme, toggleTheme } = useTheme();
+  const pathname = usePathname()
+  const { membership } = useMyOrganization()
+  const { data: alerts } = useAlerts()
+  const { theme, toggleTheme } = useTheme()
 
-  const businessType = membership?.organization?.businessType || '';
-  const isHospitality = ['GUEST_HOUSE', 'HOTEL', 'LODGE'].includes(businessType);
-  const isRestaurant = businessType === 'RESTAURANT';
-  const isSchool = businessType === 'SCHOOL';
-  const isIsp = businessType === 'ISP';
+  const businessType = membership?.organization?.businessType || ''
+  const isHospitality = ['GUEST_HOUSE', 'HOTEL', 'LODGE'].includes(businessType)
+  const isRestaurant = businessType === 'RESTAURANT'
+  const isSchool = businessType === 'SCHOOL'
+  const isIsp = businessType === 'ISP'
 
   // Base core nav items
   const primaryNav: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  ];
+  ]
 
   // Vertical-specific nav injection
   if (isHospitality) {
@@ -59,21 +60,21 @@ export default function DesktopSidebar() {
       { href: '/bookings', label: 'Bookings', icon: CalendarDays },
       { href: '/guests', label: 'Guests', icon: Users },
       { href: '/finance', label: 'Finance', icon: TrendingUp },
-      { href: '/inventory', label: 'Inventory', icon: Package },
-    );
+      { href: '/inventory', label: 'Inventory', icon: Package }
+    )
   } else if (isRestaurant) {
     primaryNav.push(
       { href: '/table-orders', label: 'Table Orders', icon: CalendarDays },
       { href: '/inventory', label: 'Menu & Stock', icon: Package },
-      { href: '/finance', label: 'Finance', icon: TrendingUp },
-    );
+      { href: '/finance', label: 'Finance', icon: TrendingUp }
+    )
   } else if (isSchool) {
     primaryNav.push(
       { href: '/school-classes', label: 'Classes', icon: Users },
       { href: '/students', label: 'Students', icon: Users },
       { href: '/school-fees', label: 'School Fees', icon: Receipt },
-      { href: '/finance', label: 'Finance', icon: TrendingUp },
-    );
+      { href: '/finance', label: 'Finance', icon: TrendingUp }
+    )
   } else if (isIsp) {
     primaryNav.push(
       { href: '/subscribers', label: 'Subscribers', icon: Users },
@@ -81,14 +82,14 @@ export default function DesktopSidebar() {
       { href: '/work-orders', label: 'Work Orders', icon: Briefcase },
       { href: '/tickets', label: 'Tickets', icon: TicketCheck },
       { href: '/inventory', label: 'Hardware', icon: Package },
-      { href: '/finance', label: 'Billing & Finance', icon: TrendingUp },
-    );
+      { href: '/finance', label: 'Billing & Finance', icon: TrendingUp }
+    )
   } else {
     // Retail & wholesale default
     primaryNav.push(
       { href: '/finance', label: 'Sales & Finance', icon: TrendingUp },
-      { href: '/inventory', label: 'Inventory', icon: Package },
-    );
+      { href: '/inventory', label: 'Inventory', icon: Package }
+    )
   }
 
   // Cross-cutting productivity tools
@@ -103,7 +104,7 @@ export default function DesktopSidebar() {
     { href: '/notes', label: 'Notes', icon: ListTodo },
     { href: '/tax', label: 'Tax & Compliance', icon: Receipt },
     { href: '/settings/billing', label: 'Subscription', icon: CreditCard },
-  ];
+  ]
 
   return (
     <aside
@@ -124,22 +125,29 @@ export default function DesktopSidebar() {
         </Link>
 
         {/* Primary Navigation Rail */}
-        <nav className="flex flex-col items-center gap-1.5" aria-label="Main Navigation">
+        <nav
+          className="flex flex-col items-center gap-1.5"
+          aria-label="Main Navigation"
+        >
           {primaryNav.map((item) => {
             const isActive =
               pathname === item.href ||
-              (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
-            const Icon = item.icon;
+              (item.href !== '/dashboard' &&
+                pathname.startsWith(item.href + '/'))
+            const Icon = item.icon
 
             return (
-              <div key={item.href} className="group relative flex items-center justify-center">
+              <div
+                key={item.href}
+                className="group relative flex items-center justify-center"
+              >
                 <Link
                   href={item.href}
                   className={cn(
                     'relative flex h-10 w-10 items-center justify-center rounded-xl transition-all',
                     isActive
                       ? 'bg-[var(--color-bg-secondary)] text-[var(--color-accent)] font-bold shadow-sm'
-                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] hover:text-[var(--color-text-primary)]',
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] hover:text-[var(--color-text-primary)]'
                   )}
                   aria-label={item.label}
                   aria-current={isActive ? 'page' : undefined}
@@ -155,7 +163,7 @@ export default function DesktopSidebar() {
                   {item.label}
                 </div>
               </div>
-            );
+            )
           })}
         </nav>
 
@@ -163,22 +171,29 @@ export default function DesktopSidebar() {
         <div className="h-px w-8 bg-[var(--color-border)]" />
 
         {/* Secondary Productivity Rail */}
-        <nav className="flex flex-col items-center gap-1.5" aria-label="Productivity Tools">
+        <nav
+          className="flex flex-col items-center gap-1.5"
+          aria-label="Productivity Tools"
+        >
           {secondaryNav.map((item) => {
             const isActive =
               pathname === item.href ||
-              (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
-            const Icon = item.icon;
+              (item.href !== '/dashboard' &&
+                pathname.startsWith(item.href + '/'))
+            const Icon = item.icon
 
             return (
-              <div key={item.href} className="group relative flex items-center justify-center">
+              <div
+                key={item.href}
+                className="group relative flex items-center justify-center"
+              >
                 <Link
                   href={item.href}
                   className={cn(
                     'relative flex h-10 w-10 items-center justify-center rounded-xl transition-all',
                     isActive
                       ? 'bg-[var(--color-bg-secondary)] text-[var(--color-accent)] font-bold shadow-sm'
-                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] hover:text-[var(--color-text-primary)]',
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] hover:text-[var(--color-text-primary)]'
                   )}
                   aria-label={item.label}
                   aria-current={isActive ? 'page' : undefined}
@@ -194,7 +209,7 @@ export default function DesktopSidebar() {
                   {item.label}
                 </div>
               </div>
-            );
+            )
           })}
         </nav>
       </div>
@@ -219,15 +234,35 @@ export default function DesktopSidebar() {
           </div>
         </div>
 
+        {/* Appearance & theme */}
+        <div className="group relative flex items-center justify-center">
+          <Link
+            href="/settings/appearance"
+            className={cn(
+              'flex h-10 w-10 items-center justify-center rounded-xl transition-all',
+              pathname.startsWith('/settings/appearance')
+                ? 'bg-[var(--color-bg-secondary)] text-[var(--color-accent)] font-bold'
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] hover:text-[var(--color-text-primary)]'
+            )}
+            aria-label="Appearance and theme"
+          >
+            <Palette className="h-5 w-5" />
+          </Link>
+          <div className="pointer-events-none absolute left-full ml-3 hidden rounded-lg bg-[var(--color-text-primary)] px-2.5 py-1 text-xs font-semibold text-[var(--color-bg-surface)] shadow-md group-hover:flex whitespace-nowrap z-50">
+            Appearance &amp; theme
+          </div>
+        </div>
+
         {/* Settings */}
         <div className="group relative flex items-center justify-center">
           <Link
             href="/settings"
             className={cn(
               'flex h-10 w-10 items-center justify-center rounded-xl transition-all',
-              pathname.startsWith('/settings')
+              pathname.startsWith('/settings') &&
+                !pathname.startsWith('/settings/appearance')
                 ? 'bg-[var(--color-bg-secondary)] text-[var(--color-accent)] font-bold'
-                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] hover:text-[var(--color-text-primary)]',
+                : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] hover:text-[var(--color-text-primary)]'
             )}
             aria-label="Settings"
           >
@@ -250,5 +285,5 @@ export default function DesktopSidebar() {
         </div>
       </div>
     </aside>
-  );
+  )
 }

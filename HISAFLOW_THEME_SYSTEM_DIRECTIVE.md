@@ -442,6 +442,9 @@ still the recommended process for future changes.
 - Correct theme on first paint via cookie SSR + inline script; no hydration
   warning (documented `suppressHydrationWarning` on `<html>`).
 - Settings → Appearance picker works on phones (2 columns) and PC (3–4).
+- Direct entry points: palette button in the top bar (mobile + PC), appearance
+  button in the desktop rail, Appearance item in the mobile side menu, and the
+  Settings → Appearance & theme row (which shows the active theme).
 - Theme changes persist across reload and tabs, and update the PWA chrome
   `theme-color`.
 - Shape/depth/density/motion change together; reduced-motion and print are
@@ -456,7 +459,7 @@ still the recommended process for future changes.
 ### Evidence
 
 - `pnpm --filter @hisaflow/theme test` — 12/12 pass.
-- `pnpm --filter frontend test` — 43 files / 269 tests pass.
+- `pnpm --filter frontend test` — 44 files / 270 tests pass.
 - `pnpm --filter backend test` — 110 suites / 878 tests pass.
 - `pnpm --filter admin test` — 12 tests pass.
 - `pnpm typecheck` — 6/6 turbo tasks pass.
