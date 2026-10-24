@@ -110,6 +110,8 @@ Each phase below is scoped by **layer** (data model → API → frontend) so par
 
 This phase needs its own design pass before implementation starts: MikroTik API access model (per-organization router credentials?), hosting/network reachability considerations (routers are usually behind NAT on customer sites), and failure handling (what happens if the router is unreachable when a suspend/reconnect should fire). Don't scope "done" criteria for this until that design pass happens — flag it as a follow-up doc.
 
+The Settings → Hardware section (and its `RouterSettingsCard`) is gated to organisations whose `businessType` is `ISP`; no other vertical should see MikroTik or router controls.
+
 ---
 
 ## 3. Explicitly out of scope (for this whole vertical, current effort)

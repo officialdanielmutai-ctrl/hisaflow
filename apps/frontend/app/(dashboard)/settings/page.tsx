@@ -20,6 +20,7 @@ import { useMyOrganization } from '@/hooks/useMyOrganization'
 import { useRole } from '@/hooks/useRole'
 import StaffManagementCard from '@/components/settings/StaffManagementCard'
 import RouterSettingsCard from '@/components/settings/RouterSettingsCard'
+import BusinessLogoCard from '@/components/settings/BusinessLogoCard'
 import {
   SettingsActionRow,
   SettingsLinkRow,
@@ -39,7 +40,7 @@ export default function SettingsPage() {
   } = usePushNotifications()
   const { getToken } = useAuth()
   const { membership } = useMyOrganization()
-  const { isOwner, isManager } = useRole()
+  const { isOwner, isManager, isIsp } = useRole()
   const { preference, themeId } = useTheme()
   const activeTheme = themeForId(themeId)
   const canManageStaff = isOwner || isManager
@@ -113,6 +114,7 @@ export default function SettingsPage() {
       {/* ── Business admin ──────────────────────────────────────────────────── */}
       {canManageStaff && (
         <SettingsGroup title="Business" description="Owner and manager tools.">
+          <BusinessLogoCard />
           <SettingsLinkRow
             href="/settings/tax"
             icon={Receipt}
@@ -141,13 +143,17 @@ export default function SettingsPage() {
           </div>
           <StaffManagementCard orgId={orgId} isOwner={isOwner} />
 
-          <div className="flex items-center gap-2 px-1 pt-2">
-            <Wifi className="h-4 w-4 text-[var(--color-text-muted)]" />
-            <h2 className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-              Hardware
-            </h2>
-          </div>
-          <RouterSettingsCard orgId={orgId} isOwner={isOwner} />
+          {isIsp && (
+            <>
+              <div className="flex items-center gap-2 px-1 pt-2">
+                <Wifi className="h-4 w-4 text-[var(--color-text-muted)]" />
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  Hardware
+                </h2>
+              </div>
+              <RouterSettingsCard orgId={orgId} isOwner={isOwner} />
+            </>
+          )}
         </div>
       )}
 

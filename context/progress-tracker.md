@@ -169,6 +169,13 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-24 — Settings vertical gating and logo wiring.** Settings now
+  renders the existing Business logo card for owners/managers, so the logo in
+  the signed-in shell can be changed from Settings and reset to the email
+  fallback. The Hardware section and `RouterSettingsCard` are now gated behind
+  `isIsp`, so MikroTik setup only appears for ISP organisations; all other
+  verticals keep Team management without any router controls. Added Settings
+  page tests for the ISP/non-ISP and owner/manager cases.
 - **2026-10-24 — KPI terminal glow and Lagoon contrast.** Moved the finance
   sparkline's breathing light onto the terminal dot itself (the stretched
   under-chart ellipse is gone), and made the AI recommendation panel fully
