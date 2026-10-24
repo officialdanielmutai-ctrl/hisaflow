@@ -23,7 +23,8 @@ import {
 } from 'lucide-react'
 import { useMyOrganization } from '@/hooks/useMyOrganization'
 import { useAlerts } from '@/hooks/useAlerts'
-import { UserButton } from '@clerk/nextjs'
+import { UserButton, useUser } from '@clerk/nextjs'
+import { BusinessLogo } from '@/components/brand/BusinessLogo'
 import { cn } from '@/lib/utils'
 
 interface NavItem {
@@ -36,6 +37,7 @@ interface NavItem {
 export default function DesktopSidebar() {
   const pathname = usePathname()
   const { membership } = useMyOrganization()
+  const { user } = useUser()
   const { data: alerts } = useAlerts()
 
   const businessType = membership?.organization?.businessType || ''
@@ -111,12 +113,18 @@ export default function DesktopSidebar() {
       <div className="flex flex-col items-center gap-6">
         <Link
           href="/dashboard"
-          className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--color-accent)] to-[#115E43] text-white shadow-sm hover:scale-105 transition-transform"
-          aria-label="HisaFlow Home"
+          className="group relative flex h-10 w-10 items-center justify-center rounded-xl shadow-sm hover:scale-105 transition-transform"
+          aria-label={`${membership?.organization?.name ?? 'HisaFlow'} home`}
         >
-          <span className="text-lg font-black tracking-tight">H</span>
+          <BusinessLogo
+            logoUrl={membership?.organization?.logoUrl}
+            name={membership?.organization?.name ?? 'HisaFlow'}
+            email={user?.primaryEmailAddress?.emailAddress}
+            size="md"
+            className="h-10 w-10"
+          />
           <div className="pointer-events-none absolute left-full ml-3 hidden rounded-lg bg-[var(--color-text-primary)] px-2.5 py-1 text-xs font-semibold text-[var(--color-bg-surface)] shadow-md group-hover:flex whitespace-nowrap z-50">
-            HisaFlow
+            {membership?.organization?.name ?? 'HisaFlow'}
           </div>
         </Link>
 

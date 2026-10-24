@@ -1,15 +1,20 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { OrganizationsRepository } from './organizations.repository';
-import { CreateOrganizationDto } from './dto/create-organization.dto';
-import { PrismaService } from '../../infrastructure/prisma.service';
-import { EntitlementsService } from '../../core/entitlements/entitlements.service';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common'
+import { OrganizationsRepository } from './organizations.repository'
+import { CreateOrganizationDto } from './dto/create-organization.dto'
+import { PrismaService } from '../../infrastructure/prisma.service'
+import { EntitlementsService } from '../../core/entitlements/entitlements.service'
 
 @Injectable()
 export class OrganizationsService {
   constructor(
     private readonly organizationsRepository: OrganizationsRepository,
     private readonly prisma: PrismaService,
-    private readonly entitlements: EntitlementsService,
+    private readonly entitlements: EntitlementsService
   ) {}
 
   async create(dto: CreateOrganizationDto, userId: string) {
@@ -20,14 +25,14 @@ export class OrganizationsService {
       country: dto.country ?? 'KE',
       phone: dto.phone,
       preferredPlan: dto.preferredPlan ?? null,
-    });
+    })
 
     // Auto-generate a unique 6-character invite code
-    const inviteCode = this.generateCode();
+    const inviteCode = this.generateCode()
     await this.prisma.db.organization.update({
       where: { id: org.id },
       data: { inviteCode },
-    });
+    })
 
     await this.prisma.db.orgMembership.create({
       data: {
@@ -35,21 +40,21 @@ export class OrganizationsService {
         organizationId: org.id,
         role: 'OWNER',
       },
-    });
+    })
 
-    return { ...org, inviteCode };
+    return { ...org, inviteCode }
   }
 
   async findById(id: string) {
-    const org = await this.organizationsRepository.findById(id);
+    const org = await this.organizationsRepository.findById(id)
     if (!org) {
-      throw new NotFoundException('Organization not found');
+      throw new NotFoundException('Organization not found')
     }
-    return org;
+    return org
   }
 
   async getOrganizationsForUser(userId: string) {
-    return this.organizationsRepository.findByMemberId(userId);
+    return this.organizationsRepository.findByMemberId(userId)
   }
 
   // ── Invite code: join an existing org ──────────────────────────────────────
@@ -57,78 +62,127 @@ export class OrganizationsService {
   async joinOrganization(inviteCode: string, userId: string) {
     const org = await this.prisma.db.organization.findUnique({
       where: { inviteCode: inviteCode.toUpperCase().trim() },
-    });
+    })
 
     if (!org) {
-      throw new BadRequestException('Invalid invite code');
+      throw new BadRequestException('Invalid invite code')
     }
 
     const existing = await this.prisma.db.orgMembership.findFirst({
       where: { userId, organizationId: org.id },
-    });
+    })
 
     if (existing) {
-      throw new BadRequestException('You are already a member of this organisation');
+      throw new BadRequestException(
+        'You are already a member of this organisation'
+      )
     }
 
     // Seat gate: Solo (and an unbilled trial) is blocked with a paywall
     // context; Team/Growth over its allowance is allowed and billed next cycle.
-    await this.entitlements.assertSeatAvailable(org.id);
+    await this.entitlements.assertSeatAvailable(org.id)
 
     await this.prisma.db.orgMembership.create({
       data: { userId, organizationId: org.id, role: 'STAFF' },
-    });
+    })
 
-    await this.entitlements.syncSeatCount(org.id);
+    await this.entitlements.syncSeatCount(org.id)
 
-    return { message: 'Joined successfully', orgName: org.name };
+    return { message: 'Joined successfully', orgName: org.name }
   }
 
   // ── Invite code: let an owner retrieve their code ─────────────────────────
 
   async getMyInviteCode(userId: string, orgId: string) {
     const membership = await this.prisma.db.orgMembership.findFirst({
-      where: { userId, organizationId: orgId, role: { in: ['OWNER', 'MANAGER'] } },
+      where: {
+        userId,
+        organizationId: orgId,
+        role: { in: ['OWNER', 'MANAGER'] },
+      },
       include: { organization: { select: { inviteCode: true, name: true } } },
-    });
+    })
 
     if (!membership) {
-      throw new ForbiddenException('Not authorised or organisation not found');
+      throw new ForbiddenException('Not authorised or organisation not found')
     }
 
     return {
       inviteCode: membership.organization.inviteCode,
       orgName: membership.organization.name,
-    };
+    }
   }
 
   // ── Invite code: regenerate for owner/manager ─────────────────────────────
 
   async regenerateInviteCode(userId: string, orgId: string) {
     const membership = await this.prisma.db.orgMembership.findFirst({
-      where: { userId, organizationId: orgId, role: { in: ['OWNER', 'MANAGER'] } },
+      where: {
+        userId,
+        organizationId: orgId,
+        role: { in: ['OWNER', 'MANAGER'] },
+      },
       include: { organization: { select: { id: true, name: true } } },
-    });
+    })
 
     if (!membership) {
-      throw new ForbiddenException('Not authorised or organisation not found');
+      throw new ForbiddenException('Not authorised or organisation not found')
     }
 
-    const newCode = this.generateCode();
+    const newCode = this.generateCode()
     await this.prisma.db.organization.update({
       where: { id: orgId },
       data: { inviteCode: newCode },
-    });
+    })
 
-    return { inviteCode: newCode, orgName: membership.organization.name };
+    return { inviteCode: newCode, orgName: membership.organization.name }
+  }
+
+  // ── Branding: owner/manager can set or clear the business logo ──────────────
+
+  async updateBranding(
+    userId: string,
+    orgId: string,
+    logoUrl: string | null | undefined
+  ) {
+    const membership = await this.prisma.db.orgMembership.findFirst({
+      where: {
+        userId,
+        organizationId: orgId,
+        role: { in: ['OWNER', 'MANAGER'] },
+      },
+    })
+
+    if (!membership) {
+      throw new ForbiddenException('Not authorised to edit this organisation')
+    }
+
+    const cleaned = logoUrl?.trim() ?? ''
+    if (cleaned.length > 0) {
+      let parsed: URL
+      try {
+        parsed = new URL(cleaned)
+      } catch {
+        throw new BadRequestException('Logo must be a valid image URL')
+      }
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        throw new BadRequestException('Logo must use http or https')
+      }
+    }
+
+    return this.prisma.db.organization.update({
+      where: { id: orgId },
+      data: { logoUrl: cleaned.length > 0 ? cleaned : null },
+    })
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private generateCode(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I ambiguity
-    return Array.from({ length: 6 }, () =>
-      chars[Math.floor(Math.random() * chars.length)],
-    ).join('');
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O/1/I ambiguity
+    return Array.from(
+      { length: 6 },
+      () => chars[Math.floor(Math.random() * chars.length)]
+    ).join('')
   }
 }

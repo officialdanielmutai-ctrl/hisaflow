@@ -20,6 +20,7 @@ import {
   Palette,
 } from 'lucide-react'
 import { SignOutButton, useUser } from '@clerk/nextjs'
+import { BusinessLogo } from '@/components/brand/BusinessLogo'
 import { useMyOrganization } from '@/hooks/useMyOrganization'
 import {
   Sheet,
@@ -83,14 +84,24 @@ export default function SideMenu({ open, onOpenChange }: SideMenuProps) {
         className="flex flex-col border-r bg-white w-[280px] p-0"
       >
         <SheetHeader className="border-b p-6 text-left">
-          <SheetTitle className="text-xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Hisa Flow
-          </SheetTitle>
-          {user && (
-            <SheetDescription className="mt-2 text-sm text-[var(--color-text-muted)]">
-              {user.fullName || user.primaryEmailAddress?.emailAddress}
-            </SheetDescription>
-          )}
+          <div className="flex items-center gap-3">
+            <BusinessLogo
+              logoUrl={membership?.organization?.logoUrl}
+              name={membership?.organization?.name ?? 'HisaFlow'}
+              email={user?.primaryEmailAddress?.emailAddress}
+              size="lg"
+            />
+            <div className="min-w-0">
+              <SheetTitle className="truncate text-lg font-bold tracking-tight text-[var(--color-text-primary)]">
+                {membership?.organization?.name ?? 'HisaFlow'}
+              </SheetTitle>
+              {user && (
+                <SheetDescription className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
+                  {user.fullName || user.primaryEmailAddress?.emailAddress}
+                </SheetDescription>
+              )}
+            </div>
+          </div>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto py-4">

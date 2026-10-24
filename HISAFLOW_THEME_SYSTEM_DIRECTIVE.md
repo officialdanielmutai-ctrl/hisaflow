@@ -464,8 +464,8 @@ still the recommended process for future changes.
 ### Evidence
 
 - `pnpm --filter @hisaflow/theme test` — 14/14 pass.
-- `pnpm --filter frontend test` — 44 files / 273 tests pass.
-- `pnpm --filter backend test` — 110 suites / 878 tests pass.
+- `pnpm --filter frontend test` — 46 files / 281 tests pass.
+- `pnpm --filter backend test` — 110 suites / 882 tests pass.
 - `pnpm --filter admin test` — 12 tests pass.
 - `pnpm typecheck` — 6/6 turbo tasks pass.
 - `pnpm lint` — exit 0 (0 errors; pre-existing warning baseline logged in

@@ -1,57 +1,92 @@
-'use client';
+'use client'
 
-import useSWR from 'swr';
-import dynamic from 'next/dynamic';
-import { useAuth, useUser } from '@clerk/nextjs';
-import { useMyOrganization } from '@/hooks/useMyOrganization';
-import { useDateRange } from '@/components/providers/DateRangeProvider';
-import Link from 'next/link';
+import useSWR from 'swr'
+import dynamic from 'next/dynamic'
+import { useAuth, useUser } from '@clerk/nextjs'
+import { useMyOrganization } from '@/hooks/useMyOrganization'
+import { useDateRange } from '@/components/providers/DateRangeProvider'
+import Link from 'next/link'
 import {
-  TrendingUp, AlertTriangle, Package, StickyNote, Sparkles,
-  ShoppingCart, QrCode,
-} from 'lucide-react';
-import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar';
-import { getDashboardData, DashboardData, getStaffDashboardData, StaffDashboardData } from '@/services/analytics.service';
-import { useRole } from '@/hooks/useRole';
-import DashboardLoading from '../loading';
-import { GuestHouseDashboard } from '@/components/guesthouse/GuestHouseDashboard';
-import { SchoolDashboard } from '@/components/school/SchoolDashboard';
-import { ChemistDashboard } from '@/components/chemist/ChemistDashboard';
-import { RestaurantDashboard } from '@/components/restaurant/RestaurantDashboard';
-import { WholesaleDashboard } from '@/components/wholesale/WholesaleDashboard';
-import { IspDashboard } from '@/components/isp/IspDashboard';
-import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
-import { RETAIL_KPI_ROWS, RETAIL_INVENTORY_ROWS } from '@/features/dashboard/config/retail';
-import { STAFF_KPI_ROWS } from '@/features/dashboard/config/staff';
-import { formatKpiNumber } from '@/lib/kpi-format';
+  TrendingUp,
+  AlertTriangle,
+  Package,
+  StickyNote,
+  Sparkles,
+  ShoppingCart,
+  QrCode,
+} from 'lucide-react'
+import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar'
+import {
+  DashboardGreeting,
+  type TimeOfDay,
+} from '@/components/dashboard/DashboardGreeting'
+import {
+  getDashboardData,
+  DashboardData,
+  getStaffDashboardData,
+  StaffDashboardData,
+} from '@/services/analytics.service'
+import { useRole } from '@/hooks/useRole'
+import DashboardLoading from '../loading'
+import { GuestHouseDashboard } from '@/components/guesthouse/GuestHouseDashboard'
+import { SchoolDashboard } from '@/components/school/SchoolDashboard'
+import { ChemistDashboard } from '@/components/chemist/ChemistDashboard'
+import { RestaurantDashboard } from '@/components/restaurant/RestaurantDashboard'
+import { WholesaleDashboard } from '@/components/wholesale/WholesaleDashboard'
+import { IspDashboard } from '@/components/isp/IspDashboard'
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows'
+import {
+  RETAIL_KPI_ROWS,
+  RETAIL_INVENTORY_ROWS,
+} from '@/features/dashboard/config/retail'
+import { STAFF_KPI_ROWS } from '@/features/dashboard/config/staff'
+import { formatKpiNumber } from '@/lib/kpi-format'
 
-const ModernAnalyticsChart = dynamic(() => import('@/components/charts/ModernAnalyticsChart'), { ssr: false });
-const BentoSalesPair = dynamic(() => import('@/components/dashboard/bento/BentoSalesPair'), { ssr: false });
-const BentoGrowthCard = dynamic(() => import('@/components/dashboard/bento/BentoGrowthCard'), { ssr: false });
-const BentoGaugeCard = dynamic(() => import('@/components/dashboard/bento/BentoGaugeCard'), { ssr: false });
-const BentoStatisticsCard = dynamic(() => import('@/components/dashboard/bento/BentoStatisticsCard'), { ssr: false });
-const BentoActivityFeed = dynamic(() => import('@/components/dashboard/bento/BentoActivityFeed'), { ssr: false });
+const ModernAnalyticsChart = dynamic(
+  () => import('@/components/charts/ModernAnalyticsChart'),
+  { ssr: false }
+)
+const BentoSalesPair = dynamic(
+  () => import('@/components/dashboard/bento/BentoSalesPair'),
+  { ssr: false }
+)
+const BentoGrowthCard = dynamic(
+  () => import('@/components/dashboard/bento/BentoGrowthCard'),
+  { ssr: false }
+)
+const BentoGaugeCard = dynamic(
+  () => import('@/components/dashboard/bento/BentoGaugeCard'),
+  { ssr: false }
+)
+const BentoStatisticsCard = dynamic(
+  () => import('@/components/dashboard/bento/BentoStatisticsCard'),
+  { ssr: false }
+)
+const BentoActivityFeed = dynamic(
+  () => import('@/components/dashboard/bento/BentoActivityFeed'),
+  { ssr: false }
+)
 
 // ── Staff Dashboard ───────────────────────────────────────────────────────────
 function StaffDashboard() {
-  const { getToken } = useAuth();
-  const { user } = useUser();
-  const { membership } = useMyOrganization();
-  const orgId = membership?.organization.id ?? '';
-  const firstName = user?.firstName ?? 'there';
+  const { getToken } = useAuth()
+  const { user } = useUser()
+  const { membership } = useMyOrganization()
+  const orgId = membership?.organization.id ?? ''
+  const firstName = user?.firstName ?? 'there'
 
   // Fetch the dashboard data
   const { data, isLoading, error } = useSWR<StaffDashboardData>(
     orgId ? ['staff-dashboard', orgId] : null,
     async () => {
-      const token = await getToken();
-      if (!token) throw new Error('Not authenticated');
-      return getStaffDashboardData(token, orgId);
+      const token = await getToken()
+      if (!token) throw new Error('Not authenticated')
+      return getStaffDashboardData(token, orgId)
     }
-  );
+  )
 
   if (isLoading) {
-    return <DashboardLoading />;
+    return <DashboardLoading />
   }
 
   if (error || !data) {
@@ -59,20 +94,12 @@ function StaffDashboard() {
       <div className="py-12 text-center text-[var(--color-text-secondary)]">
         {error?.message ?? 'No data available'}
       </div>
-    );
+    )
   }
 
   return (
     <div className="flex flex-col gap-6 pb-4">
-      {/* ── Greeting ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col">
-        <h1 className="text-xl font-bold flex items-center gap-2 text-[var(--color-text-primary)]">
-          Good {data.greeting.timeOfDay}, {firstName} <span className="text-2xl">👋</span>
-        </h1>
-        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-          Here&apos;s what&apos;s happening in your store.
-        </p>
-      </div>
+      <DashboardGreeting name={firstName} timeOfDay={data.greeting.timeOfDay} />
 
       {/* ── KPI Grid: shared StatCard, per-vertical staff arrangement ── */}
       <DashboardKpiRows rows={STAFF_KPI_ROWS} data={data} />
@@ -81,10 +108,16 @@ function StaffDashboard() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Active Alerts</h2>
+            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
+              Active Alerts
+            </h2>
           </div>
-          <Link href="/alerts" className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center">
-            View all alerts <span className="ml-1 text-lg leading-none mt-0.5">›</span>
+          <Link
+            href="/alerts"
+            className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center"
+          >
+            View all alerts{' '}
+            <span className="ml-1 text-lg leading-none mt-0.5">›</span>
           </Link>
         </div>
         <div className="flex flex-col gap-3">
@@ -106,17 +139,26 @@ function StaffDashboard() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0 z-10">
-                  <p className="text-sm font-bold text-[var(--color-text-primary)] truncate pr-20">{alert.message}</p>
+                  <p className="text-sm font-bold text-[var(--color-text-primary)] truncate pr-20">
+                    {alert.message}
+                  </p>
                   <p className="text-xs text-[var(--color-text-secondary)] mt-1 line-clamp-2 pr-4 leading-relaxed">
-                    {alert.type === 'STAFF_ACTIVITY' ? 'Staff activity logged.' : 'Noticeable changes detected.'}
+                    {alert.type === 'STAFF_ACTIVITY'
+                      ? 'Staff activity logged.'
+                      : 'Noticeable changes detected.'}
                   </p>
                 </div>
                 <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5 z-10">
                   <span className="rounded bg-yellow-100 px-2 py-0.5 text-[10px] font-bold text-yellow-800">
-                    {alert.type === 'STAFF_ACTIVITY' ? 'Sale Logged' : 'High Activity'}
+                    {alert.type === 'STAFF_ACTIVITY'
+                      ? 'Sale Logged'
+                      : 'High Activity'}
                   </span>
                   <span className="text-[10px] text-[var(--color-text-muted)] font-medium flex items-center gap-0.5">
-                    10m ago <span className="text-sm font-bold ml-1 leading-none">›</span>
+                    10m ago{' '}
+                    <span className="text-sm font-bold ml-1 leading-none">
+                      ›
+                    </span>
                   </span>
                 </div>
               </div>
@@ -129,22 +171,32 @@ function StaffDashboard() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Low Stock Watch List</h2>
+            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
+              Low Stock Watch List
+            </h2>
           </div>
-          <Link href="/inventory" className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center">
-            View all items <span className="ml-1 text-lg leading-none mt-0.5">›</span>
+          <Link
+            href="/inventory"
+            className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center"
+          >
+            View all items{' '}
+            <span className="ml-1 text-lg leading-none mt-0.5">›</span>
           </Link>
         </div>
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] overflow-hidden">
           {data.lowStockWatchList.length === 0 ? (
-            <div className="p-4 text-center text-sm text-[var(--color-text-muted)]">No low stock items.</div>
+            <div className="p-4 text-center text-sm text-[var(--color-text-muted)]">
+              No low stock items.
+            </div>
           ) : (
             data.lowStockWatchList.map((item, idx) => (
               <Link
                 key={item.id}
                 href="/inventory"
                 className={`flex items-center justify-between px-4 py-3 hover:bg-[var(--color-bg-base)] transition-colors ${
-                  idx !== data.lowStockWatchList.length - 1 ? 'border-b border-[var(--color-border)]' : ''
+                  idx !== data.lowStockWatchList.length - 1
+                    ? 'border-b border-[var(--color-border)]'
+                    : ''
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -152,13 +204,17 @@ function StaffDashboard() {
                     <Package className="h-4 w-4 text-gray-500" />
                   </div>
                   <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-yellow-500" />
-                  <span className="text-sm font-bold text-[var(--color-text-primary)] truncate">{item.name}</span>
+                  <span className="text-sm font-bold text-[var(--color-text-primary)] truncate">
+                    {item.name}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
                   <span className="text-sm font-bold text-orange-500">
                     {item.quantity} {item.unit}
                   </span>
-                  <span className="text-[var(--color-text-muted)] text-lg leading-none">›</span>
+                  <span className="text-[var(--color-text-muted)] text-lg leading-none">
+                    ›
+                  </span>
                 </div>
               </Link>
             ))
@@ -175,7 +231,9 @@ function StaffDashboard() {
                 <Sparkles className="h-6 w-6 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-xs font-bold text-[var(--color-accent)] mb-1">Smart Recommendations</h3>
+                <h3 className="text-xs font-bold text-[var(--color-accent)] mb-1">
+                  Smart Recommendations
+                </h3>
                 <p className="text-sm font-bold text-[var(--color-text-primary)] leading-tight mb-1">
                   {data.recommendedActions[0].action}
                 </p>
@@ -193,42 +251,41 @@ function StaffDashboard() {
         ) : null}
       </section>
     </div>
-  );
+  )
 }
 
 function RetailDashboard() {
-  const { getToken } = useAuth();
-  const { membership } = useMyOrganization();
-  const { user } = useUser();
-  const { canViewAnalytics } = useRole();
-  const { preset } = useDateRange();
+  const { getToken } = useAuth()
+  const { membership } = useMyOrganization()
+  const { user } = useUser()
+  const { canViewAnalytics } = useRole()
+  const { preset } = useDateRange()
 
-  const orgId = membership?.organization.id;
+  const orgId = membership?.organization.id
 
   const fetcher = async () => {
-    if (!orgId) throw new Error('No organization found');
-    const token = await getToken();
-    if (!token) throw new Error('Not authenticated');
-    return getDashboardData(token, orgId);
-  };
+    if (!orgId) throw new Error('No organization found')
+    const token = await getToken()
+    if (!token) throw new Error('Not authenticated')
+    return getDashboardData(token, orgId)
+  }
 
   const { data, error, isLoading } = useSWR<DashboardData>(
     canViewAnalytics && orgId ? ['dashboard', orgId, preset] : null,
     fetcher
-  );
+  )
 
-  const loading = isLoading;
-  const firstName = user?.firstName ?? 'there';
-  const timeLabel = data?.greeting.timeOfDay ?? 'morning';
-  const greetingEmoji = timeLabel === 'morning' ? '👋' : timeLabel === 'afternoon' ? '☀️' : '🌙';
+  const loading = isLoading
+  const firstName = user?.firstName ?? 'there'
+  const timeLabel: TimeOfDay = data?.greeting.timeOfDay ?? 'morning'
 
   // Staff get their own dedicated dashboard
   if (!canViewAnalytics) {
-    return <StaffDashboard />;
+    return <StaffDashboard />
   }
 
   if (loading) {
-    return <DashboardLoading />;
+    return <DashboardLoading />
   }
 
   if (error || !data) {
@@ -236,27 +293,41 @@ function RetailDashboard() {
       <div className="py-12 text-center text-[var(--color-text-secondary)]">
         {error ?? 'No data available'}
       </div>
-    );
+    )
   }
 
   return (
     <div className="flex flex-col gap-6">
       {/* Header & Top Operations Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-[var(--color-text-primary)]">
-            Good {timeLabel}, {firstName} {greetingEmoji}
-          </h1>
-          <p className="text-sm text-[var(--color-text-secondary)]">
-            {membership?.organization.name}
-          </p>
-        </div>
+        <DashboardGreeting
+          name={firstName}
+          timeOfDay={timeLabel}
+          className="min-w-0 flex-1"
+        />
         <TopOperationsBar
           shortcuts={[
-            { label: '+ Record Sale', href: '/transactions?type=SALE', icon: TrendingUp, primary: true },
-            { label: '+ Receive Stock', href: '/inventory?action=receive', icon: Package },
-            { label: '+ Add SKU', href: '/inventory?action=add', icon: ShoppingCart },
-            { label: 'Barcode Scan', href: '/inventory?action=scan', icon: QrCode },
+            {
+              label: '+ Record Sale',
+              href: '/transactions?type=SALE',
+              icon: TrendingUp,
+              primary: true,
+            },
+            {
+              label: '+ Receive Stock',
+              href: '/inventory?action=receive',
+              icon: Package,
+            },
+            {
+              label: '+ Add SKU',
+              href: '/inventory?action=add',
+              icon: ShoppingCart,
+            },
+            {
+              label: 'Barcode Scan',
+              href: '/inventory?action=scan',
+              icon: QrCode,
+            },
           ]}
         />
       </div>
@@ -295,7 +366,11 @@ function RetailDashboard() {
             displayValue={`${data.inventorySnapshot.stockHealthPct}%`}
             label="Healthy Stock"
             totalCapacity={100}
-            increasePct={data.kpis.lowStockCount > 0 ? `${data.kpis.lowStockCount} Low` : 'Optimal'}
+            increasePct={
+              data.kpis.lowStockCount > 0
+                ? `${data.kpis.lowStockCount} Low`
+                : 'Optimal'
+            }
             footerText="Catalog stock availability is"
             className="h-full"
           />
@@ -319,12 +394,59 @@ function RetailDashboard() {
               { day: 'Sun', tag: '60%', pct: 60 },
             ]}
             tab2Bars={[
-              { day: 'Mon', tag: `${data.inventorySnapshot.healthy}`, pct: Math.min(100, Math.round((data.inventorySnapshot.healthy / Math.max(data.inventorySnapshot.total, 1)) * 100)), isHighlight: true },
-              { day: 'Tue', tag: `${data.inventorySnapshot.low}`, pct: Math.min(100, Math.round((data.inventorySnapshot.low / Math.max(data.inventorySnapshot.total, 1)) * 100)) },
-              { day: 'Wed', tag: `${data.inventorySnapshot.outOfStock}`, pct: Math.min(100, Math.round((data.inventorySnapshot.outOfStock / Math.max(data.inventorySnapshot.total, 1)) * 100)) },
-              { day: 'Thu', tag: `${data.inventorySnapshot.total}`, pct: 100, isHighlight: true },
-              { day: 'Fri', tag: `${data.inventorySnapshot.stockHealthPct}%`, pct: data.inventorySnapshot.stockHealthPct },
-              { day: 'Sat', tag: `${data.kpis.lowStockCount}`, pct: Math.min(100, data.kpis.lowStockCount * 10) },
+              {
+                day: 'Mon',
+                tag: `${data.inventorySnapshot.healthy}`,
+                pct: Math.min(
+                  100,
+                  Math.round(
+                    (data.inventorySnapshot.healthy /
+                      Math.max(data.inventorySnapshot.total, 1)) *
+                      100
+                  )
+                ),
+                isHighlight: true,
+              },
+              {
+                day: 'Tue',
+                tag: `${data.inventorySnapshot.low}`,
+                pct: Math.min(
+                  100,
+                  Math.round(
+                    (data.inventorySnapshot.low /
+                      Math.max(data.inventorySnapshot.total, 1)) *
+                      100
+                  )
+                ),
+              },
+              {
+                day: 'Wed',
+                tag: `${data.inventorySnapshot.outOfStock}`,
+                pct: Math.min(
+                  100,
+                  Math.round(
+                    (data.inventorySnapshot.outOfStock /
+                      Math.max(data.inventorySnapshot.total, 1)) *
+                      100
+                  )
+                ),
+              },
+              {
+                day: 'Thu',
+                tag: `${data.inventorySnapshot.total}`,
+                pct: 100,
+                isHighlight: true,
+              },
+              {
+                day: 'Fri',
+                tag: `${data.inventorySnapshot.stockHealthPct}%`,
+                pct: data.inventorySnapshot.stockHealthPct,
+              },
+              {
+                day: 'Sat',
+                tag: `${data.kpis.lowStockCount}`,
+                pct: Math.min(100, data.kpis.lowStockCount * 10),
+              },
               { day: 'Sun', tag: `${data.inventorySnapshot.healthy}`, pct: 90 },
             ]}
             className="h-full"
@@ -338,25 +460,32 @@ function RetailDashboard() {
                 id: alert.id,
                 name: alert.message,
                 avatarText: alert.severity === 'CRITICAL' ? '!' : 'A',
-                avatarColor: alert.severity === 'CRITICAL' ? 'bg-rose-500' : 'bg-amber-500',
+                avatarColor:
+                  alert.severity === 'CRITICAL'
+                    ? 'bg-rose-500'
+                    : 'bg-amber-500',
                 description: alert.type.replace('_', ' '),
                 time: 'Active',
                 value: alert.severity,
                 badgeText: alert.severity === 'CRITICAL' ? 'Critical' : 'Alert',
-                badgeTone: (alert.severity === 'CRITICAL' ? 'sky' : 'teal') as 'sky' | 'teal',
+                badgeTone: (alert.severity === 'CRITICAL' ? 'sky' : 'teal') as
+                  | 'sky'
+                  | 'teal',
               })),
               ...(data.kpis.lowStockCount > 0
-                ? [{
-                    id: 'low-stock-alert',
-                    name: `${data.kpis.lowStockCount} items need restocking`,
-                    avatarText: 'L',
-                    avatarColor: 'bg-amber-500',
-                    description: `${data.inventorySnapshot.low} low · ${data.inventorySnapshot.outOfStock} out of stock`,
-                    time: 'Stock',
-                    value: `${data.kpis.lowStockCount} Low`,
-                    badgeText: 'Restock',
-                    badgeTone: 'teal' as const,
-                  }]
+                ? [
+                    {
+                      id: 'low-stock-alert',
+                      name: `${data.kpis.lowStockCount} items need restocking`,
+                      avatarText: 'L',
+                      avatarColor: 'bg-amber-500',
+                      description: `${data.inventorySnapshot.low} low · ${data.inventorySnapshot.outOfStock} out of stock`,
+                      time: 'Stock',
+                      value: `${data.kpis.lowStockCount} Low`,
+                      badgeText: 'Restock',
+                      badgeTone: 'teal' as const,
+                    },
+                  ]
                 : []),
               {
                 id: 'sales-status',
@@ -395,8 +524,13 @@ function RetailDashboard() {
           {/* Inventory Snapshot */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-base text-[var(--color-text-primary)]">Inventory Snapshot</h2>
-              <Link href="/inventory" className="text-sm text-[var(--color-accent)] font-semibold hover:underline">
+              <h2 className="font-bold text-base text-[var(--color-text-primary)]">
+                Inventory Snapshot
+              </h2>
+              <Link
+                href="/inventory"
+                className="text-sm text-[var(--color-accent)] font-semibold hover:underline"
+              >
                 View all
               </Link>
             </div>
@@ -407,8 +541,13 @@ function RetailDashboard() {
           {data.attentionFeed.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-bold text-base text-[var(--color-text-primary)]">Attention Feed</h2>
-                <Link href="/alerts" className="text-sm text-[var(--color-accent)] font-semibold hover:underline">
+                <h2 className="font-bold text-base text-[var(--color-text-primary)]">
+                  Attention Feed
+                </h2>
+                <Link
+                  href="/alerts"
+                  className="text-sm text-[var(--color-accent)] font-semibold hover:underline"
+                >
                   View all
                 </Link>
               </div>
@@ -458,7 +597,9 @@ function RetailDashboard() {
                       }`}
                     />
                     <div>
-                      <p className="text-xs font-bold text-[var(--color-text-primary)] leading-tight">{rec.action}</p>
+                      <p className="text-xs font-bold text-[var(--color-text-primary)] leading-tight">
+                        {rec.action}
+                      </p>
                       <p className="text-[11px] text-[var(--color-text-secondary)] mt-1 leading-relaxed">
                         {rec.reason}
                       </p>
@@ -471,23 +612,30 @@ function RetailDashboard() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-
 export default function DashboardPage() {
-  const { canViewAnalytics, isGuestHouse, isSchool, isChemist, isRestaurant, isWholesaler, isIsp } = useRole();
+  const {
+    canViewAnalytics,
+    isGuestHouse,
+    isSchool,
+    isChemist,
+    isRestaurant,
+    isWholesaler,
+    isIsp,
+  } = useRole()
 
   if (!canViewAnalytics) {
-    return <StaffDashboard />;
+    return <StaffDashboard />
   }
 
-  if (isGuestHouse) return <GuestHouseDashboard />;
-  if (isSchool) return <SchoolDashboard />;
-  if (isChemist) return <ChemistDashboard />;
-  if (isRestaurant) return <RestaurantDashboard />;
-  if (isWholesaler) return <WholesaleDashboard />;
-  if (isIsp) return <IspDashboard />;
+  if (isGuestHouse) return <GuestHouseDashboard />
+  if (isSchool) return <SchoolDashboard />
+  if (isChemist) return <ChemistDashboard />
+  if (isRestaurant) return <RestaurantDashboard />
+  if (isWholesaler) return <WholesaleDashboard />
+  if (isIsp) return <IspDashboard />
 
-  return <RetailDashboard />;
+  return <RetailDashboard />
 }

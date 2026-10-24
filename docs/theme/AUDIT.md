@@ -87,7 +87,7 @@ findings are in `FOUND_ISSUES.md`.
 | Theme package typecheck | Pass (strict + `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)                        |
 | Theme tests             | Pass (14 contract/contrast/generation tests)                                                    |
 | Frontend typecheck      | Pass                                                                                            |
-| Frontend tests          | Pass (44 files / 273 tests)                                                                     |
+| Frontend tests          | Pass (46 files / 281 tests)                                                                     |
 | Frontend build          | Pass                                                                                            |
 | Backend tests/build     | Pass at baseline                                                                                |
 | Repo lint               | 0 errors, but **pre-existing warnings** remain; see `FOUND_ISSUES.md`                           |

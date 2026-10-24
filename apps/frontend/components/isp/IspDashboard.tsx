@@ -1,11 +1,11 @@
-'use client';
+'use client'
 
-import React from 'react';
-import useSWR from 'swr';
-import { useAuth, useUser } from '@clerk/nextjs';
-import { useMyOrganization } from '@/hooks/useMyOrganization';
-import Link from 'next/link';
-import dynamic from 'next/dynamic';
+import React from 'react'
+import useSWR from 'swr'
+import { useAuth, useUser } from '@clerk/nextjs'
+import { useMyOrganization } from '@/hooks/useMyOrganization'
+import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import {
   Wifi,
   Wrench,
@@ -15,183 +15,239 @@ import {
   CircleDollarSign,
   Users,
   Sparkles,
-} from 'lucide-react';
-import { getIspDashboard, type IspDashboardData } from '@/services/isp.service';
-import DashboardLoading from '@/app/(dashboard)/loading';
-import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
-import { ISP_KPI_ROWS } from '@/features/dashboard/config/isp';
-import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar';
+} from 'lucide-react'
+import { getIspDashboard, type IspDashboardData } from '@/services/isp.service'
+import DashboardLoading from '@/app/(dashboard)/loading'
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows'
+import { ISP_KPI_ROWS } from '@/features/dashboard/config/isp'
+import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar'
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
 
-const BentoSalesPair = dynamic(() => import('@/components/dashboard/bento/BentoSalesPair'), { ssr: false });
-const BentoGrowthCard = dynamic(() => import('@/components/dashboard/bento/BentoGrowthCard'), { ssr: false });
-const BentoGaugeCard = dynamic(() => import('@/components/dashboard/bento/BentoGaugeCard'), { ssr: false });
-const BentoStatisticsCard = dynamic(() => import('@/components/dashboard/bento/BentoStatisticsCard'), { ssr: false });
-const BentoActivityFeed = dynamic(() => import('@/components/dashboard/bento/BentoActivityFeed'), { ssr: false });
+const BentoSalesPair = dynamic(
+  () => import('@/components/dashboard/bento/BentoSalesPair'),
+  { ssr: false }
+)
+const BentoGrowthCard = dynamic(
+  () => import('@/components/dashboard/bento/BentoGrowthCard'),
+  { ssr: false }
+)
+const BentoGaugeCard = dynamic(
+  () => import('@/components/dashboard/bento/BentoGaugeCard'),
+  { ssr: false }
+)
+const BentoStatisticsCard = dynamic(
+  () => import('@/components/dashboard/bento/BentoStatisticsCard'),
+  { ssr: false }
+)
+const BentoActivityFeed = dynamic(
+  () => import('@/components/dashboard/bento/BentoActivityFeed'),
+  { ssr: false }
+)
 
 export interface IspRecommendation {
-  action: string;
-  reason: string;
-  priority: 'HIGH' | 'MEDIUM' | 'LOW';
-  href?: string;
+  action: string
+  reason: string
+  priority: 'HIGH' | 'MEDIUM' | 'LOW'
+  href?: string
 }
 
 function buildIspRecommendations(data: IspDashboardData): IspRecommendation[] {
-  const recs: IspRecommendation[] = [];
+  const recs: IspRecommendation[] = []
 
   // 1. Critical Support & Service SLA
   if (data.openTickets > 0) {
     recs.push({
       action: `Resolve ${data.openTickets} open support ticket${data.openTickets > 1 ? 's' : ''}`,
-      reason: 'Open complaints increase subscriber churn. Assign technicians or troubleshoot connection issues promptly.',
+      reason:
+        'Open complaints increase subscriber churn. Assign technicians or troubleshoot connection issues promptly.',
       priority: 'HIGH',
       href: '/tickets',
-    });
+    })
   }
 
   // 2. Overdue Revenue Collection
   if (data.subscribers.suspended > 0) {
     recs.push({
       action: `Follow up on ${data.subscribers.suspended} suspended subscriber${data.subscribers.suspended > 1 ? 's' : ''}`,
-      reason: 'Suspended subscribers represent overdue recurring revenue. Follow up via WhatsApp or call to collect payment.',
+      reason:
+        'Suspended subscribers represent overdue recurring revenue. Follow up via WhatsApp or call to collect payment.',
       priority: 'HIGH',
       href: '/subscribers?filter=SUSPENDED',
-    });
+    })
   }
 
   // 3. Field Deployments
   if (data.scheduledWorkOrders > 0) {
     recs.push({
       action: `Complete ${data.scheduledWorkOrders} scheduled work order${data.scheduledWorkOrders > 1 ? 's' : ''}`,
-      reason: 'Ensure field technicians have issued necessary routers and drop cables to finalize installations on time.',
+      reason:
+        'Ensure field technicians have issued necessary routers and drop cables to finalize installations on time.',
       priority: 'MEDIUM',
       href: '/work-orders',
-    });
+    })
   }
 
   // 4. Subscriber Growth & Plan Upselling
   if (data.subscribers.total === 0) {
     recs.push({
       action: 'Register your first internet subscriber',
-      reason: 'Your subscriber fleet is currently empty. Add subscribers and assign them to service plans to begin tracking revenue.',
+      reason:
+        'Your subscriber fleet is currently empty. Add subscribers and assign them to service plans to begin tracking revenue.',
       priority: 'HIGH',
       href: '/subscribers?action=add',
-    });
+    })
   } else if (data.subscribers.activeRate >= 70) {
     recs.push({
       action: 'Introduce higher-speed bandwidth tiers to boost ARPU',
       reason: `Fleet retention is healthy with ${data.subscribers.activeRate}% active subscribers. Introduce premium tiers (e.g. 20Mbps / 50Mbps) to grow recurring revenue.`,
       priority: 'LOW',
       href: '/service-plans',
-    });
+    })
   }
 
   // 5. Billing Cycle & Hardware Audits (always available)
   recs.push({
     action: 'Automate renewal notices 3 days before billing cycle ends',
-    reason: 'Advance notification prevents abrupt subscriber disconnection and maintains steady cash flow.',
+    reason:
+      'Advance notification prevents abrupt subscriber disconnection and maintains steady cash flow.',
     priority: 'MEDIUM',
     href: '/finance',
-  });
+  })
 
   recs.push({
     action: 'Audit field hardware inventory',
-    reason: 'Verify stock levels for optical network units (ONUs), Wi-Fi routers, and drop cables before new installations.',
+    reason:
+      'Verify stock levels for optical network units (ONUs), Wi-Fi routers, and drop cables before new installations.',
     priority: 'LOW',
     href: '/inventory',
-  });
+  })
 
-  return recs;
+  return recs
 }
 
-
-
 export function IspDashboard() {
-  const { getToken } = useAuth();
-  const { membership } = useMyOrganization();
-  const { user } = useUser();
-  const orgId = membership?.organization?.id;
+  const { getToken } = useAuth()
+  const { membership } = useMyOrganization()
+  const { user } = useUser()
+  const orgId = membership?.organization?.id
 
   const fetcher = async () => {
-    if (!orgId) throw new Error('No organization found');
-    const token = await getToken();
-    if (!token) throw new Error('Not authenticated');
-    return getIspDashboard(token, orgId);
-  };
+    if (!orgId) throw new Error('No organization found')
+    const token = await getToken()
+    if (!token) throw new Error('Not authenticated')
+    return getIspDashboard(token, orgId)
+  }
 
   const { data, error, isLoading } = useSWR<IspDashboardData>(
     orgId ? ['isp-dashboard', orgId] : null,
     fetcher,
-    { refreshInterval: 30000 },
-  );
+    { refreshInterval: 30000 }
+  )
 
-  if (isLoading) return <DashboardLoading />;
+  if (isLoading) return <DashboardLoading />
 
   if (error || !data) {
     return (
       <div className="py-12 text-center text-[var(--color-text-secondary)]">
         {error?.message ?? 'No data available'}
       </div>
-    );
+    )
   }
 
-  const firstName = user?.firstName ?? 'there';
-  const hour = new Date().getHours();
-  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-  const greetingEmoji = timeOfDay === 'morning' ? '👋' : timeOfDay === 'afternoon' ? '☀️' : '🌙';
+  const firstName = user?.firstName ?? 'there'
+  const hour = new Date().getHours()
+  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
 
-  const recommendations = buildIspRecommendations(data);
-  const topRec = recommendations[0];
-  const otherRecs = recommendations.slice(1, 4);
+  const recommendations = buildIspRecommendations(data)
+  const topRec = recommendations[0]
+  const otherRecs = recommendations.slice(1, 4)
 
-  const totalSubs = data.subscribers.total || 0;
-  const activePct = totalSubs > 0 ? Math.round((data.subscribers.active / totalSubs) * 100) : 0;
-  const suspendedPct = totalSubs > 0 ? Math.round((data.subscribers.suspended / totalSubs) * 100) : 0;
-  const churnedPct = totalSubs > 0 ? Math.round((data.subscribers.churned / totalSubs) * 100) : 0;
+  const totalSubs = data.subscribers.total || 0
+  const activePct =
+    totalSubs > 0 ? Math.round((data.subscribers.active / totalSubs) * 100) : 0
+  const suspendedPct =
+    totalSubs > 0
+      ? Math.round((data.subscribers.suspended / totalSubs) * 100)
+      : 0
+  const churnedPct =
+    totalSubs > 0 ? Math.round((data.subscribers.churned / totalSubs) * 100) : 0
 
   const shortcuts = [
-    { label: '+ Add Subscriber', href: '/subscribers?action=add', icon: Plus, primary: true },
+    {
+      label: '+ Add Subscriber',
+      href: '/subscribers?action=add',
+      icon: Plus,
+      primary: true,
+    },
     { label: '+ New Work Order', href: '/work-orders', icon: Wrench },
     { label: '+ New Ticket', href: '/tickets', icon: Headphones },
     { label: 'Service Plans', href: '/service-plans', icon: Wifi },
-  ];
+  ]
 
   const ispTab1Bars = [
-    { day: 'Mon', tag: `${data.subscribers.active} on`, pct: activePct, isHighlight: true },
-    { day: 'Tue', tag: `${data.subscribers.suspended} susp`, pct: suspendedPct },
+    {
+      day: 'Mon',
+      tag: `${data.subscribers.active} on`,
+      pct: activePct,
+      isHighlight: true,
+    },
+    {
+      day: 'Tue',
+      tag: `${data.subscribers.suspended} susp`,
+      pct: suspendedPct,
+    },
     { day: 'Wed', tag: `${data.subscribers.churned} off`, pct: churnedPct },
     { day: 'Thu', tag: `${totalSubs} fleet`, pct: 100, isHighlight: true },
-    { day: 'Fri', tag: `${data.scheduledWorkOrders} jobs`, pct: Math.min(100, data.scheduledWorkOrders * 15) },
-    { day: 'Sat', tag: `${data.openTickets} tix`, pct: Math.min(100, data.openTickets * 20) },
-    { day: 'Sun', tag: `${data.subscribers.active}`, pct: activePct, isHighlight: true },
-  ];
+    {
+      day: 'Fri',
+      tag: `${data.scheduledWorkOrders} jobs`,
+      pct: Math.min(100, data.scheduledWorkOrders * 15),
+    },
+    {
+      day: 'Sat',
+      tag: `${data.openTickets} tix`,
+      pct: Math.min(100, data.openTickets * 20),
+    },
+    {
+      day: 'Sun',
+      tag: `${data.subscribers.active}`,
+      pct: activePct,
+      isHighlight: true,
+    },
+  ]
 
   const ispTab2Bars = [
     { day: 'Mon', tag: `${activePct}%`, pct: activePct, isHighlight: true },
     { day: 'Tue', tag: `${suspendedPct}%`, pct: suspendedPct },
-    { day: 'Wed', tag: `KES ${Math.round(data.monthlyRevenue / 1000)}k`, pct: 85, isHighlight: true },
+    {
+      day: 'Wed',
+      tag: `KES ${Math.round(data.monthlyRevenue / 1000)}k`,
+      pct: 85,
+      isHighlight: true,
+    },
     { day: 'Thu', tag: `${totalSubs}`, pct: 100, isHighlight: true },
-    { day: 'Fri', tag: `${data.scheduledWorkOrders}`, pct: Math.min(100, data.scheduledWorkOrders * 20) },
-    { day: 'Sat', tag: `${data.openTickets}`, pct: Math.min(100, data.openTickets * 20) },
+    {
+      day: 'Fri',
+      tag: `${data.scheduledWorkOrders}`,
+      pct: Math.min(100, data.scheduledWorkOrders * 20),
+    },
+    {
+      day: 'Sat',
+      tag: `${data.openTickets}`,
+      pct: Math.min(100, data.openTickets * 20),
+    },
     { day: 'Sun', tag: `${activePct}%`, pct: activePct },
-  ];
+  ]
 
   return (
     <div className="w-full flex flex-col gap-6 pb-24">
       {/* ── Header & Top Operations Bar ───────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold flex items-center gap-2 text-[var(--color-text-primary)]">
-            Good {timeOfDay}, {firstName} {greetingEmoji}
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-              ISP Operations Center
-            </span>
-            <span className="text-xs text-[var(--color-text-secondary)]">
-              {membership?.organization?.name}
-            </span>
-          </div>
-        </div>
+        <DashboardGreeting
+          name={firstName}
+          timeOfDay={timeOfDay}
+          className="min-w-0 flex-1"
+        />
         <TopOperationsBar shortcuts={shortcuts} />
       </div>
 
@@ -211,7 +267,9 @@ export function IspDashboard() {
             salesTrendPct={21}
             salesTrendLabel="+21%"
             purchaseTrendPct={activePct >= 70 ? 12 : -5}
-            purchaseTrendLabel={activePct >= 70 ? `+12% fleet` : `${activePct}% online`}
+            purchaseTrendLabel={
+              activePct >= 70 ? `+12% fleet` : `${activePct}% online`
+            }
             topHref="/finance"
             bottomHref="/subscribers"
             className="h-full"
@@ -259,47 +317,72 @@ export function IspDashboard() {
             orders={[
               {
                 id: 'isp-act-1',
-                name: data.subscribers.active > 0 ? `${data.subscribers.active} active subscribers` : 'No active subscribers yet',
+                name:
+                  data.subscribers.active > 0
+                    ? `${data.subscribers.active} active subscribers`
+                    : 'No active subscribers yet',
                 avatarText: 'A',
                 avatarColor: 'bg-emerald-500',
                 description: `Fleet health: ${activePct}% online`,
                 time: 'Now',
                 value: `${activePct}%`,
                 badgeText: activePct >= 70 ? 'Healthy' : 'Watch',
-                badgeTone: (activePct >= 70 ? 'emerald' : 'teal') as 'emerald' | 'teal',
+                badgeTone: (activePct >= 70 ? 'emerald' : 'teal') as
+                  | 'emerald'
+                  | 'teal',
               },
               {
                 id: 'isp-act-2',
-                name: data.subscribers.suspended > 0 ? `${data.subscribers.suspended} suspended` : 'No suspensions',
+                name:
+                  data.subscribers.suspended > 0
+                    ? `${data.subscribers.suspended} suspended`
+                    : 'No suspensions',
                 avatarText: 'S',
-                avatarColor: data.subscribers.suspended > 0 ? 'bg-amber-500' : 'bg-slate-400',
+                avatarColor:
+                  data.subscribers.suspended > 0
+                    ? 'bg-amber-500'
+                    : 'bg-slate-400',
                 description: 'Payment overdue · follow up needed',
                 time: '',
                 value: `${suspendedPct}%`,
                 badgeText: data.subscribers.suspended > 0 ? 'Overdue' : 'Clear',
-                badgeTone: (data.subscribers.suspended > 0 ? 'sky' : 'emerald') as 'sky' | 'emerald',
+                badgeTone: (data.subscribers.suspended > 0
+                  ? 'sky'
+                  : 'emerald') as 'sky' | 'emerald',
               },
               {
                 id: 'isp-act-3',
-                name: data.scheduledWorkOrders > 0 ? `${data.scheduledWorkOrders} field jobs pending` : 'No pending work orders',
+                name:
+                  data.scheduledWorkOrders > 0
+                    ? `${data.scheduledWorkOrders} field jobs pending`
+                    : 'No pending work orders',
                 avatarText: 'W',
-                avatarColor: data.scheduledWorkOrders > 0 ? 'bg-blue-500' : 'bg-slate-400',
+                avatarColor:
+                  data.scheduledWorkOrders > 0 ? 'bg-blue-500' : 'bg-slate-400',
                 description: 'Technician dispatches & installations',
                 time: '',
                 value: `${data.scheduledWorkOrders}`,
                 badgeText: data.scheduledWorkOrders > 0 ? 'Pending' : 'Clear',
-                badgeTone: (data.scheduledWorkOrders > 0 ? 'indigo' : 'emerald') as 'indigo' | 'emerald',
+                badgeTone: (data.scheduledWorkOrders > 0
+                  ? 'indigo'
+                  : 'emerald') as 'indigo' | 'emerald',
               },
               {
                 id: 'isp-act-4',
-                name: data.openTickets > 0 ? `${data.openTickets} support ticket${data.openTickets > 1 ? 's' : ''} open` : 'No open tickets',
+                name:
+                  data.openTickets > 0
+                    ? `${data.openTickets} support ticket${data.openTickets > 1 ? 's' : ''} open`
+                    : 'No open tickets',
                 avatarText: 'T',
-                avatarColor: data.openTickets > 0 ? 'bg-rose-500' : 'bg-emerald-500',
+                avatarColor:
+                  data.openTickets > 0 ? 'bg-rose-500' : 'bg-emerald-500',
                 description: 'Subscriber complaints & SLA tracking',
                 time: '',
                 value: `${data.openTickets}`,
                 badgeText: data.openTickets > 0 ? 'Open' : 'Resolved',
-                badgeTone: (data.openTickets > 0 ? 'sky' : 'emerald') as 'sky' | 'emerald',
+                badgeTone: (data.openTickets > 0 ? 'sky' : 'emerald') as
+                  | 'sky'
+                  | 'emerald',
               },
             ]}
             className="h-full"
@@ -365,7 +448,9 @@ export function IspDashboard() {
               >
                 <div className="flex items-center gap-1.5 justify-center sm:justify-start">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">Active</span>
+                  <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                    Active
+                  </span>
                 </div>
                 <span className="text-xl font-black text-emerald-900 dark:text-emerald-200 block mt-1">
                   {data.subscribers.active}
@@ -381,7 +466,9 @@ export function IspDashboard() {
               >
                 <div className="flex items-center gap-1.5 justify-center sm:justify-start">
                   <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
-                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Suspended</span>
+                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                    Suspended
+                  </span>
                 </div>
                 <span className="text-xl font-black text-amber-900 dark:text-amber-200 block mt-1">
                   {data.subscribers.suspended}
@@ -397,7 +484,9 @@ export function IspDashboard() {
               >
                 <div className="flex items-center gap-1.5 justify-center sm:justify-start">
                   <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
-                  <span className="text-xs font-semibold text-rose-800 dark:text-rose-300">Churned</span>
+                  <span className="text-xs font-semibold text-rose-800 dark:text-rose-300">
+                    Churned
+                  </span>
                 </div>
                 <span className="text-xl font-black text-rose-900 dark:text-rose-200 block mt-1">
                   {data.subscribers.churned}
@@ -441,8 +530,8 @@ export function IspDashboard() {
                           topRec.priority === 'HIGH'
                             ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'
                             : topRec.priority === 'MEDIUM'
-                            ? 'bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
-                            : 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                              ? 'bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                              : 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
                         }`}
                       >
                         {topRec.priority} PRIORITY
@@ -482,8 +571,8 @@ export function IspDashboard() {
                             rec.priority === 'HIGH'
                               ? 'bg-red-500'
                               : rec.priority === 'MEDIUM'
-                              ? 'bg-amber-500'
-                              : 'bg-emerald-500'
+                                ? 'bg-amber-500'
+                                : 'bg-emerald-500'
                           }`}
                         />
                         <div className="min-w-0">
@@ -512,7 +601,7 @@ export function IspDashboard() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default IspDashboard;
+export default IspDashboard

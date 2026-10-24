@@ -169,6 +169,12 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-23 — Dashboard greeting and business branding.** Added a shared
+  cinematic time-of-day greeting across every vertical (persistent ambient
+  motion, reduced-motion safe), removed greeting subtitles/vertical labels, and
+  added per-organisation business logos: email-domain default, monogram
+  fallback, persisted logo URL, Settings swap card, and business-brand shell
+  marks. Also removed the "Guest House workspace" line from the navbar.
 - **2026-10-23 — Named theme system.** Added `@hisaflow/theme` (typed contract,
   six themes, generated CSS, contrast tests), the no-flash `ThemeProvider`
   (cookie SSR + localStorage + Auto), shape/depth/density/motion tokens, and

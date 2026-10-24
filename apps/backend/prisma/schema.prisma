@@ -15,6 +15,8 @@ model Organization {
   currency     String   @default("KES")
   country      String   @default("KE")
   phone        String?
+  /// Public URL for the business logo shown in the signed-in app shell.
+  logoUrl      String?  @map("logo_url")
   /// Advisory plan intent captured at sign-up (?plan=solo|team). Never a
   /// purchase; the paywall only uses it to pre-select a tier.
   preferredPlan String? @map("preferred_plan")

@@ -2,15 +2,17 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   UseGuards,
-} from '@nestjs/common';
-import { OrganizationsService } from './organizations.service';
-import { CreateOrganizationDto } from './dto/create-organization.dto';
-import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
-import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { OrgContext } from '../../core/decorators/org-context.decorator';
+} from '@nestjs/common'
+import { OrganizationsService } from './organizations.service'
+import { CreateOrganizationDto } from './dto/create-organization.dto'
+import { UpdateOrganizationBrandingDto } from './dto/update-organization-branding.dto'
+import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard'
+import { CurrentUser } from '../../core/decorators/current-user.decorator'
+import { OrgContext } from '../../core/decorators/org-context.decorator'
 
 @UseGuards(ClerkAuthGuard)
 @Controller('organizations')
@@ -21,13 +23,13 @@ export class OrganizationsController {
   @Post()
   async createOrganization(
     @Body() dto: CreateOrganizationDto,
-    @CurrentUser() user: { id: string; clerkId: string },
+    @CurrentUser() user: { id: string; clerkId: string }
   ) {
     try {
-      return await this.organizationsService.create(dto, user.id);
+      return await this.organizationsService.create(dto, user.id)
     } catch (error) {
-      console.error('CRITICAL 500 ERROR CAUSE:', error);
-      throw error;
+      console.error('CRITICAL 500 ERROR CAUSE:', error)
+      throw error
     }
   }
 
@@ -36,23 +38,24 @@ export class OrganizationsController {
   @Post('join')
   async joinOrganization(
     @Body('inviteCode') inviteCode: string,
-    @CurrentUser() user: { id: string; clerkId: string },
+    @CurrentUser() user: { id: string; clerkId: string }
   ) {
     try {
-      return await this.organizationsService.joinOrganization(inviteCode, user.id);
+      return await this.organizationsService.joinOrganization(
+        inviteCode,
+        user.id
+      )
     } catch (error) {
-      console.error('CRITICAL 500 ERROR CAUSE:', error);
-      throw error;
+      console.error('CRITICAL 500 ERROR CAUSE:', error)
+      throw error
     }
   }
 
   // ── List the caller's memberships ─────────────────────────────────────────
   @Get('me')
-  async getMyOrganizations(
-    @CurrentUser() user: any,
-  ) {
+  async getMyOrganizations(@CurrentUser() user: any) {
     if (user?.isImpersonated && user?.targetOrgId) {
-      const org = await this.organizationsService.findById(user.targetOrgId);
+      const org = await this.organizationsService.findById(user.targetOrgId)
       return [
         {
           id: `imp-${org.id}`,
@@ -63,34 +66,45 @@ export class OrganizationsController {
             businessType: org.businessType,
             currency: org.currency,
             country: org.country,
+            logoUrl: org.logoUrl,
           },
         },
-      ];
+      ]
     }
-    return this.organizationsService.getOrganizationsForUser(user.id);
+    return this.organizationsService.getOrganizationsForUser(user.id)
+  }
+
+  // ── Business branding: logo shown in the signed-in app shell ───────────────
+  @Patch('my/branding')
+  async updateBranding(
+    @Body() dto: UpdateOrganizationBrandingDto,
+    @CurrentUser() user: { id: string; clerkId: string },
+    @OrgContext() orgId: string
+  ) {
+    return this.organizationsService.updateBranding(user.id, orgId, dto.logoUrl)
   }
 
   // ── Get invite code for current org (owner/manager only) ──────────────────
   @Get('my/invite-code')
   async getMyInviteCode(
     @CurrentUser() user: { id: string; clerkId: string },
-    @OrgContext() orgId: string,
+    @OrgContext() orgId: string
   ) {
-    return this.organizationsService.getMyInviteCode(user.id, orgId);
+    return this.organizationsService.getMyInviteCode(user.id, orgId)
   }
 
   // ── Regenerate invite code (owner/manager only) ──────────────────────────
   @Post('my/invite-code/regenerate')
   async regenerateInviteCode(
     @CurrentUser() user: { id: string; clerkId: string },
-    @OrgContext() orgId: string,
+    @OrgContext() orgId: string
   ) {
-    return this.organizationsService.regenerateInviteCode(user.id, orgId);
+    return this.organizationsService.regenerateInviteCode(user.id, orgId)
   }
 
   // ── Find org by ID ────────────────────────────────────────────────────────
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return this.organizationsService.findById(id);
+    return this.organizationsService.findById(id)
   }
 }

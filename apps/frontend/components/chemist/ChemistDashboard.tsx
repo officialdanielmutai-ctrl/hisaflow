@@ -1,124 +1,170 @@
-'use client';
+'use client'
 
-import useSWR from 'swr';
-import { useAuth, useUser } from '@clerk/nextjs';
-import { useMyOrganization } from '@/hooks/useMyOrganization';
-import Link from 'next/link';
+import useSWR from 'swr'
+import { useAuth, useUser } from '@clerk/nextjs'
+import { useMyOrganization } from '@/hooks/useMyOrganization'
+import Link from 'next/link'
 import {
-  AlertTriangle, Package, Plus, Pill,
-  CalendarX, ShoppingCart, Zap, ArrowUpRight, ReceiptText,
+  AlertTriangle,
+  Package,
+  Plus,
+  Pill,
+  CalendarX,
+  ShoppingCart,
+  Zap,
+  ArrowUpRight,
+  ReceiptText,
   Clock,
-} from 'lucide-react';
-import { getChemistDashboardData, type ChemistDashboardData } from '@/services/analytics.service';
-import DashboardLoading from '@/app/(dashboard)/loading';
-import dynamic from 'next/dynamic';
-import { format } from 'date-fns';
-import { AiRecommendationsCard, type Recommendation } from '@/components/shared/AiRecommendationsCard';
-import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows';
-import { CHEMIST_KPI_ROWS } from '@/features/dashboard/config/chemist';
-import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar';
+} from 'lucide-react'
+import {
+  getChemistDashboardData,
+  type ChemistDashboardData,
+} from '@/services/analytics.service'
+import DashboardLoading from '@/app/(dashboard)/loading'
+import dynamic from 'next/dynamic'
+import { format } from 'date-fns'
+import {
+  AiRecommendationsCard,
+  type Recommendation,
+} from '@/components/shared/AiRecommendationsCard'
+import { DashboardKpiRows } from '@/features/dashboard/DashboardKpiRows'
+import { CHEMIST_KPI_ROWS } from '@/features/dashboard/config/chemist'
+import { TopOperationsBar } from '@/components/dashboard/TopOperationsBar'
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
 
-const BentoSalesPair = dynamic(() => import('@/components/dashboard/bento/BentoSalesPair'), { ssr: false });
-const BentoGrowthCard = dynamic(() => import('@/components/dashboard/bento/BentoGrowthCard'), { ssr: false });
-const BentoGaugeCard = dynamic(() => import('@/components/dashboard/bento/BentoGaugeCard'), { ssr: false });
-const BentoStatisticsCard = dynamic(() => import('@/components/dashboard/bento/BentoStatisticsCard'), { ssr: false });
-const BentoActivityFeed = dynamic(() => import('@/components/dashboard/bento/BentoActivityFeed'), { ssr: false });
+const BentoSalesPair = dynamic(
+  () => import('@/components/dashboard/bento/BentoSalesPair'),
+  { ssr: false }
+)
+const BentoGrowthCard = dynamic(
+  () => import('@/components/dashboard/bento/BentoGrowthCard'),
+  { ssr: false }
+)
+const BentoGaugeCard = dynamic(
+  () => import('@/components/dashboard/bento/BentoGaugeCard'),
+  { ssr: false }
+)
+const BentoStatisticsCard = dynamic(
+  () => import('@/components/dashboard/bento/BentoStatisticsCard'),
+  { ssr: false }
+)
+const BentoActivityFeed = dynamic(
+  () => import('@/components/dashboard/bento/BentoActivityFeed'),
+  { ssr: false }
+)
 
 // Derive contextual AI recommendations from chemist data
-function buildChemistRecommendations(data: ChemistDashboardData): Recommendation[] {
-  const recs: Recommendation[] = [];
+function buildChemistRecommendations(
+  data: ChemistDashboardData
+): Recommendation[] {
+  const recs: Recommendation[] = []
 
   if (data.expiredBatches.length > 0) {
     recs.push({
       action: `Remove ${data.expiredBatches.length} expired batch${data.expiredBatches.length > 1 ? 'es' : ''} from shelves`,
-      reason: `${data.expiredBatches.slice(0, 2).map(b => b.productName).join(', ')} ${data.expiredBatches.length > 2 ? 'and others are' : 'is'} expired. Dispensing expired stock is a legal and safety risk.`,
+      reason: `${data.expiredBatches
+        .slice(0, 2)
+        .map((b) => b.productName)
+        .join(
+          ', '
+        )} ${data.expiredBatches.length > 2 ? 'and others are' : 'is'} expired. Dispensing expired stock is a legal and safety risk.`,
       priority: 'HIGH',
       href: '/inventory',
-    });
+    })
   }
 
   if (data.expiringBatches.length > 0) {
-    const soonest = data.expiringBatches[0];
+    const soonest = data.expiringBatches[0]
     recs.push({
       action: `Prioritise dispensing ${soonest.productName} first`,
       reason: `${soonest.quantity} units expire in ${soonest.daysLeft} days. Selling soon-to-expire items first reduces write-offs.`,
       priority: 'MEDIUM',
       href: '/inventory',
-    });
+    })
   }
 
   if (data.lowStockCount > 0) {
     recs.push({
       action: `Restock ${data.lowStockCount} low-stock medication${data.lowStockCount > 1 ? 's' : ''}`,
-      reason: 'Running out of key stock can disrupt patient care and lose sales. Place purchase orders today.',
+      reason:
+        'Running out of key stock can disrupt patient care and lose sales. Place purchase orders today.',
       priority: data.lowStockCount > 5 ? 'HIGH' : 'MEDIUM',
       href: '/inventory',
-    });
+    })
   }
 
   if (data.topSellers.length > 0) {
-    const top = data.topSellers[0];
+    const top = data.topSellers[0]
     recs.push({
       action: `Ensure ${top.name} is always in stock`,
       reason: `It's your #1 dispensed item this week (${top.totalSold} ${top.unit}). A stockout would directly impact revenue.`,
       priority: 'LOW',
       href: '/inventory',
-    });
+    })
   }
 
   if (data.todaySales === 0) {
     recs.push({
-      action: 'No sales recorded today — check if transactions are being logged',
-      reason: 'If the pharmacy is open, sales should appear here. Verify your staff are recording each dispensing.',
+      action:
+        'No sales recorded today — check if transactions are being logged',
+      reason:
+        'If the pharmacy is open, sales should appear here. Verify your staff are recording each dispensing.',
       priority: 'MEDIUM',
       href: '/transactions',
-    });
+    })
   }
 
-  return recs;
+  return recs
 }
 
 export function ChemistDashboard() {
-  const { getToken } = useAuth();
-  const { user } = useUser();
-  const { membership } = useMyOrganization();
-  const orgId = membership?.organization.id;
+  const { getToken } = useAuth()
+  const { user } = useUser()
+  const { membership } = useMyOrganization()
+  const orgId = membership?.organization.id
 
   const { data, error, isLoading } = useSWR<ChemistDashboardData>(
     orgId ? ['chemist-dashboard', orgId] : null,
     async () => {
-      const token = await getToken();
-      if (!token) throw new Error('Not authenticated');
-      return getChemistDashboardData(token, orgId!);
-    },
-  );
+      const token = await getToken()
+      if (!token) throw new Error('Not authenticated')
+      return getChemistDashboardData(token, orgId!)
+    }
+  )
 
-  if (isLoading) return <DashboardLoading />;
+  if (isLoading) return <DashboardLoading />
   if (error || !data) {
-    return <div className="py-12 text-center text-[var(--color-text-secondary)]">{error?.message ?? 'No data available'}</div>;
+    return (
+      <div className="py-12 text-center text-[var(--color-text-secondary)]">
+        {error?.message ?? 'No data available'}
+      </div>
+    )
   }
 
-  const firstName = user?.firstName ?? 'there';
-  const greetingEmoji = data.timeOfDay === 'morning' ? '👋' : data.timeOfDay === 'afternoon' ? '☀️' : '🌙';
-  const recommendations = buildChemistRecommendations(data);
+  const firstName = user?.firstName ?? 'there'
+  const recommendations = buildChemistRecommendations(data)
 
   const shortcuts = [
-    { label: '+ Record Sale', href: '/transactions?type=SALE', icon: ShoppingCart, primary: true },
+    {
+      label: '+ Record Sale',
+      href: '/transactions?type=SALE',
+      icon: ShoppingCart,
+      primary: true,
+    },
     { label: '+ Receive Batch', href: '/inventory', icon: Plus },
     { label: '+ Medication Stock', href: '/inventory', icon: Pill },
     { label: 'View Receipts', href: '/transactions', icon: ReceiptText },
-  ];
+  ]
 
   return (
     <div className="flex flex-col gap-6 pb-24">
       {/* ── Header & Top Operations Shortcuts (Always on top for PC) ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold text-[var(--color-text-primary)]">
-            Good {data.timeOfDay}, {firstName} {greetingEmoji}
-          </h1>
-          <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">{membership?.organization.name}</p>
-        </div>
+        <DashboardGreeting
+          name={firstName}
+          timeOfDay={data.timeOfDay}
+          className="min-w-0 flex-1"
+        />
         <TopOperationsBar shortcuts={shortcuts} />
       </div>
 
@@ -130,14 +176,21 @@ export function ChemistDashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-red-700">
-              {data.expiredBatches.length} batch{data.expiredBatches.length > 1 ? 'es' : ''} have expired
+              {data.expiredBatches.length} batch
+              {data.expiredBatches.length > 1 ? 'es' : ''} have expired
             </p>
             <p className="text-xs text-red-500 truncate">
-              {data.expiredBatches.slice(0, 2).map(b => b.productName).join(', ')}
+              {data.expiredBatches
+                .slice(0, 2)
+                .map((b) => b.productName)
+                .join(', ')}
               {data.expiredBatches.length > 2 ? '...' : ''}
             </p>
           </div>
-          <Link href="/inventory" className="text-xs font-bold text-red-600 hover:underline shrink-0">
+          <Link
+            href="/inventory"
+            className="text-xs font-bold text-red-600 hover:underline shrink-0"
+          >
             View →
           </Link>
         </div>
@@ -180,7 +233,9 @@ export function ChemistDashboard() {
             value={Math.max(0, data.totalItems - data.lowStockCount)}
             totalCapacity={data.totalItems || 60}
             label="In-Stock Medications"
-            increasePct={data.lowStockCount === 0 ? 'Optimal' : `${data.lowStockCount} Low`}
+            increasePct={
+              data.lowStockCount === 0 ? 'Optimal' : `${data.lowStockCount} Low`
+            }
             footerText="Pharmacy catalog availability is"
             className="h-full"
           />
@@ -192,7 +247,11 @@ export function ChemistDashboard() {
             title="Dispensing & Pharmacy Flow Statistics"
             tab1Label="Medication Velocity"
             tab2Label="Stock Breakdown"
-            headlineValue={data.todaySales > 0 ? `KES ${data.todaySales.toLocaleString()}` : `${data.totalItems} SKUs`}
+            headlineValue={
+              data.todaySales > 0
+                ? `KES ${data.todaySales.toLocaleString()}`
+                : `${data.totalItems} SKUs`
+            }
             headlineSubtitle={`${data.lowStockCount} medications low in stock · ${data.expiringBatches.length} batches expiring soon`}
             tab1Bars={[
               { day: 'Mon', tag: '35%', pct: 35 },
@@ -204,11 +263,33 @@ export function ChemistDashboard() {
               { day: 'Sun', tag: '45%', pct: 45 },
             ]}
             tab2Bars={[
-              { day: 'Mon', tag: `${Math.max(0, data.totalItems - data.lowStockCount)}`, pct: 85, isHighlight: true },
-              { day: 'Tue', tag: `${data.lowStockCount}`, pct: Math.min(100, data.lowStockCount * 15) },
-              { day: 'Wed', tag: `${data.expiringBatches.length}`, pct: Math.min(100, data.expiringBatches.length * 20) },
-              { day: 'Thu', tag: `${data.expiredBatches.length}`, pct: Math.min(100, data.expiredBatches.length * 25) },
-              { day: 'Fri', tag: `${data.totalItems}`, pct: 100, isHighlight: true },
+              {
+                day: 'Mon',
+                tag: `${Math.max(0, data.totalItems - data.lowStockCount)}`,
+                pct: 85,
+                isHighlight: true,
+              },
+              {
+                day: 'Tue',
+                tag: `${data.lowStockCount}`,
+                pct: Math.min(100, data.lowStockCount * 15),
+              },
+              {
+                day: 'Wed',
+                tag: `${data.expiringBatches.length}`,
+                pct: Math.min(100, data.expiringBatches.length * 20),
+              },
+              {
+                day: 'Thu',
+                tag: `${data.expiredBatches.length}`,
+                pct: Math.min(100, data.expiredBatches.length * 25),
+              },
+              {
+                day: 'Fri',
+                tag: `${data.totalItems}`,
+                pct: 100,
+                isHighlight: true,
+              },
               { day: 'Sat', tag: `${data.topSellers.length}`, pct: 60 },
               { day: 'Sun', tag: 'Optimal', pct: 80 },
             ]}
@@ -252,18 +333,22 @@ export function ChemistDashboard() {
                 badgeText: 'Dispensed',
                 badgeTone: 'emerald' as const,
               })),
-              ...(data.expiredBatches.length === 0 && data.expiringBatches.length === 0 && data.topSellers.length === 0
-                ? [{
-                    id: 'chem-status',
-                    name: `${data.totalItems} pharmacy medications catalogued`,
-                    avatarText: 'Rx',
-                    avatarColor: 'bg-emerald-500',
-                    description: `${data.lowStockCount} items below threshold · batches in good order`,
-                    time: 'Live',
-                    value: `KES ${data.todaySales.toLocaleString()}`,
-                    badgeText: 'In Stock',
-                    badgeTone: 'emerald' as const,
-                  }]
+              ...(data.expiredBatches.length === 0 &&
+              data.expiringBatches.length === 0 &&
+              data.topSellers.length === 0
+                ? [
+                    {
+                      id: 'chem-status',
+                      name: `${data.totalItems} pharmacy medications catalogued`,
+                      avatarText: 'Rx',
+                      avatarColor: 'bg-emerald-500',
+                      description: `${data.lowStockCount} items below threshold · batches in good order`,
+                      time: 'Live',
+                      value: `KES ${data.todaySales.toLocaleString()}`,
+                      badgeText: 'In Stock',
+                      badgeTone: 'emerald' as const,
+                    },
+                  ]
                 : []),
             ]}
             className="h-full"
@@ -283,7 +368,9 @@ export function ChemistDashboard() {
       {data.alerts.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Active Alerts</h2>
+            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
+              Active Alerts
+            </h2>
           </div>
           <div className="flex flex-col gap-2">
             {data.alerts.slice(0, 3).map((alert) => (
@@ -297,10 +384,14 @@ export function ChemistDashboard() {
               >
                 <AlertTriangle
                   className={`h-4 w-4 shrink-0 ${
-                    alert.severity === 'CRITICAL' ? 'text-red-600' : 'text-yellow-600'
+                    alert.severity === 'CRITICAL'
+                      ? 'text-red-600'
+                      : 'text-yellow-600'
                   }`}
                 />
-                <p className="text-sm font-medium text-[var(--color-text-primary)]">{alert.message}</p>
+                <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                  {alert.message}
+                </p>
               </div>
             ))}
           </div>
@@ -311,8 +402,13 @@ export function ChemistDashboard() {
       {data.expiringBatches.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Expiring in 30–90 Days</h2>
-            <Link href="/inventory" className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center gap-0.5">
+            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
+              Expiring in 30–90 Days
+            </h2>
+            <Link
+              href="/inventory"
+              className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center gap-0.5"
+            >
               View all <ArrowUpRight className="h-3 w-3" />
             </Link>
           </div>
@@ -321,7 +417,9 @@ export function ChemistDashboard() {
               <div
                 key={b.id}
                 className={`flex items-center justify-between px-4 py-3 ${
-                  idx !== Math.min(data.expiringBatches.length, 5) - 1 ? 'border-b border-orange-100' : ''
+                  idx !== Math.min(data.expiringBatches.length, 5) - 1
+                    ? 'border-b border-orange-100'
+                    : ''
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -329,9 +427,12 @@ export function ChemistDashboard() {
                     <CalendarX className="h-4 w-4 text-orange-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-[var(--color-text-primary)]">{b.productName}</p>
+                    <p className="text-sm font-bold text-[var(--color-text-primary)]">
+                      {b.productName}
+                    </p>
                     <p className="text-xs text-[var(--color-text-secondary)]">
-                      Qty: {b.quantity} · Expires {format(new Date(b.expiryDate), 'MMM d, yyyy')}
+                      Qty: {b.quantity} · Expires{' '}
+                      {format(new Date(b.expiryDate), 'MMM d, yyyy')}
                     </p>
                   </div>
                 </div>
@@ -348,26 +449,38 @@ export function ChemistDashboard() {
       {data.topSellers.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Top Dispensed (7 days)</h2>
+            <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
+              Top Dispensed (7 days)
+            </h2>
           </div>
           <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] overflow-hidden">
             {data.topSellers.map((item, idx) => (
               <div
                 key={item.itemId}
                 className={`flex items-center justify-between px-4 py-3 ${
-                  idx !== data.topSellers.length - 1 ? 'border-b border-[var(--color-border)]' : ''
+                  idx !== data.topSellers.length - 1
+                    ? 'border-b border-[var(--color-border)]'
+                    : ''
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-bold text-[var(--color-text-muted)] w-4">#{idx + 1}</span>
+                  <span className="text-[11px] font-bold text-[var(--color-text-muted)] w-4">
+                    #{idx + 1}
+                  </span>
                   <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                     <Zap className="h-4 w-4 text-green-600" />
                   </div>
-                  <p className="text-sm font-bold text-[var(--color-text-primary)]">{item.name}</p>
+                  <p className="text-sm font-bold text-[var(--color-text-primary)]">
+                    {item.name}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-sm font-bold text-green-600">{item.totalSold}</span>
-                  <span className="text-xs text-[var(--color-text-secondary)]">{item.unit}</span>
+                  <span className="text-sm font-bold text-green-600">
+                    {item.totalSold}
+                  </span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">
+                    {item.unit}
+                  </span>
                 </div>
               </div>
             ))}
@@ -378,8 +491,13 @@ export function ChemistDashboard() {
       {/* Finance Snapshot */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-sm text-[var(--color-text-primary)]">Finance Snapshot</h2>
-          <Link href="/finance" className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center gap-0.5">
+          <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
+            Finance Snapshot
+          </h2>
+          <Link
+            href="/finance"
+            className="text-xs font-semibold text-[var(--color-accent)] hover:underline flex items-center gap-0.5"
+          >
             Full report <ArrowUpRight className="h-3 w-3" />
           </Link>
         </div>
@@ -387,26 +505,39 @@ export function ChemistDashboard() {
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-[var(--color-text-secondary)]" />
-              <span className="text-sm text-[var(--color-text-primary)]">Today&apos;s Revenue</span>
+              <span className="text-sm text-[var(--color-text-primary)]">
+                Today&apos;s Revenue
+              </span>
             </div>
-            <span className="text-sm font-bold text-green-600">KES {data.todaySales.toLocaleString()}</span>
+            <span className="text-sm font-bold text-green-600">
+              KES {data.todaySales.toLocaleString()}
+            </span>
           </div>
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               <Package className="h-4 w-4 text-[var(--color-text-secondary)]" />
-              <span className="text-sm text-[var(--color-text-primary)]">Month Revenue</span>
+              <span className="text-sm text-[var(--color-text-primary)]">
+                Month Revenue
+              </span>
             </div>
-            <span className="text-sm font-bold text-blue-600">KES {data.monthSales.toLocaleString()}</span>
+            <span className="text-sm font-bold text-blue-600">
+              KES {data.monthSales.toLocaleString()}
+            </span>
           </div>
-          <Link href="/transactions" className="flex items-center justify-between px-4 py-3 hover:bg-[var(--color-bg-base)] transition-colors">
+          <Link
+            href="/transactions"
+            className="flex items-center justify-between px-4 py-3 hover:bg-[var(--color-bg-base)] transition-colors"
+          >
             <div className="flex items-center gap-3">
               <ReceiptText className="h-4 w-4 text-[var(--color-text-secondary)]" />
-              <span className="text-sm text-[var(--color-text-primary)]">All Transactions</span>
+              <span className="text-sm text-[var(--color-text-primary)]">
+                All Transactions
+              </span>
             </div>
             <ArrowUpRight className="h-4 w-4 text-[var(--color-text-secondary)]" />
           </Link>
         </div>
       </section>
     </div>
-  );
+  )
 }
