@@ -8,6 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LiquidProgress } from '@/components/system/LiquidProgress'
 
 /**
  * Shared KPI/stat card (HisaFlow KPI Inspo Overhaul).
@@ -234,100 +235,287 @@ function DeltaBadge({ delta, isHero }: { delta: StatDelta; isHero?: boolean }) {
   )
 }
 
+/**
+ * Monotone cubic interpolation — the same shape-preserving curve used by
+ * finance dashboards. It gives the sparkline a natural, confident curve
+ * without the overshoot a plain Catmull-Rom spline introduces between noisy
+ * data points.
+ */
+function buildFinancePath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return ''
+  if (points.length === 1) {
+    return `M ${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`
+  }
+
+  const dx: number[] = []
+  const slope: number[] = []
+  for (let i = 0; i < points.length - 1; i++) {
+    dx[i] = points[i + 1].x - points[i].x
+    slope[i] = (points[i + 1].y - points[i].y) / dx[i]
+  }
+
+  const tangent = new Array<number>(points.length)
+  tangent[0] = slope[0]
+  tangent[points.length - 1] = slope[slope.length - 1]
+
+  for (let i = 1; i < points.length - 1; i++) {
+    if (slope[i - 1] * slope[i] <= 0) {
+      tangent[i] = 0
+      continue
+    }
+    const w1 = 2 * dx[i] + dx[i - 1]
+    const w2 = dx[i] + 2 * dx[i - 1]
+    tangent[i] = (w1 + w2) / (w1 / slope[i - 1] + w2 / slope[i])
+  }
+
+  // Fritsch–Carlson limiter: keep every segment monotone, so the trace never
+  // dips below or rises above the real data points.
+  for (let i = 0; i < points.length - 1; i++) {
+    if (slope[i] === 0) {
+      tangent[i] = 0
+      tangent[i + 1] = 0
+      continue
+    }
+    const a = tangent[i] / slope[i]
+    const b = tangent[i + 1] / slope[i]
+    const magnitude = Math.hypot(a, b)
+    if (magnitude > 3) {
+      tangent[i] = (3 * slope[i] * a) / magnitude
+      tangent[i + 1] = (3 * slope[i] * b) / magnitude
+    }
+  }
+
+  let path = `M ${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`
+  for (let i = 0; i < points.length - 1; i++) {
+    const curr = points[i]
+    const next = points[i + 1]
+    const third = dx[i] / 3
+    const cp1x = curr.x + third
+    const cp1y = curr.y + tangent[i] * third
+    const cp2x = next.x - third
+    const cp2y = next.y - tangent[i + 1] * third
+    path += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${next.x.toFixed(1)},${next.y.toFixed(1)}`
+  }
+  return path
+}
+
 function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
   if (!data || data.length < 2) return null
 
-  const width = 140
-  const height = 44
-  const padBottom = 6
-  const padTop = 6
-  const baselineY = height - padBottom // 38
-  const usableHeight = height - padTop - padBottom // 32
+  const width = 180
+  const height = 58
+  const padTop = 7
+  const padBottom = 9
+  const baselineY = height - padBottom
+  const plotHeight = baselineY - padTop
 
-  const maxVal = Math.max(...data, 0)
-  const isAllZeroes = maxVal === 0
+  const values = data.map((value) =>
+    Number.isFinite(value) ? Number(value) : 0
+  )
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const isFlat = min === 0 && max === 0
+  const domainMin = Math.min(0, min)
+  const domainMax = Math.max(max, domainMin + 1)
+  const domainRange = domainMax - domainMin || 1
 
-  // Make sure line starts from 0 baseline at x=0 if not already starting at 0
-  const normalizedSeries = data[0] === 0 ? [...data] : [0, ...data]
-  const maxSeriesVal = isAllZeroes ? 1 : Math.max(...normalizedSeries, 1)
-
-  const points = normalizedSeries.map((val, idx) => {
-    const x = (idx / (normalizedSeries.length - 1)) * width
-    const y = isAllZeroes
+  const points = values.map((value, index) => ({
+    x: (index / (values.length - 1)) * width,
+    y: isFlat
       ? baselineY
-      : baselineY - (Math.max(0, val) / maxSeriesVal) * usableHeight
-    return { x, y }
-  })
+      : baselineY - ((value - domainMin) / domainRange) * plotHeight,
+  }))
 
-  // Construct smooth cubic bezier spline curve
-  let pathD = `M ${points[0].x.toFixed(1)},${points[0].y.toFixed(1)}`
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1]
-    const curr = points[i]
-    const dx = curr.x - prev.x
-    const cp1x = prev.x + dx * 0.45
-    const cp1y = prev.y
-    const cp2x = curr.x - dx * 0.45
-    const cp2y = curr.y
-    pathD += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${curr.x.toFixed(1)},${curr.y.toFixed(1)}`
-  }
-
-  const fillD = `${pathD} L ${width},${height} L 0,${height} Z`
-
+  const linePath = buildFinancePath(points)
+  const areaPath = `${linePath} L ${width},${height} L 0,${height} Z`
+  const latest = points[points.length - 1]
   const strokeColor = isHero ? 'var(--hf-chart-2)' : 'var(--hf-chart-1)'
-  const gradId = `spark-grad-${Math.abs(data.reduce((a, b) => a + b, 0))}`
-  const latestPoint = points[points.length - 1]
+  const gridColor = isHero
+    ? 'rgba(255, 255, 255, 0.14)'
+    : 'var(--color-border)'
+  const zeroY = baselineY - ((0 - domainMin) / domainRange) * plotHeight
+
+  const idSeed = `${values.length}-${Math.round(Math.abs(min))}-${Math.round(
+    Math.abs(max)
+  )}-${Math.round(Math.abs(values.reduce((a, b) => a + b, 0)))}-${
+    isHero ? 'hero' : 'surface'
+  }`
+  const areaGradId = `spark-area-${idSeed}`
+  const lineGradId = `spark-line-${idSeed}`
+  const glowGradId = `spark-glow-${idSeed}`
+  const glowY = Math.min(height - 0.5, latest.y + 5)
 
   return (
-    <div className="w-full h-11 sm:h-12 my-1.5 group/spark relative">
+    <div className="w-full h-14 my-1.5 group/spark relative">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-full overflow-visible transition-all duration-300 group-hover/spark:drop-shadow-[0_4px_12px_rgba(16,185,129,0.35)]"
+        className="w-full h-full overflow-visible transition-all duration-300 group-hover/spark:drop-shadow-[0_6px_14px_rgba(16,185,129,0.24)]"
         preserveAspectRatio="none"
+        aria-hidden="true"
       >
         <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.38} />
+          <linearGradient id={areaGradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.34} />
+            <stop offset="58%" stopColor={strokeColor} stopOpacity={0.1} />
             <stop offset="100%" stopColor={strokeColor} stopOpacity={0.01} />
           </linearGradient>
+          <linearGradient id={lineGradId} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.58} />
+            <stop offset="58%" stopColor={strokeColor} stopOpacity={1} />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity={0.88} />
+          </linearGradient>
+          <radialGradient id={glowGradId} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.72} />
+            <stop offset="45%" stopColor={strokeColor} stopOpacity={0.34} />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
+          </radialGradient>
         </defs>
+
+        {/* Recessed chart grid — depth cue, not decoration */}
+        {[0.25, 0.5, 0.75].map((offset) => {
+          const y = padTop + plotHeight * offset
+          return (
+            <line
+              key={offset}
+              x1="0"
+              y1={y.toFixed(1)}
+              x2={width}
+              y2={y.toFixed(1)}
+              stroke={gridColor}
+              strokeWidth="1"
+              strokeDasharray="2 5"
+              opacity={isHero ? 0.9 : 0.62}
+              vectorEffect="non-scaling-stroke"
+              className="hf-spark-grid"
+            />
+          )
+        })}
+        {domainMin < 0 && (
+          <line
+            x1="0"
+            y1={zeroY.toFixed(1)}
+            x2={width}
+            y2={zeroY.toFixed(1)}
+            stroke={gridColor}
+            strokeWidth="1"
+            strokeDasharray="3 4"
+            opacity="0.8"
+            vectorEffect="non-scaling-stroke"
+            className="hf-spark-grid"
+          />
+        )}
+
+        {/* Soft area volume */}
         <path
-          d={fillD}
-          fill={`url(#${gradId})`}
-          className="animate-trace-fill"
+          d={areaPath}
+          fill={`url(#${areaGradId})`}
+          className="hf-spark-area"
         />
+
+        {/* Soft luminous bloom behind the ribbon */}
         <path
-          d={pathD}
+          d={linePath}
           fill="none"
           stroke={strokeColor}
-          strokeWidth="2.5"
+          strokeWidth="6.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.08"
+          pathLength="100"
+          vectorEffect="non-scaling-stroke"
+          className="hf-spark-trace-line"
+        />
+
+        {/* Extruded base + main stroke + top highlight = 3D line ribbon */}
+        <path
+          d={linePath}
+          transform="translate(0 1.8)"
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="3.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.18"
+          pathLength="100"
+          vectorEffect="non-scaling-stroke"
+          className="hf-spark-trace-line"
+        />
+        <path
+          d={linePath}
+          fill="none"
+          stroke={`url(#${lineGradId})`}
+          strokeWidth="2.4"
           strokeLinecap="round"
           strokeLinejoin="round"
           pathLength="100"
-          className="animate-trace-line"
+          vectorEffect="non-scaling-stroke"
+          className="hf-spark-trace-line"
         />
-        {/* Latest Data Point Bleep Beacon (traces to the latest point and pulses continuously) */}
-        {latestPoint && (
-          <g
-            transform={`translate(${latestPoint.x.toFixed(1)}, ${latestPoint.y.toFixed(1)})`}
-          >
-            {/* Live radar ripple */}
-            <circle
-              r="3.5"
-              fill="none"
-              stroke={strokeColor}
-              strokeWidth="2"
-              className="animate-bleep-radar"
-            />
-            {/* Center beacon dot */}
-            <circle
-              r="3"
-              fill={strokeColor}
-              className="animate-bleep-beacon shadow-sm"
-            />
-            <circle r="1.2" fill="#ffffff" />
-          </g>
-        )}
+        <path
+          d={linePath}
+          transform="translate(0 -0.65)"
+          fill="none"
+          stroke={isHero ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.72)'}
+          strokeWidth="0.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          pathLength="100"
+          vectorEffect="non-scaling-stroke"
+          className="hf-spark-trace-line hf-spark-highlight"
+        />
+
+        {/* Terminal guide + soft light pooling underneath the final point */}
+        <line
+          x1={latest.x.toFixed(1)}
+          y1={padTop}
+          x2={latest.x.toFixed(1)}
+          y2={Math.max(padTop, latest.y - 3).toFixed(1)}
+          stroke={strokeColor}
+          strokeWidth="1"
+          strokeDasharray="2 3"
+          opacity="0.28"
+          vectorEffect="non-scaling-stroke"
+          className="hf-terminal-guide"
+        />
+        <ellipse
+          cx={latest.x.toFixed(1)}
+          cy={glowY.toFixed(1)}
+          rx="17"
+          ry="6"
+          fill={`url(#${glowGradId})`}
+          className="hf-terminal-glow"
+        />
+        <circle
+          cx={latest.x.toFixed(1)}
+          cy={latest.y.toFixed(1)}
+          r="6.8"
+          fill={strokeColor}
+          opacity="0.16"
+          className="hf-terminal-halo"
+        />
+        <circle
+          cx={latest.x.toFixed(1)}
+          cy={latest.y.toFixed(1)}
+          r="4.6"
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="1"
+          opacity="0.34"
+        />
+        <circle
+          cx={latest.x.toFixed(1)}
+          cy={latest.y.toFixed(1)}
+          r="3.1"
+          fill={strokeColor}
+          className="hf-terminal-dot"
+        />
+        <circle
+          cx={latest.x.toFixed(1)}
+          cy={latest.y.toFixed(1)}
+          r="1.1"
+          fill="#ffffff"
+          className="hf-terminal-core"
+        />
       </svg>
     </div>
   )
@@ -439,49 +627,15 @@ function StatProgressBar({
   targetLabel?: string
   isHero?: boolean
 }) {
-  const pct = Math.min(Math.max((value / max) * 100, 0), 100)
   return (
     <div className="w-full my-2.5 flex flex-col gap-1.5 group/progress">
-      <div
-        className={cn(
-          'relative h-4 w-full rounded-full border p-0.5 overflow-hidden transition-all duration-300 group-hover/progress:shadow-md',
-          isHero
-            ? 'border-[var(--hf-accent-foreground)] bg-[var(--hf-accent-hover)]'
-            : 'border-[var(--color-border)] bg-[var(--color-bg-elevated)]'
-        )}
-      >
-        {/* Liquid filling column surging from 0% to target pct */}
-        <div
-          className="relative h-full rounded-full bg-gradient-to-r from-[var(--hf-chart-6)] via-[var(--hf-chart-1)] to-[var(--hf-chart-2)] animate-liquid-fill shadow-sm transition-all duration-500"
-          style={{
-            width: `${pct}%`,
-            ['--liquid-fill-pct' as string]: `${pct}%`,
-          }}
-        >
-          {/* Specular liquid surface reflection */}
-          <div className="absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-full pointer-events-none" />
-
-          {/* Internal undulating fluid sheen */}
-          <div className="absolute inset-0 bg-white/15 rounded-full animate-liquid-wave opacity-75 pointer-events-none" />
-
-          {/* Leading Edge: Meniscus, Rising Bubbles & Fizzle Sparks */}
-          {pct > 5 && (
-            <div className="absolute -right-1 top-0 bottom-0 w-4 pointer-events-none overflow-visible flex items-center justify-center">
-              {/* Meniscus fluid head */}
-              <div className="absolute right-0 h-full w-2 rounded-r-full bg-emerald-200/50 blur-[0.5px] animate-meniscus" />
-
-              {/* Rising micro-bubbles */}
-              <span className="absolute right-1 bottom-0.5 h-1.5 w-1.5 rounded-full bg-white/90 shadow-sm animate-bubble-1" />
-              <span className="absolute right-2 bottom-1 h-1 w-1 rounded-full bg-white/80 animate-bubble-2" />
-              <span className="absolute right-0.5 bottom-0 h-1.5 w-1.5 rounded-full bg-cyan-100 animate-bubble-3" />
-
-              {/* Effervescent fizzle particles */}
-              <span className="absolute -right-0.5 top-0.5 h-1 w-1 rounded-full bg-emerald-100 shadow-[0_0_4px_#34d399] animate-fizzle-1" />
-              <span className="absolute -right-1 bottom-0.5 h-0.5 w-0.5 rounded-full bg-teal-100 shadow-[0_0_3px_#2dd4bf] animate-fizzle-2" />
-            </div>
-          )}
-        </div>
-      </div>
+      <LiquidProgress
+        value={value}
+        max={max}
+        isHero={isHero}
+        ariaLabel={label ?? 'Progress'}
+        className="group-hover/progress:shadow-md"
+      />
       {(label || targetLabel) && (
         <div
           className={cn(

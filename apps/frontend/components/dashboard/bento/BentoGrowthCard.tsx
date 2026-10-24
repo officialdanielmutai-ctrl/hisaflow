@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { MoreHorizontal, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LiquidProgress } from '@/components/system/LiquidProgress'
 
 export type GrowthTimeframe = '24h' | '12h' | 'week' | 'month'
 
@@ -134,38 +135,11 @@ export default function BentoGrowthCard({
             </span>
           </div>
 
-          <div className="h-4 w-full rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-0.5 overflow-hidden transition-all duration-300 group-hover/liquid:shadow-md">
-            <div
-              className="relative h-full rounded-full bg-gradient-to-r from-sky-500 via-teal-500 to-emerald-400 animate-liquid-fill shadow-sm transition-all duration-500"
-              style={{
-                width: `${activeData.progressPct}%`,
-                ['--liquid-fill-pct' as string]: `${activeData.progressPct}%`,
-              }}
-            >
-              {/* Specular liquid surface reflection */}
-              <div className="absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-full pointer-events-none" />
-
-              {/* Undulating liquid wave sheen */}
-              <div className="absolute inset-0 bg-white/20 rounded-full animate-liquid-wave opacity-75 pointer-events-none" />
-
-              {/* Leading Edge: Meniscus, Rising Bubbles & Fizzle Sparks */}
-              {activeData.progressPct > 5 && (
-                <div className="absolute -right-1 top-0 bottom-0 w-4 pointer-events-none overflow-visible flex items-center justify-center">
-                  {/* Meniscus fluid crest */}
-                  <div className="absolute right-0 h-full w-2 rounded-r-full bg-emerald-200/50 blur-[0.5px] animate-meniscus" />
-
-                  {/* Rising micro-bubbles */}
-                  <span className="absolute right-1 bottom-0.5 h-1.5 w-1.5 rounded-full bg-white/90 shadow-sm animate-bubble-1" />
-                  <span className="absolute right-2 bottom-1 h-1 w-1 rounded-full bg-white/80 animate-bubble-2" />
-                  <span className="absolute right-0.5 bottom-0 h-1.5 w-1.5 rounded-full bg-cyan-100 animate-bubble-3" />
-
-                  {/* Effervescent fizzle particles */}
-                  <span className="absolute -right-0.5 top-0.5 h-1 w-1 rounded-full bg-emerald-100 shadow-[0_0_4px_#34d399] animate-fizzle-1" />
-                  <span className="absolute -right-1 bottom-0.5 h-0.5 w-0.5 rounded-full bg-teal-100 shadow-[0_0_3px_#2dd4bf] animate-fizzle-2" />
-                </div>
-              )}
-            </div>
-          </div>
+          <LiquidProgress
+            value={activeData.progressPct}
+            ariaLabel={`${title} progress`}
+            className="group-hover/liquid:shadow-md"
+          />
         </div>
       </div>
 

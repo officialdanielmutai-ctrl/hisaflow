@@ -1466,6 +1466,295 @@
     animation: none;
   }
 }
+/* ── Finance sparkline: traced 3D ribbon + terminal light ──────────────────
+   The line is drawn once on load, then the endpoint keeps a slow, soft
+   "breathing" glow underneath it. Motion is transform/opacity/dash only. */
+@keyframes hf-spark-trace {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes hf-spark-area-in {
+  0% {
+    opacity: 0;
+  }
+  58% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes hf-terminal-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes hf-terminal-dot-in {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.28);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes hf-terminal-dot-breathe {
+  0%,
+  100% {
+    opacity: 0.95;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+
+@keyframes hf-terminal-guide-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.28;
+  }
+}
+
+.hf-spark-trace-line {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: hf-spark-trace 1.55s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.hf-spark-highlight {
+  animation-delay: 0.05s;
+}
+
+.hf-spark-area {
+  opacity: 0;
+  animation: hf-spark-area-in 1.7s ease-out forwards;
+}
+
+.hf-terminal-guide {
+  opacity: 0;
+  animation: hf-terminal-guide-in 0.45s ease-out 1.5s forwards;
+}
+
+.hf-terminal-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: hf-terminal-glow-breathe 3.6s ease-in-out 1.6s infinite;
+  will-change: transform, opacity;
+}
+
+.hf-terminal-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation:
+    hf-terminal-dot-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1.58s both,
+    hf-terminal-dot-breathe 3.6s ease-in-out 2.15s infinite;
+}
+
+/* ── 3D liquid fill: glass tube, meniscus and rising bubbles ─────────────── */
+@keyframes hf-liquid-fill-surge {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: var(--liquid-fill-pct, 100%);
+  }
+}
+
+@keyframes hf-liquid-sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+@keyframes hf-liquid-meniscus-wobble {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: translateX(0) scaleY(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-0.5px) scaleY(1.06);
+  }
+}
+
+@keyframes hf-liquid-bubble-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 9px, 0) scale(0.45);
+  }
+  14% {
+    opacity: 0.96;
+  }
+  68% {
+    opacity: 0.78;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--hf-bubble-drift, 0px), -17px, 0) scale(1.25);
+  }
+}
+
+.hf-liquid-track {
+  box-shadow:
+    inset 0 2px 4px rgba(2, 6, 23, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.42),
+    0 1px 2px rgba(2, 6, 23, 0.08);
+}
+
+.hf-liquid-fill {
+  background-image:
+    radial-gradient(
+      ellipse at 24% 8%,
+      rgba(255, 255, 255, 0.34),
+      transparent 44%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.58) 0%,
+      rgba(255, 255, 255, 0.16) 24%,
+      rgba(255, 255, 255, 0) 54%,
+      rgba(2, 44, 34, 0.3) 100%
+    ),
+    linear-gradient(90deg, #0369a1 0%, #0d9488 38%, #10b981 70%, #5eead4 100%);
+  box-shadow:
+    inset 2px 0 2px rgba(255, 255, 255, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.72),
+    inset 0 -3px 4px rgba(3, 60, 45, 0.4),
+    0 0 12px rgba(16, 185, 129, 0.34);
+  animation: hf-liquid-fill-surge 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: width;
+}
+
+.hf-liquid-fill::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 auto;
+  height: 44%;
+  border-radius: 9999px 9999px 40% 40%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.62),
+    rgba(255, 255, 255, 0)
+  );
+  content: '';
+  pointer-events: none;
+}
+
+.hf-liquid-fill::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 12%,
+    rgba(255, 255, 255, 0.2) 45%,
+    transparent 70%
+  );
+  content: '';
+  pointer-events: none;
+  transform: translateX(-120%);
+  animation: hf-liquid-sheen 2.8s ease-in-out 0.9s infinite;
+}
+
+.hf-liquid-meniscus {
+  position: absolute;
+  z-index: 3;
+  top: -1px;
+  right: 0;
+  bottom: -1px;
+  width: 8px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    ellipse at 30% 50%,
+    rgba(255, 255, 255, 0.99) 0%,
+    rgba(204, 251, 241, 0.9) 26%,
+    rgba(45, 212, 191, 0.36) 62%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 9px rgba(94, 234, 212, 0.82),
+    inset -1px 0 2px rgba(255, 255, 255, 0.65);
+  animation: hf-liquid-meniscus-wobble 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.hf-liquid-bubble {
+  position: absolute;
+  z-index: 2;
+  bottom: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at 30% 28%,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.92) 28%,
+    rgba(103, 232, 249, 0.58) 64%,
+    rgba(103, 232, 249, 0.12) 100%
+  );
+  box-shadow:
+    0 0 7px rgba(255, 255, 255, 0.92),
+    inset 0 0 2px rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  animation: hf-liquid-bubble-rise 3s ease-in infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hf-spark-trace-line,
+  .hf-spark-area,
+  .hf-terminal-guide,
+  .hf-terminal-glow,
+  .hf-terminal-dot,
+  .hf-liquid-fill,
+  .hf-liquid-fill::after,
+  .hf-liquid-meniscus,
+  .hf-liquid-bubble {
+    animation: none;
+  }
+
+  .hf-spark-trace-line {
+    stroke-dashoffset: 0;
+  }
+
+  .hf-spark-area {
+    opacity: 1;
+  }
+
+  .hf-terminal-guide {
+    opacity: 0.28;
+  }
+
+  .hf-terminal-glow {
+    opacity: 0.45;
+  }
+}
+
 /* ── Dashboard greeting: cinematic time-of-day scene ─────────────────────── */
 .hf-greeting {
   position: relative;

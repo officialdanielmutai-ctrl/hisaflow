@@ -169,6 +169,16 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-24 — KPI finance charts and 3D liquid animation.** Replaced the
+  rough card animations with a shared, production-looking system. Sparklines
+  now use monotone cubic interpolation, a recessed grid, a soft area volume,
+  a three-layer 3D ribbon, a one-shot trace on page load and a terminal marker
+  with a slow breathing light pooled underneath the final point. Liquid
+  progress was extracted into `LiquidProgress` (shared by `StatCard` and
+  `BentoGrowthCard`) with a glass-tube track, 3D shading, a wobbling meniscus,
+  a moving specular sheen and seven rising bubbles. Reduced-motion users see
+  the final chart/fill states with no animation. Verified with the full
+  frontend test suite, typecheck, lint and production build.
 - **2026-10-23 — Dashboard greeting and business branding.** Added a shared
   cinematic time-of-day greeting across every vertical (persistent ambient
   motion, reduced-motion safe), removed greeting subtitles/vertical labels, and
