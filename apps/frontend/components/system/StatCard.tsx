@@ -343,7 +343,6 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
   const areaGradId = `spark-area-${idSeed}`
   const lineGradId = `spark-line-${idSeed}`
   const glowGradId = `spark-glow-${idSeed}`
-  const glowY = Math.min(height - 0.5, latest.y + 5)
 
   return (
     <div className="w-full h-14 my-1.5 group/spark relative">
@@ -477,11 +476,10 @@ function StatSparkline({ data, isHero }: { data: number[]; isHero?: boolean }) {
           vectorEffect="non-scaling-stroke"
           className="hf-terminal-guide"
         />
-        <ellipse
+        <circle
           cx={latest.x.toFixed(1)}
-          cy={glowY.toFixed(1)}
-          rx="17"
-          ry="6"
+          cy={latest.y.toFixed(1)}
+          r="14"
           fill={`url(#${glowGradId})`}
           className="hf-terminal-glow"
         />

@@ -225,13 +225,13 @@ function StaffDashboard() {
       {/* ── Smart Recommendations ───────────────────────────────────────── */}
       <section>
         {data.recommendedActions.length > 0 ? (
-          <div className="flex flex-col rounded-2xl border border-green-200 bg-[#F4FCF7] p-4 relative shadow-sm">
+          <div className="flex flex-col rounded-2xl border border-[var(--hf-border-subtle)] bg-[var(--hf-status-success-surface)] p-4 relative shadow-sm">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] shadow-sm">
-                <Sparkles className="h-6 w-6 text-white" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--hf-accent-default)] shadow-sm">
+                <Sparkles className="h-6 w-6 text-[var(--hf-accent-foreground)]" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-xs font-bold text-[var(--color-accent)] mb-1">
+                <h3 className="text-xs font-bold text-[var(--hf-status-success)] mb-1">
                   Smart Recommendations
                 </h3>
                 <p className="text-sm font-bold text-[var(--color-text-primary)] leading-tight mb-1">
@@ -243,7 +243,7 @@ function StaffDashboard() {
               </div>
             </div>
             <div className="mt-4 flex justify-end">
-              <button className="rounded-full border border-[var(--color-accent)] bg-white px-4 py-1.5 text-xs font-bold text-[var(--color-accent)] flex items-center gap-1 hover:bg-green-50 transition-colors">
+              <button className="rounded-full border border-[var(--hf-status-success)] bg-[var(--hf-bg-surface)] px-4 py-1.5 text-xs font-bold text-[var(--hf-status-success)] flex items-center gap-1 hover:bg-[var(--hf-bg-elevated)] transition-colors">
                 View details <span className="text-sm leading-none">›</span>
               </button>
             </div>

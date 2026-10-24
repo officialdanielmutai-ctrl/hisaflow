@@ -15,9 +15,21 @@ interface AiRecommendationsCardProps {
 }
 
 const priorityStyles: Record<string, { dot: string; badge: string }> = {
-  HIGH: { dot: "bg-red-500", badge: "bg-red-50 text-red-700" },
-  MEDIUM: { dot: "bg-amber-500", badge: "bg-amber-50 text-amber-700" },
-  LOW: { dot: "bg-green-500", badge: "bg-green-50 text-green-700" },
+  HIGH: {
+    dot: "bg-[var(--hf-status-danger)]",
+    badge:
+      "bg-[var(--hf-status-danger-surface)] text-[var(--hf-status-danger)]",
+  },
+  MEDIUM: {
+    dot: "bg-[var(--hf-status-warning)]",
+    badge:
+      "bg-[var(--hf-status-warning-surface)] text-[var(--hf-status-warning)]",
+  },
+  LOW: {
+    dot: "bg-[var(--hf-status-success)]",
+    badge:
+      "bg-[var(--hf-bg-surface)] text-[var(--hf-status-success)]",
+  },
 };
 
 export function AiRecommendationsCard({ recommendations }: AiRecommendationsCardProps) {
@@ -30,17 +42,20 @@ export function AiRecommendationsCard({ recommendations }: AiRecommendationsCard
   return (
     <section>
       <div className="flex items-center gap-2 mb-3">
-        <div className="h-6 w-6 rounded-full bg-[var(--color-accent)] flex items-center justify-center shrink-0">
-          <Sparkles className="h-3.5 w-3.5 text-white" />
+        <div className="h-6 w-6 rounded-full bg-[var(--hf-accent-default)] flex items-center justify-center shrink-0">
+          <Sparkles className="h-3.5 w-3.5 text-[var(--hf-accent-foreground)]" />
         </div>
         <h2 className="font-bold text-sm text-[var(--color-text-primary)]">AI Recommendations</h2>
       </div>
 
-      <div className="flex flex-col gap-2 rounded-2xl border border-green-100 bg-[#F4FCF7] p-4 shadow-sm">
+      <div
+        data-testid="ai-recommendations-card"
+        className="flex flex-col gap-2 rounded-2xl border border-[var(--hf-border-subtle)] bg-[var(--hf-status-success-surface)] p-4 shadow-sm"
+      >
         {/* Top recommendation — featured */}
-        <div className="flex items-start gap-3 pb-3 border-b border-green-100">
-          <div className="h-10 w-10 rounded-full bg-[var(--color-accent)] flex items-center justify-center shrink-0 shadow-sm">
-            <Sparkles className="h-5 w-5 text-white" />
+        <div className="flex items-start gap-3 pb-3 border-b border-[var(--hf-border-subtle)]">
+          <div className="h-10 w-10 rounded-full bg-[var(--hf-accent-default)] flex items-center justify-center shrink-0 shadow-sm">
+            <Sparkles className="h-5 w-5 text-[var(--hf-accent-foreground)]" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -57,7 +72,7 @@ export function AiRecommendationsCard({ recommendations }: AiRecommendationsCard
             {top.href && (
               <Link
                 href={top.href}
-                className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-[var(--color-accent)] hover:underline"
+                className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-[var(--hf-status-success)] hover:underline"
               >
                 Take action <ArrowRight className="h-3 w-3" />
               </Link>
@@ -69,14 +84,14 @@ export function AiRecommendationsCard({ recommendations }: AiRecommendationsCard
         {rest.map((rec, i) => {
           const s = priorityStyles[rec.priority] ?? priorityStyles.LOW;
           return (
-            <div key={i} className="flex items-start gap-3 py-2 border-b border-green-100 last:border-0 last:pb-0">
+            <div key={i} className="flex items-start gap-3 py-2 border-b border-[var(--hf-border-subtle)] last:border-0 last:pb-0">
               <span className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${s.dot}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-[var(--color-text-primary)]">{rec.action}</p>
                 <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">{rec.reason}</p>
               </div>
               {rec.href && (
-                <Link href={rec.href} className="text-[10px] font-bold text-[var(--color-accent)] hover:underline shrink-0">
+                <Link href={rec.href} className="text-[10px] font-bold text-[var(--hf-status-success)] hover:underline shrink-0">
                   Go →
                 </Link>
               )}

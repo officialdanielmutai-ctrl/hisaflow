@@ -417,7 +417,7 @@ Report at the end of each layer: what shipped, what you deliberately did not do,
 
 ---
 
-## 10. Implementation status (2026-10-23)
+## 10. Implementation status (2026-10-24)
 
 This pass implements the theme system in one integration branch so the PC and
 mobile layouts ship together. The layer-by-layer merge cadence in Section 0 is
@@ -429,7 +429,7 @@ still the recommended process for future changes.
 | 1 Contract              | Done            | `packages/theme` with strict TS, typed registry, guards and `satisfies` completeness                                                                    |
 | 2 Generation + contrast | Done            | deterministic generator, committed generated CSS, 14 contract/contrast/drift tests                                                                      |
 | 3 Runtime + no-flash    | Done            | `ThemeProvider`, `hf-theme` localStorage + cookie, pre-paint script, system/cross-tab listeners, meta theme-color                                       |
-| 4 Migration             | Partial, sliced | shell/tokens bridge, picker surfaces, StatCard hero, charts, gauges and sparklines migrated; raw-literal backlog logged in `AUDIT.md`/`FOUND_ISSUES.md` |
+| 4 Migration             | Partial, sliced | shell/tokens bridge, picker surfaces, StatCard hero, charts, gauges and sparklines migrated, AI recommendation panels tokenised, legacy pale-panel bridge added; raw-literal backlog logged in `AUDIT.md`/`FOUND_ISSUES.md` |
 | 5 Feel tokens           | Done            | per-theme radius, shadow, border, density/font-size, motion, focus ring, icon stroke, reduced-motion guard                                              |
 | 6 Picker UI             | Done            | `/settings/appearance`, Auto + six cards, live scoped previews, radiogroup/arrow keys, check-icon selection, responsive 2/3/4 columns                   |
 | 7 Workspace integration | Contract done   | theme scrim on wallpaper, theme changes preserve layout/overrides, workspace reset preserves theme                                                      |
@@ -445,8 +445,12 @@ still the recommended process for future changes.
 - The standalone light/dark toggle has been removed; the named theme picker is
   the only appearance control.
 - Legacy text utilities are mapped to semantic text/status tokens inside themed
-  shells, including accent/status-filled controls, so all six themes keep
-  readable text without a component-by-component rewrite.
+  shells, including accent/status-filled controls, pale status panels and fixed
+  near-white sheets, so all six themes keep readable text without a
+  component-by-component rewrite.
+- Lagoon uses deliberately bright primary/secondary/muted text steps and the
+  AI recommendation panels use theme surfaces/badges, so dark-teal surfaces stay
+  readable without falling back to light-only colours.
 - Direct entry points: palette button in the top bar (mobile + PC), appearance
   button in the desktop rail, Appearance item in the mobile side menu, and the
   Settings → Appearance & theme row (which shows the active theme).
@@ -464,10 +468,10 @@ still the recommended process for future changes.
 ### Evidence
 
 - `pnpm --filter @hisaflow/theme test` — 14/14 pass.
-- `pnpm --filter frontend test` — 46 files / 281 tests pass.
+- `pnpm --filter frontend test` — 47 files / 283 tests pass.
 - `pnpm --filter backend test` — 110 suites / 882 tests pass.
 - `pnpm --filter admin test` — 12 tests pass.
-- `pnpm typecheck` — 6/6 turbo tasks pass.
+- `pnpm typecheck` — 5/5 turbo tasks pass.
 - `pnpm lint` — exit 0 (0 errors; pre-existing warning baseline logged in
   `docs/theme/FOUND_ISSUES.md` F-T01).
 - `pnpm build` — 5/5 packages pass; frontend emits 39 routes including

@@ -169,6 +169,17 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-24 — KPI terminal glow and Lagoon contrast.** Moved the finance
+  sparkline's breathing light onto the terminal dot itself (the stretched
+  under-chart ellipse is gone), and made the AI recommendation panel fully
+  token-driven: its surface, dividers, icons, priority badges and action links
+  now follow the active theme instead of a fixed pale-green/white palette. The
+  same semantic treatment was applied to the ISP and retail Smart
+  Recommendations panels. Lagoon's primary/secondary/muted text steps were
+  brightened, and the dark-theme bridge now remaps legacy pale status panels
+  and fixed near-white sheets so remaining older screens stay readable in all
+  dark themes. Verified with theme contract tests, frontend unit tests,
+  typecheck, lint and production build.
 - **2026-10-24 — KPI finance charts and 3D liquid animation.** Replaced the
   rough card animations with a shared, production-looking system. Sparklines
   now use monotone cubic interpolation, a recessed grid, a soft area volume,

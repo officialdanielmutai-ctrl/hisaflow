@@ -405,9 +405,11 @@ export const themes = {
         overlay: 'rgba(2, 11, 14, 0.72)',
       },
       text: {
-        primary: '#E6F4F5',
-        secondary: '#A7C2C6',
-        muted: '#8FADB1',
+        // Lagoon sits on deep teal surfaces; keep the text steps deliberately
+        // bright so secondary/muted copy never looks muddy in low light.
+        primary: '#F1FAFB',
+        secondary: '#B9D3D7',
+        muted: '#A7C2C6',
         inverse: '#042F2E',
       },
       border: {

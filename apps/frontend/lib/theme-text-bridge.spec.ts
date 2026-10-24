@@ -41,4 +41,15 @@ describe('legacy text contrast bridge', () => {
     expect(globals).toContain('var(--hf-status-success)')
     expect(globals).toContain('var(--hf-status-info)')
   })
+
+  it('maps legacy pale panels onto dark status/semantic surfaces', () => {
+    expect(globals).toContain("[class~='bg-red-50']")
+    expect(globals).toContain("[class~='bg-amber-50']")
+    expect(globals).toContain("[class~='bg-emerald-50']")
+    expect(globals).toContain('var(--hf-status-danger-surface)')
+    expect(globals).toContain('var(--hf-status-warning-surface)')
+    expect(globals).toContain('var(--hf-status-success-surface)')
+    expect(globals).toContain("[class~='bg-[#FAFAFA]']")
+    expect(globals).toContain('var(--hf-bg-surface)')
+  })
 })

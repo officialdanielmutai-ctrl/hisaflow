@@ -260,6 +260,76 @@
   .dark .bg-muted {
     background-color: var(--color-bg-elevated);
   }
+
+  /* Pale status panels from older screens. In a dark theme these light
+     washes leave the semantic status text tokens unreadable, so map them
+     onto the theme's dark status surfaces instead. */
+  .dark :is(
+      [class~='bg-red-50'], [class~='bg-red-50/50'],
+      [class~='bg-red-50/30'], [class~='bg-red-100'],
+      [class~='bg-rose-50'], [class~='bg-rose-50/50'],
+      [class~='bg-rose-50/30'], [class~='bg-rose-100']
+    ) {
+    background-color: var(--hf-status-danger-surface);
+  }
+
+  .dark :is(
+      [class~='bg-amber-50'], [class~='bg-amber-50/60'],
+      [class~='bg-amber-50/50'], [class~='bg-amber-50/30'],
+      [class~='bg-amber-100'], [class~='bg-yellow-50'],
+      [class~='bg-yellow-100'], [class~='bg-orange-50'],
+      [class~='bg-orange-50/40'], [class~='bg-orange-50/30'],
+      [class~='bg-orange-100']
+    ) {
+    background-color: var(--hf-status-warning-surface);
+  }
+
+  .dark :is(
+      [class~='bg-emerald-50'], [class~='bg-emerald-50/40'],
+      [class~='bg-emerald-100'], [class~='bg-green-50'],
+      [class~='bg-green-100'], [class~='bg-lime-50'],
+      [class~='bg-lime-100']
+    ) {
+    background-color: var(--hf-status-success-surface);
+  }
+
+  .dark :is(
+      [class~='bg-blue-50'], [class~='bg-blue-100'],
+      [class~='bg-indigo-50'], [class~='bg-indigo-100'],
+      [class~='bg-sky-50'], [class~='bg-sky-100'],
+      [class~='bg-cyan-50'], [class~='bg-cyan-100'],
+      [class~='bg-teal-50'], [class~='bg-teal-100']
+    ) {
+    background-color: var(--hf-status-info-surface);
+  }
+
+  .dark :is(
+      [class~='bg-purple-50'], [class~='bg-purple-100'],
+      [class~='bg-violet-50'], [class~='bg-violet-100'],
+      [class~='bg-fuchsia-50'], [class~='bg-fuchsia-100'],
+      [class~='bg-pink-50'], [class~='bg-pink-100']
+    ) {
+    background-color: var(--hf-accent-subtle);
+  }
+
+  /* Fixed near-white surfaces (sheets, banners, AI panels) follow the theme
+     too, so text that is already tokenised stays readable in Lagoon. */
+  .dark :is(
+      [class~='bg-[#F4FCF7]'], [class~='bg-[#F3FBF6]'],
+      [class~='bg-[#FAFAFA]'], [class~='bg-[#F5F5F5]'],
+      [class~='bg-[#F8FAFC]'], [class~='bg-[#F9FAFB]']
+    ) {
+    background-color: var(--hf-bg-surface);
+  }
+
+  .dark :is(
+      [class~='hover:bg-green-50'], [class~='hover:bg-emerald-50'],
+      [class~='hover:bg-amber-50'], [class~='hover:bg-red-50'],
+      [class~='hover:bg-rose-50']
+    ):hover {
+    background-color: var(--hf-bg-elevated);
+  }
+
   .dark .hover\:bg-gray-50:hover,
   .dark .hover\:bg-gray-100:hover {
     background-color: var(--color-bg-elevated);

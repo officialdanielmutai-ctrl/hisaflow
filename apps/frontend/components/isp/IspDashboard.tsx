@@ -504,23 +504,23 @@ export function IspDashboard() {
           <section>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-lg bg-[var(--color-accent)] flex items-center justify-center text-white shadow-sm">
+                <div className="h-6 w-6 rounded-lg bg-[var(--hf-accent-default)] flex items-center justify-center text-[var(--hf-accent-foreground)] shadow-sm">
                   <Sparkles className="h-3.5 w-3.5" />
                 </div>
                 <h2 className="font-bold text-sm text-[var(--color-text-primary)]">
                   AI Smart Recommendations
                 </h2>
               </div>
-              <span className="text-[10px] font-bold text-[var(--color-accent)] bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold text-[var(--hf-status-success)] bg-[var(--hf-status-success-surface)] border border-[var(--hf-border-subtle)] px-2 py-0.5 rounded-full">
                 Autonomous Insights
               </span>
             </div>
 
-            <div className="flex flex-col rounded-2xl border border-green-200 dark:border-green-900/50 bg-[#F4FCF7] dark:bg-emerald-950/10 p-4 sm:p-5 shadow-sm">
+            <div className="flex flex-col rounded-2xl border border-[var(--hf-border-subtle)] bg-[var(--hf-status-success-surface)] p-4 sm:p-5 shadow-sm">
               {/* Featured / Top Priority Recommendation */}
               {topRec && (
-                <div className="flex items-start gap-3 sm:gap-4 pb-4 border-b border-green-200/70 dark:border-green-800/50">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-accent)] shadow-sm text-white">
+                <div className="flex items-start gap-3 sm:gap-4 pb-4 border-b border-[var(--hf-border-subtle)]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--hf-accent-default)] shadow-sm text-[var(--hf-accent-foreground)]">
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -528,10 +528,10 @@ export function IspDashboard() {
                       <span
                         className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full tracking-wide ${
                           topRec.priority === 'HIGH'
-                            ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'
+                            ? 'bg-[var(--hf-status-danger-surface)] text-[var(--hf-status-danger)] border border-[var(--hf-status-danger)]'
                             : topRec.priority === 'MEDIUM'
-                              ? 'bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
-                              : 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                              ? 'bg-[var(--hf-status-warning-surface)] text-[var(--hf-status-warning)] border border-[var(--hf-status-warning)]'
+                              : 'bg-[var(--hf-bg-surface)] text-[var(--hf-status-success)] border border-[var(--hf-status-success)]'
                         }`}
                       >
                         {topRec.priority} PRIORITY
@@ -547,7 +547,7 @@ export function IspDashboard() {
                       <div className="mt-3">
                         <Link
                           href={topRec.href}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--color-accent)] bg-white dark:bg-emerald-950/20 px-3.5 py-1.5 rounded-xl border border-[var(--color-accent)]/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-sm"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--hf-status-success)] bg-[var(--hf-bg-surface)] px-3.5 py-1.5 rounded-xl border border-[var(--hf-border-subtle)] hover:bg-[var(--hf-bg-elevated)] transition-colors shadow-sm"
                         >
                           Take action <ArrowUpRight className="h-3.5 w-3.5" />
                         </Link>
@@ -563,16 +563,16 @@ export function IspDashboard() {
                   {otherRecs.map((rec, i) => (
                     <div
                       key={i}
-                      className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white/80 dark:bg-emerald-950/10 border border-green-100/80 dark:border-green-900/50 shadow-sm hover:bg-white dark:hover:bg-emerald-950/20 transition-colors"
+                      className="flex items-start justify-between gap-3 p-3 rounded-xl bg-[var(--hf-bg-surface)] border border-[var(--hf-border-subtle)] shadow-sm hover:bg-[var(--hf-bg-elevated)] transition-colors"
                     >
                       <div className="flex items-start gap-2.5 min-w-0">
                         <span
                           className={`h-2 w-2 rounded-full mt-1.5 shrink-0 ${
                             rec.priority === 'HIGH'
-                              ? 'bg-red-500'
+                              ? 'bg-[var(--hf-status-danger)]'
                               : rec.priority === 'MEDIUM'
-                                ? 'bg-amber-500'
-                                : 'bg-emerald-500'
+                                ? 'bg-[var(--hf-status-warning)]'
+                                : 'bg-[var(--hf-status-success)]'
                           }`}
                         />
                         <div className="min-w-0">
@@ -587,7 +587,7 @@ export function IspDashboard() {
                       {rec.href && (
                         <Link
                           href={rec.href}
-                          className="text-xs font-bold text-[var(--color-accent)] hover:underline shrink-0 flex items-center gap-0.5 pt-0.5"
+                          className="text-xs font-bold text-[var(--hf-status-success)] hover:underline shrink-0 flex items-center gap-0.5 pt-0.5"
                         >
                           Resolve →
                         </Link>

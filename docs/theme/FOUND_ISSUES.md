@@ -28,9 +28,11 @@ silently fixed in this change unless explicitly noted.
   plus smaller counts in app/features/lib/admin. 57 files still use legacy
   `bg-white`/`gray` utilities.
 - **Issue:** many of those files do not yet consume semantic tokens directly.
-  The central text bridge now maps legacy neutral/status text inside themed
-  shells to tested tokens, and solid accent/status controls receive the theme's
-  accent foreground, so readability is protected while the migration continues.
+  The central bridge maps legacy neutral/status text inside themed shells to
+  tested tokens, gives solid accent/status controls the theme's accent
+  foreground, and maps pale status panels plus fixed near-white surfaces onto
+  theme surfaces in dark themes, so readability is protected while the
+  migration continues.
 - **Action:** migrate in slices (shell, forms, tables, cards, sheets, charts,
   verticals, assistant) and remove the bridge once the count is zero.
 

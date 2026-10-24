@@ -107,13 +107,18 @@ colours are remapped to semantic tokens: neutral shades to
 purple/violet/pink to the accent. Solid accent/status backgrounds also receive
 the theme's accent foreground, and their white child text is corrected. Hover
 variants follow the same mapping. Dark variants (`dark:text-*`) carry a
-different class token and keep their explicit values.
+different class token and keep their explicit values. The same bridge maps
+legacy pale status panels (`bg-red-50`, `bg-amber-50`, `bg-emerald-50`, …) and
+fixed near-white surfaces to the active theme's status/semantic surfaces in
+dark themes.
 
 **Why:** Hundreds of existing screens use literal utility colours. Mapping them
 centrally makes every named theme readable without a risky component-by-
-component rewrite. The bridge is intentionally scoped to themed shells so the
-fixed-dark admin view-as screen and other deliberate dark surfaces keep their
-own palette. `lib/theme-text-bridge.spec.ts` guards the mechanism.
+component rewrite. Pale status panels needed the same treatment because their
+semantic status text becomes light in dark themes. The bridge is intentionally
+scoped to themed shells so the fixed-dark admin view-as screen and other
+deliberate dark surfaces keep their own palette.
+`lib/theme-text-bridge.spec.ts` guards the mechanism.
 
 **Exit:** Remove the bridge once the raw-literal migration backlog in
 `AUDIT.md` reaches zero.
