@@ -173,7 +173,9 @@ Update this file after every meaningful implementation change.
   six themes, generated CSS, contrast tests), the no-flash `ThemeProvider`
   (cookie SSR + localStorage + Auto), shape/depth/density/motion tokens, and
   the responsive Settings → Appearance picker for PC and mobile, with direct
-  palette entry points in the top bar, desktop rail and mobile side menu. Docs live in
+  palette entry points in the top bar, desktop rail and mobile side menu. The
+  standalone light/dark toggle was removed, and legacy text utilities are
+  bridged to tested semantic text/status tokens. Docs live in
   `docs/theme/`; status is in `HISAFLOW_THEME_SYSTEM_DIRECTIVE.md` §10.
 - **2026-10-19 — Home customisation production follow-up.** Fixed the four
   reported blockers: customisation changes now preview live on Home; widget

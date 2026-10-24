@@ -1,9 +1,13 @@
-import { OrganizationProvider } from '@/hooks/useMyOrganization';
+import { OrganizationProvider } from '@/hooks/useMyOrganization'
 
 export default function OnboardingLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  return <OrganizationProvider>{children}</OrganizationProvider>;
+  return (
+    <OrganizationProvider>
+      <div data-hf-app>{children}</div>
+    </OrganizationProvider>
+  )
 }

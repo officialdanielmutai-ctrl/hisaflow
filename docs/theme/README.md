@@ -62,6 +62,10 @@ pnpm format:check                          # new theme files/docs
 ## Accessibility
 
 - Every colour pair used for body text meets AA; Contrast meets AAA body text.
+- Text tokens are also tested on every common themed surface (canvas, card,
+  raised, elevated, tinted and status surfaces).
+- Legacy utility text colours inside the app shell are bridged to those same
+  semantic tokens, including solid accent/status backgrounds and hover states.
 - Status colours are tested on their surfaces; status meaning must keep an icon
   or text cue.
 - Reduced motion zeroes motion tokens and legacy animation durations.

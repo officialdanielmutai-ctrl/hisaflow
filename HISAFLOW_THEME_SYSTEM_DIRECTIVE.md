@@ -427,7 +427,7 @@ still the recommended process for future changes.
 | ----------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0 Audit                 | Done            | `docs/theme/AUDIT.md`, `FOUND_ISSUES.md`                                                                                                                |
 | 1 Contract              | Done            | `packages/theme` with strict TS, typed registry, guards and `satisfies` completeness                                                                    |
-| 2 Generation + contrast | Done            | deterministic generator, committed generated CSS, 12 contract/contrast/drift tests                                                                      |
+| 2 Generation + contrast | Done            | deterministic generator, committed generated CSS, 14 contract/contrast/drift tests                                                                      |
 | 3 Runtime + no-flash    | Done            | `ThemeProvider`, `hf-theme` localStorage + cookie, pre-paint script, system/cross-tab listeners, meta theme-color                                       |
 | 4 Migration             | Partial, sliced | shell/tokens bridge, picker surfaces, StatCard hero, charts, gauges and sparklines migrated; raw-literal backlog logged in `AUDIT.md`/`FOUND_ISSUES.md` |
 | 5 Feel tokens           | Done            | per-theme radius, shadow, border, density/font-size, motion, focus ring, icon stroke, reduced-motion guard                                              |
@@ -442,6 +442,11 @@ still the recommended process for future changes.
 - Correct theme on first paint via cookie SSR + inline script; no hydration
   warning (documented `suppressHydrationWarning` on `<html>`).
 - Settings → Appearance picker works on phones (2 columns) and PC (3–4).
+- The standalone light/dark toggle has been removed; the named theme picker is
+  the only appearance control.
+- Legacy text utilities are mapped to semantic text/status tokens inside themed
+  shells, including accent/status-filled controls, so all six themes keep
+  readable text without a component-by-component rewrite.
 - Direct entry points: palette button in the top bar (mobile + PC), appearance
   button in the desktop rail, Appearance item in the mobile side menu, and the
   Settings → Appearance & theme row (which shows the active theme).
@@ -458,8 +463,8 @@ still the recommended process for future changes.
 
 ### Evidence
 
-- `pnpm --filter @hisaflow/theme test` — 12/12 pass.
-- `pnpm --filter frontend test` — 44 files / 270 tests pass.
+- `pnpm --filter @hisaflow/theme test` — 14/14 pass.
+- `pnpm --filter frontend test` — 44 files / 273 tests pass.
 - `pnpm --filter backend test` — 110 suites / 878 tests pass.
 - `pnpm --filter admin test` — 12 tests pass.
 - `pnpm typecheck` — 6/6 turbo tasks pass.

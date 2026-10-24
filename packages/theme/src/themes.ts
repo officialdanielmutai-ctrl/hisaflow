@@ -155,7 +155,7 @@ export const themes = {
       text: {
         primary: '#E8EAEC',
         secondary: '#A7B0B8',
-        muted: '#929CA5',
+        muted: '#96A1AA',
         inverse: '#0B1220',
       },
       border: {
@@ -239,7 +239,7 @@ export const themes = {
       text: {
         primary: '#2B2018',
         secondary: '#6B4F3A',
-        muted: '#7C6652',
+        muted: '#76604D',
         inverse: '#FFF9EF',
       },
       border: {
@@ -426,7 +426,7 @@ export const themes = {
         successSurface: '#0D2C20',
         warning: '#FBBF24',
         warningSurface: '#33270A',
-        danger: '#F87171',
+        danger: '#FA8585',
         dangerSurface: '#351418',
         info: '#60A5FA',
         infoSurface: '#0E2341',
@@ -506,11 +506,11 @@ export const themes = {
         subtle: '#E5ECFA',
       },
       status: {
-        success: '#005A1F',
+        success: '#00501B',
         successSurface: '#E6F5EA',
         warning: '#6B3B00',
         warningSurface: '#FFF0D6',
-        danger: '#A10000',
+        danger: '#920000',
         dangerSurface: '#FCE8E8',
         info: '#00308A',
         infoSurface: '#E6EDFA',

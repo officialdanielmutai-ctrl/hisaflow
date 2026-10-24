@@ -27,10 +27,12 @@ silently fixed in this change unless explicitly noted.
 - **Where:** primarily `apps/frontend/components` (about 164 raw literals),
   plus smaller counts in app/features/lib/admin. 57 files still use legacy
   `bg-white`/`gray` utilities.
-- **Issue:** the dark-mode bridge remaps the common cases, but those files do
-  not yet consume semantic tokens directly.
+- **Issue:** many of those files do not yet consume semantic tokens directly.
+  The central text bridge now maps legacy neutral/status text inside themed
+  shells to tested tokens, and solid accent/status controls receive the theme's
+  accent foreground, so readability is protected while the migration continues.
 - **Action:** migrate in slices (shell, forms, tables, cards, sheets, charts,
-  verticals, assistant). Keep the bridge until the count is zero.
+  verticals, assistant) and remove the bridge once the count is zero.
 
 ## F-T04 — Marketing mesh tokens are only partially theme-aware
 

@@ -118,9 +118,10 @@
     --radius: 0.75rem;
   }
 
-  /* ── Dark mode tokens (toggled from Settings → Appearance) ──
-     Applied by the `.dark` class on <html>. Marketing tokens are remapped too
-     so public surfaces (e.g. the KPI gallery) follow the same mode. */
+  /* ── Legacy dark-mode fallback tokens ──
+     Kept for the `.dark` utility bridge and older marketing surfaces. Named
+     themes are generated into theme-tokens.generated.css and override these
+     values through html[data-theme] selectors. */
   .dark {
     /* WCAG-checked palette (contrast on the card surface #151c24):
        primary text 15.8:1, secondary 9.5:1, muted 6.7:1 (all AA/AAA);
@@ -282,6 +283,489 @@
   }
   .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
     border-color: var(--color-border);
+  }
+
+  /* ── Legacy text-colour contrast bridge ──
+     Older screens still use literal Tailwind text colours. Map them onto the
+     active theme's semantic text/status tokens inside the app shell so every
+     named theme keeps readable text. Scoped to [data-hf-app] so fixed-dark
+     surfaces (for example the admin view-as screen) keep their own palette.
+     Dark variants (`dark:text-*`) carry a different class token and are not
+     matched, so their explicit values still win. */
+  html[data-theme] [data-hf-app] [class^='text-black'],
+  html[data-theme] [data-hf-app] [class*=' text-black'] {
+    color: var(--hf-text-primary);
+  }
+
+  /* Neutral 900/800 → primary; 700/600 → secondary; 500/400 → muted;
+     300/200/100 → secondary (so faint labels never fall below AA). */
+  html[data-theme] [data-hf-app] :is(
+      [class^='text-gray-9'], [class*=' text-gray-9'],
+      [class^='text-gray-8'], [class*=' text-gray-8'],
+      [class^='text-slate-9'], [class*=' text-slate-9'],
+      [class^='text-slate-8'], [class*=' text-slate-8'],
+      [class^='text-zinc-9'], [class*=' text-zinc-9'],
+      [class^='text-zinc-8'], [class*=' text-zinc-8'],
+      [class^='text-neutral-9'], [class*=' text-neutral-9'],
+      [class^='text-neutral-8'], [class*=' text-neutral-8'],
+      [class^='text-stone-9'], [class*=' text-stone-9'],
+      [class^='text-stone-8'], [class*=' text-stone-8']
+    ) {
+    color: var(--hf-text-primary);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class^='text-gray-7'], [class*=' text-gray-7'],
+      [class^='text-gray-6'], [class*=' text-gray-6'],
+      [class^='text-slate-7'], [class*=' text-slate-7'],
+      [class^='text-slate-6'], [class*=' text-slate-6'],
+      [class^='text-zinc-7'], [class*=' text-zinc-7'],
+      [class^='text-zinc-6'], [class*=' text-zinc-6'],
+      [class^='text-neutral-7'], [class*=' text-neutral-7'],
+      [class^='text-neutral-6'], [class*=' text-neutral-6'],
+      [class^='text-stone-7'], [class*=' text-stone-7'],
+      [class^='text-stone-6'], [class*=' text-stone-6']
+    ) {
+    color: var(--hf-text-secondary);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class^='text-gray-5'], [class*=' text-gray-5'],
+      [class^='text-gray-4'], [class*=' text-gray-4'],
+      [class^='text-slate-5'], [class*=' text-slate-5'],
+      [class^='text-slate-4'], [class*=' text-slate-4'],
+      [class^='text-zinc-5'], [class*=' text-zinc-5'],
+      [class^='text-zinc-4'], [class*=' text-zinc-4'],
+      [class^='text-neutral-5'], [class*=' text-neutral-5'],
+      [class^='text-neutral-4'], [class*=' text-neutral-4'],
+      [class^='text-stone-5'], [class*=' text-stone-5'],
+      [class^='text-stone-4'], [class*=' text-stone-4']
+    ) {
+    color: var(--hf-text-muted);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class^='text-gray-3'], [class*=' text-gray-3'],
+      [class^='text-gray-2'], [class*=' text-gray-2'],
+      [class^='text-gray-1'], [class*=' text-gray-1'],
+      [class^='text-slate-3'], [class*=' text-slate-3'],
+      [class^='text-slate-2'], [class*=' text-slate-2'],
+      [class^='text-slate-1'], [class*=' text-slate-1'],
+      [class^='text-zinc-3'], [class*=' text-zinc-3'],
+      [class^='text-zinc-2'], [class*=' text-zinc-2'],
+      [class^='text-zinc-1'], [class*=' text-zinc-1'],
+      [class^='text-neutral-3'], [class*=' text-neutral-3'],
+      [class^='text-neutral-2'], [class*=' text-neutral-2'],
+      [class^='text-neutral-1'], [class*=' text-neutral-1'],
+      [class^='text-stone-3'], [class*=' text-stone-3'],
+      [class^='text-stone-2'], [class*=' text-stone-2'],
+      [class^='text-stone-1'], [class*=' text-stone-1']
+    ) {
+    color: var(--hf-text-secondary);
+  }
+
+  /* Status families → semantic status colours. */
+  html[data-theme] [data-hf-app] :is(
+      [class^='text-red-'], [class*=' text-red-'],
+      [class^='text-rose-'], [class*=' text-rose-']
+    ) {
+    color: var(--hf-status-danger);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class^='text-amber-'], [class*=' text-amber-'],
+      [class^='text-yellow-'], [class*=' text-yellow-'],
+      [class^='text-orange-'], [class*=' text-orange-']
+    ) {
+    color: var(--hf-status-warning);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class^='text-emerald-'], [class*=' text-emerald-'],
+      [class^='text-green-'], [class*=' text-green-'],
+      [class^='text-lime-'], [class*=' text-lime-']
+    ) {
+    color: var(--hf-status-success);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class^='text-blue-'], [class*=' text-blue-'],
+      [class^='text-indigo-'], [class*=' text-indigo-'],
+      [class^='text-sky-'], [class*=' text-sky-'],
+      [class^='text-cyan-'], [class*=' text-cyan-'],
+      [class^='text-teal-'], [class*=' text-teal-']
+    ) {
+    color: var(--hf-status-info);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class^='text-purple-'], [class*=' text-purple-'],
+      [class^='text-violet-'], [class*=' text-violet-'],
+      [class^='text-fuchsia-'], [class*=' text-fuchsia-'],
+      [class^='text-pink-'], [class*=' text-pink-']
+    ) {
+    color: var(--hf-accent-default);
+  }
+
+  /* Hover colours follow the same mapping, without touching `dark:` tokens. */
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:text-gray-9'], [class*='hover:text-gray-8'],
+      [class*='hover:text-slate-9'], [class*='hover:text-slate-8'],
+      [class*='hover:text-zinc-9'], [class*='hover:text-zinc-8'],
+      [class*='hover:text-neutral-9'], [class*='hover:text-neutral-8'],
+      [class*='hover:text-stone-9'], [class*='hover:text-stone-8']
+    ):hover {
+    color: var(--hf-text-primary);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:text-gray-7'], [class*='hover:text-gray-6'],
+      [class*='hover:text-slate-7'], [class*='hover:text-slate-6'],
+      [class*='hover:text-zinc-7'], [class*='hover:text-zinc-6'],
+      [class*='hover:text-neutral-7'], [class*='hover:text-neutral-6'],
+      [class*='hover:text-stone-7'], [class*='hover:text-stone-6']
+    ):hover {
+    color: var(--hf-text-secondary);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:text-red-'], [class*='hover:text-rose-']
+    ):hover {
+    color: var(--hf-status-danger);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:text-amber-'], [class*='hover:text-yellow-'],
+      [class*='hover:text-orange-']
+    ):hover {
+    color: var(--hf-status-warning);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:text-emerald-'], [class*='hover:text-green-'],
+      [class*='hover:text-lime-']
+    ):hover {
+    color: var(--hf-status-success);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:text-blue-'], [class*='hover:text-indigo-'],
+      [class*='hover:text-sky-'], [class*='hover:text-cyan-'],
+      [class*='hover:text-teal-']
+    ):hover {
+    color: var(--hf-status-info);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:text-purple-'], [class*='hover:text-violet-'],
+      [class*='hover:text-fuchsia-'], [class*='hover:text-pink-']
+    ):hover {
+    color: var(--hf-accent-default);
+  }
+
+  /* Accent-filled controls: the theme's foreground keeps AA on light
+     accents such as Carbon's blue. */
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-[var(--color-accent)]'],
+      [class~='bg-[var(--color-primary)]']
+    ) {
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-[var(--color-accent)]'],
+      [class~='bg-[var(--color-primary)]']
+    ) :is([class~='text-white'], [class*='text-white/']) {
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-red-400'],
+      [class~='bg-red-500'],
+      [class~='bg-red-600'],
+      [class~='bg-red-700'],
+      [class~='bg-rose-400'],
+      [class~='bg-rose-500'],
+      [class~='bg-rose-600'],
+      [class~='bg-rose-700']
+    ) {
+    background-color: var(--hf-status-danger);
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-red-400'],
+      [class~='bg-red-500'],
+      [class~='bg-red-600'],
+      [class~='bg-red-700'],
+      [class~='bg-rose-400'],
+      [class~='bg-rose-500'],
+      [class~='bg-rose-600'],
+      [class~='bg-rose-700']
+    ) :is([class~='text-white'], [class*='text-white/']) {
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-amber-400'],
+      [class~='bg-amber-500'],
+      [class~='bg-amber-600'],
+      [class~='bg-amber-700'],
+      [class~='bg-yellow-400'],
+      [class~='bg-yellow-500'],
+      [class~='bg-yellow-600'],
+      [class~='bg-yellow-700'],
+      [class~='bg-orange-400'],
+      [class~='bg-orange-500'],
+      [class~='bg-orange-600'],
+      [class~='bg-orange-700']
+    ) {
+    background-color: var(--hf-status-warning);
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-amber-400'],
+      [class~='bg-amber-500'],
+      [class~='bg-amber-600'],
+      [class~='bg-amber-700'],
+      [class~='bg-yellow-400'],
+      [class~='bg-yellow-500'],
+      [class~='bg-yellow-600'],
+      [class~='bg-yellow-700'],
+      [class~='bg-orange-400'],
+      [class~='bg-orange-500'],
+      [class~='bg-orange-600'],
+      [class~='bg-orange-700']
+    ) :is([class~='text-white'], [class*='text-white/']) {
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-emerald-400'],
+      [class~='bg-emerald-500'],
+      [class~='bg-emerald-600'],
+      [class~='bg-emerald-700'],
+      [class~='bg-green-400'],
+      [class~='bg-green-500'],
+      [class~='bg-green-600'],
+      [class~='bg-green-700'],
+      [class~='bg-lime-400'],
+      [class~='bg-lime-500'],
+      [class~='bg-lime-600'],
+      [class~='bg-lime-700']
+    ) {
+    background-color: var(--hf-status-success);
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-emerald-400'],
+      [class~='bg-emerald-500'],
+      [class~='bg-emerald-600'],
+      [class~='bg-emerald-700'],
+      [class~='bg-green-400'],
+      [class~='bg-green-500'],
+      [class~='bg-green-600'],
+      [class~='bg-green-700'],
+      [class~='bg-lime-400'],
+      [class~='bg-lime-500'],
+      [class~='bg-lime-600'],
+      [class~='bg-lime-700']
+    ) :is([class~='text-white'], [class*='text-white/']) {
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-blue-400'],
+      [class~='bg-blue-500'],
+      [class~='bg-blue-600'],
+      [class~='bg-blue-700'],
+      [class~='bg-indigo-400'],
+      [class~='bg-indigo-500'],
+      [class~='bg-indigo-600'],
+      [class~='bg-indigo-700'],
+      [class~='bg-sky-400'],
+      [class~='bg-sky-500'],
+      [class~='bg-sky-600'],
+      [class~='bg-sky-700'],
+      [class~='bg-cyan-400'],
+      [class~='bg-cyan-500'],
+      [class~='bg-cyan-600'],
+      [class~='bg-cyan-700'],
+      [class~='bg-teal-400'],
+      [class~='bg-teal-500'],
+      [class~='bg-teal-600'],
+      [class~='bg-teal-700']
+    ) {
+    background-color: var(--hf-status-info);
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-blue-400'],
+      [class~='bg-blue-500'],
+      [class~='bg-blue-600'],
+      [class~='bg-blue-700'],
+      [class~='bg-indigo-400'],
+      [class~='bg-indigo-500'],
+      [class~='bg-indigo-600'],
+      [class~='bg-indigo-700'],
+      [class~='bg-sky-400'],
+      [class~='bg-sky-500'],
+      [class~='bg-sky-600'],
+      [class~='bg-sky-700'],
+      [class~='bg-cyan-400'],
+      [class~='bg-cyan-500'],
+      [class~='bg-cyan-600'],
+      [class~='bg-cyan-700'],
+      [class~='bg-teal-400'],
+      [class~='bg-teal-500'],
+      [class~='bg-teal-600'],
+      [class~='bg-teal-700']
+    ) :is([class~='text-white'], [class*='text-white/']) {
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-purple-400'],
+      [class~='bg-purple-500'],
+      [class~='bg-purple-600'],
+      [class~='bg-purple-700'],
+      [class~='bg-violet-400'],
+      [class~='bg-violet-500'],
+      [class~='bg-violet-600'],
+      [class~='bg-violet-700'],
+      [class~='bg-fuchsia-400'],
+      [class~='bg-fuchsia-500'],
+      [class~='bg-fuchsia-600'],
+      [class~='bg-fuchsia-700'],
+      [class~='bg-pink-400'],
+      [class~='bg-pink-500'],
+      [class~='bg-pink-600'],
+      [class~='bg-pink-700']
+    ) {
+    background-color: var(--hf-accent-default);
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class~='bg-purple-400'],
+      [class~='bg-purple-500'],
+      [class~='bg-purple-600'],
+      [class~='bg-purple-700'],
+      [class~='bg-violet-400'],
+      [class~='bg-violet-500'],
+      [class~='bg-violet-600'],
+      [class~='bg-violet-700'],
+      [class~='bg-fuchsia-400'],
+      [class~='bg-fuchsia-500'],
+      [class~='bg-fuchsia-600'],
+      [class~='bg-fuchsia-700'],
+      [class~='bg-pink-400'],
+      [class~='bg-pink-500'],
+      [class~='bg-pink-600'],
+      [class~='bg-pink-700']
+    ) :is([class~='text-white'], [class*='text-white/']) {
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:bg-red-400'],
+      [class*='hover:bg-red-500'],
+      [class*='hover:bg-red-600'],
+      [class*='hover:bg-red-700'],
+      [class*='hover:bg-rose-400'],
+      [class*='hover:bg-rose-500'],
+      [class*='hover:bg-rose-600'],
+      [class*='hover:bg-rose-700']
+    ):hover {
+    background-color: var(--hf-status-danger);
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:bg-amber-400'],
+      [class*='hover:bg-amber-500'],
+      [class*='hover:bg-amber-600'],
+      [class*='hover:bg-amber-700'],
+      [class*='hover:bg-yellow-400'],
+      [class*='hover:bg-yellow-500'],
+      [class*='hover:bg-yellow-600'],
+      [class*='hover:bg-yellow-700'],
+      [class*='hover:bg-orange-400'],
+      [class*='hover:bg-orange-500'],
+      [class*='hover:bg-orange-600'],
+      [class*='hover:bg-orange-700']
+    ):hover {
+    background-color: var(--hf-status-warning);
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:bg-emerald-400'],
+      [class*='hover:bg-emerald-500'],
+      [class*='hover:bg-emerald-600'],
+      [class*='hover:bg-emerald-700'],
+      [class*='hover:bg-green-400'],
+      [class*='hover:bg-green-500'],
+      [class*='hover:bg-green-600'],
+      [class*='hover:bg-green-700'],
+      [class*='hover:bg-lime-400'],
+      [class*='hover:bg-lime-500'],
+      [class*='hover:bg-lime-600'],
+      [class*='hover:bg-lime-700']
+    ):hover {
+    background-color: var(--hf-status-success);
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:bg-blue-400'],
+      [class*='hover:bg-blue-500'],
+      [class*='hover:bg-blue-600'],
+      [class*='hover:bg-blue-700'],
+      [class*='hover:bg-indigo-400'],
+      [class*='hover:bg-indigo-500'],
+      [class*='hover:bg-indigo-600'],
+      [class*='hover:bg-indigo-700'],
+      [class*='hover:bg-sky-400'],
+      [class*='hover:bg-sky-500'],
+      [class*='hover:bg-sky-600'],
+      [class*='hover:bg-sky-700'],
+      [class*='hover:bg-cyan-400'],
+      [class*='hover:bg-cyan-500'],
+      [class*='hover:bg-cyan-600'],
+      [class*='hover:bg-cyan-700'],
+      [class*='hover:bg-teal-400'],
+      [class*='hover:bg-teal-500'],
+      [class*='hover:bg-teal-600'],
+      [class*='hover:bg-teal-700']
+    ):hover {
+    background-color: var(--hf-status-info);
+    color: var(--hf-accent-foreground);
+  }
+
+  html[data-theme] [data-hf-app] :is(
+      [class*='hover:bg-purple-400'],
+      [class*='hover:bg-purple-500'],
+      [class*='hover:bg-purple-600'],
+      [class*='hover:bg-purple-700'],
+      [class*='hover:bg-violet-400'],
+      [class*='hover:bg-violet-500'],
+      [class*='hover:bg-violet-600'],
+      [class*='hover:bg-violet-700'],
+      [class*='hover:bg-fuchsia-400'],
+      [class*='hover:bg-fuchsia-500'],
+      [class*='hover:bg-fuchsia-600'],
+      [class*='hover:bg-fuchsia-700'],
+      [class*='hover:bg-pink-400'],
+      [class*='hover:bg-pink-500'],
+      [class*='hover:bg-pink-600'],
+      [class*='hover:bg-pink-700']
+    ):hover {
+    background-color: var(--hf-accent-default);
+    color: var(--hf-accent-foreground);
   }
 }
 

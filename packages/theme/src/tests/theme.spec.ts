@@ -153,6 +153,79 @@ test('body and secondary text meet AA in every theme (AAA in Contrast)', () => {
   })
 })
 
+test('text tokens stay readable on every common themed surface', () => {
+  eachTheme((theme) => {
+    const minimum = theme.id === 'contrast' ? 7 : 4.5
+    const surfaces = {
+      canvas: theme.colors.bg.canvas,
+      surface: theme.colors.bg.surface,
+      raised: theme.colors.bg.raised,
+      elevated: theme.colors.bg.elevated,
+      secondary: theme.colors.bg.secondary,
+      hover: theme.colors.bg.hover,
+      accentSubtle: theme.colors.accent.subtle,
+      successSurface: theme.colors.status.successSurface,
+      warningSurface: theme.colors.status.warningSurface,
+      dangerSurface: theme.colors.status.dangerSurface,
+      infoSurface: theme.colors.status.infoSurface,
+      neutralSurface: theme.colors.status.neutralSurface,
+    }
+
+    for (const [surfaceName, surface] of Object.entries(surfaces)) {
+      pair(
+        `primary/${surfaceName}`,
+        theme.colors.text.primary,
+        surface,
+        minimum
+      )
+      pair(
+        `secondary/${surfaceName}`,
+        theme.colors.text.secondary,
+        surface,
+        minimum
+      )
+      pair(`muted/${surfaceName}`, theme.colors.text.muted, surface, minimum)
+    }
+  })
+})
+
+test('accent and status text stay AA on every main surface (AAA in Contrast)', () => {
+  eachTheme((theme) => {
+    const minimum = theme.id === 'contrast' ? 7 : 4.5
+    const surfaces = {
+      canvas: theme.colors.bg.canvas,
+      surface: theme.colors.bg.surface,
+      elevated: theme.colors.bg.elevated,
+      secondary: theme.colors.bg.secondary,
+      hover: theme.colors.bg.hover,
+      accentSubtle: theme.colors.accent.subtle,
+    }
+
+    for (const [surfaceName, surface] of Object.entries(surfaces)) {
+      pair(
+        `accent/${surfaceName}`,
+        theme.colors.accent.default,
+        surface,
+        minimum
+      )
+      for (const status of [
+        'success',
+        'warning',
+        'danger',
+        'info',
+        'neutral',
+      ] as const) {
+        pair(
+          `${status}/${surfaceName}`,
+          theme.colors.status[status],
+          surface,
+          minimum
+        )
+      }
+    }
+  })
+})
+
 test('accent buttons keep body-text contrast', () => {
   eachTheme((theme) => {
     pair(

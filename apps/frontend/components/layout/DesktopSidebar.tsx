@@ -19,13 +19,10 @@ import {
   Briefcase,
   TicketCheck,
   CreditCard,
-  Sun,
-  Moon,
   Palette,
 } from 'lucide-react'
 import { useMyOrganization } from '@/hooks/useMyOrganization'
 import { useAlerts } from '@/hooks/useAlerts'
-import { useTheme } from '@/components/providers/ThemeProvider'
 import { UserButton } from '@clerk/nextjs'
 import { cn } from '@/lib/utils'
 
@@ -40,7 +37,6 @@ export default function DesktopSidebar() {
   const pathname = usePathname()
   const { membership } = useMyOrganization()
   const { data: alerts } = useAlerts()
-  const { theme, toggleTheme } = useTheme()
 
   const businessType = membership?.organization?.businessType || ''
   const isHospitality = ['GUEST_HOUSE', 'HOTEL', 'LODGE'].includes(businessType)
@@ -216,24 +212,6 @@ export default function DesktopSidebar() {
 
       {/* Bottom Rail: Theme, Settings & User Profile */}
       <div className="flex flex-col items-center gap-3">
-        {/* Dark / Light Mode Toggle */}
-        <div className="group relative flex items-center justify-center">
-          <button
-            onClick={toggleTheme}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-hover)] hover:text-[var(--color-text-primary)] transition-all"
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-5 w-5 text-amber-400" />
-            ) : (
-              <Moon className="h-5 w-5 text-slate-600" />
-            )}
-          </button>
-          <div className="pointer-events-none absolute left-full ml-3 hidden rounded-lg bg-[var(--color-text-primary)] px-2.5 py-1 text-xs font-semibold text-[var(--color-bg-surface)] shadow-md group-hover:flex whitespace-nowrap z-50">
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </div>
-        </div>
-
         {/* Appearance & theme */}
         <div className="group relative flex items-center justify-center">
           <Link

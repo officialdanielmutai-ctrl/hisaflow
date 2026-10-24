@@ -1,13 +1,15 @@
-import { OrganizationProvider } from '@/hooks/useMyOrganization';
+import { OrganizationProvider } from '@/hooks/useMyOrganization'
 
 export default function PaywallLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
     <OrganizationProvider>
-      <div className="min-h-screen bg-[var(--color-bg-base)]">{children}</div>
+      <div data-hf-app className="min-h-screen bg-[var(--color-bg-base)]">
+        {children}
+      </div>
     </OrganizationProvider>
-  );
+  )
 }

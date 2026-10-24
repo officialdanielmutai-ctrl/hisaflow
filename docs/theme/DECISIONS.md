@@ -92,8 +92,28 @@ component library was introduced.
 
 **Decision:** Settings → Appearance (`/settings/appearance`) renders Auto + six
 theme cards with scoped live previews, check-icon selected state, arrow-key
-navigation and roving focus. The quick light/dark toggle remains in the desktop
-rail for convenience and maps to Carbon/Ivory.
+navigation and roving focus. The shell links directly to this screen from the
+top bar, desktop rail, mobile side menu and Settings. The separate light/dark
+toggle was removed so the named theme is the only appearance control.
 
 **Why:** It matches the directive’s picker brief and works at both mobile and PC
 breakpoints (2 columns on phones, 3–4 on wider screens).
+
+## ADR-011 — Legacy text utilities are bridged to semantic tokens
+
+**Decision:** Inside themed app shells (`data-hf-app`), legacy Tailwind text
+colours are remapped to semantic tokens: neutral shades to
+`text.primary/secondary/muted`, status families to `status.*`, and
+purple/violet/pink to the accent. Solid accent/status backgrounds also receive
+the theme's accent foreground, and their white child text is corrected. Hover
+variants follow the same mapping. Dark variants (`dark:text-*`) carry a
+different class token and keep their explicit values.
+
+**Why:** Hundreds of existing screens use literal utility colours. Mapping them
+centrally makes every named theme readable without a risky component-by-
+component rewrite. The bridge is intentionally scoped to themed shells so the
+fixed-dark admin view-as screen and other deliberate dark surfaces keep their
+own palette. `lib/theme-text-bridge.spec.ts` guards the mechanism.
+
+**Exit:** Remove the bridge once the raw-literal migration backlog in
+`AUDIT.md` reaches zero.

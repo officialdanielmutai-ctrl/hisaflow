@@ -85,9 +85,9 @@ findings are in `FOUND_ISSUES.md`.
 | ----------------------- | ----------------------------------------------------------------------------------------------- |
 | Theme CSS generation    | New: deterministic generator + committed stylesheet                                             |
 | Theme package typecheck | Pass (strict + `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)                        |
-| Theme tests             | Pass (12 contract/contrast/generation tests)                                                    |
+| Theme tests             | Pass (14 contract/contrast/generation tests)                                                    |
 | Frontend typecheck      | Pass                                                                                            |
-| Frontend tests          | Pass (44 files / 270 tests)                                                                     |
+| Frontend tests          | Pass (44 files / 273 tests)                                                                     |
 | Frontend build          | Pass                                                                                            |
 | Backend tests/build     | Pass at baseline                                                                                |
 | Repo lint               | 0 errors, but **pre-existing warnings** remain; see `FOUND_ISSUES.md`                           |
