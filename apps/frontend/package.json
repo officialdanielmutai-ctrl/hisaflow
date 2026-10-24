@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.2",
-    "@hisaflow/theme": "workspace:*",
+    "@hisaflow/theme": "file:../../packages/theme",
     "@serwist/next": "^9.5.11",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",

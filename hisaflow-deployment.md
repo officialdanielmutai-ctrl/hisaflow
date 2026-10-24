@@ -9,11 +9,11 @@ This document records how the marketing site and the authenticated app are hoste
 
 ## 1. Target topology
 
-| Surface | Domain | Serves |
-|---|---|---|
-| Marketing site | `hisaflow.co.ke` (apex) | Landing page, `/legal/*`, `sitemap.xml`, `robots.txt` |
-| App | `app.hisaflow.co.ke` | Dashboard, onboarding, paywall, settings, sign-in/sign-up |
-| Backend API | `api.hisaflow.co.ke` (or the platform's URL) | `NEXT_PUBLIC_API_URL` |
+| Surface        | Domain                                       | Serves                                                    |
+| -------------- | -------------------------------------------- | --------------------------------------------------------- |
+| Marketing site | `hisaflow.co.ke` (apex)                      | Landing page, `/legal/*`, `sitemap.xml`, `robots.txt`     |
+| App            | `app.hisaflow.co.ke`                         | Dashboard, onboarding, paywall, settings, sign-in/sign-up |
+| Backend API    | `api.hisaflow.co.ke` (or the platform's URL) | `NEXT_PUBLIC_API_URL`                                     |
 
 `www.hisaflow.co.ke` redirects to the apex. The apex and the app subdomain are **two domains on one deployment**; host-aware routing in `apps/frontend/middleware.ts` decides what each host may serve.
 
@@ -34,24 +34,32 @@ This document records how the marketing site and the authenticated app are hoste
 
 Preview deployments keep their `*.vercel.app` host. Because `NEXT_PUBLIC_APP_URL` is compared against the request host, host routing is a no-op on preview hosts and on `localhost`.
 
+**Monorepo dependency rule (Vercel):** with the Root Directory set to
+`apps/frontend`, Vercel may run `npm install --legacy-peer-deps` from that
+directory instead of pnpm from the repo root. Do not use pnpm's
+`workspace:*` protocol in `apps/frontend/package.json`; npm does not support
+it (`EUNSUPPORTEDPROTOCOL`). The local theme package is referenced with
+`file:../../packages/theme`, which works from either install location. The
+generated theme CSS is committed, so no postinstall generator is required.
+
 ## 3. Environment variables
 
 Set these for **Production** (and, where sensible, Preview) in the host dashboard. The full list with comments lives in `apps/frontend/.env.example`.
 
-| Variable | Production value | Notes |
-|---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | `https://hisaflow.co.ke` | Canonical origin: metadata, Open Graph, sitemap, robots, JSON-LD |
-| `NEXT_PUBLIC_APP_URL` | `https://app.hisaflow.co.ke` | Opt-in split: auth CTAs become absolute and middleware routes app paths to the subdomain. Leave unset for single-origin dev/preview. |
-| `NEXT_PUBLIC_API_URL` | `https://api.hisaflow.co.ke` | Backend base URL |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` | from Clerk | Must include both production domains in Clerk's allowed origins |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` | Path, resolved on the app subdomain |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` | Path, resolved on the app subdomain |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | `/dashboard` | |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | `/onboarding` | |
-| `NEXT_PUBLIC_WHATSAPP_NUMBER` | E.164 digits | Omit to hide WhatsApp CTAs |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | support mailbox | Omit to hide the email link |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | web-push key | Push notifications |
-| `NEXT_PUBLIC_ENABLE_GALLERY` | `false` | `/gallery` 404s unless exactly `true` |
+| Variable                                                 | Production value             | Notes                                                                                                                                |
+| -------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_SITE_URL`                                   | `https://hisaflow.co.ke`     | Canonical origin: metadata, Open Graph, sitemap, robots, JSON-LD                                                                     |
+| `NEXT_PUBLIC_APP_URL`                                    | `https://app.hisaflow.co.ke` | Opt-in split: auth CTAs become absolute and middleware routes app paths to the subdomain. Leave unset for single-origin dev/preview. |
+| `NEXT_PUBLIC_API_URL`                                    | `https://api.hisaflow.co.ke` | Backend base URL                                                                                                                     |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` | from Clerk                   | Must include both production domains in Clerk's allowed origins                                                                      |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL`                          | `/sign-in`                   | Path, resolved on the app subdomain                                                                                                  |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL`                          | `/sign-up`                   | Path, resolved on the app subdomain                                                                                                  |
+| `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL`                    | `/dashboard`                 |                                                                                                                                      |
+| `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL`                    | `/onboarding`                |                                                                                                                                      |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER`                            | E.164 digits                 | Omit to hide WhatsApp CTAs                                                                                                           |
+| `NEXT_PUBLIC_CONTACT_EMAIL`                              | support mailbox              | Omit to hide the email link                                                                                                          |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`                           | web-push key                 | Push notifications                                                                                                                   |
+| `NEXT_PUBLIC_ENABLE_GALLERY`                             | `false`                      | `/gallery` 404s unless exactly `true`                                                                                                |
 
 Secrets (`CLERK_SECRET_KEY`, database URLs) are **never** committed. `.env.local` is gitignored.
 
@@ -59,15 +67,15 @@ Secrets (`CLERK_SECRET_KEY`, database URLs) are **never** committed. `.env.local
 
 Active only when `NEXT_PUBLIC_APP_URL` is set and differs from `NEXT_PUBLIC_SITE_URL`.
 
-| Host | Path | Result |
-|---|---|---|
-| `www.*` | any | `308` to apex, same path |
-| app subdomain | `/` | redirect to `/dashboard` |
-| app subdomain | `/legal/*`, `/sitemap.xml` | redirect to the apex |
-| app subdomain | `/robots.txt` | `Disallow: /` (the app is not indexed) |
-| apex | app paths (`/dashboard`, `/onboarding`, `/paywall`, `/settings`, `/sign-in`, `/sign-up`, `/view-as`, …) | redirect to the app subdomain |
-| apex | `/`, `/legal/*`, `/sitemap.xml`, `/robots.txt`, static assets | served |
-| either | `/api/*` | never cross-host redirected |
+| Host          | Path                                                                                                    | Result                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `www.*`       | any                                                                                                     | `308` to apex, same path               |
+| app subdomain | `/`                                                                                                     | redirect to `/dashboard`               |
+| app subdomain | `/legal/*`, `/sitemap.xml`                                                                              | redirect to the apex                   |
+| app subdomain | `/robots.txt`                                                                                           | `Disallow: /` (the app is not indexed) |
+| apex          | app paths (`/dashboard`, `/onboarding`, `/paywall`, `/settings`, `/sign-in`, `/sign-up`, `/view-as`, …) | redirect to the app subdomain          |
+| apex          | `/`, `/legal/*`, `/sitemap.xml`, `/robots.txt`, static assets                                           | served                                 |
+| either        | `/api/*`                                                                                                | never cross-host redirected            |
 
 Authenticated visitors landing on the apex `/` still go to the dashboard, now directly on the app subdomain when it is configured.
 

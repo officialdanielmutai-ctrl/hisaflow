@@ -62,3 +62,15 @@ silently fixed in this change unless explicitly noted.
 - **Impact:** routes that were statically prerendered now render dynamically so
   the first HTML can carry the correct theme. This is expected for no-flash
   cookie-driven SSR; review when performance budgets are next measured.
+
+## F-T08 — Vercel install refused `workspace:*` (resolved)
+
+- **Where:** Vercel deployment from commit `0a0bbe4`.
+- **Issue:** the Vercel project installs from `apps/frontend` with npm;
+  `"@hisaflow/theme": "workspace:*"` produced `EUNSUPPORTEDPROTOCOL`, so the
+  deployment never reached the build.
+- **Resolution:** the dependency now uses
+  `file:../../packages/theme`, which npm accepts from either `apps/frontend`
+  or the repo root. A root `vercel.json` also pins pnpm when the project is
+  configured at the repo root. The generated theme CSS is committed, so the
+  build does not depend on a package-manager-specific postinstall step.
