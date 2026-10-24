@@ -8,6 +8,10 @@ import { OrganizationsRepository } from './organizations.repository'
 import { CreateOrganizationDto } from './dto/create-organization.dto'
 import { PrismaService } from '../../infrastructure/prisma.service'
 import { EntitlementsService } from '../../core/entitlements/entitlements.service'
+import {
+  LOGO_DATA_URL_PATTERN,
+  MAX_LOGO_DATA_URL_LENGTH,
+} from './branding.constants'
 
 @Injectable()
 export class OrganizationsService {
@@ -159,14 +163,25 @@ export class OrganizationsService {
 
     const cleaned = logoUrl?.trim() ?? ''
     if (cleaned.length > 0) {
-      let parsed: URL
-      try {
-        parsed = new URL(cleaned)
-      } catch {
-        throw new BadRequestException('Logo must be a valid image URL')
-      }
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        throw new BadRequestException('Logo must use http or https')
+      if (cleaned.toLowerCase().startsWith('data:')) {
+        if (
+          cleaned.length > MAX_LOGO_DATA_URL_LENGTH ||
+          !LOGO_DATA_URL_PATTERN.test(cleaned)
+        ) {
+          throw new BadRequestException(
+            'Logo must be a valid PNG, JPG, or WebP image'
+          )
+        }
+      } else {
+        let parsed: URL
+        try {
+          parsed = new URL(cleaned)
+        } catch {
+          throw new BadRequestException('Logo must be a valid image URL')
+        }
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          throw new BadRequestException('Logo must use http or https')
+        }
       }
     }
 

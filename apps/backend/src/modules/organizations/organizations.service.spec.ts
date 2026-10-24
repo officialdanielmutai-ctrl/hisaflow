@@ -5,6 +5,7 @@ import { PrismaService } from '../../infrastructure/prisma.service'
 import { OrganizationsRepository } from './organizations.repository'
 import { OrganizationsService } from './organizations.service'
 import { BusinessType } from './dto/create-organization.dto'
+import { MAX_LOGO_DATA_URL_LENGTH } from './branding.constants'
 
 function build(assertSeatAvailable: jest.Mock) {
   const orgMembershipCreate = jest.fn(async () => ({}))
@@ -166,6 +167,44 @@ describe('OrganizationsService branding', () => {
     expect(result).toMatchObject({
       logoUrl: 'https://cdn.example.com/logo.png',
     })
+  })
+
+  it('lets an owner upload a compressed image data URL', async () => {
+    const { service, update } = buildBranding({ membership: { role: 'OWNER' } })
+    const dataUrl = `data:image/png;base64,${Buffer.from('logo').toString(
+      'base64'
+    )}`
+
+    const result = await service.updateBranding('user_1', 'org_1', dataUrl)
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'org_1' },
+      data: { logoUrl: dataUrl },
+    })
+    expect(result).toMatchObject({ logoUrl: dataUrl })
+  })
+
+  it('rejects malformed, non-image, and oversized data URLs', async () => {
+    const { service, update } = buildBranding({ membership: { role: 'OWNER' } })
+
+    await expect(
+      service.updateBranding(
+        'user_1',
+        'org_1',
+        'data:image/svg+xml;base64,AAAA'
+      )
+    ).rejects.toThrow(BadRequestException)
+    await expect(
+      service.updateBranding('user_1', 'org_1', 'data:image/png;base64,%%%%')
+    ).rejects.toThrow(BadRequestException)
+    await expect(
+      service.updateBranding(
+        'user_1',
+        'org_1',
+        `data:image/png;base64,${'A'.repeat(MAX_LOGO_DATA_URL_LENGTH)}`
+      )
+    ).rejects.toThrow(BadRequestException)
+    expect(update).not.toHaveBeenCalled()
   })
 
   it('lets a manager clear the override to fall back to email/monogram', async () => {

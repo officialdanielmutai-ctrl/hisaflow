@@ -169,6 +169,14 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-24 — Device business-logo upload.** Settings → Business now
+  accepts a logo directly from the device as well as a pasted URL. The browser
+  validates PNG/JPG/WebP files (5 MB cap), crops them to a square and resizes
+  them to a compact WebP data URL before saving. The existing branding endpoint
+  now accepts these persisted image data URLs while rejecting malformed,
+  non-image or oversized values; the URL path still works. Added back-end
+  validation tests and front-end card/helper tests, plus a real-browser check
+  that the canvas conversion produces a small `data:image/webp` result.
 - **2026-10-24 — Settings vertical gating and logo wiring.** Settings now
   renders the existing Business logo card for owners/managers, so the logo in
   the signed-in shell can be changed from Settings and reset to the email

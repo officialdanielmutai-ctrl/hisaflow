@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BUSINESS_LOGO_MAX_DATA_URL_LENGTH,
+  BUSINESS_LOGO_MAX_FILE_BYTES,
   businessMonogram,
   emailDomain,
+  fileToBusinessLogoDataUrl,
+  isBusinessLogoDataUrl,
   resolveBusinessLogoSrc,
 } from './business-logo'
 
@@ -13,6 +17,45 @@ describe('business logo helpers', () => {
         'owner@acme.co.ke'
       )
     ).toBe('https://cdn.example.com/logo.png')
+  })
+
+  it('accepts a persisted image data URL as the logo override', () => {
+    const dataUrl = 'data:image/webp;base64,AAAA'
+
+    expect(isBusinessLogoDataUrl(dataUrl)).toBe(true)
+    expect(resolveBusinessLogoSrc(dataUrl, 'owner@acme.co.ke')).toBe(dataUrl)
+    expect(
+      resolveBusinessLogoSrc(
+        `data:image/png;base64,${'A'.repeat(
+          BUSINESS_LOGO_MAX_DATA_URL_LENGTH
+        )}`,
+        'owner@acme.co.ke'
+      )
+    ).toBe(
+      'https://www.google.com/s2/favicons?sz=128&domain=acme.co.ke'
+    )
+  })
+
+  it('rejects non-image data URLs', () => {
+    expect(isBusinessLogoDataUrl('data:text/html;base64,AAAA')).toBe(false)
+    expect(isBusinessLogoDataUrl('data:image/svg+xml;base64,AAAA')).toBe(false)
+    expect(isBusinessLogoDataUrl('javascript:alert(1)')).toBe(false)
+  })
+
+  it('validates device files before reading them', async () => {
+    await expect(
+      fileToBusinessLogoDataUrl({
+        type: 'text/plain',
+        size: 10,
+      } as unknown as File)
+    ).rejects.toThrow('Choose a PNG, JPG, or WebP image.')
+
+    await expect(
+      fileToBusinessLogoDataUrl({
+        type: 'image/png',
+        size: BUSINESS_LOGO_MAX_FILE_BYTES + 1,
+      } as unknown as File)
+    ).rejects.toThrow('Choose an image smaller than 5 MB.')
   })
 
   it('uses the email domain logo for business addresses', () => {
