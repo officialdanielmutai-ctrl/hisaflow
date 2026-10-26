@@ -1,0 +1,45 @@
+# Version control / local tooling
+.git
+.gitignore
+.aider*
+.fallow
+.fallowrc.json
+
+# Dependencies and generated build output (never copied into the image)
+node_modules
+**/node_modules
+dist
+**/dist
+.next
+**/.next
+.turbo
+**/.turbo
+coverage
+**/coverage
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Secrets and local environment overrides
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Logs and test artifacts
+*.log
+**/*.log
+test-results
+**/test-results
+playwright-report
+**/playwright-report
+e2e/.auth
+e2e/artifacts
+
+# Large local-only reference assets
+*.jpg
+*.jpeg
+*.png
+Landing-page-images
+*.patch
+.aider.chat.history.md
+.aider.input.history

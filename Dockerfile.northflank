@@ -1,0 +1,82 @@
+# syntax=docker/dockerfile:1.7
+#
+# Northflank standby image for the HisaFlow NestJS backend.
+# Build from the repository root:
+#   docker build -f Dockerfile.northflank -t hisaflow-backend:northflank .
+#
+# This file is deliberately NOT named `Dockerfile`: Railway auto-detects a
+# root-level Dockerfile and the existing Railway deployment must keep using
+# its current Nixpacks/build configuration.
+
+FROM node:24-bookworm-slim AS base
+
+# Prisma needs OpenSSL at generate/run time. Keep the image on the same Node
+# major version CI uses (24); there is no .nvmrc/engines field in the repo.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && npm install -g pnpm@11.2.2
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV CI=true
+WORKDIR /app
+
+# ── Build stage: install the backend workspace, generate Prisma, compile Nest ──
+FROM base AS builder
+
+# pnpm needs every workspace manifest to resolve the shared lockfile, even
+# though this image only builds/runs the backend.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/admin/package.json apps/admin/package.json
+COPY apps/backend/package.json apps/backend/package.json
+COPY apps/frontend/package.json apps/frontend/package.json
+COPY packages/theme/package.json packages/theme/package.json
+COPY packages/types/package.json packages/types/package.json
+
+RUN pnpm install --filter backend --frozen-lockfile --ignore-scripts
+
+COPY apps/backend ./apps/backend
+
+# Prisma 7 config loads dotenv + prisma/config from the backend workspace.
+# Generate must happen before `nest build` so the compiled app can import the
+# generated Prisma client.
+RUN pnpm --filter backend exec prisma generate
+RUN pnpm --filter backend build
+
+# ── Runtime stage: production dependencies + generated client + compiled dist ──
+FROM base AS runner
+
+ENV NODE_ENV=production
+ENV PORT=3001
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/admin/package.json apps/admin/package.json
+COPY apps/backend/package.json apps/backend/package.json
+COPY apps/frontend/package.json apps/frontend/package.json
+COPY packages/theme/package.json packages/theme/package.json
+COPY packages/types/package.json packages/types/package.json
+
+RUN pnpm install --filter backend --frozen-lockfile --ignore-scripts
+
+COPY apps/backend/prisma ./apps/backend/prisma
+COPY apps/backend/prisma.config.ts ./apps/backend/prisma.config.ts
+
+# Generate with the full (temporary) dependency set, then prune to production
+# dependencies. The generated @prisma/client artifacts survive the prod install.
+RUN pnpm --filter backend exec prisma generate \
+  && pnpm install --filter backend --prod --frozen-lockfile --ignore-scripts
+
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+
+WORKDIR /app/apps/backend
+USER node
+
+EXPOSE 3001
+
+# Matches apps/backend's `start` script body. We intentionally do not run the
+# package's `prestart` script here: it executes `prisma db push --accept-data-loss`,
+# which is unsafe as an automatic container-start action and should be an
+# explicit deployment/migration step instead.
+CMD ["node", "--max-old-space-size=256", "dist/src/main.js"]
