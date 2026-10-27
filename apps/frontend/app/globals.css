@@ -857,8 +857,49 @@
   .mk-page {
     font-family: var(--font-marketing), system-ui, -apple-system, "Segoe UI",
       Roboto, sans-serif;
+    color-scheme: light;
+
+    /* The public landing page is a fixed light brand surface, not a themed
+       app screen. Re-declare the marketing/core light tokens here so a saved
+       app theme (especially Lagoon) can never turn the marketing page dark or
+       leave white-on-white controls behind. */
+    --mk-canvas: #faf7f2;
+    --mk-surface: #ffffff;
+    --mk-ink: #1c1b19;
+    --mk-ink-2: #5c5850;
+    --mk-ink-3: #6b655c;
+    --mk-line: #e7e1d6;
+    --mk-accent: #2f6f5e;
+    --mk-accent-hover: #255a4c;
+    --mk-accent-ink: #ffffff;
+    --color-bg-base: #faf7f2;
+    --color-bg-surface: #ffffff;
+    --color-bg-elevated: #f1ece3;
+    --color-bg-secondary: #e9f2ec;
+    --color-bg-surface-hover: #f4efe7;
+    --color-text-primary: #1c1b19;
+    --color-text-secondary: #5c5850;
+    --color-text-muted: #6b655c;
+    --color-border: #e7e1d6;
+    --color-border-strong: #8a8275;
+    --color-accent: #2f6f5e;
+    --color-accent-hover: #255a4c;
+    --color-accent-foreground: #ffffff;
+    --color-accent-blue: #1d4ed8;
+    --color-status-success: #1f6b3d;
+    --color-status-warning: #8a5200;
+    --color-status-critical: #b42318;
+    --color-status-info: #1d4ed8;
+    --color-status-neutral: #5c5850;
+
     background-color: var(--mk-canvas);
     color: var(--mk-ink);
+  }
+
+  /* Neutralise the legacy `.dark .bg-white` bridge on the fixed-light
+     marketing surface (e.g. inverse buttons). */
+  html[data-theme] .mk-page .bg-white {
+    background-color: #ffffff;
   }
 
   .mk-display {

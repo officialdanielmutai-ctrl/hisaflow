@@ -169,6 +169,15 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-27 — Landing-page palette isolation.** The public landing page was
+  inheriting the signed-in named theme, so a saved Lagoon theme turned the
+  marketing surface dark and produced white-on-white controls. The marketing
+  subtree now pins its own fixed light brand palette and explicitly restores
+  white inverse controls, independent of app theme selection. Added a
+  marketing-theme regression test. Also documented Railway's BuildKit
+  overlay-cache error as a builder/cache issue unrelated to the GitHub pnpm
+  action version or `Dockerfile.northflank` (Railway only auto-detects a root
+  file named `Dockerfile`).
 - **2026-10-24 — Device business-logo upload.** Settings → Business now
   accepts a logo directly from the device as well as a pasted URL. The browser
   validates PNG/JPG/WebP files (5 MB cap), crops them to a square and resizes

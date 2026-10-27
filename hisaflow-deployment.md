@@ -42,6 +42,19 @@ it (`EUNSUPPORTEDPROTOCOL`). The local theme package is referenced with
 `file:../../packages/theme`, which works from either install location. The
 generated theme CSS is committed, so no postinstall generator is required.
 
+### 2.1 Railway build cache note
+
+The Northflank standby image lives in `Dockerfile.northflank`. Railway only
+auto-detects a file literally named `Dockerfile`, so this file does not change
+Railway's builder. The pnpm version pinned in the GitHub Action is also
+independent of Railway; the action now reads `packageManager` from
+`package.json`.
+
+If Railway reports `failed to solve: mount source: "overlay" ... invalid
+argument`, that is a BuildKit cache/overlay failure on the builder rather than
+a repo dependency error. Retry the deployment; if it recurs, set `NO_CACHE=1`
+on the affected Railway service (or clear its build cache) and redeploy.
+
 ## 3. Environment variables
 
 Set these for **Production** (and, where sensible, Preview) in the host dashboard. The full list with comments lives in `apps/frontend/.env.example`.
