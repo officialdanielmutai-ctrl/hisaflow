@@ -95,15 +95,14 @@ export interface ProblemCard {
 export const PROBLEM: {
   eyebrow: string;
   headline: string;
-  intro: string;
+  headlineWord: string;
   resolution: string;
   cta: string;
   cards: ProblemCard[];
 } = {
   eyebrow: 'The problem',
-  headline: 'Notebooks, WhatsApp and guesswork cost you money.',
-  intro:
-    'Stock is tracked in a notebook, M-Pesa messages are matched by hand, bookings live in chat and customers get cut off one by one.',
+  headline: 'No more ',
+  headlineWord: 'hassle',
   resolution:
     'HisaFlow keeps stock, sales, payments and bookings in one place, so the numbers are already there when you need them.',
   cta: 'Start free trial',

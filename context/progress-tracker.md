@@ -169,6 +169,16 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-29 — Landing problem section, auth motion and first-run tour.**
+  The landing problem section now reads "No more hassle" with a scroll-drawn
+  double pen underline; the old paragraph is gone and both media tiles now run
+  looping scan/update sequences instead of static screenshots. The auth shell's
+  three-chevron motif was replaced with an animated connected-operations orbit
+  (Stock, M-Pesa, Bookings around the HisaFlow core). Added a first-run feature
+  walkthrough that auto-opens once per user on their first dashboard visit,
+  persists the seen flag as soon as it opens (skip/completion also close it),
+  adapts to the org's business type, and can be replayed from Settings → Help. Added regression tests for the walkthrough,
+  pen underline, copy and persistence.
 - **2026-10-27 — Landing-page palette isolation.** The public landing page was
   inheriting the signed-in named theme, so a saved Lagoon theme turned the
   marketing surface dark and produced white-on-white controls. The marketing

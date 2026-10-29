@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { MARKETING_PLANS, TIER_CONTENT, normalizePlanIntent } from '@/lib/plans';
 import { CLAIMS, isLive, isVisible } from '@/features/marketing/config/claims';
+import { PROBLEM } from '@/features/marketing/config/content';
 
 /**
  * The public pricing surface and the paywall must read the same plan source
@@ -29,6 +30,13 @@ describe('marketing plan source of truth', () => {
       expect(TIER_CONTENT[plan.tier].differentiator.length).toBeGreaterThan(0);
       expect(TIER_CONTENT[plan.tier].features.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('problem section copy', () => {
+  it('uses the short journal-note headline without the old paragraph', () => {
+    expect(`${PROBLEM.headline}${PROBLEM.headlineWord}`).toBe('No more hassle');
+    expect(PROBLEM).not.toHaveProperty('intro');
   });
 });
 

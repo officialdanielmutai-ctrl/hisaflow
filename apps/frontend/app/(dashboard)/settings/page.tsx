@@ -4,6 +4,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications'
 import {
   Bell,
   BellOff,
+  Compass,
   CreditCard,
   Download,
   Loader2,
@@ -28,6 +29,7 @@ import {
 import { SettingsGroup } from '@/components/settings/SettingsGroup'
 import { useTheme } from '@/components/providers/ThemeProvider'
 import { themeForId } from '@hisaflow/theme'
+import { requestWalkthroughReplay } from '@/lib/walkthrough'
 
 export default function SettingsPage() {
   const {
@@ -107,6 +109,25 @@ export default function SettingsPage() {
             preference === 'auto'
               ? `Auto — currently ${activeTheme.name}. Choose from six named themes.`
               : `${activeTheme.name} — choose from six named themes.`
+          }
+        />
+      </SettingsGroup>
+
+      {/* ── Help ────────────────────────────────────────────────────────────── */}
+      <SettingsGroup title="Help">
+        <SettingsActionRow
+          icon={Compass}
+          iconClassName="bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+          title="Feature walkthrough"
+          description="Take the guided tour again, or show it to a new team member."
+          trailing={
+            <button
+              type="button"
+              onClick={requestWalkthroughReplay}
+              className="shrink-0 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--color-bg-elevated)]"
+            >
+              Replay
+            </button>
           }
         />
       </SettingsGroup>

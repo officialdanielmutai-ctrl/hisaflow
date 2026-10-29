@@ -11,6 +11,7 @@ import { WorkspaceProvider } from '@/hooks/useWorkspace'
 import { WorkspaceBackdrop } from '@/components/workspace/WorkspaceBackdrop'
 import SWRProvider from '@/components/system/SWRProvider'
 import { DateRangeProvider } from '@/components/providers/DateRangeProvider'
+import { WalkthroughHost } from '@/components/walkthrough/WalkthroughHost'
 
 export default function DashboardLayout({
   children,
@@ -38,6 +39,7 @@ export default function DashboardLayout({
               <BottomNav />
               <NotificationPrompt />
               <InstallPrompt />
+              <WalkthroughHost />
             </div>
           </WorkspaceProvider>
         </DateRangeProvider>

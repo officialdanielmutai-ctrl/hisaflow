@@ -1,5 +1,4 @@
 import {
-  AlertTriangle,
   CalendarDays,
   Landmark,
   Package,
@@ -12,7 +11,9 @@ import { signUpHref } from '@/features/marketing/config/site';
 import { ButtonLink } from '../Button';
 import { TagPill } from '../TagPill';
 import { BentoCard } from '../BentoCard';
+import { PenUnderline } from '../PenUnderline';
 import { Reveal } from '../Reveal';
+import { AdminMedia, StockMedia } from './ProblemMedia';
 import { cn } from '@/lib/utils';
 
 const CARD_ICONS: Record<ProblemCard['id'], typeof Package> = {
@@ -23,79 +24,6 @@ const CARD_ICONS: Record<ProblemCard['id'], typeof Package> = {
 };
 
 const BADGES = [Package, Receipt, Wallet, CalendarDays];
-
-/** Full-bleed low-stock UI crop used as the tile background. */
-function StockMedia() {
-  return (
-    <div className="flex h-full w-full flex-col gap-3 bg-[var(--color-bg-elevated)] p-4">
-      <div className="rounded-[var(--mk-r-sm)] bg-[var(--mk-surface)] p-4 shadow-[var(--mk-e1)]">
-        <p className="text-[10px] font-medium text-[var(--mk-ink-2)]">
-          Today&apos;s sales
-        </p>
-        <p className="mk-tabular mt-0.5 text-[20px] font-bold text-[var(--mk-ink)]">
-          KES 48,350
-        </p>
-      </div>
-      <div className="rounded-[var(--mk-r-sm)] bg-[var(--mk-surface)] p-4 shadow-[var(--mk-e1)]">
-        <p className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--color-status-warning)]">
-          <AlertTriangle className="h-3 w-3" strokeWidth={2} />
-          Low stock
-        </p>
-        <ul className="mt-2 flex flex-col gap-2 text-[11px] text-[var(--mk-ink-2)]">
-          {[
-            { name: 'Cooking oil 1L', left: '1 left' },
-            { name: 'Unga 2kg', left: '2 left' },
-            { name: 'Sugar 1kg', left: '4 left' },
-          ].map((item) => (
-            <li
-              key={item.name}
-              className="flex items-center justify-between gap-2"
-            >
-              <span className="truncate">{item.name}</span>
-              <span className="mk-tabular shrink-0 font-semibold text-[var(--mk-ink)]">
-                {item.left}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-/** Full-bleed booking UI crop used as the tile background. */
-function AdminMedia() {
-  return (
-    <div className="flex h-full w-full flex-col gap-3 bg-[#2d3748] p-4">
-      <div className="rounded-[var(--mk-r-sm)] bg-white/10 p-4">
-        <p className="flex items-center gap-1.5 text-[10px] font-semibold text-white/85">
-          <CalendarDays className="h-3 w-3" strokeWidth={1.5} />
-          Today
-        </p>
-        <ul className="mt-2 flex flex-col gap-2 text-[11px] text-white/70">
-          <li className="flex items-center justify-between gap-2">
-            <span>Room 4 · check-in</span>
-            <span className="font-semibold text-[#7ee2b8]">Paid</span>
-          </li>
-          <li className="flex items-center justify-between gap-2">
-            <span>Room 7 · check-out</span>
-            <span>11:00</span>
-          </li>
-          <li className="flex items-center justify-between gap-2">
-            <span>Room 2 · booking</span>
-            <span>14:00</span>
-          </li>
-        </ul>
-      </div>
-      <div className="rounded-[var(--mk-r-sm)] bg-white/10 p-4">
-        <p className="text-[10px] font-medium text-white/70">Occupied rooms</p>
-        <p className="mk-tabular mt-0.5 text-[20px] font-bold text-white">
-          8 / 12
-        </p>
-      </div>
-    </div>
-  );
-}
 
 function ProblemTile({ card }: { card: ProblemCard }) {
   const gated = card.claimKey != null && !isLive(CLAIMS[card.claimKey]);
@@ -220,10 +148,8 @@ export function Problem() {
           <div>
             <h2 className="mk-h2 max-w-[16ch] text-balance text-[var(--mk-ink)]">
               {PROBLEM.headline}
+              <PenUnderline>{PROBLEM.headlineWord}</PenUnderline>
             </h2>
-            <p className="mk-body-lg mt-5 max-w-[48ch] text-[var(--mk-ink-2)]">
-              {PROBLEM.intro}
-            </p>
             <p className="mk-body-lg mt-5 max-w-[48ch] border-l-2 border-[var(--mk-accent)] pl-4 font-medium text-[var(--mk-ink)]">
               {PROBLEM.resolution}
             </p>
