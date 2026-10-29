@@ -21,6 +21,11 @@
     /* --color-primary is the same green — used throughout the UI */
     --color-primary: #1F7A5A;
     --color-primary-hover: #195F47;
+    /* Auth/onboarding keeps the original brand backdrop regardless of the
+       named app theme selected inside the product. */
+    --hf-auth-brand: #1f7a5a;
+    --hf-auth-brand-hover: #195f47;
+    --hf-auth-sheet: #fafafa;
     --color-status-success: #15803D;
     --color-status-warning: #D97706;
     --color-status-critical: #DC2626;
@@ -872,6 +877,7 @@
     --mk-accent: #2f6f5e;
     --mk-accent-hover: #255a4c;
     --mk-accent-ink: #ffffff;
+    --mk-pen-accent: #dc2626;
     --color-bg-base: #faf7f2;
     --color-bg-surface: #ffffff;
     --color-bg-elevated: #f1ece3;
@@ -1119,6 +1125,34 @@
     }
   }
 
+
+  /* Auth stays on the original light brand surface even when the signed-in
+     app theme is dark. This also keeps the legacy text utilities readable
+     inside the rising sheet. */
+  .hf-auth-page {
+    color-scheme: light;
+    --hf-auth-brand: #1f7a5a;
+    --hf-auth-sheet: #fafafa;
+    --color-bg-base: #fafafa;
+    --color-bg-surface: #ffffff;
+    --color-bg-elevated: #f0f5f2;
+    --color-bg-secondary: #e9f2ec;
+    --color-text-primary: #111827;
+    --color-text-secondary: #4b5563;
+    --color-text-muted: #6b7280;
+    --color-border: #e5e7eb;
+    --color-border-strong: #9ca3af;
+    --color-accent: #1f7a5a;
+    --color-accent-hover: #195f47;
+    --color-accent-foreground: #ffffff;
+    --color-primary: #1f7a5a;
+    --color-primary-hover: #195f47;
+  }
+
+  .hf-auth-page .bg-white {
+    background-color: #ffffff;
+  }
+
   /* ── Legal prose (SimpleDocs-style content on the canvas) ── */
   .mk-prose > * + * {
     margin-top: 16px;
@@ -1281,107 +1315,6 @@
 
 .mk-step-swap {
   animation: mk-step-swap var(--mk-dur-slow) var(--mk-ease) both;
-}
-
-/* ── Problem media: looping scan and row-by-row update cues ──
-   The two image tiles behave like short screen recordings rather than still
-   screenshots: a scan line sweeps, rows light up in sequence, and small status
-   chips appear and fade. All motion is transform/opacity/colour only. */
-@keyframes mk-process-scan {
-  0% {
-    opacity: 0;
-    transform: translateY(-120%);
-  }
-  10% {
-    opacity: 1;
-  }
-  58% {
-    opacity: 1;
-    transform: translateY(340px);
-  }
-  68%,
-  100% {
-    opacity: 0;
-    transform: translateY(380px);
-  }
-}
-
-@keyframes mk-process-toast {
-  0%,
-  8% {
-    opacity: 0;
-    transform: translateY(5px) scale(0.96);
-  }
-  15%,
-  30% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  40%,
-  100% {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.98);
-  }
-}
-
-@keyframes mk-process-row {
-  0%,
-  100% {
-    background-color: transparent;
-  }
-  10%,
-  26% {
-    background-color: rgba(47, 111, 94, 0.12);
-  }
-}
-
-@keyframes mk-process-row-dark {
-  0%,
-  100% {
-    background-color: transparent;
-  }
-  10%,
-  26% {
-    background-color: rgba(255, 255, 255, 0.12);
-  }
-}
-
-@keyframes mk-process-pill {
-  0%,
-  38% {
-    opacity: 0.35;
-    transform: scale(0.94);
-  }
-  50%,
-  68% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  82%,
-  100% {
-    opacity: 0.45;
-    transform: scale(0.97);
-  }
-}
-
-.mk-process-scan {
-  animation: mk-process-scan 5.4s var(--mk-ease) infinite;
-}
-
-.mk-process-toast {
-  animation: mk-process-toast 5.4s var(--mk-ease) infinite;
-}
-
-.mk-process-row {
-  animation: mk-process-row 4.8s ease-in-out infinite;
-}
-
-.mk-process-row-dark {
-  animation: mk-process-row-dark 4.8s ease-in-out infinite;
-}
-
-.mk-process-pill {
-  animation: mk-process-pill 5.4s ease-in-out infinite;
 }
 
 /* ── Auth page: connected-operations orbit ── */
@@ -1708,11 +1641,6 @@
   .mk-scan-sweep,
   .mk-shimmer,
   .mk-step-swap,
-  .mk-process-scan,
-  .mk-process-toast,
-  .mk-process-row,
-  .mk-process-row-dark,
-  .mk-process-pill,
   .auth-flow-orbit,
   .auth-flow-dot,
   .auth-flow-ring,

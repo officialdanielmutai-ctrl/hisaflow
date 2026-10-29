@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { Package, Wallet } from 'lucide-react'
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/inventory',
+}))
+
 import {
   FeatureWalkthrough,
   buildWalkthroughSteps,
@@ -14,6 +20,7 @@ const STEPS: WalkthroughStep[] = [
     description: 'Inventory description',
     detail: 'Sidebar → Inventory',
     href: '/inventory',
+    target: '[data-walkthrough-href="/inventory"], main',
     icon: Package,
   },
   {
@@ -22,6 +29,7 @@ const STEPS: WalkthroughStep[] = [
     description: 'Finance description',
     detail: 'Sidebar → Finance',
     href: '/finance',
+    target: '[data-walkthrough-href="/finance"], main',
     icon: Wallet,
   },
 ]
@@ -46,7 +54,7 @@ describe('FeatureWalkthrough', () => {
       screen.getByRole('heading', { name: 'Keep the money straight' })
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Get started' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish tour' }))
     expect(onComplete).toHaveBeenCalledTimes(1)
   })
 
@@ -62,9 +70,49 @@ describe('FeatureWalkthrough', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Skip tour' }))
     expect(onSkip).toHaveBeenCalledTimes(1)
     expect(onComplete).not.toHaveBeenCalled()
+  })
+
+  it('unlocks the AI step only after the user types a message', async () => {
+    vi.useFakeTimers()
+    const aiStep: WalkthroughStep = {
+      id: 'assistant',
+      title: 'Ask HisaFlow',
+      description: 'Try the assistant',
+      detail: 'Sidebar → Assistant',
+      href: '/inventory',
+      target: '[data-walkthrough="assistant-input"]',
+      icon: Package,
+    }
+
+    render(
+      <>
+        <textarea
+          data-walkthrough="assistant-input"
+          aria-label="Assistant message"
+        />
+        <FeatureWalkthrough
+          open
+          steps={[aiStep, STEPS[1]]}
+          onSkip={vi.fn()}
+          onComplete={vi.fn()}
+        />
+      </>
+    )
+
+    const next = screen.getByRole('button', { name: /Next feature/ })
+    expect(next).toBeDisabled()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    fireEvent.input(screen.getByLabelText('Assistant message'), {
+      target: { value: 'What should I reorder?' },
+    })
+    expect(next).toBeEnabled()
+    vi.useRealTimers()
   })
 
   it('adapts the vertical step to the business type', () => {

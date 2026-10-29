@@ -1,12 +1,22 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { createPortal } from 'react-dom'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Bell,
   BedDouble,
   Briefcase,
   CalendarCheck,
+  ChevronLeft,
+  ChevronRight,
   Compass,
   GraduationCap,
   LayoutDashboard,
@@ -17,6 +27,7 @@ import {
   UtensilsCrossed,
   Wallet,
   Wifi,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -27,8 +38,19 @@ export interface WalkthroughStep {
   description: string
   detail: string
   href: string
+  /** The visible feature to circle. Falls back to a content spotlight. */
+  target: string
   icon: LucideIcon
 }
+
+interface SpotlightRect {
+  top: number
+  left: number
+  width: number
+  height: number
+}
+
+const NAV = (href: string) => `[data-walkthrough-href="${href}"], main`
 
 function verticalStep(businessType: string | null): WalkthroughStep {
   switch (businessType) {
@@ -40,6 +62,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'See arrivals and departures, keep guest history together and put room charges and consumption on one bill.',
         detail: 'Sidebar → Bookings',
         href: '/bookings',
+        target: NAV('/bookings'),
         icon: BedDouble,
       }
     case 'ISP':
@@ -50,6 +73,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Keep subscribers, service plans, invoices and technician work orders in one place.',
         detail: 'Sidebar → Subscribers',
         href: '/subscribers',
+        target: NAV('/subscribers'),
         icon: Wifi,
       }
     case 'SCHOOL':
@@ -60,6 +84,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Track students, class lists, fee balances and term payments without digging through spreadsheets.',
         detail: 'Sidebar → Students',
         href: '/students',
+        target: NAV('/students'),
         icon: GraduationCap,
       }
     case 'RESTAURANT':
@@ -70,6 +95,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Run table orders, settle bills and keep the kitchen queue visible at a glance.',
         detail: 'Sidebar → Table orders',
         href: '/table-orders',
+        target: NAV('/table-orders'),
         icon: UtensilsCrossed,
       }
     case 'CHEMIST':
@@ -80,6 +106,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Track stock batches and expiry dates so near-expiry items are flagged before they become a loss.',
         detail: 'Sidebar → Inventory',
         href: '/inventory',
+        target: NAV('/inventory'),
         icon: Pill,
       }
     case 'WHOLESALER':
@@ -90,6 +117,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Set tiered prices by quantity and keep credit balances visible while you sell.',
         detail: 'Sidebar → Inventory',
         href: '/inventory',
+        target: NAV('/inventory'),
         icon: Briefcase,
       }
     default:
@@ -100,6 +128,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Record a sale, receive stock and see the daily totals update in one place.',
         detail: 'Sidebar → Transactions',
         href: '/transactions',
+        target: NAV('/transactions'),
         icon: ShoppingCart,
       }
   }
@@ -117,6 +146,7 @@ export function buildWalkthroughSteps(
         'Home brings today’s sales, stock health, payments and the things that need attention into one view.',
       detail: 'Sidebar → Home',
       href: '/dashboard',
+      target: NAV('/dashboard'),
       icon: LayoutDashboard,
     },
     {
@@ -126,6 +156,7 @@ export function buildWalkthroughSteps(
         'Search stock, add items, scan barcodes and catch low stock before a customer asks.',
       detail: 'Sidebar → Inventory',
       href: '/inventory',
+      target: NAV('/inventory'),
       icon: Package,
     },
     {
@@ -135,6 +166,7 @@ export function buildWalkthroughSteps(
         'Take a sale, receive stock or make an adjustment. Every change lands in the ledger with an audit trail.',
       detail: 'Sidebar → Transactions',
       href: '/transactions',
+      target: NAV('/transactions'),
       icon: ShoppingCart,
     },
     {
@@ -144,15 +176,17 @@ export function buildWalkthroughSteps(
         'See cash flow, profit, tax and outstanding credit without rebuilding a spreadsheet at month-end.',
       detail: 'Sidebar → Finance',
       href: '/finance',
+      target: NAV('/finance'),
       icon: Wallet,
     },
     {
       id: 'assistant',
       title: 'Ask HisaFlow',
       description:
-        'Describe a delivery or ask what to reorder. The assistant proposes changes and you stay in control of what is confirmed.',
+        'Describe a delivery or ask what to reorder. Try typing a question in the assistant below, then continue the tour.',
       detail: 'Sidebar → Assistant',
       href: '/assistant',
+      target: '[data-walkthrough="assistant-input"], main',
       icon: Sparkles,
     },
   ]
@@ -167,18 +201,44 @@ export function buildWalkthroughSteps(
         'Low stock, expiring batches, tax issues and other operational alerts surface in one attention feed.',
       detail: 'Sidebar → Alerts',
       href: '/alerts',
+      target: NAV('/alerts'),
       icon: Bell,
     },
     {
       id: 'customise',
       title: 'Make Home yours',
       description:
-        'Long-press, right-click or use the ⋯ menu on a Home card to reorder, resize or restyle it. Your layout is saved.',
+        'Use the CUSTOMISE HOME control to reorder, resize or restyle your Home cards. Your layout is saved.',
       detail: 'Home → CUSTOMISE HOME',
       href: '/dashboard',
+      target: '[data-walkthrough="customise-home"], main',
       icon: CalendarCheck,
     },
   ]
+}
+
+function visibleTarget(selector: string): HTMLElement | null {
+  if (typeof document === 'undefined') return null
+  const candidates = Array.from(
+    document.querySelectorAll<HTMLElement>(selector)
+  )
+  return (
+    candidates.find((element) => {
+      const rect = element.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0
+    }) ?? null
+  )
+}
+
+function contentSpotlight(): SpotlightRect {
+  const width = Math.min(window.innerWidth - 48, 760)
+  const height = Math.min(window.innerHeight * 0.55, 460)
+  return {
+    left: Math.max(24, (window.innerWidth - width) / 2),
+    top: Math.max(88, window.innerHeight * 0.16),
+    width,
+    height,
+  }
 }
 
 export function FeatureWalkthrough({
@@ -193,18 +253,108 @@ export function FeatureWalkthrough({
   onComplete: () => void
 }) {
   const [index, setIndex] = useState(0)
-  const panelRef = useRef<HTMLDivElement>(null)
+  const [rect, setRect] = useState<SpotlightRect | null>(null)
+  const [viewport, setViewport] = useState({ width: 0, height: 0 })
+  const [assistantHasInput, setAssistantHasInput] = useState(false)
+  const tooltipRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const step = steps[Math.min(index, steps.length - 1)]
+  const isLast = index === steps.length - 1
+  const isAssistant = step?.id === 'assistant'
 
   useEffect(() => {
     if (open) setIndex(0)
   }, [open])
 
+  // Navigate to the feature this step is introducing.
+  useEffect(() => {
+    if (!open || !step) return
+    if (pathname !== step.href) router.push(step.href)
+  }, [open, pathname, router, step])
+
+  const measure = useCallback(() => {
+    if (typeof window === 'undefined' || !step) return
+    setViewport({ width: window.innerWidth, height: window.innerHeight })
+
+    const target = visibleTarget(step.target)
+    if (!target) {
+      setRect(contentSpotlight())
+      return
+    }
+
+    const targetRect = target.getBoundingClientRect()
+    if (
+      targetRect.top < 88 ||
+      targetRect.bottom > window.innerHeight - 96
+    ) {
+      if (target.tagName !== 'MAIN') {
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
+    }
+
+    const measured = target.getBoundingClientRect()
+    if (measured.height > window.innerHeight * 0.8) {
+      setRect(contentSpotlight())
+      return
+    }
+
+    setRect({
+      top: Math.max(8, measured.top - 6),
+      left: Math.max(8, measured.left - 6),
+      width: measured.width + 12,
+      height: measured.height + 12,
+    })
+  }, [step])
+
+  // Measure once the route has painted, and keep the ring aligned on scroll.
+  useEffect(() => {
+    if (!open || !step) return
+    if (pathname !== step.href) {
+      setRect(null)
+      return
+    }
+    const timer = window.setTimeout(measure, 380)
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+    }
+  }, [measure, open, pathname, step])
+
+  // The AI step only unlocks once the user has actually typed a message.
+  useEffect(() => {
+    if (!open || !isAssistant) {
+      setAssistantHasInput(false)
+      return
+    }
+    let input: HTMLTextAreaElement | null = null
+    const onInput = () => {
+      setAssistantHasInput(Boolean(input?.value.trim()))
+    }
+    const attach = () => {
+      input = document.querySelector<HTMLTextAreaElement>(
+        '[data-walkthrough="assistant-input"]'
+      )
+      if (!input) return
+      setAssistantHasInput(Boolean(input.value.trim()))
+      input.addEventListener('input', onInput)
+    }
+    const timer = window.setTimeout(attach, 400)
+    return () => {
+      window.clearTimeout(timer)
+      input?.removeEventListener('input', onInput)
+    }
+  }, [isAssistant, open, pathname])
+
   useEffect(() => {
     if (!open) return
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    panelRef.current?.focus()
-
+    tooltipRef.current?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onSkip()
     }
@@ -213,120 +363,155 @@ export function FeatureWalkthrough({
       window.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
     }
-  }, [open, onSkip])
+  }, [open, onSkip, index])
 
-  if (!open || steps.length === 0 || typeof document === 'undefined') {
+  const tooltipStyle = useMemo<CSSProperties>(() => {
+    if (!rect || viewport.width === 0) return {}
+    const width = Math.min(360, viewport.width - 32)
+
+    if (viewport.width < 768) return {}
+
+    const leftOnLeft = rect.left < viewport.width * 0.35
+    const nearBottom = rect.top + rect.height > viewport.height - 170
+    let left = rect.left + rect.width + 20
+    let top = rect.top
+
+    if (!leftOnLeft) {
+      left = rect.left + rect.width / 2 - width / 2
+    }
+    if (nearBottom) {
+      top = rect.top - 290
+    }
+
+    return {
+      width,
+      left: Math.min(
+        Math.max(16, left),
+        Math.max(16, viewport.width - width - 16)
+      ),
+      top: Math.min(
+        Math.max(16, top),
+        Math.max(16, viewport.height - 300)
+      ),
+    }
+  }, [rect, viewport])
+
+  if (
+    !open ||
+    !step ||
+    steps.length === 0 ||
+    typeof document === 'undefined'
+  ) {
     return null
   }
 
-  const step = steps[Math.min(index, steps.length - 1)]
   const Icon = step.icon
-  const isLast = index === steps.length - 1
+  const canContinue = !isAssistant || assistantHasInput
 
   return createPortal(
-    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+    <div className="pointer-events-none fixed inset-0 z-[140]">
+      <div className="pointer-events-none absolute inset-0 bg-black/10" />
+      {rect && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed rounded-[20px] border-2 border-[var(--hf-accent-default)] shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_30px_rgba(45,212,191,0.28)] transition-all duration-300"
+          style={{
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+          }}
+        >
+          <span className="absolute -inset-1 animate-pulse rounded-[24px] border border-[var(--hf-accent-default)]/50" />
+        </div>
+      )}
+
       <div
-        ref={panelRef}
+        ref={tooltipRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="walkthrough-title"
         tabIndex={-1}
-        className="relative flex max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[28px] border border-[var(--hf-border-subtle)] bg-[var(--hf-bg-surface)] shadow-[0_28px_80px_-24px_rgba(0,0,0,0.55)] outline-none"
+        className={cn(
+          'pointer-events-auto fixed max-h-[76vh] overflow-y-auto rounded-[24px] border border-[var(--hf-border-subtle)] bg-[var(--hf-bg-surface)] p-5 shadow-[0_28px_80px_-20px_rgba(0,0,0,0.55)] outline-none sm:p-6',
+          viewport.width < 768 || !rect
+            ? 'inset-x-4 top-1/2 -translate-y-1/2'
+            : ''
+        )}
+        style={viewport.width < 768 || !rect ? undefined : tooltipStyle}
       >
-        <aside className="hidden w-[250px] shrink-0 flex-col bg-[var(--hf-accent-default)] p-6 text-[var(--hf-accent-foreground)] md:flex">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] opacity-70">
-            HisaFlow tour
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--hf-text-muted)]">
+            Step {index + 1} of {steps.length}
           </p>
-          <p className="mt-2 text-lg font-bold leading-tight">
-            A quick look around your workspace
-          </p>
-          <ol className="mt-6 flex flex-1 flex-col gap-1 overflow-y-auto">
-            {steps.map((item, itemIndex) => {
-              const StepIcon = item.icon
-              const active = itemIndex === index
-              return (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => setIndex(itemIndex)}
-                    className={cn(
-                      'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[11px] font-semibold transition-colors',
-                      active
-                        ? 'bg-white/15 text-[var(--hf-accent-foreground)]'
-                        : 'text-[var(--hf-accent-foreground)] opacity-65 hover:opacity-100'
-                    )}
-                  >
-                    <StepIcon className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{item.title}</span>
-                  </button>
-                </li>
-              )
-            })}
-          </ol>
           <button
             type="button"
             onClick={onSkip}
-            className="mt-4 self-start text-[11px] font-semibold underline underline-offset-4 opacity-75 transition-opacity hover:opacity-100"
+            className="rounded-full p-1.5 text-[var(--hf-text-muted)] transition-colors hover:bg-[var(--hf-bg-elevated)] hover:text-[var(--hf-text-primary)]"
+            aria-label="Skip walkthrough"
           >
-            Skip the tour
+            <X className="h-4 w-4" />
           </button>
-        </aside>
+        </div>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center justify-between gap-3 px-5 pt-5 sm:px-7">
-            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--hf-text-muted)]">
-              Step {index + 1} of {steps.length}
-            </span>
+        <div className="mt-4 flex h-12 w-12 items-center justify-center rounded-[18px] bg-[var(--hf-accent-subtle)] text-[var(--hf-accent-default)]">
+          <Icon className="h-6 w-6" strokeWidth={1.6} />
+        </div>
+        <h2
+          id="walkthrough-title"
+          className="mt-4 text-xl font-black tracking-tight text-[var(--hf-text-primary)]"
+        >
+          {step.title}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--hf-text-secondary)]">
+          {step.description}
+        </p>
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--hf-border-subtle)] bg-[var(--hf-bg-elevated)] px-3 py-1.5 text-[10px] font-semibold text-[var(--hf-text-secondary)]">
+          <Compass className="h-3.5 w-3.5 text-[var(--hf-accent-default)]" />
+          {step.detail}
+        </div>
+
+        {isAssistant && (
+          <p className="mt-4 rounded-xl border border-[var(--hf-accent-default)]/30 bg-[var(--hf-accent-subtle)] px-3 py-2 text-[11px] font-medium leading-relaxed text-[var(--hf-text-secondary)]">
+            {assistantHasInput
+              ? 'Nice. You can continue the tour now, or send the message to see the assistant respond.'
+              : 'Try it: type a message in the assistant composer below. This step unlocks your next feature once you start typing.'}
+          </p>
+        )}
+
+        <div className="mt-5 flex items-center gap-1.5">
+          {steps.map((item, itemIndex) => (
+            <span
+              key={item.id}
+              className={cn(
+                'h-1.5 rounded-full transition-all',
+                itemIndex === index
+                  ? 'w-6 bg-[var(--hf-accent-default)]'
+                  : itemIndex < index
+                    ? 'w-1.5 bg-[var(--hf-accent-default)]/50'
+                    : 'w-1.5 bg-[var(--hf-border-subtle)]'
+              )}
+            />
+          ))}
+        </div>
+
+        <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--hf-border-subtle)] pt-4">
+          <button
+            type="button"
+            onClick={() => setIndex((current) => Math.max(0, current - 1))}
+            disabled={index === 0}
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--hf-border-subtle)] px-3 py-1.5 text-[11px] font-semibold text-[var(--hf-text-secondary)] transition-colors hover:bg-[var(--hf-bg-elevated)] disabled:opacity-40"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Back
+          </button>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onSkip}
-              className="rounded-full border border-[var(--hf-border-subtle)] px-3 py-1 text-[11px] font-semibold text-[var(--hf-text-secondary)] transition-colors hover:bg-[var(--hf-bg-elevated)] md:hidden"
+              className="rounded-full px-2 py-1.5 text-[11px] font-semibold text-[var(--hf-text-muted)] hover:text-[var(--hf-text-primary)]"
             >
-              Skip
-            </button>
-            <div className="hidden items-center gap-1 md:flex">
-              {steps.map((item, itemIndex) => (
-                <span
-                  key={item.id}
-                  className={cn(
-                    'h-1.5 rounded-full transition-all',
-                    itemIndex === index
-                      ? 'w-6 bg-[var(--hf-accent-default)]'
-                      : 'w-1.5 bg-[var(--hf-border-subtle)]'
-                  )}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-7 sm:py-8">
-            <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-[var(--hf-accent-subtle)] text-[var(--hf-accent-default)] shadow-[var(--hf-shadow-card)]">
-              <Icon className="h-8 w-8" strokeWidth={1.5} />
-            </div>
-            <h2
-              id="walkthrough-title"
-              className="mt-5 text-2xl font-black tracking-tight text-[var(--hf-text-primary)] sm:text-3xl"
-            >
-              {step.title}
-            </h2>
-            <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-[var(--hf-text-secondary)]">
-              {step.description}
-            </p>
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--hf-border-subtle)] bg-[var(--hf-bg-elevated)] px-3 py-1.5 text-[11px] font-semibold text-[var(--hf-text-secondary)]">
-              <Compass className="h-3.5 w-3.5 text-[var(--hf-accent-default)]" />
-              {step.detail}
-              <span className="text-[var(--hf-text-muted)]">· {step.href}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 border-t border-[var(--hf-border-subtle)] px-5 py-4 sm:px-7">
-            <button
-              type="button"
-              onClick={() => setIndex((current) => Math.max(0, current - 1))}
-              disabled={index === 0}
-              className="rounded-full border border-[var(--hf-border-subtle)] px-4 py-2 text-xs font-semibold text-[var(--hf-text-secondary)] transition-colors hover:bg-[var(--hf-bg-elevated)] disabled:opacity-40"
-            >
-              Back
+              Skip tour
             </button>
             <button
               type="button"
@@ -334,9 +519,11 @@ export function FeatureWalkthrough({
                 if (isLast) onComplete()
                 else setIndex((current) => current + 1)
               }}
-              className="rounded-full bg-[var(--hf-accent-default)] px-5 py-2 text-xs font-bold text-[var(--hf-accent-foreground)] transition-opacity hover:opacity-90"
+              disabled={!canContinue}
+              className="inline-flex items-center gap-1 rounded-full bg-[var(--hf-accent-default)] px-4 py-1.5 text-[11px] font-bold text-[var(--hf-accent-foreground)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {isLast ? 'Get started' : 'Next feature'}
+              {isLast ? 'Finish tour' : 'Next feature'}
+              {!isLast && <ChevronRight className="h-3.5 w-3.5" />}
             </button>
           </div>
         </div>

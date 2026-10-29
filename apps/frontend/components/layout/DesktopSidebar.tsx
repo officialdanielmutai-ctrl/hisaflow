@@ -147,6 +147,7 @@ export default function DesktopSidebar() {
               >
                 <Link
                   href={item.href}
+                  data-walkthrough-href={item.href}
                   className={cn(
                     'relative flex h-10 w-10 items-center justify-center rounded-xl transition-all',
                     isActive
@@ -193,6 +194,7 @@ export default function DesktopSidebar() {
               >
                 <Link
                   href={item.href}
+                  data-walkthrough-href={item.href}
                   className={cn(
                     'relative flex h-10 w-10 items-center justify-center rounded-xl transition-all',
                     isActive

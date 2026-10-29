@@ -105,6 +105,7 @@ export default function BottomNav({ className }: { className?: string } = {}) {
               <Link
                 key={tab.label}
                 href={tab.href}
+                data-walkthrough-href={tab.href.split('?')[0]}
                 className="flex flex-col items-center justify-center -mt-6"
               >
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-accent)] shadow-lg shadow-green-200">
@@ -121,6 +122,7 @@ export default function BottomNav({ className }: { className?: string } = {}) {
             <Link
               key={tab.href}
               href={tab.href}
+              data-walkthrough-href={tab.href.split('?')[0]}
               className="flex flex-col items-center justify-center gap-1 flex-1 h-full pt-2"
             >
               <tab.icon

@@ -485,6 +485,7 @@ export function AssistantPanel() {
           </label>
           <textarea
             id="assistant-input"
+            data-walkthrough="assistant-input"
             ref={composerRef}
             rows={1}
             value={input}

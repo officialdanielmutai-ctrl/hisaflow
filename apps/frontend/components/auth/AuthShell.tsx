@@ -9,7 +9,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
   const isSignUp = pathname?.includes('sign-up');
 
   return (
-    <main className="flex flex-col min-h-screen bg-[var(--color-primary)]">
+    <main className="hf-auth-page flex flex-col min-h-screen bg-[var(--hf-auth-brand)]">
       {/* BRAND ZONE (Top ~42%) */}
       <div className="relative flex-shrink-0 h-[40vh] md:h-[45vh] w-full overflow-visible">
         {/* Wordmark (Pulled away from shapes, upper-left) */}
@@ -25,7 +25,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* FORM AREA (Rises over brand zone, continuous to bottom) */}
-      <div className="flex-grow bg-[#FAFAFA] rounded-t-[32px] w-full flex justify-center px-4 pt-10 pb-12 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] relative z-20">
+      <div className="flex-grow bg-[var(--hf-auth-sheet)] rounded-t-[32px] w-full flex justify-center px-4 pt-10 pb-12 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] relative z-20">
         <div className="w-full max-w-[420px]">
           {/* Custom Headline & Subhead to replace Clerk's hidden ones */}
           <div className="mb-8 px-2">

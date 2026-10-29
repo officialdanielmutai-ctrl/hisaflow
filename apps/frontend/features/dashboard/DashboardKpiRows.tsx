@@ -643,6 +643,7 @@ export function DashboardKpiRows<TData>({
               onClick={beginEdit}
               className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-1.5 text-[11px] font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
               aria-label="Customise Home"
+              data-walkthrough="customise-home"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
               Customise

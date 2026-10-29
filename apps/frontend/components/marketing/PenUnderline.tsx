@@ -104,7 +104,7 @@ export function PenUnderline({
         viewBox="0 0 240 28"
         preserveAspectRatio="none"
         fill="none"
-        className="pointer-events-none absolute -bottom-[0.14em] left-[-0.08em] -z-10 h-[0.5em] w-[calc(100%+0.16em)] overflow-visible"
+        className="pointer-events-none absolute -bottom-[0.07em] left-[-0.06em] -z-10 h-[0.34em] w-[calc(100%+0.12em)] overflow-visible"
       >
         {STROKES.map((d, index) => (
           <path
@@ -113,11 +113,11 @@ export function PenUnderline({
               pathRefs.current[index] = node
             }}
             d={d}
-            stroke="var(--mk-accent)"
-            strokeWidth={index === 0 ? 3.4 : 2.4}
+            stroke="var(--mk-pen-accent)"
+            strokeWidth={index === 0 ? 3.2 : 2.3}
             strokeLinecap="round"
             strokeLinejoin="round"
-            opacity={index === 0 ? 0.95 : 0.72}
+            opacity={index === 0 ? 1 : 0.78}
             vectorEffect="non-scaling-stroke"
           />
         ))}
