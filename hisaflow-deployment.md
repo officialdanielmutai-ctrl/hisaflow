@@ -11,11 +11,11 @@ This document records how the marketing site and the authenticated app are hoste
 
 | Surface        | Domain                                       | Serves                                                    |
 | -------------- | -------------------------------------------- | --------------------------------------------------------- |
-| Marketing site | `hisaflow.co.ke` (apex)                      | Landing page, `/legal/*`, `sitemap.xml`, `robots.txt`     |
-| App            | `app.hisaflow.co.ke`                         | Dashboard, onboarding, paywall, settings, sign-in/sign-up |
-| Backend API    | `api.hisaflow.co.ke` (or the platform's URL) | `NEXT_PUBLIC_API_URL`                                     |
+| Marketing site | `hisaflow.com` (apex)                      | Landing page, `/legal/*`, `sitemap.xml`, `robots.txt`     |
+| App            | `app.hisaflow.com`                         | Dashboard, onboarding, paywall, settings, sign-in/sign-up |
+| Backend API    | `api.hisaflow.com` (or the platform's URL) | `NEXT_PUBLIC_API_URL`                                     |
 
-`www.hisaflow.co.ke` redirects to the apex. The apex and the app subdomain are **two domains on one deployment**; host-aware routing in `apps/frontend/middleware.ts` decides what each host may serve.
+`www.hisaflow.com` redirects to the apex. The apex and the app subdomain are **two domains on one deployment**; host-aware routing in `apps/frontend/middleware.ts` decides what each host may serve.
 
 ## 2. Hosting (Vercel, pnpm monorepo)
 
@@ -23,9 +23,9 @@ This document records how the marketing site and the authenticated app are hoste
 2. Set **Root Directory** to `apps/frontend` so Vercel installs from the workspace root and builds the Next.js app.
 3. Framework preset: **Next.js** (default). Build command `pnpm build`, output handled by the framework.
 4. Add both domains to the project (Project → Settings → Domains):
-   - `hisaflow.co.ke` (primary)
-   - `www.hisaflow.co.ke` → redirect to `hisaflow.co.ke`
-   - `app.hisaflow.co.ke`
+   - `hisaflow.com` (primary)
+   - `www.hisaflow.com` → redirect to `hisaflow.com`
+   - `app.hisaflow.com`
 5. DNS (at the registrar, `.co.ke`):
    - `A` `@` → Vercel's `76.76.21.21` (or the value Vercel shows)
    - `CNAME` `www` → `cname.vercel-dns.com`
@@ -61,9 +61,9 @@ Set these for **Production** (and, where sensible, Preview) in the host dashboar
 
 | Variable                                                 | Production value             | Notes                                                                                                                                |
 | -------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_SITE_URL`                                   | `https://hisaflow.co.ke`     | Canonical origin: metadata, Open Graph, sitemap, robots, JSON-LD                                                                     |
-| `NEXT_PUBLIC_APP_URL`                                    | `https://app.hisaflow.co.ke` | Opt-in split: auth CTAs become absolute and middleware routes app paths to the subdomain. Leave unset for single-origin dev/preview. |
-| `NEXT_PUBLIC_API_URL`                                    | `https://api.hisaflow.co.ke` | Backend base URL                                                                                                                     |
+| `NEXT_PUBLIC_SITE_URL`                                   | `https://hisaflow.com`     | Canonical origin: metadata, Open Graph, sitemap, robots, JSON-LD                                                                     |
+| `NEXT_PUBLIC_APP_URL`                                    | `https://app.hisaflow.com` | Opt-in split: auth CTAs become absolute and middleware routes app paths to the subdomain. Leave unset for single-origin dev/preview. |
+| `NEXT_PUBLIC_API_URL`                                    | `https://api.hisaflow.com` | Backend base URL                                                                                                                     |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` | from Clerk                   | Must include both production domains in Clerk's allowed origins                                                                      |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL`                          | `/sign-in`                   | Path, resolved on the app subdomain                                                                                                  |
 | `NEXT_PUBLIC_CLERK_SIGN_UP_URL`                          | `/sign-up`                   | Path, resolved on the app subdomain                                                                                                  |
@@ -85,14 +85,14 @@ Set these on the backend host; they are **not** `NEXT_PUBLIC_*` and must never b
 | `PAYSTACK_SECRET_KEY` | live secret key | Used for API calls and webhook HMAC-SHA512 verification |
 | `PAYSTACK_PUBLIC_KEY` | live public key | Stored for reference/future inline checkout; the current redirect flow does not need it client-side |
 | `PAYSTACK_BASE_URL` | `https://api.paystack.co` | Live API origin |
-| `FRONTEND_URL` | `https://app.hisaflow.co.ke` | CORS origin for the customer app |
-| `ADMIN_URL` | `https://admin.hisaflow.co.ke` | Optional CORS origin for the admin app |
+| `FRONTEND_URL` | `https://app.hisaflow.com` | CORS origin for the customer app |
+| `ADMIN_URL` | `https://admin.hisaflow.com` | Optional CORS origin for the admin app |
 | `CORS_ORIGINS` | comma-separated origins | Optional extra allowed origins (for example a preview domain) |
 
 After deploying with live keys, open **Paystack Dashboard → Settings → API Keys & Webhooks → Webhook URL** and set it to:
 
 ```text
-https://<backend-host>/webhooks/paystack
+https://api.hisaflow.com/webhooks/paystack
 ```
 
 This route is public by design; Paystack cannot present a Clerk session, so the HMAC signature over the raw request body is the trust boundary. The response is `200` within Paystack's timeout and processing continues asynchronously. Keep the same secret key on the server after rotation, or webhook verification will fail.
@@ -129,7 +129,7 @@ Authenticated visitors landing on the apex `/` still go to the dashboard, now di
 2. CI (`typecheck`, `lint`, tests, `build`) is green on the release branch / PR.
 3. Production env vars from Section 3 are set on the host.
 4. Both domains resolve and show valid TLS certificates.
-5. `https://hisaflow.co.ke/` renders the landing page; `https://app.hisaflow.co.ke/` lands on `/dashboard`.
-6. `https://hisaflow.co.ke/sitemap.xml` and `/robots.txt` return the apex origin.
+5. `https://hisaflow.com/` renders the landing page; `https://app.hisaflow.com/` lands on `/dashboard`.
+6. `https://hisaflow.com/sitemap.xml` and `/robots.txt` return the apex origin.
 7. Authenticated `/` on the apex redirects to the app subdomain.
 8. Lighthouse mobile meets the Section 5.4 budget on the marketing URL.

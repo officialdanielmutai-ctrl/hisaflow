@@ -27,7 +27,7 @@ export const SITE = {
  * via `NEXT_PUBLIC_SITE_URL` before launch.
  */
 export function siteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hisaflow.co.ke').replace(
+  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hisaflow.com').replace(
     /\/+$/,
     '',
   );
@@ -35,7 +35,7 @@ export function siteUrl(): string {
 
 /**
  * Origin of the authenticated app. The marketing site owns the apex domain and
- * the app can live on a subdomain (default `https://app.hisaflow.co.ke`). Set
+ * the app can live on a subdomain (default `https://app.hisaflow.com`). Set
  * `NEXT_PUBLIC_APP_URL` to the app origin in production; leave it unset for a
  * single-origin local setup, where every auth CTA stays a relative path.
  */

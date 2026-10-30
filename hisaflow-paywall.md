@@ -210,7 +210,7 @@ Per direction: unresolved open questions are defaulted rather than left blocking
 | F2. Admin — Manual actions | API | ☐ Not started | Each action must itself be audit-logged |
 | F2. Admin — Manual actions | Frontend | ☐ Not started | |
 | F3. Admin — Reconciliation view (stretch) | API + Frontend | ☐ Not started | Not required for Phase F sign-off |
-| Live Paystack connection | Env + provisioning | ☑ Done (2026-10-30) | Backend now carries live-mode Paystack credentials in its ignored `.env`; the live Paystack account reports KES balance and the Solo/Team plans were created and persisted (`PLN_0vfeyu6qrkzw8xa` / `PLN_bfz6rit98l8ks1d`). Webhook signature verification uses the same live secret. The Paystack dashboard webhook URL still needs to be pointed at `<backend-host>/webhooks/paystack`; rotate the exposed live keys after handoff. |
+| Live Paystack connection | Env + provisioning | ☑ Done (2026-10-30) | Backend now carries live-mode Paystack credentials in its ignored `.env`; the live Paystack account reports KES balance and the Solo/Team plans were created and persisted (`PLN_0vfeyu6qrkzw8xa` / `PLN_bfz6rit98l8ks1d`). Webhook signature verification uses the same live secret. The Paystack dashboard webhook URL still needs to be pointed at `api.hisaflow.com/webhooks/paystack`; rotate the exposed live keys after handoff. |
 
 **How to update:** same convention as the ISP vertical docs — `In progress` when work starts on a row, `Done` once merged with a PR link/date/note. Don't mark a phase's layer done until its "Done when" criteria in Section 5 are actually met.
 

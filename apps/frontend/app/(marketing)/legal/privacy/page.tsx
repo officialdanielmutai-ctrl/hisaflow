@@ -25,8 +25,8 @@ export default function PrivacyPage() {
         HisaFlow is a business management app for Kenyan small businesses,
         built and operated in Kenya. For questions about this policy or your
         data, contact us at{' '}
-        <a href={`mailto:${SITE.contactEmail || 'privacy@hisaflow.co.ke'}`}>
-          {SITE.contactEmail || 'privacy@hisaflow.co.ke'}
+        <a href={`mailto:${SITE.contactEmail || 'privacy@hisaflow.com'}`}>
+          {SITE.contactEmail || 'privacy@hisaflow.com'}
         </a>
         .
       </p>

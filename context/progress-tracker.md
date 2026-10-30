@@ -178,9 +178,9 @@ Update this file after every meaningful implementation change.
   first use. The public key is also available to the frontend as
   `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` for future inline checkout, though the
   current server-initialised redirect flow does not require it. Extended
-  backend CORS to the `hisaflow.co.ke` app/admin origins and documented the
+  backend CORS to the `hisaflow.com` app/admin origins and documented the
   remaining dashboard step: set Paystack’s live webhook URL to
-  `<backend-host>/webhooks/paystack`. The live keys were shared during setup
+  `api.hisaflow.com/webhooks/paystack`. The live keys were shared during setup
   and should be rotated after handoff; rotation must update both the backend
   env and Paystack's webhook signing secret.
 - **2026-10-29 — Walkthrough targeting, AI hand-off and landing polish.**

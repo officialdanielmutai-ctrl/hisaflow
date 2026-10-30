@@ -99,17 +99,17 @@ describe('app origin split (NEXT_PUBLIC_APP_URL)', () => {
 
   it('points auth links at the app subdomain when it is configured', async () => {
     vi.resetModules();
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.hisaflow.co.ke');
-    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://hisaflow.co.ke');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.hisaflow.com');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://hisaflow.com');
     const { signUpHref, signInHref, isSplitDeployment, siteUrl } =
       await import('@/features/marketing/config/site');
 
     expect(isSplitDeployment()).toBe(true);
-    expect(siteUrl()).toBe('https://hisaflow.co.ke');
+    expect(siteUrl()).toBe('https://hisaflow.com');
     expect(signUpHref('TEAM')).toBe(
-      'https://app.hisaflow.co.ke/sign-up?plan=team',
+      'https://app.hisaflow.com/sign-up?plan=team',
     );
-    expect(signInHref()).toBe('https://app.hisaflow.co.ke/sign-in');
+    expect(signInHref()).toBe('https://app.hisaflow.com/sign-in');
     vi.unstubAllEnvs();
   });
 });

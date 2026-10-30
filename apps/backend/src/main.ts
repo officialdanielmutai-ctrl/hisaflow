@@ -19,12 +19,9 @@ async function bootstrap() {
         ...configuredOrigins,
         'http://localhost:3000',
         'http://localhost:3002',
-        'https://hisaflow.co.ke',
-        'https://www.hisaflow.co.ke',
-        'https://app.hisaflow.co.ke',
-        'https://admin.hisaflow.co.ke',
         'https://hisaflow.com',
         'https://www.hisaflow.com',
+        'https://app.hisaflow.com',
         'https://admin.hisaflow.com',
       ].filter((origin): origin is string => Boolean(origin))
     )

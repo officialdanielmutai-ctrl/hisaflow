@@ -107,8 +107,8 @@ export default function TermsPage() {
       <h2>Contact</h2>
       <p>
         Questions about these terms? Contact us at{' '}
-        <a href={`mailto:${SITE.contactEmail || 'support@hisaflow.co.ke'}`}>
-          {SITE.contactEmail || 'support@hisaflow.co.ke'}
+        <a href={`mailto:${SITE.contactEmail || 'support@hisaflow.com'}`}>
+          {SITE.contactEmail || 'support@hisaflow.com'}
         </a>
         .
       </p>
