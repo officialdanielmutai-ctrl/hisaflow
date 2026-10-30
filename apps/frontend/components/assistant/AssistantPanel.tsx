@@ -478,7 +478,10 @@ export function AssistantPanel() {
       )}
 
       {/* Composer */}
-      <div className="fixed inset-x-0 bottom-20 z-20 mx-auto max-w-3xl px-4 pb-safe">
+      <div
+        className="fixed inset-x-0 bottom-20 z-20 mx-auto max-w-3xl px-4 pb-safe"
+        data-walkthrough="assistant-composer"
+      >
         <div className="flex items-end gap-2 rounded-2xl border border-[var(--color-border)] bg-white p-2 shadow-lg">
           <label htmlFor="assistant-input" className="sr-only">
             Message the assistant

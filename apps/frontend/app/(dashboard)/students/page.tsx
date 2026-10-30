@@ -51,7 +51,10 @@ export default function StudentsPage() {
   return (
     <div className="flex flex-col gap-6 pb-24">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div
+        className="flex items-start justify-between"
+        data-walkthrough="feature-students"
+      >
         <div>
           <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Students</h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">Manage school enrollment</p>

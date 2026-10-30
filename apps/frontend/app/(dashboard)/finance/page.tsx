@@ -815,29 +815,31 @@ export default function FinancePage() {
 
   return (
     <div className="flex flex-col gap-4 pb-8">
-      {/* Header */}
-      <h1 className="text-2xl font-bold">Finance</h1>
+      <div className="flex flex-col gap-4" data-walkthrough="feature-finance">
+        {/* Header */}
+        <h1 className="text-2xl font-bold">Finance</h1>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 p-1 rounded-2xl bg-[var(--color-bg-base)] border border-[var(--color-border)]">
-        {[
-          { key: 'overview', label: '📊 Overview' },
-          { key: 'expenses', label: '💸 Expenses' },
-          { key: 'ledger', label: '📒 Ledger' },
-          { key: 'credit', label: '💳 Credit' },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            className={`flex-1 rounded-xl py-2 text-[10px] font-semibold transition-all ${
-              activeTab === tab.key
-                ? 'bg-[var(--color-bg-surface)] shadow text-[var(--color-text-primary)]'
-                : 'text-[var(--color-text-secondary)]'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {/* Tab bar */}
+        <div className="flex gap-1 p-1 rounded-2xl bg-[var(--color-bg-base)] border border-[var(--color-border)]">
+          {[
+            { key: 'overview', label: '📊 Overview' },
+            { key: 'expenses', label: '💸 Expenses' },
+            { key: 'ledger', label: '📒 Ledger' },
+            { key: 'credit', label: '💳 Credit' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as any)}
+              className={`flex-1 rounded-xl py-2 text-[10px] font-semibold transition-all ${
+                activeTab === tab.key
+                  ? 'bg-[var(--color-bg-surface)] shadow text-[var(--color-text-primary)]'
+                  : 'text-[var(--color-text-secondary)]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab content */}

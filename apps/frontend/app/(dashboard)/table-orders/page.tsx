@@ -38,7 +38,10 @@ export default function TableOrdersPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div
+        className="flex items-center justify-between mb-6"
+        data-walkthrough="feature-tables"
+      >
         <h1 className="text-2xl font-bold">Table Orders</h1>
         <OpenTableSheet onOpenSuccess={fetchOrders}>
           <Button>New Order</Button>

@@ -69,7 +69,10 @@ export default function BookingsPage() {
   return (
     <div className="flex flex-col h-full bg-gray-50/50 pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-4 sm:px-6 sm:py-5">
+      <div
+        className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-4 sm:px-6 sm:py-5"
+        data-walkthrough="feature-bookings"
+      >
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Bookings</h1>

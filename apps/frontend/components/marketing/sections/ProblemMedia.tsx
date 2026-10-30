@@ -230,16 +230,33 @@ const ROOM_NOTIFICATIONS = [
   },
 ]
 
-/** Front-desk flow: check a guest in, scroll the room list, then notifications. */
+/** Front-desk flow: check a guest in, scroll the room list, then pull down the
+ *  phone notification shade. The shade brings its own background down with the
+ *  notifications, dims the app behind it, then retracts before the loop. */
 export function AdminMedia() {
   const phase = useProcess(ADMIN_SEQUENCE)
   const scrolled = phase !== 'checkin'
-  const notify = phase === 'notify' || phase === 'settle'
+  const shadeOpen = phase === 'notify'
   const checkedIn = scrolled
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#2d3748]">
-      <div className="absolute inset-x-3 top-3 pb-4">
+      <div
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-0 z-10 bg-black/35 backdrop-blur-[1px] transition-opacity duration-500',
+          shadeOpen ? 'opacity-100' : 'opacity-0'
+        )}
+      />
+
+      <div
+        className={cn(
+          'absolute inset-x-3 top-3 pb-4 transition-all duration-700 ease-[var(--mk-ease)]',
+          shadeOpen
+            ? 'translate-y-4 scale-[0.985] opacity-50 blur-[1.5px]'
+            : 'translate-y-0 scale-100 opacity-100 blur-0'
+        )}
+      >
         <div
           className={cn(
             'transition-transform duration-[900ms] ease-[var(--mk-ease)]',
@@ -336,56 +353,82 @@ export function AdminMedia() {
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex flex-col gap-1.5">
-        {ROOM_NOTIFICATIONS.map((notification, index) => {
-          const Icon = notification.icon
-          const visible =
-            notify && (phase === 'notify' || index < 2 || phase === 'settle')
-          return (
-            <div
-              key={notification.id}
-              className={cn(
-                'flex items-start gap-2 rounded-xl border border-white/10 p-2 shadow-[0_12px_30px_-18px_rgba(0,0,0,0.8)] backdrop-blur-sm transition-all duration-500',
-                notification.tone === 'success'
-                  ? 'bg-[#173b31]'
-                  : notification.tone === 'warning'
-                    ? 'bg-[#3d2f17]'
-                    : 'bg-[#1a3048]',
-                visible
-                  ? 'translate-x-0 opacity-100'
-                  : 'pointer-events-none translate-x-3 opacity-0'
-              )}
-              style={{ transitionDelay: `${index * 180}ms` }}
-            >
-              <span
-                className={cn(
-                  'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
-                  notification.tone === 'success'
-                    ? 'bg-[#7ee2b8] text-[#12352a]'
-                    : notification.tone === 'warning'
-                      ? 'bg-[#f0c36a] text-[#3d2b06]'
-                      : 'bg-[#8ec5ff] text-[#10263d]'
-                )}
-              >
-                <Icon className="h-3 w-3" strokeWidth={2.2} />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-[10px] font-semibold text-white">
-                  {notification.title}
-                </p>
-                <p className="truncate text-[9px] text-white/65">
-                  {notification.detail}
-                </p>
-              </div>
-            </div>
-          )
-        })}
+      <div
+        aria-hidden="true"
+        data-testid="room-notification-shade"
+        data-shade={shadeOpen ? 'open' : 'closed'}
+        className={cn(
+          'absolute inset-0 z-30 flex flex-col overflow-hidden rounded-b-[24px] border-b border-white/10 bg-[#0c151b]/95 shadow-[0_18px_40px_-16px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-transform duration-700 ease-[var(--mk-ease)]',
+          shadeOpen ? 'translate-y-0' : '-translate-y-full'
+        )}
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(126,226,184,0.12),transparent_55%)]" />
+        <div className="relative flex justify-center pt-2">
+          <span className="h-1 w-10 rounded-full bg-white/25" />
+        </div>
+        <div className="relative px-3 pb-3 pt-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-white/45">
+              Notifications
+            </p>
+            <p className="text-[8px] text-white/35">Today · 3</p>
+          </div>
+          <div className="mt-1.5 flex flex-col gap-1">
+            {ROOM_NOTIFICATIONS.map((notification, index) => {
+              const Icon = notification.icon
+              return (
+                <div
+                  key={notification.id}
+                  className={cn(
+                    'flex items-start gap-2 rounded-xl border border-white/10 p-2 shadow-[0_12px_30px_-18px_rgba(0,0,0,0.8)] transition-all duration-300',
+                    notification.tone === 'success'
+                      ? 'bg-[#173b31]'
+                      : notification.tone === 'warning'
+                        ? 'bg-[#3d2f17]'
+                        : 'bg-[#1a3048]',
+                    shadeOpen
+                      ? 'translate-y-0 opacity-100'
+                      : 'translate-y-2 opacity-0'
+                  )}
+                  style={{ transitionDelay: `${index * 110}ms` }}
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
+                      notification.tone === 'success'
+                        ? 'bg-[#7ee2b8] text-[#12352a]'
+                        : notification.tone === 'warning'
+                          ? 'bg-[#f0c36a] text-[#3d2b06]'
+                          : 'bg-[#8ec5ff] text-[#10263d]'
+                    )}
+                  >
+                    <Icon className="h-3 w-3" strokeWidth={2.2} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-[10px] font-semibold text-white">
+                      {notification.title}
+                    </p>
+                    <p className="truncate text-[9px] text-white/65">
+                      {notification.detail}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <div className="relative mt-auto flex flex-col items-center gap-1 pb-4 text-white/35">
+          <span className="h-1 w-8 rounded-full bg-white/20" />
+          <span className="text-[8px] font-semibold uppercase tracking-[0.16em]">
+            Swipe up to return
+          </span>
+        </div>
       </div>
 
       <div
         className={cn(
           'absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-full bg-black/20 px-1.5 py-2 text-white/60 transition-opacity duration-500',
-          scrolled ? 'opacity-0' : 'opacity-100'
+          scrolled || shadeOpen ? 'opacity-0' : 'opacity-100'
         )}
       >
         <ArrowDown className="h-3 w-3 animate-bounce" />

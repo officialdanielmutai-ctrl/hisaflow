@@ -92,52 +92,57 @@ export default function InventoryPage() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Inventory</h1>
-        <div className="flex gap-2">
-          {canEditInventory && (
-            <button
-              onClick={() => setTxSheetOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-bold text-[var(--color-text-primary)]"
-              aria-label="Log transaction"
-            >
-              ↕
-            </button>
-          )}
-          {canAddInventory && (
-            <button
-              onClick={() => setSheetOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)] text-xl font-bold text-white"
-              aria-label="Add item"
-            >
-              +
-            </button>
-          )}
+      <div
+        className="flex flex-col gap-4"
+        data-walkthrough="feature-inventory"
+      >
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Inventory</h1>
+          <div className="flex gap-2">
+            {canEditInventory && (
+              <button
+                onClick={() => setTxSheetOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-bold text-[var(--color-text-primary)]"
+                aria-label="Log transaction"
+              >
+                ↕
+              </button>
+            )}
+            {canAddInventory && (
+              <button
+                onClick={() => setSheetOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)] text-xl font-bold text-white"
+                aria-label="Add item"
+              >
+                +
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Filter pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-        <button
-          onClick={() => setFilter('ALL')}
-          className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
-            filter === 'ALL'
-              ? 'bg-[var(--color-accent)] text-white'
-              : 'bg-muted text-[var(--color-text-secondary)]'
-          }`}
-        >
-          All Items
-        </button>
-        <button
-          onClick={() => setFilter('LOW_STOCK')}
-          className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
-            filter === 'LOW_STOCK'
-              ? 'bg-[var(--color-accent)] text-white'
-              : 'bg-muted text-[var(--color-text-secondary)]'
-          }`}
-        >
-          Low Stock
-        </button>
+        {/* Filter pills */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          <button
+            onClick={() => setFilter('ALL')}
+            className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+              filter === 'ALL'
+                ? 'bg-[var(--color-accent)] text-white'
+                : 'bg-muted text-[var(--color-text-secondary)]'
+            }`}
+          >
+            All Items
+          </button>
+          <button
+            onClick={() => setFilter('LOW_STOCK')}
+            className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+              filter === 'LOW_STOCK'
+                ? 'bg-[var(--color-accent)] text-white'
+                : 'bg-muted text-[var(--color-text-secondary)]'
+            }`}
+          >
+            Low Stock
+          </button>
+        </div>
       </div>
 
       {loading && (

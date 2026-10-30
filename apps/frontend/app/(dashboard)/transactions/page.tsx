@@ -61,28 +61,29 @@ export default function TransactionsPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" data-walkthrough="feature-sales">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Transactions</h1>
+          <SlidersHorizontal className="h-5 w-5 text-[var(--color-text-muted)]" />
+        </div>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Transactions</h1>
-        <SlidersHorizontal className="h-5 w-5 text-[var(--color-text-muted)]" />
-      </div>
-
-      {/* Filter pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-        {FILTER_OPTIONS.map((opt) => (
-          <button
-            key={opt.label}
-            onClick={() => setTypeFilter(opt.value)}
-            className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
-              typeFilter === opt.value
-                ? 'bg-[var(--color-accent)] text-white'
-                : 'bg-muted text-[var(--color-text-secondary)]'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+        {/* Filter pills */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          {FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt.label}
+              onClick={() => setTypeFilter(opt.value)}
+              className={`flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                typeFilter === opt.value
+                  ? 'bg-[var(--color-accent)] text-white'
+                  : 'bg-muted text-[var(--color-text-secondary)]'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Loading skeleton */}

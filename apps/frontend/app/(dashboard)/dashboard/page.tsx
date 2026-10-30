@@ -99,7 +99,12 @@ function StaffDashboard() {
 
   return (
     <div className="flex flex-col gap-6 pb-4">
-      <DashboardGreeting name={firstName} timeOfDay={data.greeting.timeOfDay} />
+      <div data-walkthrough="feature-dashboard">
+        <DashboardGreeting
+          name={firstName}
+          timeOfDay={data.greeting.timeOfDay}
+        />
+      </div>
 
       {/* ── KPI Grid: shared StatCard, per-vertical staff arrangement ── */}
       <DashboardKpiRows rows={STAFF_KPI_ROWS} data={data} />
@@ -299,7 +304,10 @@ function RetailDashboard() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header & Top Operations Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+      <div
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2"
+        data-walkthrough="feature-dashboard"
+      >
         <DashboardGreeting
           name={firstName}
           timeOfDay={timeLabel}

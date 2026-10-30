@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 const STROKES = [
   'M 5 10 C 42 4 78 5 116 8 S 196 12 235 5',
-  'M 10 21 C 48 13 86 19 124 15 S 198 19 232 11',
+  'M 10 28 C 48 21 86 27 124 23 S 198 28 232 20',
 ]
 
 /**
@@ -101,10 +101,10 @@ export function PenUnderline({
       {children}
       <svg
         aria-hidden="true"
-        viewBox="0 0 240 28"
+        viewBox="0 0 240 34"
         preserveAspectRatio="none"
         fill="none"
-        className="pointer-events-none absolute -bottom-[0.07em] left-[-0.06em] -z-10 h-[0.34em] w-[calc(100%+0.12em)] overflow-visible"
+        className="pointer-events-none absolute -bottom-[0.26em] left-[-0.06em] -z-10 h-[0.38em] w-[calc(100%+0.12em)] overflow-visible"
       >
         {STROKES.map((d, index) => (
           <path

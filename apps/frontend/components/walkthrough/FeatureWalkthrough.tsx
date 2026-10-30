@@ -50,7 +50,7 @@ interface SpotlightRect {
   height: number
 }
 
-const NAV = (href: string) => `[data-walkthrough-href="${href}"], main`
+const PAGE = (name: string) => `[data-walkthrough="${name}"], main`
 
 function verticalStep(businessType: string | null): WalkthroughStep {
   switch (businessType) {
@@ -62,7 +62,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'See arrivals and departures, keep guest history together and put room charges and consumption on one bill.',
         detail: 'Sidebar → Bookings',
         href: '/bookings',
-        target: NAV('/bookings'),
+        target: PAGE('feature-bookings'),
         icon: BedDouble,
       }
     case 'ISP':
@@ -73,7 +73,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Keep subscribers, service plans, invoices and technician work orders in one place.',
         detail: 'Sidebar → Subscribers',
         href: '/subscribers',
-        target: NAV('/subscribers'),
+        target: PAGE('feature-subscribers'),
         icon: Wifi,
       }
     case 'SCHOOL':
@@ -84,7 +84,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Track students, class lists, fee balances and term payments without digging through spreadsheets.',
         detail: 'Sidebar → Students',
         href: '/students',
-        target: NAV('/students'),
+        target: PAGE('feature-students'),
         icon: GraduationCap,
       }
     case 'RESTAURANT':
@@ -95,7 +95,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Run table orders, settle bills and keep the kitchen queue visible at a glance.',
         detail: 'Sidebar → Table orders',
         href: '/table-orders',
-        target: NAV('/table-orders'),
+        target: PAGE('feature-tables'),
         icon: UtensilsCrossed,
       }
     case 'CHEMIST':
@@ -106,7 +106,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Track stock batches and expiry dates so near-expiry items are flagged before they become a loss.',
         detail: 'Sidebar → Inventory',
         href: '/inventory',
-        target: NAV('/inventory'),
+        target: PAGE('feature-inventory'),
         icon: Pill,
       }
     case 'WHOLESALER':
@@ -117,7 +117,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Set tiered prices by quantity and keep credit balances visible while you sell.',
         detail: 'Sidebar → Inventory',
         href: '/inventory',
-        target: NAV('/inventory'),
+        target: PAGE('feature-inventory'),
         icon: Briefcase,
       }
     default:
@@ -128,7 +128,7 @@ function verticalStep(businessType: string | null): WalkthroughStep {
           'Record a sale, receive stock and see the daily totals update in one place.',
         detail: 'Sidebar → Transactions',
         href: '/transactions',
-        target: NAV('/transactions'),
+        target: PAGE('feature-sales'),
         icon: ShoppingCart,
       }
   }
@@ -146,7 +146,7 @@ export function buildWalkthroughSteps(
         'Home brings today’s sales, stock health, payments and the things that need attention into one view.',
       detail: 'Sidebar → Home',
       href: '/dashboard',
-      target: NAV('/dashboard'),
+      target: PAGE('feature-dashboard'),
       icon: LayoutDashboard,
     },
     {
@@ -156,7 +156,7 @@ export function buildWalkthroughSteps(
         'Search stock, add items, scan barcodes and catch low stock before a customer asks.',
       detail: 'Sidebar → Inventory',
       href: '/inventory',
-      target: NAV('/inventory'),
+      target: PAGE('feature-inventory'),
       icon: Package,
     },
     {
@@ -166,7 +166,7 @@ export function buildWalkthroughSteps(
         'Take a sale, receive stock or make an adjustment. Every change lands in the ledger with an audit trail.',
       detail: 'Sidebar → Transactions',
       href: '/transactions',
-      target: NAV('/transactions'),
+      target: PAGE('feature-sales'),
       icon: ShoppingCart,
     },
     {
@@ -176,7 +176,7 @@ export function buildWalkthroughSteps(
         'See cash flow, profit, tax and outstanding credit without rebuilding a spreadsheet at month-end.',
       detail: 'Sidebar → Finance',
       href: '/finance',
-      target: NAV('/finance'),
+      target: PAGE('feature-finance'),
       icon: Wallet,
     },
     {
@@ -186,7 +186,7 @@ export function buildWalkthroughSteps(
         'Describe a delivery or ask what to reorder. Try typing a question in the assistant below, then continue the tour.',
       detail: 'Sidebar → Assistant',
       href: '/assistant',
-      target: '[data-walkthrough="assistant-input"], main',
+      target: '[data-walkthrough="assistant-composer"], [data-walkthrough="assistant-input"], main',
       icon: Sparkles,
     },
   ]
@@ -201,7 +201,7 @@ export function buildWalkthroughSteps(
         'Low stock, expiring batches, tax issues and other operational alerts surface in one attention feed.',
       detail: 'Sidebar → Alerts',
       href: '/alerts',
-      target: NAV('/alerts'),
+      target: PAGE('feature-alerts'),
       icon: Bell,
     },
     {
@@ -211,23 +211,44 @@ export function buildWalkthroughSteps(
         'Use the CUSTOMISE HOME control to reorder, resize or restyle your Home cards. Your layout is saved.',
       detail: 'Home → CUSTOMISE HOME',
       href: '/dashboard',
-      target: '[data-walkthrough="customise-home"], main',
+      target: PAGE('customise-home'),
       icon: CalendarCheck,
     },
   ]
 }
 
+function hasFixedAncestor(element: HTMLElement): boolean {
+  let node: HTMLElement | null = element
+  while (node && node !== document.body) {
+    if (window.getComputedStyle(node).position === 'fixed') return true
+    node = node.parentElement
+  }
+  return false
+}
+
 function visibleTarget(selector: string): HTMLElement | null {
   if (typeof document === 'undefined') return null
-  const candidates = Array.from(
-    document.querySelectorAll<HTMLElement>(selector)
-  )
-  return (
-    candidates.find((element) => {
+
+  // `querySelectorAll('a, b')` returns matches in document order, so a broad
+  // fallback like `main` would win before a nested page anchor. Try each
+  // selector group in the order it was declared instead.
+  const groups = selector
+    .split(',')
+    .map((group) => group.trim())
+    .filter(Boolean)
+
+  for (const group of groups) {
+    const candidates = Array.from(
+      document.querySelectorAll<HTMLElement>(group)
+    )
+    const match = candidates.find((element) => {
       const rect = element.getBoundingClientRect()
       return rect.width > 0 && rect.height > 0
-    }) ?? null
-  )
+    })
+    if (match) return match
+  }
+
+  return null
 }
 
 function contentSpotlight(): SpotlightRect {
@@ -256,7 +277,9 @@ export function FeatureWalkthrough({
   const [rect, setRect] = useState<SpotlightRect | null>(null)
   const [viewport, setViewport] = useState({ width: 0, height: 0 })
   const [assistantHasInput, setAssistantHasInput] = useState(false)
+  const [tooltipSize, setTooltipSize] = useState({ width: 0, height: 0 })
   const tooltipRef = useRef<HTMLDivElement>(null)
+  const scrolledStepRef = useRef<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -274,81 +297,141 @@ export function FeatureWalkthrough({
     if (pathname !== step.href) router.push(step.href)
   }, [open, pathname, router, step])
 
+  useEffect(() => {
+    scrolledStepRef.current = null
+  }, [index, open])
+
+  const applyRect = useCallback((next: SpotlightRect) => {
+    setRect((current) => {
+      if (
+        current &&
+        current.top === next.top &&
+        current.left === next.left &&
+        current.width === next.width &&
+        current.height === next.height
+      ) {
+        return current
+      }
+      return next
+    })
+  }, [])
+
   const measure = useCallback(() => {
     if (typeof window === 'undefined' || !step) return
-    setViewport({ width: window.innerWidth, height: window.innerHeight })
+    setViewport((current) => {
+      const width = window.innerWidth
+      const height = window.innerHeight
+      return current.width === width && current.height === height
+        ? current
+        : { width, height }
+    })
 
     const target = visibleTarget(step.target)
     if (!target) {
-      setRect(contentSpotlight())
+      applyRect(contentSpotlight())
       return
     }
 
+    const viewportHeight = window.innerHeight
     const targetRect = target.getBoundingClientRect()
-    if (
-      targetRect.top < 88 ||
-      targetRect.bottom > window.innerHeight - 96
-    ) {
-      if (target.tagName !== 'MAIN') {
-        target.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      }
+    const shouldScroll =
+      !hasFixedAncestor(target) &&
+      targetRect.height < viewportHeight * 0.6 &&
+      (targetRect.top < 88 || targetRect.bottom > viewportHeight - 96)
+
+    if (shouldScroll && scrolledStepRef.current !== step.id) {
+      scrolledStepRef.current = step.id
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }
 
     const measured = target.getBoundingClientRect()
-    if (measured.height > window.innerHeight * 0.8) {
-      setRect(contentSpotlight())
+    if (measured.height > viewportHeight * 0.85) {
+      applyRect(contentSpotlight())
       return
     }
 
-    setRect({
-      top: Math.max(8, measured.top - 6),
-      left: Math.max(8, measured.left - 6),
-      width: measured.width + 12,
-      height: measured.height + 12,
-    })
-  }, [step])
+    const top = Math.max(8, measured.top - 6)
+    const bottom = Math.min(viewportHeight - 8, measured.bottom + 6)
+    if (bottom - top < 40) {
+      applyRect(contentSpotlight())
+      return
+    }
 
-  // Measure once the route has painted, and keep the ring aligned on scroll.
+    applyRect({
+      top,
+      left: Math.max(8, measured.left - 6),
+      width: Math.min(measured.width + 12, window.innerWidth - 16),
+      height: bottom - top,
+    })
+  }, [applyRect, step])
+
+  // Measure once the route has painted, then keep polling and watch the
+  // target's size so the ring follows layout changes such as the AI composer
+  // growing while the user types.
   useEffect(() => {
     if (!open || !step) return
     if (pathname !== step.href) {
       setRect(null)
       return
     }
-    const timer = window.setTimeout(measure, 380)
-    window.addEventListener('resize', measure)
+
+    let observed: HTMLElement | null = null
+    const observer =
+      typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null
+
+    const sync = () => {
+      measure()
+      const target = visibleTarget(step.target)
+      if (target && observer && target !== observed) {
+        if (observed) observer.unobserve(observed)
+        observed = target
+        observer.observe(target)
+      }
+    }
+
+    const timer = window.setTimeout(sync, 380)
+    const interval = window.setInterval(sync, 400)
+    window.addEventListener('resize', sync)
     window.addEventListener('scroll', measure, true)
     return () => {
       window.clearTimeout(timer)
-      window.removeEventListener('resize', measure)
+      window.clearInterval(interval)
+      observer?.disconnect()
+      window.removeEventListener('resize', sync)
       window.removeEventListener('scroll', measure, true)
     }
   }, [measure, open, pathname, step])
 
-  // The AI step only unlocks once the user has actually typed a message.
+  // The AI step only unlocks once the user has actually typed a message. Keep
+  // the unlock sticky for the step: sending the message clears the composer,
+  // but the user must still be able to move on. Reading from the document
+  // avoids missing the input when the assistant panel mounts after a route
+  // transition.
   useEffect(() => {
     if (!open || !isAssistant) {
       setAssistantHasInput(false)
       return
     }
-    let input: HTMLTextAreaElement | null = null
-    const onInput = () => {
-      setAssistantHasInput(Boolean(input?.value.trim()))
-    }
-    const attach = () => {
-      input = document.querySelector<HTMLTextAreaElement>(
+
+    const read = () => {
+      const input = document.querySelector<HTMLTextAreaElement>(
         '[data-walkthrough="assistant-input"]'
       )
-      if (!input) return
-      setAssistantHasInput(Boolean(input.value.trim()))
-      input.addEventListener('input', onInput)
+      if (input?.value.trim()) setAssistantHasInput(true)
     }
-    const timer = window.setTimeout(attach, 400)
+
+    read()
+    const interval = window.setInterval(read, 200)
+    document.addEventListener('input', read, true)
+    document.addEventListener('change', read, true)
+    document.addEventListener('keyup', read, true)
     return () => {
-      window.clearTimeout(timer)
-      input?.removeEventListener('input', onInput)
+      window.clearInterval(interval)
+      document.removeEventListener('input', read, true)
+      document.removeEventListener('change', read, true)
+      document.removeEventListener('keyup', read, true)
     }
-  }, [isAssistant, open, pathname])
+  }, [isAssistant, open, pathname, step?.id])
 
   useEffect(() => {
     if (!open) return
@@ -365,6 +448,37 @@ export function FeatureWalkthrough({
     }
   }, [open, onSkip, index])
 
+  useEffect(() => {
+    if (!open) {
+      setTooltipSize({ width: 0, height: 0 })
+      return
+    }
+    const element = tooltipRef.current
+    if (!element) return
+
+    const update = () => {
+      const next = {
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+      }
+      setTooltipSize((current) =>
+        current.width === next.width && current.height === next.height
+          ? current
+          : next
+      )
+    }
+
+    update()
+    const observer =
+      typeof ResizeObserver === 'function' ? new ResizeObserver(update) : null
+    observer?.observe(element)
+    window.addEventListener('resize', update)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [assistantHasInput, index, open])
+
   const tooltipStyle = useMemo<CSSProperties>(() => {
     if (!rect || viewport.width === 0) return {}
     const width = Math.min(360, viewport.width - 32)
@@ -373,6 +487,7 @@ export function FeatureWalkthrough({
 
     const leftOnLeft = rect.left < viewport.width * 0.35
     const nearBottom = rect.top + rect.height > viewport.height - 170
+    const isWide = rect.width > viewport.width * 0.55
     let left = rect.left + rect.width + 20
     let top = rect.top
 
@@ -380,8 +495,16 @@ export function FeatureWalkthrough({
       left = rect.left + rect.width / 2 - width / 2
     }
     if (nearBottom) {
-      top = rect.top - 290
+      top = rect.top - (tooltipSize.height || 300) - 20
+    } else if (isWide) {
+      left = viewport.width - width - 24
+      top = Math.max(88, rect.top + 12)
     }
+
+    const maxTop = Math.max(
+      16,
+      viewport.height - (tooltipSize.height || 300) - 16
+    )
 
     return {
       width,
@@ -389,12 +512,9 @@ export function FeatureWalkthrough({
         Math.max(16, left),
         Math.max(16, viewport.width - width - 16)
       ),
-      top: Math.min(
-        Math.max(16, top),
-        Math.max(16, viewport.height - 300)
-      ),
+      top: Math.min(Math.max(16, top), maxTop),
     }
-  }, [rect, viewport])
+  }, [rect, tooltipSize.height, viewport])
 
   if (
     !open ||
@@ -414,6 +534,7 @@ export function FeatureWalkthrough({
       {rect && (
         <div
           aria-hidden="true"
+          data-testid="walkthrough-spotlight"
           className="pointer-events-none fixed rounded-[20px] border-2 border-[var(--hf-accent-default)] shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_30px_rgba(45,212,191,0.28)] transition-all duration-300"
           style={{
             top: rect.top,

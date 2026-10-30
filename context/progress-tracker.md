@@ -169,18 +169,37 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-29 — Walkthrough targeting, AI hand-off and landing polish.**
+  Lowered the "hassle" pen underline (its first stroke now clears the glyph
+  bottoms) and separated the two strokes with a deliberate gap. The room media
+  tile's notification moment is now a full-surface phone shade: a new dark
+  background slides down over the dimmed front-desk view, carries the three
+  notifications, then retracts before the loop. The first-run walkthrough now
+  resolves page-specific anchors before a `main` fallback, targets compact
+  page regions (Home header, inventory/sales/finance headers, vertical page
+  headers, the assistant composer and the customise control) instead of whole
+  pages, and no longer relies on document order for comma-separated selectors.
+  The spotlight polls and observes the target's size, so it follows layout
+  changes while the user types; the AI step unlocks on the first keystroke and
+  stays unlocked after send clears the composer. The tooltip is measured and
+  clamped inside the viewport, keeping the AI step's Next button reachable.
+  Verified: frontend 35 Node tests + 55 Vitest files / 307 tests, typecheck,
+  lint (warnings only, no errors) and the production build pass; the full tour
+  was also driven in a real browser at 1280×900 and 390×844.
 - **2026-10-29 — Landing problem section, auth motion and first-run tour.**
   The landing problem section reads "No more hassle" with a red double pen
   underline scrolling in immediately beneath the word; the old paragraph is
   gone. Both media tiles now play short app walkthroughs: stock ingestion and
-  scrolling into low stock; room check-in, scrolling and pop-up notifications.
+  scrolling into low stock; room check-in, scrolling and a pulled-down phone
+  notification shade that brings its own background down and retracts again.
   The auth shell keeps the original HisaFlow green (#1F7A5A) and light sheet
   independent of the app theme, and its three-chevron motif is now an animated
   connected-operations orbit. Added an interactive first-run walkthrough that
-  navigates to each feature, spotlights/encircles the target, persists after
-  the first auto-open, adapts to the org's business type, requires the user to
-  type a message on the AI step before continuing, and can be replayed from
-  Settings → Help. Added regression tests for the walkthrough, persistence,
+  navigates to each feature, spotlights/encircles the page-specific target
+  (including sales), persists after the first auto-open, adapts to the org's
+  business type, keeps the spotlight aligned while layout changes, requires the
+  user to type a message on the AI step before continuing, and can be replayed
+  from Settings → Help. Added regression tests for the walkthrough, persistence,
   pen underline, copy and auth/marketing theme isolation.
 - **2026-10-27 — Landing-page palette isolation.** The public landing page was
   inheriting the signed-in named theme, so a saved Lagoon theme turned the

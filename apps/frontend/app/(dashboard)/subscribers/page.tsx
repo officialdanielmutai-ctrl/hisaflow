@@ -118,7 +118,10 @@ export default function SubscribersPage() {
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div
+        className="flex items-center justify-between mb-5"
+        data-walkthrough="feature-subscribers"
+      >
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-[var(--color-accent)]" />
           <h1 className="text-lg font-semibold">Subscribers</h1>

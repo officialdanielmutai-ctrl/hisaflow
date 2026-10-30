@@ -71,7 +71,7 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 pb-16">
+    <div className="flex flex-col gap-4 pb-16" data-walkthrough="feature-alerts">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Alerts</h1>
         {currentAlerts && currentAlerts.length > 0 && (

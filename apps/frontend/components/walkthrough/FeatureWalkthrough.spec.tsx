@@ -112,7 +112,102 @@ describe('FeatureWalkthrough', () => {
       target: { value: 'What should I reorder?' },
     })
     expect(next).toBeEnabled()
+
+    // Sending the message clears the composer. The step stays unlocked so the
+    // user is never trapped on the AI slide after using it.
+    fireEvent.input(screen.getByLabelText('Assistant message'), {
+      target: { value: '' },
+    })
+    expect(next).toBeEnabled()
     vi.useRealTimers()
+  })
+
+  it('targets a specific page region for every feature slide', () => {
+    const steps = buildWalkthroughSteps('GUEST_HOUSE')
+
+    for (const step of steps) {
+      expect(step.target).toContain('data-walkthrough')
+      expect(step.target).not.toContain('data-walkthrough-href')
+    }
+
+    expect(steps.find((step) => step.id === 'sales')?.target).toBe(
+      '[data-walkthrough="feature-sales"], main'
+    )
+    expect(steps.find((step) => step.id === 'assistant')?.target).toBe(
+      '[data-walkthrough="assistant-composer"], [data-walkthrough="assistant-input"], main'
+    )
+  })
+
+  it('prefers the nested page anchor over the main fallback', async () => {
+    vi.useFakeTimers()
+    const rect = (
+      top: number,
+      left: number,
+      width: number,
+      height: number
+    ): DOMRect => ({
+      top,
+      left,
+      width,
+      height,
+      x: left,
+      y: top,
+      right: left + width,
+      bottom: top + height,
+      toJSON: () => ({}),
+    })
+    const spy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.dataset.testid === 'feature-anchor') {
+          return rect(100, 100, 400, 80)
+        }
+        if (this.tagName === 'MAIN') return rect(0, 0, 1000, 700)
+        return rect(0, 0, 0, 0)
+      })
+
+    try {
+      const step: WalkthroughStep = {
+        id: 'sales',
+        title: 'Record sales',
+        description: 'Sales description',
+        detail: 'Sidebar → Transactions',
+        href: '/inventory',
+        target: '[data-walkthrough="feature-sales"], main',
+        icon: Package,
+      }
+
+      render(
+        <>
+          <main>
+            <div data-testid="feature-anchor" data-walkthrough="feature-sales">
+              Sales
+            </div>
+          </main>
+          <FeatureWalkthrough
+            open
+            steps={[step]}
+            onSkip={vi.fn()}
+            onComplete={vi.fn()}
+          />
+        </>
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+
+      const spotlight = screen.getByTestId('walkthrough-spotlight')
+      expect(spotlight).toHaveStyle({
+        top: '94px',
+        left: '94px',
+        width: '412px',
+        height: '92px',
+      })
+    } finally {
+      spy.mockRestore()
+      vi.useRealTimers()
+    }
   })
 
   it('adapts the vertical step to the business type', () => {

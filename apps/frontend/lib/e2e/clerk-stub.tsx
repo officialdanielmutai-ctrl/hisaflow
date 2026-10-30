@@ -15,6 +15,11 @@ import React from 'react';
 const E2E_CLERK_ID = process.env.NEXT_PUBLIC_E2E_CLERK_ID ?? 'e2e-owner';
 const TOKEN = `e2e.${E2E_CLERK_ID}`;
 
+// Keep these references stable across renders. Real Clerk memoises auth
+// helpers; returning fresh functions here makes effects that depend on
+// `getToken` re-run after every state update and can loop in the test harness.
+const getToken = async () => TOKEN;
+
 const e2eUser = {
   id: E2E_CLERK_ID,
   firstName: 'E2E',
@@ -37,7 +42,7 @@ export function useAuth() {
     isSignedIn: true,
     userId: E2E_CLERK_ID,
     sessionId: 'e2e-session',
-    getToken: async () => TOKEN,
+    getToken,
   };
 }
 
