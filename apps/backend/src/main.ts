@@ -6,15 +6,32 @@ async function bootstrap() {
   // Paystack webhook signature verification MUST run against the raw bytes —
   // re-serializing the parsed JSON breaks the HMAC-SHA512 digest (Section 3.4).
   const app = await NestFactory.create(AppModule, { rawBody: true });
-  
+
+  const configuredOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const allowedOrigins = Array.from(
+    new Set(
+      [
+        process.env.FRONTEND_URL,
+        process.env.ADMIN_URL,
+        ...configuredOrigins,
+        'http://localhost:3000',
+        'http://localhost:3002',
+        'https://hisaflow.co.ke',
+        'https://www.hisaflow.co.ke',
+        'https://app.hisaflow.co.ke',
+        'https://admin.hisaflow.co.ke',
+        'https://hisaflow.com',
+        'https://www.hisaflow.com',
+        'https://admin.hisaflow.com',
+      ].filter((origin): origin is string => Boolean(origin))
+    )
+  );
+
   app.enableCors({
-    origin: [
-      process.env.FRONTEND_URL ?? 'http://localhost:3000',
-      'http://localhost:3002',
-      'https://hisaflow.com',
-      'https://www.hisaflow.com',
-      'https://admin.hisaflow.com',
-    ],
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',

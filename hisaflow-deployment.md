@@ -76,6 +76,31 @@ Set these for **Production** (and, where sensible, Preview) in the host dashboar
 
 Secrets (`CLERK_SECRET_KEY`, database URLs) are **never** committed. `.env.local` is gitignored.
 
+### 3.1 Backend environment (NestJS / billing)
+
+Set these on the backend host; they are **not** `NEXT_PUBLIC_*` and must never be shipped to the browser.
+
+| Variable | Production value | Notes |
+| --- | --- | --- |
+| `PAYSTACK_SECRET_KEY` | live secret key | Used for API calls and webhook HMAC-SHA512 verification |
+| `PAYSTACK_PUBLIC_KEY` | live public key | Stored for reference/future inline checkout; the current redirect flow does not need it client-side |
+| `PAYSTACK_BASE_URL` | `https://api.paystack.co` | Live API origin |
+| `FRONTEND_URL` | `https://app.hisaflow.co.ke` | CORS origin for the customer app |
+| `ADMIN_URL` | `https://admin.hisaflow.co.ke` | Optional CORS origin for the admin app |
+| `CORS_ORIGINS` | comma-separated origins | Optional extra allowed origins (for example a preview domain) |
+
+After deploying with live keys, open **Paystack Dashboard → Settings → API Keys & Webhooks → Webhook URL** and set it to:
+
+```text
+https://<backend-host>/webhooks/paystack
+```
+
+This route is public by design; Paystack cannot present a Clerk session, so the HMAC signature over the raw request body is the trust boundary. The response is `200` within Paystack's timeout and processing continues asynchronously. Keep the same secret key on the server after rotation, or webhook verification will fail.
+
+Billing plans are provisioned lazily by `HisaflowPlansService` (Solo KES 2,500/month, Team KES 5,500/month). To force a provisioning pass, call the admin endpoint `POST /admin/paywall/plans/sync` as a billing admin. The live Paystack plan codes are stored on `HisaflowPlan.paystackPlanCode`; Growth remains intentionally unpriced until the business activates it.
+
+Secrets (`CLERK_SECRET_KEY`, `PAYSTACK_SECRET_KEY`, database URLs) are **never** committed. `.env` and `.env.local` are gitignored.
+
 ## 4. Routing rules (implemented in `middleware.ts`)
 
 Active only when `NEXT_PUBLIC_APP_URL` is set and differs from `NEXT_PUBLIC_SITE_URL`.

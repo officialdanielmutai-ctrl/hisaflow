@@ -169,6 +169,20 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-10-30 — Paystack live connection.** Connected the backend to the
+  live Paystack account using the live secret/public keys in the ignored
+  backend `.env` (never committed). Verified the live credentials against
+  Paystack (`GET /balance` and `GET /plan`), created the live Solo (KES
+  2,500/month) and Team (KES 5,500/month) plans, and persisted their plan
+  codes on `HisaflowPlan` so checkout no longer needs to provision them on
+  first use. The public key is also available to the frontend as
+  `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` for future inline checkout, though the
+  current server-initialised redirect flow does not require it. Extended
+  backend CORS to the `hisaflow.co.ke` app/admin origins and documented the
+  remaining dashboard step: set Paystack’s live webhook URL to
+  `<backend-host>/webhooks/paystack`. The live keys were shared during setup
+  and should be rotated after handoff; rotation must update both the backend
+  env and Paystack's webhook signing secret.
 - **2026-10-29 — Walkthrough targeting, AI hand-off and landing polish.**
   Lowered the "hassle" pen underline (its first stroke now clears the glyph
   bottoms) and separated the two strokes with a deliberate gap. The room media
