@@ -9,7 +9,7 @@ once it is resolved, with a PR/date note.
 **Status values:** `Open` · `In progress` · `Resolved` · `Accepted risk`
 **Severity:** `Blocker` · `High` · `Medium` · `Low` · `Info`
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-11-03*
 
 ---
 
@@ -43,6 +43,17 @@ once it is resolved, with a PR/date note.
 | F-24 | Tax / reconciliation | Low | Resolved (2026-09-30) | Reconciliation now carry-forwards any period with an open anomaly and only clears an alert once its invoice was actually re-checked. |
 | F-25 | Tax / tiering | Medium | Resolved (2026-09-30) | Docs reconciled: Phase F / T-F headings and the paywall §1A Tax row now say Growth multi-location, matching the reused `TierFeature.MultiLocation` gate. |
 | F-26 | Tax / locations | Low | Accepted risk | Multi-location tax derives its location from the ISP `Router` + a "Main location" fallback; guest-house multi-property is out of scope, so there is nothing to group by yet. |
+| F-27 | Landing / trust | Blocker | Resolved (2026-11-03) | Landing page no longer claims owner M-Pesa payments are automatically matched. Copy now says "Record M-Pesa in one place" / "One daily total for every payment"; the reconciliation feature remains unbuilt and unclaimed. |
+| F-28 | Inventory / audit | Blocker | Open | `EditItemSheet` can overwrite stock quantity directly through `PATCH /inventory/variants/:id` without an `InventoryTransaction`; stock corrections bypass the ledger. |
+| F-29 | Restaurant / Chemist / Wholesale / School | Blocker | Open | Table orders, batch receipt, tiered pricing and student detail use relative `/api/...` fetches; no Next route/rewrite exists, so those screens are broken as shipped. |
+| F-30 | School fees / UI | High | Open | School Fees `invoices`/`defaulters`/`summary` tabs are placeholders and the student detail page that hosts Record Payment uses the broken `/api/students/:id`. Backend endpoints exist. |
+| F-31 | Data ownership / export | High | Open | No owner-facing export of inventory, sales, invoices, fees or tax records; CSV export exists only in platform-admin surfaces. |
+| F-32 | ISP / billing cycle | High | Open | ISP invoices are generated manually per subscriber; there is no scheduled billing-cycle invoice job. |
+| F-33 | Retail / payments | High | Open | Retail sales have no payment method, no end-of-day/shift close and no sale receipt; card/M-Pesa/cash totals cannot be separated. |
+| F-34 | Restaurant / workflow | High | Open | No recipe editor, kitchen/prepared state, split payment, or dish margin/variance report; table close deducts stock without ledger rows. |
+| F-35 | Chemist / safety | High | Open | Free-text units, no block/warn on selling expired batches, batch write-off is FIFO-limited, and no 30/60/90 money-at-risk view. |
+| F-36 | Guest house / billing | Medium | Open | Consumption deducts stock but is not priced into the invoice; issued invoices are not immutable snapshots. |
+| F-37 | Field verification / hardware | Medium | Open | Real MikroTik cut/restore and installed-iOS camera/PWA paths remain unverified; code and mocked tests pass, but no field evidence exists. |
 
 ---
 
@@ -382,3 +393,64 @@ part of F-04 and remain as a separate, larger cleanup.
 
 
 
+
+---
+
+## 3. Vertical Value Checklist audit — 2026-11-03
+
+The full question-by-question audit lives in `HisaFlow Vertical Value Checklist.md` §12 (123 questions: 38 code-verified, 51 partly, 31 no, 2 unknown). The findings below are the blockers/high-severity gaps that need a build or messaging decision. They do not repeat F-05/F-13 (trial mismatch), F-20 (school fee tax) or F-02 (live Paystack verification), which remain open.
+
+### F-27 — Landing-page M-Pesa matching claim is not backed by the product
+- **Where:** `apps/frontend/features/marketing/config/content.ts`.
+- **Impact:** the original copy described owner-customer payment reconciliation. The repo only integrates Paystack for HisaFlow's own subscription billing. No M-Pesa statement/API ingestion exists for a shop's customer payments.
+- **Resolved (2026-11-03):** copy changed to "Record M-Pesa in one place", "One daily total for every payment", "VAT kept with the invoice" and "Card payments, recorded". The reconciliation feature is still unbuilt; it is simply no longer claimed. Restore the stronger claim only after the feature ships.
+
+### F-28 — Stock corrections bypass the append-only ledger
+- **Where:** `EditItemSheet` → `PATCH /inventory/variants/:variantId` → `InventoryService.updateVariant()`.
+- **Impact:** quantity is overwritten directly; no `InventoryTransaction` is written. The stock count can silently diverge from the audit trail, violating the "append-only ledger" rule and DK8.
+- **Resolution:** route stock-count corrections through an ADJUSTMENT transaction (before/change/after + actor), and reject direct quantity edits outside that path.
+
+### F-29 — Dead relative `/api/...` vertical screens
+- **Where:** `app/(dashboard)/table-orders/page.tsx`, `components/restaurant/OpenTableSheet.tsx`, `components/restaurant/TableOrdersView.tsx`, `components/chemist/ReceiveBatchSheet.tsx`, `components/wholesale/TieredPricingSheet.tsx`, `app/(dashboard)/students/[id]/page.tsx`.
+- **Impact:** these call `fetch('/api/...')` on the Next origin, but the backend is a separate Nest application and there are no Next route handlers or rewrites. The screens 404/fail. `ReceiveBatchSheet` and `TieredPricingSheet` are also not imported anywhere.
+- **Resolution:** move them onto `apiGet/apiPost` with `NEXT_PUBLIC_API_URL`, or add a deliberate proxy. Import the sheets from the relevant vertical screens and add a smoke test.
+
+### F-30 — School fee UI is placeholders; student detail is unreachable
+- **Where:** `app/(dashboard)/school-fees/page.tsx` (invoices/defaulters/summary tabs), `app/(dashboard)/students/[id]/page.tsx`, `components/school/RecordPaymentSheet.tsx`.
+- **Impact:** backend endpoints (`/school-fees/term/:termId/defaulters`, `/summary`, `/fees`) exist, but the owner sees static text; the student detail page that hosts the payment sheet calls the broken `/api/students/:id`.
+- **Resolution:** wire the tabs to the existing endpoints, fix student detail to `apiGet`, and show invoice/payment history. Add UI tests for the three tabs.
+
+### F-31 — No owner data export
+- **Where:** only `admin/directory` and `admin/audit` expose CSV export.
+- **Impact:** the owner cannot export their own inventory, sales, invoices, fee records or tax data; this undermines the "never feel trapped" promise and C27.
+- **Resolution:** add a tenant-scoped export endpoint and Settings/Finance UI, with CSV at minimum and a documented schema.
+
+### F-32 — ISP invoices do not generate on a billing cycle
+- **Where:** `IspInvoicesService.generateForSubscriber()` is manual; no cron for invoice generation. `BillingSuspendJob` only suspends overdue invoices.
+- **Impact:** "invoices generate on each subscriber's billing cycle" is false; the owner must press Generate Bill per subscriber.
+- **Resolution:** add a scheduled generation job keyed to each subscriber's plan cycle (and idempotency), or correct the product claim.
+
+### F-33 — Retail payments, day close and receipts are missing
+- **Where:** `CreateTransactionDto` has no payment method; `QuickTransactionSheet` records only item + quantity; no shift/day-close model; only guest-house invoices have a receipt/print.
+- **Impact:** C13, MM3, MM7, DK9 cannot be answered Yes; cash/M-Pesa/card totals cannot be reconciled at close.
+- **Resolution:** add `paymentMethod` to retail sales, a close-of-day/shift report, and a retail receipt (print/share link).
+
+### F-34 — Restaurant workflow is largely not reachable
+- **Where:** `RecipeIngredient`/`isComposite` exist, but `AddItemSheet` has no recipe editor; table order UI uses F-29's broken `/api`; `TableOrderStatus` has no kitchen/prepared state; no split payments or dish-margin report.
+- **Impact:** RS1, RS3–RS5, RS9, RS10 have no owner path; `closeOrder` deducts stock without ledger rows.
+- **Resolution:** build the recipe builder, fix the table API wiring, add preparation state and split payments, and reuse the ledger for every close.
+
+### F-35 — Chemist safety and batch workflow gaps
+- **Where:** `InventoryItem.unit` is free text; `TransactionsService` FIFO can deduct an expired batch; `StockBatchesService.retire()` zeroes a batch without an item/ledger adjustment; `ReceiveBatchSheet` is not wired.
+- **Impact:** CH1, CH5, CH6, CH9 and CH11 are not met; the first expiry alert can exist but the owner cannot safely act on it end-to-end.
+- **Resolution:** add proper units, an expired-sale guard with override, a batch-specific write-off (with cost), a working receipt sheet, and money-at-risk reporting.
+
+### F-36 — Guest-house consumption and invoice immutability
+- **Where:** `BookingsService.addConsumption()` writes a SALE ledger row but does not price it into the invoice; `InvoicesService.addLineItem()` still allows changes after `ISSUED`; `InvoiceView` reads current booking/guest data.
+- **Impact:** GH5/GH6/GH11 are only partly met: the bar tab requires a separate manual charge, and a later guest edit changes how a past invoice reads.
+- **Resolution:** price consumption into the folio at the point of sale and snapshot guest/business/line totals on issue; freeze issued invoices.
+
+### F-37 — Real-device and live-hardware verification remains pending
+- **Where:** PWA/camera flows, router suspend/reconnect, M-Pesa renewal and KRA filing are covered by code and mocked tests, but not by field evidence in this repo.
+- **Impact:** C5/C6/ISP7/ISP13 and the live tax/payment claims cannot be marked Yes under the checklist's original definition until an owner/device test is recorded.
+- **Resolution:** run the Section 11 sessions with a real owner per vertical, including a real MikroTik cut/restore and an installed-iOS camera capture.

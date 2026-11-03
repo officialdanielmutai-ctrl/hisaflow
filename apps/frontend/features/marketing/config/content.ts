@@ -41,24 +41,24 @@ export const HERO_RAIL: HeroRailItem[] = [
   {
     id: 'mpesa',
     label: 'M-Pesa',
-    title: 'Pay by M-Pesa, matched to the sale',
+    title: 'Record M-Pesa in one place',
     description:
-      'Every M-Pesa payment is recorded against the sale it belongs to, so reconciliation is not a manual job.',
+      'Add M-Pesa payments to the same daily totals as cash and card, so reconciliation has one home.',
   },
   {
     id: 'kra',
     label: 'KRA',
-    title: 'Tax handled as you sell',
+    title: 'Tax records kept ready',
     description:
-      'VAT is calculated on every sale and the records stay ready for filing.',
+      'VAT is calculated on invoiced sales and the records stay ready for filing.',
     comingSoonLabel: 'eTIMS filing coming soon',
   },
   {
     id: 'card',
     label: 'Card',
-    title: 'Card payments, receipted',
+    title: 'Card payments, recorded',
     description:
-      'Card sales settle through Paystack and land in the same daily totals as M-Pesa and cash.',
+      'Record card payments in the same daily totals as M-Pesa and cash.',
   },
 ];
 
@@ -117,17 +117,17 @@ export const PROBLEM: {
     {
       id: 'payments',
       tone: 'accent',
-      problem: 'M-Pesa matched by hand',
-      title: 'Every payment matched to its sale',
-      description: 'M-Pesa, cash and card land in one daily total.',
+      problem: 'M-Pesa recorded by hand',
+      title: 'One daily total for every payment',
+      description: 'Record M-Pesa, cash and card payments in one place.',
       chips: ['M-Pesa', 'Cash', 'Card'],
     },
     {
       id: 'tax',
       tone: 'blue',
       problem: 'Tax left to month-end',
-      title: 'VAT worked out as you sell',
-      description: 'Tax is calculated on every sale and the records stay ready.',
+      title: 'VAT kept with the invoice',
+      description: 'VAT is calculated on invoiced sales and the records stay ready.',
       claimKey: 'taxEtims',
       footer: 'eTIMS filing coming soon',
     },

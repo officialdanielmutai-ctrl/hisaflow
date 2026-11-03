@@ -169,6 +169,27 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-11-03 — Vertical Value Checklist readiness audit.** Audited every one
+  of the 123 owner questions against the code, tests and build rather than
+  guessing from the scope docs. Added a code-evidence table to
+  `HisaFlow Vertical Value Checklist.md` §12: **38 code-verified, 51 partly,
+  31 no, 2 unknown**. The audit deliberately does not call any row the
+  document's final "Yes" because no real-owner/device session was run. Critical
+  findings: the landing page's owner M-Pesa "automatically matched" copy was
+  corrected to honest recording copy (the customer-payment reconciliation
+  feature remains unbuilt and unclaimed); the 14-day trial is promised but not
+  enforced; tax only covers `Invoice` rows, not retail sales or school fee
+  invoices; stock corrections bypass the ledger; and the restaurant, chemist
+  batch, wholesale pricing and student-detail screens call non-existent relative
+  `/api/...` paths. School fee tabs are placeholders, owner data export is
+  missing, and ISP invoices are not generated on a billing cycle. Added the
+  blockers/high findings to `hisaflow-open-findings.md` as F-27–F-37. The only
+  application change was the honest marketing copy correction in
+  `content.ts`; after that edit, frontend 55 files / 307 tests, repo typecheck
+  5/5, lint 0 errors (warnings only) and the production frontend build all pass.
+  Backend was unchanged (last full run: 110 suites / 884 tests). The next step is
+  the Section 11 owner-device validation and prioritisation of the documented
+  gaps.
 - **2026-10-30 — Paystack live connection.** Connected the backend to the
   live Paystack account using the live secret/public keys in the ignored
   backend `.env` (never committed). Verified the live credentials against
