@@ -55,6 +55,30 @@ argument`, that is a BuildKit cache/overlay failure on the builder rather than
 a repo dependency error. Retry the deployment; if it recurs, set `NO_CACHE=1`
 on the affected Railway service (or clear its build cache) and redeploy.
 
+### 2.2 Northflank gateway service (LiteLLM Docker image)
+
+The second Railway service is the LiteLLM gateway in `apps/gateway` (port **4000**). Its Northflank service should use **Deploy with Docker image**, not a buildpack. The image is published by `.github/workflows/gateway-image.yml` to GitHub Container Registry on every push to `main` that touches `apps/gateway/**`:
+
+```text
+ghcr.io/officialdanielmutai-ctrl/hisaflow-gateway:latest
+```
+
+For a pinned deployment, use the immutable commit tag instead:
+
+```text
+ghcr.io/officialdanielmutai-ctrl/hisaflow-gateway:sha-<short-commit>
+```
+
+The workflow builds with `apps/gateway` as the Docker context (the Dockerfile copies `config.yaml` from that directory) and publishes `linux/amd64`, which is what Northflank runs. If the GHCR package is private, add a Northflank registry credential for `ghcr.io` (GitHub username + a PAT with `read:packages`). If it is public, no credential is needed.
+
+Northflank settings: port **4000**, protocol **HTTP**, health check path `/health` (or `/health/liveliness` if the current LiteLLM image exposes it), and **at least 512 MB RAM** (LiteLLM is Python; 256 MB is tight).
+
+**Gateway-only variables:** `LITELLM_MASTER_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`. The CSV also lists `CEREBRAS_API_KEY` and `MISTRAL_API_KEY`, but those providers are currently disabled in `apps/gateway/config.yaml`; keep them only if you plan to re-enable them after the tool-calling spike. `GEMINI_MODEL` is not read by the gateway config (the model IDs are pinned in `config.yaml`).
+
+**Main backend variables:** `ETIMS_API_BASE_URL`, `ETIMS_API_KEY`, `ETIMS_BRANCH_ID`, `ETIMS_DEVICE_SERIAL`, `ETIMS_REQUEST_TIMEOUT_MS`, `ETIMS_VSCU_BASE_URL`, `PAYSTACK_BASE_URL`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_SECRET_KEY`, plus `LITELLM_BASE_URL=https://<gateway-service>/v1` and the same `LITELLM_MASTER_KEY` used by the gateway. Those ETIMS/Paystack values belong on the main NestJS service, not on the gateway. The backend calls the gateway at `/v1`; the gateway does not call the backend.
+
+The repository's `docker-compose.yml` now uses `context: ./apps/gateway` so a local `docker compose up --build gateway` matches the CI image context.
+
 ## 3. Environment variables
 
 Set these for **Production** (and, where sensible, Preview) in the host dashboard. The full list with comments lives in `apps/frontend/.env.example`.
@@ -88,6 +112,8 @@ Set these on the backend host; they are **not** `NEXT_PUBLIC_*` and must never b
 | `FRONTEND_URL` | `https://app.hisaflow.com` | CORS origin for the customer app |
 | `ADMIN_URL` | `https://admin.hisaflow.com` | Optional CORS origin for the admin app |
 | `CORS_ORIGINS` | comma-separated origins | Optional extra allowed origins (for example a preview domain) |
+| `LITELLM_BASE_URL` | `https://<gateway-service>/v1` | OpenAI-compatible base URL; include `/v1` |
+| `LITELLM_MASTER_KEY` | same value as the gateway | Shared bearer key for gateway calls |
 
 After deploying with live keys, open **Paystack Dashboard → Settings → API Keys & Webhooks → Webhook URL** and set it to:
 

@@ -9,8 +9,9 @@ FROM ghcr.io/berriai/litellm:main-stable
 WORKDIR /app
 COPY config.yaml /app/config.yaml
 
-# Set default port (Railway will override this with its own $PORT)
+# Set default port (the host platform supplies PORT; Northflank should target 4000)
 ENV PORT=4000
+EXPOSE 4000
 
 # Override the base image ENTRYPOINT so we can use shell variable expansion
 ENTRYPOINT []

@@ -169,6 +169,20 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-11-03 — Northflank LiteLLM gateway image path.** Added
+  `.github/workflows/gateway-image.yml` to build `apps/gateway` and publish the
+  custom LiteLLM gateway image to GHCR. Northflank's second service (Deploy
+  with Docker image) should use
+  `ghcr.io/officialdanielmutai-ctrl/hisaflow-gateway:latest`, or the immutable
+  `sha-<commit>` tag. Fixed the Docker build context in `docker-compose.yml`
+  (the Dockerfile needs `apps/gateway` as context because it copies
+  `config.yaml`) and added `EXPOSE 4000`. Documented the env split: gateway gets
+  `LITELLM_MASTER_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY` and
+  `GEMINI_API_KEY`; the main backend gets the ETIMS/Paystack values plus
+  `LITELLM_BASE_URL=https://<gateway-service>/v1` and the same master key.
+  The GHCR package may need to be made public or pulled with a Northflank
+  registry credential. No application test suite changed; workflow YAML parses
+  and the existing CI baseline remains green.
 - **2026-11-03 — Vertical Value Checklist readiness audit.** Audited every one
   of the 123 owner questions against the code, tests and build rather than
   guessing from the scope docs. Added a code-evidence table to
