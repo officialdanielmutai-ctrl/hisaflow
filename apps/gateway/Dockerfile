@@ -1,18 +1,19 @@
 # ════════════════════════════════════════════════════════════════════════
 # Hisaflow LLM Gateway — Dockerfile
-# Based on the official LiteLLM image (Python, pinned for stability)
+# Based on the official LiteLLM image (Python, pinned for stability).
+# The default proxy entrypoint needs ~1 GB; Northflank's free project
+# allowance is 1 GB total, so app.py runs the same config through the
+# LiteLLM SDK + FastAPI and fits in the 512 MB plan.
 # ════════════════════════════════════════════════════════════════════════
 
-FROM ghcr.io/berriai/litellm:main-stable
+FROM ghcr.io/berriai/litellm:main-v1.80.15-stable
 
-# Copy our routing configuration into the image
 WORKDIR /app
 COPY config.yaml /app/config.yaml
+COPY app.py /app/app.py
 
-# Set default port (the host platform supplies PORT; Northflank should target 4000)
 ENV PORT=4000
+ENV PYTHONUNBUFFERED=1
 EXPOSE 4000
 
-# Override the base image ENTRYPOINT so we can use shell variable expansion
-ENTRYPOINT []
-CMD ["sh", "-c", "litellm --config /app/config.yaml --port $PORT --host 0.0.0.0"]
+CMD ["python", "/app/app.py"]
