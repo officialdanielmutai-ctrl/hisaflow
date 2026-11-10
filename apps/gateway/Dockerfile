@@ -16,4 +16,6 @@ ENV PORT=4000
 ENV PYTHONUNBUFFERED=1
 EXPOSE 4000
 
+# The base image sets ENTRYPOINT ["litellm"]; clear it so CMD runs Python.
+ENTRYPOINT []
 CMD ["python", "/app/app.py"]
