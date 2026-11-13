@@ -4,11 +4,268 @@ import type {
   AssistantToolSchema,
 } from '@/services/assistant.service';
 
+export type AssistantInlineSegment = {
+  kind: 'text' | 'strong' | 'code';
+  text: string;
+};
+
+export type AssistantDataRow = { label: string; value: string };
+
+export type AssistantMessageBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'heading'; text: string }
+  | { type: 'bullet'; items: string[] }
+  | { type: 'numbered'; items: string[] }
+  | { type: 'data'; rows: AssistantDataRow[] };
+
+const INLINE_TOKEN = /(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`)/g;
+
+/**
+ * A very small, safe Markdown-lite parser for assistant replies.
+ *
+ * The model is asked for natural prose, but it sometimes returns **bold**,
+ * backticks or fenced blocks. Rendering those as raw text makes a shop owner's
+ * answer look like source code. This parser keeps the useful emphasis and list
+ * structure while dropping code fences and backticks.
+ */
+export function parseAssistantInline(text: string): AssistantInlineSegment[] {
+  const segments: AssistantInlineSegment[] = [];
+  let lastIndex = 0;
+  for (const match of text.matchAll(INLINE_TOKEN)) {
+    const token = match[0];
+    const index = match.index ?? 0;
+    if (index > lastIndex) {
+      segments.push({ kind: 'text', text: text.slice(lastIndex, index) });
+    }
+    if (token.startsWith('**') || token.startsWith('__')) {
+      segments.push({ kind: 'strong', text: token.slice(2, -2) });
+    } else {
+      segments.push({ kind: 'code', text: token.slice(1, -1) });
+    }
+    lastIndex = index + token.length;
+  }
+  if (lastIndex < text.length) {
+    segments.push({ kind: 'text', text: text.slice(lastIndex) });
+  }
+  return segments.length > 0 ? segments : [{ kind: 'text', text }];
+}
+
+function flushParagraph(
+  blocks: AssistantMessageBlock[],
+  lines: string[],
+): void {
+  const text = lines.join(' ').trim();
+  if (text) blocks.push({ type: 'paragraph', text });
+  lines.length = 0;
+}
+
+function humanizeKey(key: string): string {
+  const spaced = key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim();
+  return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : 'Value';
+}
+
+function formatPrimitive(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'number') {
+    return new Intl.NumberFormat('en-KE', { maximumFractionDigits: 2 }).format(
+      value,
+    );
+  }
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value);
+}
+
+function flattenData(
+  value: unknown,
+  prefix: string,
+  rows: AssistantDataRow[],
+): void {
+  if (Array.isArray(value)) {
+    const primitives = value.every(
+      (entry) => entry === null || typeof entry !== 'object',
+    );
+    if (primitives) {
+      rows.push({
+        label: prefix || 'Items',
+        value: value.map(formatPrimitive).join(', '),
+      });
+      return;
+    }
+    value.forEach((entry, index) => {
+      flattenData(entry, prefix ? `${prefix} ${index + 1}` : `Item ${index + 1}`, rows);
+    });
+    return;
+  }
+  if (value && typeof value === 'object') {
+    for (const [key, entry] of Object.entries(value)) {
+      const label = prefix
+        ? `${prefix} · ${humanizeKey(key)}`
+        : humanizeKey(key);
+      if (entry && typeof entry === 'object') flattenData(entry, label, rows);
+      else rows.push({ label, value: formatPrimitive(entry) });
+    }
+    return;
+  }
+  rows.push({ label: prefix || 'Value', value: formatPrimitive(value) });
+}
+
+/**
+ * Turn a fenced block into readable rows. Models occasionally ignore the
+ * prose instruction and return JSON; showing that as a definition list is far
+ * friendlier than a wall of braces. Plain text blocks stay as prose.
+ */
+function fencedBlock(content: string): AssistantMessageBlock | null {
+  const trimmed = content.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const rows: AssistantDataRow[] = [];
+      flattenData(JSON.parse(trimmed), '', rows);
+      if (rows.length > 0 && rows.length <= 40) {
+        return { type: 'data', rows };
+      }
+    } catch {
+      // Not valid JSON after all; fall through to prose.
+    }
+  }
+  return { type: 'paragraph', text: trimmed.replace(/\s+/g, ' ') };
+}
+
+/** Parse an assistant reply into paragraphs, headings, lists and data rows. */
+export function parseAssistantMessage(text: string): AssistantMessageBlock[] {
+  const blocks: AssistantMessageBlock[] = [];
+  const paragraph: string[] = [];
+  let list: { type: 'bullet' | 'numbered'; items: string[] } | null = null;
+  let fence: string[] | null = null;
+
+  const endList = () => {
+    if (list && list.items.length > 0) blocks.push(list);
+    list = null;
+  };
+
+  for (const rawLine of text.replace(/\r\n/g, '\n').split('\n')) {
+    const line = rawLine.trim();
+
+    // Fenced content is collected and re-rendered as prose/data, never as a
+    // developer-looking code block.
+    if (line.startsWith('```')) {
+      flushParagraph(blocks, paragraph);
+      endList();
+      if (fence === null) {
+        fence = [];
+      } else {
+        const block = fencedBlock(fence.join('\n'));
+        if (block) blocks.push(block);
+        fence = null;
+      }
+      continue;
+    }
+    if (fence !== null) {
+      fence.push(rawLine);
+      continue;
+    }
+
+    if (!line) {
+      flushParagraph(blocks, paragraph);
+      endList();
+      continue;
+    }
+
+    // Horizontal rules and markdown table separators are noise.
+    if (/^([-*_])\1{2,}$/.test(line)) {
+      flushParagraph(blocks, paragraph);
+      endList();
+      continue;
+    }
+
+    const heading = line.match(/^#{1,6}\s+(.*)$/);
+    if (heading) {
+      flushParagraph(blocks, paragraph);
+      endList();
+      blocks.push({ type: 'heading', text: heading[1] });
+      continue;
+    }
+
+    // A markdown table becomes a readable bullet list instead of raw pipes.
+    const table = line.match(/^\|(.+)\|$/);
+    if (table) {
+      const cells = table[1]
+        .split('|')
+        .map((cell) => cell.trim())
+        .filter(Boolean);
+      if (cells.every((cell) => /^:?-{3,}:?$/.test(cell))) continue;
+      flushParagraph(blocks, paragraph);
+      if (!list || list.type !== 'bullet') {
+        endList();
+        list = { type: 'bullet', items: [] };
+      }
+      list.items.push(cells.join(' · '));
+      continue;
+    }
+
+    const quote = line.match(/^>\s?(.*)$/);
+    if (quote) {
+      flushParagraph(blocks, paragraph);
+      endList();
+      if (quote[1]) paragraph.push(quote[1]);
+      continue;
+    }
+
+    const bullet = line.match(/^[-*•]\s+(.*)$/);
+    if (bullet) {
+      flushParagraph(blocks, paragraph);
+      if (!list || list.type !== 'bullet') {
+        endList();
+        list = { type: 'bullet', items: [] };
+      }
+      list.items.push(bullet[1]);
+      continue;
+    }
+
+    const numbered = line.match(/^\d+[.)]\s+(.*)$/);
+    if (numbered) {
+      flushParagraph(blocks, paragraph);
+      if (!list || list.type !== 'numbered') {
+        endList();
+        list = { type: 'numbered', items: [] };
+      }
+      list.items.push(numbered[1]);
+      continue;
+    }
+
+    if (list) endList();
+    paragraph.push(line);
+  }
+
+  if (fence !== null) {
+    const block = fencedBlock(fence.join('\n'));
+    if (block) blocks.push(block);
+  }
+  flushParagraph(blocks, paragraph);
+  endList();
+  return blocks;
+}
+
 /** Human labels for the tool registry (unknown tools fall back to name). */
 export const TOOL_LABELS: Record<string, string> = {
   get_low_stock: 'Low stock',
   search_inventory: 'Inventory search',
   list_inventory: 'Inventory list',
+  get_sales_report: 'Sales report',
+  analyse_catalogue: 'Catalogue advice',
+  get_credit_summary: 'Credit summary',
+  get_expense_report: 'Expense report',
+  get_active_alerts: 'Active alerts',
+  get_purchase_report: 'Purchase report',
+  get_recent_transactions: 'Recent activity',
+  list_notes: 'Notes & tasks',
+  get_tax_summary: 'Tax status',
+  list_team_members: 'Team',
+  resolve_alert: 'Resolve alert',
   get_financial_breakdown: 'Financial breakdown',
   search_business_finances: 'Finance search',
   record_sale: 'Record sale',
@@ -16,6 +273,10 @@ export const TOOL_LABELS: Record<string, string> = {
   record_wastage: 'Record wastage',
   create_inventory_item: 'New inventory item',
   update_inventory_item: 'Update inventory item',
+  adjust_stock: 'Stock correction',
+  archive_inventory_item: 'Archive item',
+  record_expense: 'Record expense',
+  record_income: 'Record income',
   create_note: 'Create note',
   // ISP vertical
   search_subscribers: 'Find subscriber',
@@ -108,6 +369,16 @@ const TOOL_SUGGESTIONS: Record<string, string> = {
   get_low_stock: 'What is low on stock?',
   search_inventory: 'Do we have cooking oil?',
   list_inventory: 'What is in my stock?',
+  get_sales_report: 'How were sales this week?',
+  analyse_catalogue: 'What should I stock next?',
+  get_credit_summary: 'Who owes me money?',
+  get_expense_report: 'What did I spend this month?',
+  get_active_alerts: 'What needs my attention?',
+  get_purchase_report: 'What did I spend on stock?',
+  get_recent_transactions: 'What happened today?',
+  list_notes: 'What tasks are open?',
+  get_tax_summary: 'Is my tax filing up to date?',
+  list_team_members: 'Who works here?',
   get_financial_breakdown: 'How is my business doing financially?',
   search_business_finances: 'How much did Room 3 earn?',
   record_sale: 'Sold 3 unga',
@@ -115,6 +386,9 @@ const TOOL_SUGGESTIONS: Record<string, string> = {
   record_wastage: '2 milk expired',
   create_inventory_item: 'Add a new item: 5 litres cooking oil',
   update_inventory_item: 'Change the price of sugar',
+  adjust_stock: 'Stock count: 12 sugar left',
+  record_expense: 'I paid 5000 rent',
+  record_income: 'Received 2000 service fee',
   create_note: 'Remind me to do stock count on Friday',
   // ISP vertical
   list_overdue_subscribers: 'Who is overdue?',
@@ -184,8 +458,13 @@ export interface ProposalDestination {
  */
 const PROPOSAL_DESTINATIONS: Record<string, ProposalDestination> = {
   create_note: { label: 'Notes', href: '/notes' },
+  resolve_alert: { label: 'Alerts', href: '/alerts' },
   create_inventory_item: { label: 'Inventory', href: '/inventory' },
   update_inventory_item: { label: 'Inventory', href: '/inventory' },
+  adjust_stock: { label: 'Inventory', href: '/inventory' },
+  archive_inventory_item: { label: 'Inventory', href: '/inventory' },
+  record_expense: { label: 'Finance', href: '/finance' },
+  record_income: { label: 'Finance', href: '/finance' },
   record_sale: { label: 'Transactions', href: '/transactions' },
   record_purchase: { label: 'Transactions', href: '/transactions' },
   record_wastage: { label: 'Transactions', href: '/transactions' },

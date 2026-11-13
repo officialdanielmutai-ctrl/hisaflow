@@ -1,87 +1,112 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
+import {
+  getTieredPricing,
+  saveTieredPricing,
+} from '@/services/tiered-pricing.service';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Trash2, Plus } from 'lucide-react'
+} from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Trash2, Plus } from 'lucide-react';
 
 interface Rule {
-  minQuantity: number
-  pricePerUnit: number
+  minQuantity: number;
+  pricePerUnit: number;
 }
 
 export function TieredPricingSheet({
   itemId,
   children,
+  onSuccess,
 }: {
-  itemId: string
-  children: React.ReactNode
+  itemId: string;
+  children: React.ReactNode;
+  onSuccess?: () => void;
 }) {
-  const [open, setOpen] = useState(false)
-  const [rules, setRules] = useState<Rule[]>([])
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const { getToken } = useAuth();
+  const { membership } = useMyOrganization();
+  const [open, setOpen] = useState(false);
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const orgId = membership?.organization.id;
 
   useEffect(() => {
-    if (open) {
-      const fetchRules = async () => {
-        try {
-          setLoading(true)
-          const res = await fetch(`/api/tiered-pricing/${itemId}`)
-          if (res.ok) {
-            const data = await res.json()
-            setRules(data.rules || [])
-          }
-        } catch (err) {
-          console.error('Failed to fetch rules', err)
-        } finally {
-          setLoading(false)
-        }
+    if (!open || !orgId) return;
+
+    const fetchRules = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const token = await getToken();
+        if (!token) throw new Error('Not authenticated');
+        const data = await getTieredPricing(itemId, token, orgId);
+        setRules(
+          data.map((rule) => ({
+            minQuantity: Number(rule.minQuantity),
+            pricePerUnit: Number(rule.pricePerUnit),
+          })),
+        );
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load rules');
+      } finally {
+        setLoading(false);
       }
-      fetchRules()
-    }
-  }, [open, itemId])
+    };
+
+    fetchRules();
+  }, [open, itemId, orgId, getToken]);
 
   const handleAddRule = () => {
-    setRules([...rules, { minQuantity: 1, pricePerUnit: 0 }])
-  }
+    setRules([...rules, { minQuantity: 1, pricePerUnit: 0 }]);
+  };
 
   const handleRemoveRule = (index: number) => {
-    setRules(rules.filter((_, i) => i !== index))
-  }
+    setRules(rules.filter((_, i) => i !== index));
+  };
 
   const handleChange = (index: number, field: keyof Rule, value: string) => {
-    const newRules = [...rules]
-    newRules[index][field] = Number(value)
-    setRules(newRules)
-  }
+    const newRules = [...rules];
+    newRules[index][field] = Number(value);
+    setRules(newRules);
+  };
 
   const handleSave = async () => {
+    if (!orgId) return;
     try {
-      setSaving(true)
-      setError('')
-      const res = await fetch(`/api/tiered-pricing/${itemId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rules }),
-      })
-      if (!res.ok) throw new Error('Failed to save rules')
-      setOpen(false)
-    } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      setSaving(true);
+      setError('');
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
+      await saveTieredPricing(
+        itemId,
+        rules.map((rule) => ({
+          minQuantity: rule.minQuantity,
+          pricePerUnit: rule.pricePerUnit,
+        })),
+        token,
+        orgId,
+      );
+      setOpen(false);
+      onSuccess?.();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -163,5 +188,5 @@ export function TieredPricingSheet({
         </div>
       </SheetContent>
     </Sheet>
-  )
+  );
 }

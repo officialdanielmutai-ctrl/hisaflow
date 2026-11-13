@@ -520,11 +520,10 @@ export class WholesaleAssistantToolsService implements AssistantToolProvider {
     return {
       name: 'record_credit_payment',
       description:
-        'Record a payment against a client\u2019s outstanding credit. Requires approval. Use list_debtors to find the credit ID and balance.',
+        'Record a payment against a client\u2019s outstanding credit. Requires approval. Use get_credit_summary or list_debtors to find the credit ID and balance. Available to every business type that records credit sales.',
       kind: 'write',
       riskLevel: 'medium',
       roles: MANAGER_ROLES,
-      verticals: WHOLESALER,
       parameters: {
         type: 'object',
         properties: {

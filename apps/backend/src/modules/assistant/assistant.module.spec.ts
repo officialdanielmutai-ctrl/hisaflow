@@ -133,6 +133,44 @@ describe('AssistantModule wiring', () => {
     }
   });
 
+  it('offers reporting, advice and cross-cutting read tools to every vertical', () => {
+    for (const businessType of [
+      'DUKA',
+      'MINI_MART',
+      'GUEST_HOUSE',
+      'ISP',
+      'SCHOOL',
+      'WHOLESALER',
+      'RESTAURANT',
+      'CHEMIST',
+    ]) {
+      const names = registry
+        .listFor(contextFor(businessType))
+        .map((tool) => tool.name);
+      // The production report "the assistant cannot report sales" must never
+      // regress: sales, catalogue advice and the other owner questions are
+      // available in every vertical and are not gated by a vertical list.
+      expect(names).toContain('get_sales_report');
+      expect(names).toContain('analyse_catalogue');
+      expect(names).toContain('get_credit_summary');
+      expect(names).toContain('get_expense_report');
+      expect(names).toContain('get_active_alerts');
+      expect(names).toContain('get_purchase_report');
+      expect(names).toContain('get_recent_transactions');
+      expect(names).toContain('list_notes');
+      expect(names).toContain('get_tax_summary');
+      expect(names).toContain('get_financial_breakdown');
+      expect(names).toContain('resolve_alert');
+      expect(names).toContain('record_expense');
+      expect(names).toContain('record_income');
+      expect(names).toContain('adjust_stock');
+      expect(names).toContain('archive_inventory_item');
+      // Credit payments are no longer wholesaler-only: any business that
+      // records credit can settle a debtor from the assistant.
+      expect(names).toContain('record_credit_payment');
+    }
+  });
+
   it('offers chemist tools and the shared stock items to a chemist org', () => {
     const chemist = registry
       .listFor(contextFor('CHEMIST'))

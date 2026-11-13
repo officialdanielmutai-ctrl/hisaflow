@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto, UpdateVariantDto } from './dto/update-product.dto';
-import { StockStatus, CatalogSource } from '@prisma/client';
+import { StockStatus, CatalogSource, TransactionType } from '@prisma/client';
 
 /**
  * How long a barcode that both external providers missed is remembered before
@@ -389,6 +389,7 @@ export class InventoryService {
     variantId: string,
     dto: UpdateVariantDto,
     organizationId: string,
+    actorId?: string,
   ) {
     const variant = await this.prisma.db.inventoryItem.findFirst({
       where: { id: variantId, organizationId },
@@ -398,13 +399,14 @@ export class InventoryService {
       throw new NotFoundException('Variant not found');
     }
 
-    const newQty = dto.quantity !== undefined ? dto.quantity : Number(variant.quantity);
+    const beforeQty = Number(variant.quantity);
+    const newQty = dto.quantity !== undefined ? dto.quantity : beforeQty;
     const newThreshold =
       dto.reorderThreshold !== undefined ? dto.reorderThreshold : Number(variant.reorderThreshold);
     const status: StockStatus =
       newQty > newThreshold ? StockStatus.HEALTHY : newQty > 0 ? StockStatus.LOW : StockStatus.OUT_OF_STOCK;
 
-    return this.prisma.db.inventoryItem.update({
+    const updateOperation = this.prisma.db.inventoryItem.update({
       where: { id: variantId },
       data: {
         name: dto.name,
@@ -426,6 +428,32 @@ export class InventoryService {
       },
       include: { packaging: true },
     });
+
+    // A quantity edit is a stock movement, not a metadata edit. Write the
+    // before/change/after row in the same transaction so the ledger and the
+    // projection can never disagree (checklist C11/DK8).
+    if (newQty === beforeQty) {
+      return updateOperation;
+    }
+
+    const [updated] = await this.prisma.db.$transaction([
+      updateOperation,
+      this.prisma.db.inventoryTransaction.create({
+        data: {
+          organizationId,
+          itemId: variantId,
+          type: TransactionType.ADJUSTMENT,
+          quantityBefore: beforeQty,
+          quantityChange: newQty - beforeQty,
+          quantityAfter: newQty,
+          reason: 'Stock correction via item edit',
+          actorId: actorId ?? null,
+          source: 'manual',
+        },
+      }),
+    ]);
+
+    return updated;
   }
 
   async deleteVariant(variantId: string, organizationId: string) {

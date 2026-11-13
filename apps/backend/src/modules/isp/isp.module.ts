@@ -11,6 +11,7 @@ import { TicketsController } from './tickets/tickets.controller';
 import { TicketsService } from './tickets/tickets.service';
 import { IspInvoicesController } from './invoices/isp-invoices.controller';
 import { IspInvoicesService } from './invoices/isp-invoices.service';
+import { IspBillingCycleJob } from './invoices/billing-cycle.job';
 import { EquipmentController } from './equipment/equipment.controller';
 import { EquipmentService } from './equipment/equipment.service';
 // Phase 6 — MikroTik Router Integration
@@ -43,6 +44,7 @@ import { TaxModule } from '../tax/tax.module';
     WorkOrdersService,
     TicketsService,
     IspInvoicesService,
+    IspBillingCycleJob,
     EquipmentService,
     RoutersService,
     RouterActionService,
@@ -56,6 +58,7 @@ import { TaxModule } from '../tax/tax.module';
     WorkOrdersService,
     TicketsService,
     IspInvoicesService,
+    IspBillingCycleJob,
     EquipmentService,
   ],
 })

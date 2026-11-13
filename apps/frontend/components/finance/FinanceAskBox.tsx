@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, Send, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { sendAssistantMessage } from '@/services/assistant.service';
+import { AssistantMessageText } from '@/components/assistant/AssistantMessageText';
 
 const SUGGESTIONS = [
   'Where is my money leaking?',
@@ -110,7 +111,11 @@ export function FinanceAskBox({
                   : 'bg-[var(--color-bg-base)] text-[var(--color-text-primary)]'
               }`}
             >
-              {message.text}
+              {message.role === 'assistant' ? (
+                <AssistantMessageText text={message.text} />
+              ) : (
+                message.text
+              )}
             </div>
           ))}
           {loading && (

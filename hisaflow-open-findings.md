@@ -9,7 +9,7 @@ once it is resolved, with a PR/date note.
 **Status values:** `Open` · `In progress` · `Resolved` · `Accepted risk`
 **Severity:** `Blocker` · `High` · `Medium` · `Low` · `Info`
 
-*Last updated: 2026-11-03*
+*Last updated: 2026-11-06*
 
 ---
 
@@ -44,16 +44,23 @@ once it is resolved, with a PR/date note.
 | F-25 | Tax / tiering | Medium | Resolved (2026-09-30) | Docs reconciled: Phase F / T-F headings and the paywall §1A Tax row now say Growth multi-location, matching the reused `TierFeature.MultiLocation` gate. |
 | F-26 | Tax / locations | Low | Accepted risk | Multi-location tax derives its location from the ISP `Router` + a "Main location" fallback; guest-house multi-property is out of scope, so there is nothing to group by yet. |
 | F-27 | Landing / trust | Blocker | Resolved (2026-11-03) | Landing page no longer claims owner M-Pesa payments are automatically matched. Copy now says "Record M-Pesa in one place" / "One daily total for every payment"; the reconciliation feature remains unbuilt and unclaimed. |
-| F-28 | Inventory / audit | Blocker | Open | `EditItemSheet` can overwrite stock quantity directly through `PATCH /inventory/variants/:id` without an `InventoryTransaction`; stock corrections bypass the ledger. |
-| F-29 | Restaurant / Chemist / Wholesale / School | Blocker | Open | Table orders, batch receipt, tiered pricing and student detail use relative `/api/...` fetches; no Next route/rewrite exists, so those screens are broken as shipped. |
-| F-30 | School fees / UI | High | Open | School Fees `invoices`/`defaulters`/`summary` tabs are placeholders and the student detail page that hosts Record Payment uses the broken `/api/students/:id`. Backend endpoints exist. |
-| F-31 | Data ownership / export | High | Open | No owner-facing export of inventory, sales, invoices, fees or tax records; CSV export exists only in platform-admin surfaces. |
-| F-32 | ISP / billing cycle | High | Open | ISP invoices are generated manually per subscriber; there is no scheduled billing-cycle invoice job. |
+| F-28 | Inventory / audit | Blocker | Resolved (2026-11-06) | Quantity edits now write an `ADJUSTMENT` `InventoryTransaction` (before/change/after + actor) in the same transaction as the projection; metadata-only edits do not write a false movement. |
+| F-29 | Restaurant / Chemist / Wholesale / School | Blocker | Resolved (2026-11-06) | All remaining relative `/api/...` fetches now go through `apiGet/apiPost`; the sheets are reachable from Edit Variant or the vertical page. |
+| F-30 | School fees / UI | High | Resolved (2026-11-06) | The three tabs render live backend data, DRAFT invoices can be issued, and student detail loads through `/students/:id` and records payments. |
+| F-31 | Data ownership / export | High | Resolved (2026-11-06) | Tenant-scoped `/exports/:dataset` CSV endpoints plus Settings → Your data downloads for inventory, ledger, invoices, fee invoices, credit and tax. |
+| F-32 | ISP / billing cycle | High | Resolved (2026-11-06) | `IspBillingCycleJob` generates and issues one invoice per active subscriber per anchored cycle, idempotently. |
 | F-33 | Retail / payments | High | Open | Retail sales have no payment method, no end-of-day/shift close and no sale receipt; card/M-Pesa/cash totals cannot be separated. |
-| F-34 | Restaurant / workflow | High | Open | No recipe editor, kitchen/prepared state, split payment, or dish margin/variance report; table close deducts stock without ledger rows. |
-| F-35 | Chemist / safety | High | Open | Free-text units, no block/warn on selling expired batches, batch write-off is FIFO-limited, and no 30/60/90 money-at-risk view. |
+| F-34 | Restaurant / workflow | High | In progress | Table orders are API-wired with add-item and ledgered close; recipe editor, kitchen/prepared state, split payment and dish margin/variance remain open. |
+| F-35 | Chemist / safety | High | In progress | Batch receipt is now reachable, but free-text units, expired-batch sale guard, batch-specific write-off and money-at-risk reporting remain open. |
 | F-36 | Guest house / billing | Medium | Open | Consumption deducts stock but is not priced into the invoice; issued invoices are not immutable snapshots. |
 | F-37 | Field verification / hardware | Medium | Open | Real MikroTik cut/restore and installed-iOS camera/PWA paths remain unverified; code and mocked tests pass, but no field evidence exists. |
+| F-38 | ISP / plan cycles | Low | Resolved (2026-11-06) | Service-plan UI offered `DAILY`/`WEEKLY`/`ANNUAL` while the Prisma enum only has `MONTHLY`/`QUARTERLY`/`ANNUALLY`; the UI and frontend type now match the database. |
+| F-39 | ISP / deployment | High | Resolved (2026-11-10) | `ROUTER_ENCRYPTION_KEY` was added to the Northflank API service and the service restarted; a real MikroTik field test is still pending. |
+| F-40 | AI gateway / deployment | High | Resolved (2026-11-13) | The official LiteLLM proxy OOM-killed on Northflank’s 512 MB plan and the free allowance cannot fit 1 GB beside the API. The gateway moved to Cloud Run `hisaflow-litellm` (2 GiB, min 0 / max 2, request-based billing); the Northflank gateway was removed. |
+| F-41 | AI gateway / keys | High | Resolved (2026-11-10) | The gateway `.env` Gemini key returned 403; the API service's valid Gemini key was copied in. Standard, assistant, vision and streaming calls now return 200. |
+| F-42 | AI gateway / backend | High | Resolved (2026-11-13) | The backend `LITELLM_BASE_URL` pointed at a dead Railway URL; it now points at the Cloud Run gateway `https://hisaflow-litellm-cgqiivalxa-ew.a.run.app/v1` with the matching master key. |
+| F-43 | AI gateway / redeploy | Medium | Open | The Cloud Run MCP `deploy_container_image` tool only accepts image/project/region/service; it does not preserve command, env, memory or scaling. A naive redeploy would reset the service to defaults. |
+| F-44 | Assistant / reporting & advice | High | Resolved (2026-11-13) | The assistant could not answer sales questions or analyse the catalogue, its shared tool set stopped at inventory/finance reads, and replies rendered Markdown/JSON as raw code. Added sales, purchase, catalogue, credit, expense, alert, recent-activity, notes, tax and team read tools plus governed `resolve_alert`, `record_expense`, `record_income`, `adjust_stock`, `archive_inventory_item` and shared `record_credit_payment`; prompted for practical advice with safety limits; and replaced raw Markdown/code fences with natural prose, labelled data rows and readable tables. |
 
 ---
 
@@ -398,7 +405,7 @@ part of F-04 and remain as a separate, larger cleanup.
 
 ## 3. Vertical Value Checklist audit — 2026-11-03
 
-The full question-by-question audit lives in `HisaFlow Vertical Value Checklist.md` §12 (123 questions: 38 code-verified, 51 partly, 31 no, 2 unknown). The findings below are the blockers/high-severity gaps that need a build or messaging decision. They do not repeat F-05/F-13 (trial mismatch), F-20 (school fee tax) or F-02 (live Paystack verification), which remain open.
+The full question-by-question audit lives in `HisaFlow Vertical Value Checklist.md` §12; after the 6 November pass it is 123 questions: 46 code-verified, 48 partly, 27 no, 2 unknown. The findings below are the blockers/high-severity gaps that need a build or messaging decision. They do not repeat F-05/F-13 (trial mismatch), F-20 (school fee tax) or F-02 (live Paystack verification), which remain open.
 
 ### F-27 — Landing-page M-Pesa matching claim is not backed by the product
 - **Where:** `apps/frontend/features/marketing/config/content.ts`.
@@ -408,27 +415,27 @@ The full question-by-question audit lives in `HisaFlow Vertical Value Checklist.
 ### F-28 — Stock corrections bypass the append-only ledger
 - **Where:** `EditItemSheet` → `PATCH /inventory/variants/:variantId` → `InventoryService.updateVariant()`.
 - **Impact:** quantity is overwritten directly; no `InventoryTransaction` is written. The stock count can silently diverge from the audit trail, violating the "append-only ledger" rule and DK8.
-- **Resolution:** route stock-count corrections through an ADJUSTMENT transaction (before/change/after + actor), and reject direct quantity edits outside that path.
+- **Resolved (2026-11-06):** `InventoryService.updateVariant()` now builds the quantity projection and writes an `ADJUSTMENT` `InventoryTransaction` (before/change/after + actor) in one `$transaction`. Metadata-only edits stay projection-only. `inventory.service.spec.ts` covers both paths. A dedicated counted-vs-system stock-count screen is still deferred (DK8 remains partly).
 
 ### F-29 — Dead relative `/api/...` vertical screens
 - **Where:** `app/(dashboard)/table-orders/page.tsx`, `components/restaurant/OpenTableSheet.tsx`, `components/restaurant/TableOrdersView.tsx`, `components/chemist/ReceiveBatchSheet.tsx`, `components/wholesale/TieredPricingSheet.tsx`, `app/(dashboard)/students/[id]/page.tsx`.
 - **Impact:** these call `fetch('/api/...')` on the Next origin, but the backend is a separate Nest application and there are no Next route handlers or rewrites. The screens 404/fail. `ReceiveBatchSheet` and `TieredPricingSheet` are also not imported anywhere.
-- **Resolution:** move them onto `apiGet/apiPost` with `NEXT_PUBLIC_API_URL`, or add a deliberate proxy. Import the sheets from the relevant vertical screens and add a smoke test.
+- **Resolved (2026-11-06):** all seven relative fetches were replaced with typed services over `apiGet/apiPost`: table-order page/open/view, add-table-item, batch receipt, tiered pricing and student detail. `ReceiveBatchSheet` and `TieredPricingSheet` are now imported from Edit Variant for CHEMIST/WHOLESALER. The tiered-pricing body was corrected to the array the controller expects. No `fetch('/api...')` call remains in the frontend.
 
 ### F-30 — School fee UI is placeholders; student detail is unreachable
 - **Where:** `app/(dashboard)/school-fees/page.tsx` (invoices/defaulters/summary tabs), `app/(dashboard)/students/[id]/page.tsx`, `components/school/RecordPaymentSheet.tsx`.
 - **Impact:** backend endpoints (`/school-fees/term/:termId/defaulters`, `/summary`, `/fees`) exist, but the owner sees static text; the student detail page that hosts the payment sheet calls the broken `/api/students/:id`.
-- **Resolution:** wire the tabs to the existing endpoints, fix student detail to `apiGet`, and show invoice/payment history. Add UI tests for the three tabs.
+- **Resolved (2026-11-06):** `school-fees/page.tsx` now loads invoices, defaulters and term summary from the existing endpoints and can issue DRAFT invoices; `students/[id]` uses `apiGet('/students/:id')` and shows issued invoices with payment entry. `RecordPaymentSheet` refreshes through SWR instead of a full page reload.
 
 ### F-31 — No owner data export
 - **Where:** only `admin/directory` and `admin/audit` expose CSV export.
 - **Impact:** the owner cannot export their own inventory, sales, invoices, fee records or tax data; this undermines the "never feel trapped" promise and C27.
-- **Resolution:** add a tenant-scoped export endpoint and Settings/Finance UI, with CSV at minimum and a documented schema.
+- **Resolved (2026-11-06):** new `DataExportModule` exposes `GET /exports/:dataset` for inventory, transactions, invoices, fee-invoices, credit and tax, scoped to the caller's organisation and restricted to OWNER/MANAGER. Settings → Your data downloads each CSV with the Clerk token. Covered by `data-export.service.spec.ts` and `lib/data-export.spec.ts`.
 
 ### F-32 — ISP invoices do not generate on a billing cycle
 - **Where:** `IspInvoicesService.generateForSubscriber()` is manual; no cron for invoice generation. `BillingSuspendJob` only suspends overdue invoices.
 - **Impact:** "invoices generate on each subscriber's billing cycle" is false; the owner must press Generate Bill per subscriber.
-- **Resolution:** add a scheduled generation job keyed to each subscriber's plan cycle (and idempotency), or correct the product claim.
+- **Resolved (2026-11-06):** new `IspBillingCycleJob` runs daily at 06:00, anchors each subscriber's current period to their signup date for MONTHLY/QUARTERLY/ANNUALLY, generates an invoice and issues it, and skips a period that already has a non-voided invoice. `billing-cycle.job.spec.ts` covers the cycle maths, generation and idempotency. Due date defaults to seven days after cycle start.
 
 ### F-33 — Retail payments, day close and receipts are missing
 - **Where:** `CreateTransactionDto` has no payment method; `QuickTransactionSheet` records only item + quantity; no shift/day-close model; only guest-house invoices have a receipt/print.
@@ -438,12 +445,14 @@ The full question-by-question audit lives in `HisaFlow Vertical Value Checklist.
 ### F-34 — Restaurant workflow is largely not reachable
 - **Where:** `RecipeIngredient`/`isComposite` exist, but `AddItemSheet` has no recipe editor; table order UI uses F-29's broken `/api`; `TableOrderStatus` has no kitchen/prepared state; no split payments or dish-margin report.
 - **Impact:** RS1, RS3–RS5, RS9, RS10 have no owner path; `closeOrder` deducts stock without ledger rows.
-- **Resolution:** build the recipe builder, fix the table API wiring, add preparation state and split payments, and reuse the ledger for every close.
+- **Resolution:** build the recipe builder, add preparation state and split payments, and add dish margin/variance reporting.
+- **Progress (2026-11-06):** table orders now use the Nest API, support adding items, and `closeOrder()` aggregates deductions, blocks negative stock and writes `SALE` ledger rows. Recipe editor, kitchen state, split payment and margin/variance remain open.
 
 ### F-35 — Chemist safety and batch workflow gaps
-- **Where:** `InventoryItem.unit` is free text; `TransactionsService` FIFO can deduct an expired batch; `StockBatchesService.retire()` zeroes a batch without an item/ledger adjustment; `ReceiveBatchSheet` is not wired.
+- **Where:** `InventoryItem.unit` is free text; `TransactionsService` FIFO can deduct an expired batch; `StockBatchesService.retire()` zeroes a batch without an item/ledger adjustment; `ReceiveBatchSheet` is now wired, but the other gaps remain.
 - **Impact:** CH1, CH5, CH6, CH9 and CH11 are not met; the first expiry alert can exist but the owner cannot safely act on it end-to-end.
-- **Resolution:** add proper units, an expired-sale guard with override, a batch-specific write-off (with cost), a working receipt sheet, and money-at-risk reporting.
+- **Resolution:** add proper units, an expired-sale guard with override, a batch-specific write-off (with cost), and money-at-risk reporting.
+- **Progress (2026-11-06):** `ReceiveBatchSheet` is now reachable from Edit Variant for chemists and posts through `/stock-batches`. The remaining safety gaps are unchanged.
 
 ### F-36 — Guest-house consumption and invoice immutability
 - **Where:** `BookingsService.addConsumption()` writes a SALE ledger row but does not price it into the invoice; `InvoicesService.addLineItem()` still allows changes after `ISSUED`; `InvoiceView` reads current booking/guest data.
@@ -454,3 +463,42 @@ The full question-by-question audit lives in `HisaFlow Vertical Value Checklist.
 - **Where:** PWA/camera flows, router suspend/reconnect, M-Pesa renewal and KRA filing are covered by code and mocked tests, but not by field evidence in this repo.
 - **Impact:** C5/C6/ISP7/ISP13 and the live tax/payment claims cannot be marked Yes under the checklist's original definition until an owner/device test is recorded.
 - **Resolution:** run the Section 11 sessions with a real owner per vertical, including a real MikroTik cut/restore and an installed-iOS camera capture.
+
+### F-38 — ISP plan cycle values did not match the database enum
+- **Where:** `apps/frontend/app/(dashboard)/service-plans/page.tsx`, `apps/frontend/services/isp.service.ts`, `apps/backend/prisma/schema.prisma`.
+- **Impact:** the UI offered `DAILY`, `WEEKLY` and `ANNUAL`, but `BillingCycle` only defines `MONTHLY`, `QUARTERLY` and `ANNUALLY`. Creating a plan with an offered value could fail validation or produce a type mismatch.
+- **Resolved (2026-11-06):** the frontend type, labels and select options now use the three real enum values. The billing-cycle job therefore handles every cycle a plan can actually store.
+
+### F-39 — Production router encryption key was missing
+- **Where:** Northflank service `hisaflow` (project `default`), runtime logs for `ReconciliationJob`.
+- **Evidence (2026-11-06):** `ReconciliationJob: could not connect to router Main POP Gateway (192.168.88.1) — ROUTER_ENCRYPTION_KEY env var is not set`.
+- **Impact:** router API passwords are stored AES-256-CBC encrypted, but without the key the backend cannot decrypt them. Suspend/reconnect and drift reconciliation therefore could not work in production.
+- **Resolved (2026-11-10):** `ROUTER_ENCRYPTION_KEY` was added to the API service runtime environment and the service was restarted. The 11:15 reconciliation cycle logged `Timeout` instead of `ROUTER_ENCRYPTION_KEY env var is not set`, confirming the key is loaded and decryption runs. The next proof is the Phase 6 MikroTik cut/restore test with a reachable router; the configured `192.168.88.1` is a private address, so ISP7/ISP13 remain field-unverified.
+
+### F-40 — Official LiteLLM proxy could not fit the free Northflank allowance
+- **Where:** Northflank project `default`, service `hisaflow-gateway`.
+- **Evidence (2026-11-10):** the official `main-stable` proxy was OOM-killed (exit 9) at `nf-compute-20` (512 MB) after startup, with full and one-model configs. A 1 GB plan (`nf-compute-50`) was rejected: “Deployment plan nf-compute-50 exceeds your free project deployment resource allowance”. The project allowance is 1 GB total and the API service already uses 512 MB.
+- **Resolved (2026-11-13):** the gateway moved to Cloud Run `hisaflow-litellm` in `hisaflow` / `europe-west1` with 1 vCPU, 2 GiB, min 0 / max 2 and request-based billing. It runs the official `litellm` proxy command against the existing image and `config.yaml`. The Northflank `hisaflow-gateway` service was deleted; Northflank now has only the `hisaflow` API service.
+
+### F-41 — Gateway Gemini key was invalid
+- **Where:** `apps/gateway/.env` → Northflank `hisaflow-gateway` runtime environment.
+- **Impact:** the standard and vision pools fell over to Gemini and returned an authentication error; streaming requests closed without a completion. Groq and OpenRouter were valid (`200`).
+- **Resolved (2026-11-10):** the valid Gemini key from `apps/backend/.env` was copied into the gateway environment. `hisaflow-standard`, `hisaflow-assistant`, `hisaflow-vision` and a streaming completion all returned `200`. Re-check all provider keys after rotation.
+
+### F-42 — Backend pointed at a dead Railway gateway
+- **Where:** Northflank `hisaflow` runtime environment.
+- **Evidence (2026-11-10):** `LITELLM_BASE_URL=https://hisaflow-production.up.railway.app/v1` returned `404 Application not found`.
+- **Resolved (2026-11-13):** the backend now uses `https://hisaflow-litellm-cgqiivalxa-ew.a.run.app/v1`; the `LITELLM_MASTER_KEY` is the same 32-byte random secret used by Cloud Run. The API service was restarted and its root health endpoint returns `200`.
+
+### F-43 — Cloud Run MCP redeploy does not preserve the service spec
+- **Where:** `cloud-run` MCP, `deploy_container_image` tool.
+- **Impact:** the tool accepts only `project`, `region`, `service` and `imageUrl`. It does not set or preserve `command`, `args`, runtime env, 2 GiB memory, min 0 / max 2 or CPU throttling. A naive redeploy would reset the service and could take the backend offline.
+- **Resolution:** redeploy through the Cloud Run Admin API with the full service spec (as done on 2026-11-13), or use a checked-in deploy script that reads the provider keys from the environment. Do not use the MCP image-only deploy for production updates.
+
+### F-44 — Assistant could not report sales, advise on the catalogue or write natural replies
+- **Where:** `apps/backend/src/modules/assistant/tools/assistant-tools.service.ts`, `agent/assistant-agent.service.ts`, `apps/frontend/components/assistant/AssistantMessageText.tsx`, `apps/frontend/lib/assistant.ts`.
+- **Evidence (2026-11-13):** sales questions produced “I cannot report sales” or an estimate because no sales read tool existed. The assistant could not analyse catalogue health, suggest new items, list notes/tax/team activity, or answer “who owes me?”, “what did I spend?” and “what needs attention?” from data. Replies containing model Markdown, backticks or fenced JSON appeared as raw code in the chat bubble.
+- **Resolved (2026-11-13):** added the shared read tools `get_sales_report` (period totals, margin, credit, top/by-category items and a previous-period comparison), `analyse_catalogue` (fast/slow movers, low stock, margin risks, packaging/category gaps and labelled new-item suggestions), `get_credit_summary`, `get_expense_report`, `get_active_alerts`, `get_purchase_report`, `get_recent_transactions`, `list_notes`, `get_tax_summary`, `list_team_members`, plus the proposal-only `resolve_alert`. The prompt routes questions to these tools and adds advisory/safety guidance. Additional writes fill common intents: `record_expense`/`record_income` (business ledger), `adjust_stock` (counted correction with an ADJUSTMENT ledger row), `archive_inventory_item` (soft delete) and `record_credit_payment` (now available to every business type, not only wholesalers). The UI renders bold and lists as prose, turns JSON fences into labelled values, turns tables into bullets and strips code/backtick formatting. Guards: `assistant-reporting-tools.service.spec.ts`, `assistant.module.spec.ts`, `assistant-agent.service.spec.ts`, `lib/assistant.spec.ts`, `AssistantMessageText.spec.tsx`.
+- **Live evaluation (2026-11-13):** `apps/backend/scripts/assistant-characterization.mjs` passed 22/22 cases on the primary `hisaflow-assistant` model (`openai/gpt-oss-120b`) across English/Swahili sales, catalogue, advice and write prompts, and 6/6 smoke cases through the production Cloud Run gateway. The C16 ambiguity case passed (two sugar matches → clarification question, no sale). Results: `context/assistant-characterization-2026-11-13.md`.
+- **Eval-found defect fixed:** Groq rejected a generated tool call containing `days: null` for an optional numeric argument. `ToolRegistryService.toSchemas()` now makes non-required primitive arguments explicitly nullable, and `asLimit`/period-handling treat `null` as absent. Guards: `tool-registry.service.spec.ts`, `assistant-reporting-tools.service.spec.ts`.
+- **Remaining:** no production owner-device session has been recorded for the new reporting/advice tools yet.

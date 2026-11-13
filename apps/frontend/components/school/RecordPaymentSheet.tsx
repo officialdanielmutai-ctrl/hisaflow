@@ -62,7 +62,6 @@ export function RecordPaymentSheet({
       );
       setOpen(false);
       onSuccess?.();
-      window.location.reload();
     } catch (err: any) {
       setError(err.message || "Failed to record payment");
     } finally {

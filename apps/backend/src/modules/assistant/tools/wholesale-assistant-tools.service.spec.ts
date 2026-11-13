@@ -66,11 +66,17 @@ function build(): Harness {
 }
 
 describe('WholesaleAssistantToolsService vertical gating', () => {
-  it('gates every wholesaler tool to the WHOLESALER vertical', () => {
+  it('gates wholesaler-only tools to the WHOLESALER vertical', () => {
     const { service } = build();
     const tools = service.all();
     expect(tools).toHaveLength(7);
     for (const tool of tools) {
+      // Credit payments are a shared foundation capability now: any business
+      // that records credit can settle a debtor from the assistant.
+      if (tool.name === 'record_credit_payment') {
+        expect(tool.verticals).toBeUndefined();
+        continue;
+      }
       expect(tool.verticals).toEqual(['WHOLESALER']);
     }
   });

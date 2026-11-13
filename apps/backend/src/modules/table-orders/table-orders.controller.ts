@@ -4,6 +4,7 @@ import { CreateTableOrderDto, AddOrderItemDto } from './dto/create-table-order.d
 import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
 
 @UseGuards(ClerkAuthGuard, RolesGuard)
 @Controller('table-orders')
@@ -56,8 +57,9 @@ export class TableOrdersController {
   async closeOrder(
     @Param('id') id: string,
     @OrgContext() orgId: string,
+    @CurrentUser() user: { id?: string },
   ) {
-    return this.tableOrdersService.closeOrder(id, orgId);
+    return this.tableOrdersService.closeOrder(id, orgId, user?.id);
   }
 
   @Post(':id/void')

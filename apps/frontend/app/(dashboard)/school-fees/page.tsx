@@ -21,6 +21,42 @@ interface AcademicTerm {
   _count?: { feeStructures: number };
 }
 
+interface FeeInvoiceRow {
+  id: string;
+  status: 'DRAFT' | 'ISSUED' | 'PARTIAL' | 'PAID' | 'VOIDED';
+  totalExpected: number;
+  adjustmentsTotal: number;
+  amountPaid: number;
+  student?: {
+    id: string;
+    name: string;
+    class?: { name: string } | null;
+  };
+}
+
+interface DefaulterRow {
+  studentId: string;
+  studentName: string;
+  className?: string | null;
+  amountPaid: number;
+  totalExpected: number;
+  balance: number;
+  status: string;
+}
+
+interface TermSummary {
+  totalExpected: number;
+  totalCollected: number;
+  outstanding: number;
+  collectionRate: number;
+  byClass: {
+    className: string;
+    totalExpected: number;
+    totalCollected: number;
+    studentCount: number;
+  }[];
+}
+
 export default function SchoolFeesPage() {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
@@ -40,6 +76,71 @@ export default function SchoolFeesPage() {
   );
 
   const activeTerm = terms?.find((t) => t.isActive) ?? null;
+
+  const { data: termInvoices, isLoading: invoicesLoading, mutate: mutateInvoices } =
+    useSWR<FeeInvoiceRow[]>(
+      orgId && activeTerm && activeTab === "invoices"
+        ? ["fee-invoices", orgId, activeTerm.id]
+        : null,
+      async () => {
+        const token = await getToken();
+        if (!token || !orgId || !activeTerm) throw new Error("Not authenticated");
+        return apiGet<FeeInvoiceRow[]>(
+          `/school-fees/term/${activeTerm.id}`,
+          token,
+          orgId
+        );
+      }
+    );
+
+  const { data: defaulters, isLoading: defaultersLoading } = useSWR<
+    DefaulterRow[]
+  >(
+    orgId && activeTerm && activeTab === "defaulters"
+      ? ["fee-defaulters", orgId, activeTerm.id]
+      : null,
+    async () => {
+      const token = await getToken();
+      if (!token || !orgId || !activeTerm) throw new Error("Not authenticated");
+      return apiGet<DefaulterRow[]>(
+        `/school-fees/term/${activeTerm.id}/defaulters`,
+        token,
+        orgId
+      );
+    }
+  );
+
+  const { data: termSummary, isLoading: summaryLoading } = useSWR<TermSummary>(
+    orgId && activeTerm && activeTab === "summary"
+      ? ["fee-summary", orgId, activeTerm.id]
+      : null,
+    async () => {
+      const token = await getToken();
+      if (!token || !orgId || !activeTerm) throw new Error("Not authenticated");
+      return apiGet<TermSummary>(
+        `/school-fees/term/${activeTerm.id}/summary`,
+        token,
+        orgId
+      );
+    }
+  );
+
+  const handleIssueInvoice = async (invoiceId: string) => {
+    if (!orgId) return;
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await apiPost(
+        `/school-fees/invoice/${invoiceId}/issue`,
+        token,
+        orgId,
+        {}
+      );
+      await mutateInvoices();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const handleActivate = async (termId: string) => {
     if (!membership) return;
@@ -112,7 +213,7 @@ export default function SchoolFeesPage() {
                   {activeTerm.name}
                 </h2>
                 <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                  {new Date(activeTerm.startDate).toLocaleDateString()} –{" "}
+                  {new Date(activeTerm.startDate).toLocaleDateString()} â€“{" "}
                   {new Date(activeTerm.endDate).toLocaleDateString()}
                 </div>
               </div>
@@ -197,7 +298,7 @@ export default function SchoolFeesPage() {
                       )}
                     </div>
                     <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                      {new Date(term.startDate).toLocaleDateString()} –{" "}
+                      {new Date(term.startDate).toLocaleDateString()} â€“{" "}
                       {new Date(term.endDate).toLocaleDateString()}
                     </p>
                   </div>
@@ -225,10 +326,61 @@ export default function SchoolFeesPage() {
             <CardHeader>
               <CardTitle className="text-base">All Invoices</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                Invoice list will appear here.
-              </p>
+            <CardContent className="space-y-3">
+              {!activeTerm ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Activate a term to see its invoices.
+                </p>
+              ) : invoicesLoading ? (
+                <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading invoices…
+                </div>
+              ) : !termInvoices || termInvoices.length === 0 ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  No invoices for this term yet. Generate invoices above.
+                </p>
+              ) : (
+                termInvoices.map((invoice) => {
+                  const expected =
+                    Number(invoice.totalExpected) -
+                    Number(invoice.adjustmentsTotal ?? 0);
+                  const paid = Number(invoice.amountPaid);
+                  return (
+                    <div
+                      key={invoice.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] p-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold">
+                          {invoice.student?.name ?? "Student"}
+                        </div>
+                        <div className="text-xs text-[var(--color-text-secondary)]">
+                          {invoice.student?.class?.name ?? "Unassigned"} ·{" "}
+                          {invoice.status}
+                        </div>
+                      </div>
+                      <div className="text-right text-xs">
+                        <div>
+                          KES {expected.toLocaleString()} expected
+                        </div>
+                        <div className="text-[var(--color-text-secondary)]">
+                          KES {paid.toLocaleString()} paid · KES{" "}
+                          {Math.max(expected - paid, 0).toLocaleString()} balance
+                        </div>
+                      </div>
+                      {invoice.status === "DRAFT" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleIssueInvoice(invoice.id)}
+                        >
+                          Issue
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
         )}
@@ -237,10 +389,42 @@ export default function SchoolFeesPage() {
             <CardHeader>
               <CardTitle className="text-base">Defaulters List</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                Students with unpaid balances.
-              </p>
+            <CardContent className="space-y-3">
+              {!activeTerm ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Activate a term to see defaulters.
+                </p>
+              ) : defaultersLoading ? (
+                <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading defaulters…
+                </div>
+              ) : !defaulters || defaulters.length === 0 ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Every student has cleared their fees for this term.
+                </p>
+              ) : (
+                defaulters.map((row) => (
+                  <div
+                    key={row.studentId}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] p-3"
+                  >
+                    <div>
+                      <div className="text-sm font-semibold">{row.studentName}</div>
+                      <div className="text-xs text-[var(--color-text-secondary)]">
+                        {row.className ?? "Unassigned"} · {row.status}
+                      </div>
+                    </div>
+                    <div className="text-right text-xs">
+                      <div className="font-semibold text-destructive">
+                        KES {Number(row.balance).toLocaleString()}
+                      </div>
+                      <div className="text-[var(--color-text-secondary)]">
+                        of KES {Number(row.totalExpected).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         )}
@@ -249,10 +433,83 @@ export default function SchoolFeesPage() {
             <CardHeader>
               <CardTitle className="text-base">Term Summary</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                Overall fee collection statistics.
-              </p>
+            <CardContent className="space-y-4">
+              {!activeTerm ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Activate a term to see its summary.
+                </p>
+              ) : summaryLoading ? (
+                <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading summary…
+                </div>
+              ) : !termSummary ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  No fee data for this term yet.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-xl bg-[var(--color-bg-muted)] p-3">
+                      <div className="text-xs text-[var(--color-text-secondary)]">
+                        Expected
+                      </div>
+                      <div className="text-base font-bold">
+                        KES{" "}
+                        {Number(termSummary.totalExpected).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-[var(--color-bg-muted)] p-3">
+                      <div className="text-xs text-[var(--color-text-secondary)]">
+                        Collected
+                      </div>
+                      <div className="text-base font-bold text-[#1F7A5A]">
+                        KES{" "}
+                        {Number(termSummary.totalCollected).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-[var(--color-bg-muted)] p-3">
+                      <div className="text-xs text-[var(--color-text-secondary)]">
+                        Outstanding
+                      </div>
+                      <div className="text-base font-bold text-destructive">
+                        KES{" "}
+                        {Number(termSummary.outstanding).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-[var(--color-bg-muted)] p-3">
+                      <div className="text-xs text-[var(--color-text-secondary)]">
+                        Collection
+                      </div>
+                      <div className="text-base font-bold">
+                        {Number(termSummary.collectionRate).toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {termSummary.byClass.map((row) => (
+                      <div
+                        key={row.className}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] p-3 text-sm"
+                      >
+                        <div>
+                          <div className="font-semibold">{row.className}</div>
+                          <div className="text-xs text-[var(--color-text-secondary)]">
+                            {row.studentCount} invoice
+                            {row.studentCount === 1 ? "" : "s"}
+                          </div>
+                        </div>
+                        <div className="text-right text-xs">
+                          <div>
+                            KES{" "}
+                            {Number(row.totalCollected).toLocaleString()} of KES{" "}
+                            {Number(row.totalExpected).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

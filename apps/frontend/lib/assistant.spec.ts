@@ -8,6 +8,8 @@ import {
   noteArgsEqual,
   noteArgsFromDraft,
   noteDraftFromProposal,
+  parseAssistantInline,
+  parseAssistantMessage,
   proposalDestination,
   proposalStatusLabel,
   proposalStatusTone,
@@ -205,6 +207,36 @@ describe('assistant helpers', () => {
       'What is in my stock?',
     ]);
   });
+
+  it('labels the new stock and finance write tools', () => {
+    expect(toolLabel('adjust_stock')).toBe('Stock correction');
+    expect(toolLabel('archive_inventory_item')).toBe('Archive item');
+    expect(toolLabel('record_expense')).toBe('Record expense');
+    expect(toolLabel('record_income')).toBe('Record income');
+  });
+
+  it('labels and suggests the reporting and advice tools', () => {
+    expect(toolLabel('get_sales_report')).toBe('Sales report');
+    expect(toolLabel('get_purchase_report')).toBe('Purchase report');
+    expect(toolLabel('get_recent_transactions')).toBe('Recent activity');
+    expect(toolLabel('list_notes')).toBe('Notes & tasks');
+    expect(toolLabel('get_tax_summary')).toBe('Tax status');
+    expect(toolLabel('list_team_members')).toBe('Team');
+    expect(toolLabel('resolve_alert')).toBe('Resolve alert');
+    expect(
+      suggestionsForTools([
+        tool('get_sales_report'),
+        tool('analyse_catalogue'),
+        tool('get_credit_summary'),
+        tool('get_active_alerts'),
+      ]),
+    ).toEqual([
+      'How were sales this week?',
+      'What should I stock next?',
+      'Who owes me money?',
+      'What needs my attention?',
+    ]);
+  });
 });
 
 describe('proposalDestination', () => {
@@ -224,6 +256,18 @@ describe('proposalDestination', () => {
     expect(proposalDestination('record_sale')).toEqual({
       label: 'Transactions',
       href: '/transactions',
+    });
+    expect(proposalDestination('resolve_alert')).toEqual({
+      label: 'Alerts',
+      href: '/alerts',
+    });
+    expect(proposalDestination('record_expense')).toEqual({
+      label: 'Finance',
+      href: '/finance',
+    });
+    expect(proposalDestination('adjust_stock')).toEqual({
+      label: 'Inventory',
+      href: '/inventory',
     });
   });
 
@@ -297,5 +341,77 @@ describe('note panel helpers', () => {
         importance: 'HIGH',
       }),
     ).toBe(false);
+  });
+});
+
+describe('assistant message rendering helpers', () => {
+  it('turns markdown into paragraphs, bullets and headings', () => {
+    const blocks = parseAssistantMessage(
+      `**Sales were up.**
+
+- Sold 3 unga
+- Sold 2 sugar
+
+### Next step
+Restock unga.`,
+    );
+    expect(blocks).toEqual([
+      { type: 'paragraph', text: '**Sales were up.**' },
+      { type: 'bullet', items: ['Sold 3 unga', 'Sold 2 sugar'] },
+      { type: 'heading', text: 'Next step' },
+      { type: 'paragraph', text: 'Restock unga.' },
+    ]);
+  });
+
+  it('turns a JSON code fence into readable labelled rows', () => {
+    const blocks = parseAssistantMessage(`\`\`\`json
+{ "revenue": 1200, "items": ["Sugar", "Rice"] }
+\`\`\``);
+    expect(blocks).toEqual([
+      {
+        type: 'data',
+        rows: [
+          { label: 'Revenue', value: '1,200' },
+          { label: 'Items', value: 'Sugar, Rice' },
+        ],
+      },
+    ]);
+  });
+
+  it('keeps a non-JSON code fence as natural prose', () => {
+    const blocks = parseAssistantMessage(`\`\`\`
+Revenue was up this week.
+\`\`\``);
+    expect(blocks).toEqual([
+      { type: 'paragraph', text: 'Revenue was up this week.' },
+    ]);
+  });
+
+  it('turns a markdown table into readable bullets', () => {
+    const blocks = parseAssistantMessage(
+      '| Item | Sales |\n| --- | --- |\n| Sugar | 850 |',
+    );
+    expect(blocks).toEqual([
+      { type: 'bullet', items: ['Item · Sales', 'Sugar · 850'] },
+    ]);
+  });
+
+  it('ignores horizontal rules and blockquote markers', () => {
+    const blocks = parseAssistantMessage('---\n> Good news.\n\nNext step.');
+    expect(blocks).toEqual([
+      { type: 'paragraph', text: 'Good news.' },
+      { type: 'paragraph', text: 'Next step.' },
+    ]);
+  });
+
+  it('parses strong and inline-code segments without leaving backticks', () => {
+    const segments = parseAssistantInline('Sell **unga** at `KES 120`.');
+    expect(segments).toEqual([
+      { kind: 'text', text: 'Sell ' },
+      { kind: 'strong', text: 'unga' },
+      { kind: 'text', text: ' at ' },
+      { kind: 'code', text: 'KES 120' },
+      { kind: 'text', text: '.' },
+    ]);
   });
 });

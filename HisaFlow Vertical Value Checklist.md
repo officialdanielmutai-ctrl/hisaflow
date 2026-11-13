@@ -2,7 +2,9 @@
 
 Prepared for Daniel and the Spacefix Digitals team, 2 November 2026. Built from the repo's scope documents (industry specificity, guest house, ISP, tax, paywall, landing page, assistant vertical docs) and the current module structure.
 
-> **Latest review:** code-evidence audit, 3 November 2026 — see §12. Status is not final until the Section 11 owner-device session; §12 distinguishes code-verified, partly, no and unknown.
+> **Latest review:** implementation pass and production cross-check, 6 November 2026 — see §12 for the question-by-question status and §13 for the fixes and the Northflank evidence. Every question below now carries a status mark. A ✅ is still not the document's final **Yes** until the Section 11 owner-device session is recorded; it means the code path exists and is covered by tests/build.
+>
+> **Marks used below:** ✅ code-verified · 🟡 partly · 🔴 no · ⚪ unknown.
 
 ## Purpose and how to use this
 
@@ -25,56 +27,56 @@ Each vertical ends with its **Moment of value**: the single thing that makes the
 
 ### First run and first value
 
-- **C1 \[Day 1\]** Can a new owner sign up, pick their business type, and record their first real sale or entry in under 10 minutes, with no call to us?
-- **C2 \[Day 1\]** After picking a business type, do they see only the screens and words for their industry (rooms for a guest house, subscribers for an ISP), with no irrelevant tabs?
-- **C3 \[Day 1\]** Can they load what they already have without retyping everything (barcode scan with auto-fill, photo of a label or receipt, quick bulk entry)?
-- **C4 \[Week 1\]** Does the dashboard answer 'how is my business doing today?' without opening another tab?
+- 🟡 **C1 \[Day 1\]** Can a new owner sign up, pick their business type, and record their first real sale or entry in under 10 minutes, with no call to us?
+- ✅ **C2 \[Day 1\]** After picking a business type, do they see only the screens and words for their industry (rooms for a guest house, subscribers for an ISP), with no irrelevant tabs?
+- ✅ **C3 \[Day 1\]** Can they load what they already have without retyping everything (barcode scan with auto-fill, photo of a label or receipt, quick bulk entry)?
+- ✅ **C4 \[Week 1\]** Does the dashboard answer 'how is my business doing today?' without opening another tab?
 
 ### Phone and reliability
 
-- **C5 \[Day 1\]** Does every core task work one-handed on a cheap Android phone on weak data, and as an installed app on both Android and iPhone?
-- **C6 \[Day 1\]** Do camera features (barcode, label OCR, receipt scan) work on real devices, including the installed iOS app?
-- **C7 \[Scope\]** What exactly happens with no internet mid-sale: what is saved, what is blocked, and does every marketing line match what is actually shipped? (The landing-page claims policy says 'works offline' appears only when it is true.)
+- 🟡 **C5 \[Day 1\]** Does every core task work one-handed on a cheap Android phone on weak data, and as an installed app on both Android and iPhone?
+- 🟡 **C6 \[Day 1\]** Do camera features (barcode, label OCR, receipt scan) work on real devices, including the installed iOS app?
+- 🟡 **C7 \[Scope\]** What exactly happens with no internet mid-sale: what is saved, what is blocked, and does every marketing line match what is actually shipped? (The landing-page claims policy says 'works offline' appears only when it is true.)
 
 ### Staff and control
 
-- **C8 \[Week 1\]** Can the owner add staff with their own logins and limit what each role (owner, manager, staff) can see and do?
-- **C9 \[Week 1\]** Can the owner see who changed what: stock adjustments, price changes, deletions?
-- **C10 \[Week 1\]** When a staff member leaves, is their access cut immediately?
+- ✅ **C8 \[Week 1\]** Can the owner add staff with their own logins and limit what each role (owner, manager, staff) can see and do?
+- 🟡 **C9 \[Week 1\]** Can the owner see who changed what: stock adjustments, price changes, deletions?
+- ✅ **C10 \[Week 1\]** When a staff member leaves, is their access cut immediately?
 
 ### Money and trust
 
-- **C11 \[Day 1\]** Is every stock movement and payment traceable, so that a corrected mistake leaves a trail instead of silently overwriting history?
-- **C12 \[Week 1\]** Does the Finance tab show revenue, cost, profit and money owed for the right period, with day boundaries in East Africa Time, and does the owner trust it against their own notebook or M-Pesa statement?
-- **C13 \[Week 1\]** Can they record cash, M-Pesa, card and credit sales, and close the day knowing the totals agree?
-- **C14 \[Month 1\]** The landing page promises payments that are 'automatically matched'. Does that mean the owner's own customer payments, or only HisaFlow's own subscription billing? If the former, is it built? If not, the wording must change.
+- ✅ **C11 \[Day 1\]** Is every stock movement and payment traceable, so that a corrected mistake leaves a trail instead of silently overwriting history?
+- 🟡 **C12 \[Week 1\]** Does the Finance tab show revenue, cost, profit and money owed for the right period, with day boundaries in East Africa Time, and does the owner trust it against their own notebook or M-Pesa statement?
+- 🟡 **C13 \[Week 1\]** Can they record cash, M-Pesa, card and credit sales, and close the day knowing the totals agree?
+- ✅ **C14 \[Month 1\]** The landing page promises payments that are 'automatically matched'. Does that mean the owner's own customer payments, or only HisaFlow's own subscription billing? If the former, is it built? If not, the wording must change.
 
 ### AI assistant
 
-- **C15 \[Day 1\]** Can the owner type or say 'sold 3 sugar' and get a clear confirmation step before anything is recorded?
-- **C16 \[Week 1\]** When a request is ambiguous (two items with similar names), does the assistant ask rather than guess?
-- **C17 \[Week 1\]** Does the assistant only know and touch this owner's data and this owner's industry tools?
-- **C18 \[Month 1\]** Does it save measurable time versus tapping through screens, and does the owner actually keep using it after the first week?
+- 🟡 **C15 \[Day 1\]** Can the owner type or say 'sold 3 sugar' and get a clear confirmation step before anything is recorded?
+- 🟡 **C16 \[Week 1\]** When a request is ambiguous (two items with similar names), does the assistant ask rather than guess?
+- ✅ **C17 \[Week 1\]** Does the assistant only know and touch this owner's data and this owner's industry tools?
+- ⚪ **C18 \[Month 1\]** Does it save measurable time versus tapping through screens, and does the owner actually keep using it after the first week?
 
 ### Their HisaFlow subscription
 
-- **C19 \[Day 1\]** Is the 14-day full-feature trial obvious, with no card required, and is the end-of-trial prompt expected rather than a surprise lock-out?
-- **C20 \[Week 1\]** Can they pay by M-Pesa and by card, and do they understand that M-Pesa renewals need their approval on the phone each cycle?
-- **C21 \[Week 1\]** If a Solo-plan owner tries something Team-only (adding a second staff account, a second router), do they see a clear explanation of that specific limit, not a generic pricing page?
-- **C22 \[Month 1\]** Is the price (provisionally KES 2,500 Solo, KES 5,500 Team) clearly smaller than the money the product saves or recovers each month?
+- 🔴 **C19 \[Day 1\]** Is the 14-day full-feature trial obvious, with no card required, and is the end-of-trial prompt expected rather than a surprise lock-out?
+- 🟡 **C20 \[Week 1\]** Can they pay by M-Pesa and by card, and do they understand that M-Pesa renewals need their approval on the phone each cycle?
+- ✅ **C21 \[Week 1\]** If a Solo-plan owner tries something Team-only (adding a second staff account, a second router), do they see a clear explanation of that specific limit, not a generic pricing page?
+- ⚪ **C22 \[Month 1\]** Is the price (provisionally KES 2,500 Solo, KES 5,500 Team) clearly smaller than the money the product saves or recovers each month?
 
 ### Tax (KRA eTIMS)
 
-- **C23 \[Scope\]** Does the app honestly show 'registration pending with KRA' as a real state, since the owner's KRA-side steps are outside our control?
-- **C24 \[Week 1\]** For a tax-registered business, is tax calculated on every sale automatically, with zero manual entry?
-- **C25 \[Month 1\]** Does the Tax tab simply show the truth (filed, pending, owed this period) without the owner building the numbers?
-- **C26 \[Scope\]** Do we advertise eTIMS-compliant invoicing only after signing is live and verified in production?
+- ✅ **C23 \[Scope\]** Does the app honestly show 'registration pending with KRA' as a real state, since the owner's KRA-side steps are outside our control?
+- 🔴 **C24 \[Week 1\]** For a tax-registered business, is tax calculated on every sale automatically, with zero manual entry?
+- 🟡 **C25 \[Month 1\]** Does the Tax tab simply show the truth (filed, pending, owed this period) without the owner building the numbers?
+- ✅ **C26 \[Scope\]** Do we advertise eTIMS-compliant invoicing only after signing is live and verified in production?
 
 ### Data and support
 
-- **C27 \[Month 1\]** Can an owner export their own records, so they never feel trapped?
-- **C28 \[Week 1\]** When stuck, can they reach a human on WhatsApp, and how quickly do we answer?
-- **C29 \[Day 1\]** Can we answer 'who can see my data?' in plain language, consistent with Kenya's Data Protection Act?
+- ✅ **C27 \[Month 1\]** Can an owner export their own records, so they never feel trapped?
+- 🟡 **C28 \[Week 1\]** When stuck, can they reach a human on WhatsApp, and how quickly do we answer?
+- ✅ **C29 \[Day 1\]** Can we answer 'who can see my data?' in plain language, consistent with Kenya's Data Protection Act?
 
 ---
 
@@ -82,17 +84,17 @@ Each vertical ends with its **Moment of value**: the single thing that makes the
 
 **The problem we claim to solve:** stock lives in a notebook and in the owner's head; credit to regulars is forgotten; the owner cannot tell what is making money.
 
-- **DK1 \[Day 1\]** Can I add my items quickly by scanning the barcode (with details filled in automatically) or photographing the label?
-- **DK2 \[Day 1\]** Can I record a sale in under 10 seconds?
-- **DK3 \[Day 1\]** Can I sell a single piece out of a pack (one cigarette from 20, one egg from a tray) and still have my stock count agree with how I buy?
-- **DK4 \[Week 1\]** Do I get a low-stock warning early enough to restock before I run out?
-- **DK5 \[Week 1\]** Can I record goods taken on credit by a regular customer and see who owes me and how much?
-- **DK6 \[Week 1\]** Can I record a part-payment and see the balance drop correctly?
-- **DK7 \[Week 1\]** Can I record spoilage, loss or theft so the system count matches the shelf?
-- **DK8 \[Week 1\]** Can I do a stock count and correct differences while keeping a record of the correction?
-- **DK9 \[Week 1\]** Can I give a receipt (printed or shared on WhatsApp)?
-- **DK10 \[Month 1\]** Can I see which items earn me the most profit, not just which sell the most?
-- **DK11 \[Month 1\]** Does my month-end profit figure match what I believe, and can I see why if it does not?
+- ✅ **DK1 \[Day 1\]** Can I add my items quickly by scanning the barcode (with details filled in automatically) or photographing the label?
+- 🟡 **DK2 \[Day 1\]** Can I record a sale in under 10 seconds?
+- ✅ **DK3 \[Day 1\]** Can I sell a single piece out of a pack (one cigarette from 20, one egg from a tray) and still have my stock count agree with how I buy?
+- ✅ **DK4 \[Week 1\]** Do I get a low-stock warning early enough to restock before I run out?
+- ✅ **DK5 \[Week 1\]** Can I record goods taken on credit by a regular customer and see who owes me and how much?
+- ✅ **DK6 \[Week 1\]** Can I record a part-payment and see the balance drop correctly?
+- 🟡 **DK7 \[Week 1\]** Can I record spoilage, loss or theft so the system count matches the shelf?
+- 🟡 **DK8 \[Week 1\]** Can I do a stock count and correct differences while keeping a record of the correction?
+- 🔴 **DK9 \[Week 1\]** Can I give a receipt (printed or shared on WhatsApp)?
+- 🟡 **DK10 \[Month 1\]** Can I see which items earn me the most profit, not just which sell the most?
+- 🟡 **DK11 \[Month 1\]** Does my month-end profit figure match what I believe, and can I see why if it does not?
 
 **Moment of value:** within a week the owner finds a forgotten debtor or an item that has been sitting unsold, and acts on it.
 
@@ -102,14 +104,14 @@ Each vertical ends with its **Moment of value**: the single thing that makes the
 
 Everything in Duka applies. These are the extra questions that come with more items, more staff and more suppliers.
 
-- **MM1 \[Day 1\]** Can I buy by the carton and sell by the piece against one stock count, without doing arithmetic myself?
-- **MM2 \[Day 1\]** With hundreds of items, can I find any item in seconds by scanning or searching?
-- **MM3 \[Week 1\]** Can each cashier have their own login, and can I see each person's sales and close a shift with the totals matching?
-- **MM4 \[Week 1\]** Do perishables (milk, bread, yoghurt) warn me before they expire?
-- **MM5 \[Week 1\]** When I record a supplier purchase at a new cost, does my margin on that item update correctly?
-- **MM6 \[Week 1\]** Can I change a price once and have it apply everywhere, with the old price preserved in history?
-- **MM7 \[Week 1\]** Can I see cash, M-Pesa and card totals separately at close of day?
-- **MM8 \[Month 1\]** If I am VAT-registered, do my receipts carry correct tax automatically?
+- ✅ **MM1 \[Day 1\]** Can I buy by the carton and sell by the piece against one stock count, without doing arithmetic myself?
+- 🟡 **MM2 \[Day 1\]** With hundreds of items, can I find any item in seconds by scanning or searching?
+- 🔴 **MM3 \[Week 1\]** Can each cashier have their own login, and can I see each person's sales and close a shift with the totals matching?
+- 🔴 **MM4 \[Week 1\]** Do perishables (milk, bread, yoghurt) warn me before they expire?
+- 🔴 **MM5 \[Week 1\]** When I record a supplier purchase at a new cost, does my margin on that item update correctly?
+- 🟡 **MM6 \[Week 1\]** Can I change a price once and have it apply everywhere, with the old price preserved in history?
+- 🔴 **MM7 \[Week 1\]** Can I see cash, M-Pesa and card totals separately at close of day?
+- 🔴 **MM8 \[Month 1\]** If I am VAT-registered, do my receipts carry correct tax automatically?
 
 **Moment of value:** the end-of-day close finally balances without a calculator, and the owner can leave the till to a staff member.
 
@@ -119,16 +121,16 @@ Everything in Duka applies. These are the extra questions that come with more it
 
 **The problem we claim to solve:** buying in cartons and selling in cartons or pieces, with different prices at different quantities and a lot of money out on credit.
 
-- **WS1 \[Day 1\]** Can I buy in cartons and sell in cartons or pieces, and trust a single stock number?
-- **WS2 \[Day 1\]** Does the price drop automatically at my quantity thresholds (1 carton at X, 10 or more at Y), so my staff never calculate by hand?
-- **WS3 \[Day 1\]** Can I enter a large multi-line sale quickly, using cartons and packaging units?
-- **WS4 \[Week 1\]** Can I see every customer who owes me, how much, and how old each debt is?
-- **WS5 \[Week 1\]** Can I record a payment against a customer's debt and see the balance update?
-- **WS6 \[Week 1\]** Can I set a credit limit per customer and get warned before I exceed it? (Not in the scope documents; confirm whether it exists or is a gap.)
-- **WS7 \[Week 1\]** Can I send a customer a statement of what they owe, for example on WhatsApp?
-- **WS8 \[Month 1\]** Can I see my margin at each price tier, so I know whether big-quantity discounts are losing me money?
-- **WS9 \[Month 1\]** Can I see best sellers and slow movers over a chosen period to decide what to buy?
-- **WS10 \[Scope\]** Multiple warehouses or branches belong to the Growth plan; is that stated clearly?
+- ✅ **WS1 \[Day 1\]** Can I buy in cartons and sell in cartons or pieces, and trust a single stock number?
+- ✅ **WS2 \[Day 1\]** Does the price drop automatically at my quantity thresholds (1 carton at X, 10 or more at Y), so my staff never calculate by hand?
+- 🟡 **WS3 \[Day 1\]** Can I enter a large multi-line sale quickly, using cartons and packaging units?
+- 🟡 **WS4 \[Week 1\]** Can I see every customer who owes me, how much, and how old each debt is?
+- ✅ **WS5 \[Week 1\]** Can I record a payment against a customer's debt and see the balance update?
+- 🔴 **WS6 \[Week 1\]** Can I set a credit limit per customer and get warned before I exceed it? (Not in the scope documents; confirm whether it exists or is a gap.)
+- 🔴 **WS7 \[Week 1\]** Can I send a customer a statement of what they owe, for example on WhatsApp?
+- 🔴 **WS8 \[Month 1\]** Can I see my margin at each price tier, so I know whether big-quantity discounts are losing me money?
+- 🟡 **WS9 \[Month 1\]** Can I see best sellers and slow movers over a chosen period to decide what to buy?
+- 🟡 **WS10 \[Scope\]** Multiple warehouses or branches belong to the Growth plan; is that stated clearly?
 
 **Moment of value:** the owner sees the total owed to them, aged, for the first time, and collects from the oldest debtors.
 
@@ -138,18 +140,18 @@ Everything in Duka applies. These are the extra questions that come with more it
 
 **The problem we claim to solve:** generic 'grams and kilograms' units are wrong for medicine, and expired stock is the pharmacy owner's biggest silent loss.
 
-- **CH1 \[Day 1\]** Can I sell at box, strip and single-tablet level from one stock count, using proper units (tablet, capsule, ml, sachet, strip, box) instead of grams and kilograms?
-- **CH2 \[Day 1\]** When stock arrives, can I record the batch number and expiry date for each delivery?
-- **CH3 \[Day 1\]** When I sell, does the system take from the earliest-expiring batch first, and show me which batch it used?
-- **CH4 \[Week 1\]** Do I get warnings at 30, 60 and 90 days before expiry, listing exactly which batches and how much money is at risk?
-- **CH5 \[Week 1\]** Does the system stop me, or at least warn me, before selling an expired batch?
-- **CH6 \[Week 1\]** Can I write off an expired batch against that specific batch and see the loss in shillings?
-- **CH7 \[Week 1\]** Can I look up a medicine's price, stock and batches in seconds while a customer waits?
-- **CH8 \[Week 1\]** Can I scan a medicine box or label to add stock, and is the OCR accurate enough that I do not retype?
-- **CH9 \[Month 1\]** Can I see how much expired stock cost me this month compared with before I used HisaFlow?
-- **CH10 \[Week 1\]** Can I handle near-expiry stock I want to return to a supplier, and track it? (Not in the scope documents; confirm.)
-- **CH11 \[Scope\]** Prescription versus over-the-counter is only a light flag, and full PPB compliance is deferred. Do we say so plainly?
-- **CH12 \[Scope\]** The assistant searches the shop's own catalogue and is not a drug reference. Is that clear to the user, so nobody takes its answers as medical advice?
+- 🔴 **CH1 \[Day 1\]** Can I sell at box, strip and single-tablet level from one stock count, using proper units (tablet, capsule, ml, sachet, strip, box) instead of grams and kilograms?
+- ✅ **CH2 \[Day 1\]** When stock arrives, can I record the batch number and expiry date for each delivery?
+- 🟡 **CH3 \[Day 1\]** When I sell, does the system take from the earliest-expiring batch first, and show me which batch it used?
+- 🟡 **CH4 \[Week 1\]** Do I get warnings at 30, 60 and 90 days before expiry, listing exactly which batches and how much money is at risk?
+- 🔴 **CH5 \[Week 1\]** Does the system stop me, or at least warn me, before selling an expired batch?
+- 🟡 **CH6 \[Week 1\]** Can I write off an expired batch against that specific batch and see the loss in shillings?
+- 🟡 **CH7 \[Week 1\]** Can I look up a medicine's price, stock and batches in seconds while a customer waits?
+- 🟡 **CH8 \[Week 1\]** Can I scan a medicine box or label to add stock, and is the OCR accurate enough that I do not retype?
+- 🔴 **CH9 \[Month 1\]** Can I see how much expired stock cost me this month compared with before I used HisaFlow?
+- 🔴 **CH10 \[Week 1\]** Can I handle near-expiry stock I want to return to a supplier, and track it? (Not in the scope documents; confirm.)
+- 🔴 **CH11 \[Scope\]** Prescription versus over-the-counter is only a light flag, and full PPB compliance is deferred. Do we say so plainly?
+- ✅ **CH12 \[Scope\]** The assistant searches the shop's own catalogue and is not a drug reference. Is that clear to the user, so nobody takes its answers as medical advice?
 
 **Moment of value:** the first expiry alert catches a batch the owner would otherwise have lost.
 
@@ -159,17 +161,17 @@ Everything in Duka applies. These are the extra questions that come with more it
 
 **The problem we claim to solve:** a restaurant sells dishes but stocks ingredients, so selling a dish should deduct its ingredients, and several tables run tabs at once.
 
-- **RS1 \[Day 1\]** Can I define a dish as a recipe (ingredients and quantities) in a few minutes?
-- **RS2 \[Day 1\]** When I sell a dish, are its ingredients deducted automatically?
-- **RS3 \[Day 1\]** Can I run several tables at once, add items to each, and close each with payment?
-- **RS4 \[Week 1\]** Can the kitchen see open orders and mark them prepared, without needing a printer?
-- **RS5 \[Week 1\]** Do I know my cost per plate and my margin on each dish?
-- **RS6 \[Week 1\]** Do I find out an ingredient is short before a dish becomes impossible to make?
-- **RS7 \[Week 1\]** Can I record wastage (burnt, spoiled, staff meals) separately from sales?
-- **RS8 \[Week 1\]** Can I change a menu price quickly, and does it apply to new orders only?
-- **RS9 \[Week 1\]** Can one table pay part in cash and part by M-Pesa?
-- **RS10 \[Month 1\]** Can I see which dishes make money and which lose it, and compare expected ingredient use with actual use to spot over-portioning or theft?
-- **RS11 \[Scope\]** Per-guest bill splitting, multi-printer kitchen routing and eTIMS fiscal receipts are deferred. Do we say so honestly?
+- 🔴 **RS1 \[Day 1\]** Can I define a dish as a recipe (ingredients and quantities) in a few minutes?
+- ✅ **RS2 \[Day 1\]** When I sell a dish, are its ingredients deducted automatically?
+- ✅ **RS3 \[Day 1\]** Can I run several tables at once, add items to each, and close each with payment?
+- 🔴 **RS4 \[Week 1\]** Can the kitchen see open orders and mark them prepared, without needing a printer?
+- 🔴 **RS5 \[Week 1\]** Do I know my cost per plate and my margin on each dish?
+- ✅ **RS6 \[Week 1\]** Do I find out an ingredient is short before a dish becomes impossible to make?
+- 🟡 **RS7 \[Week 1\]** Can I record wastage (burnt, spoiled, staff meals) separately from sales?
+- 🟡 **RS8 \[Week 1\]** Can I change a menu price quickly, and does it apply to new orders only?
+- 🔴 **RS9 \[Week 1\]** Can one table pay part in cash and part by M-Pesa?
+- 🔴 **RS10 \[Month 1\]** Can I see which dishes make money and which lose it, and compare expected ingredient use with actual use to spot over-portioning or theft?
+- 🟡 **RS11 \[Scope\]** Per-guest bill splitting, multi-printer kitchen routing and eTIMS fiscal receipts are deferred. Do we say so honestly?
 
 **Moment of value:** the owner sees a popular dish is barely profitable, or catches an ingredient disappearing faster than sales explain.
 
@@ -179,20 +181,20 @@ Everything in Duka applies. These are the extra questions that come with more it
 
 **The problem we claim to solve:** bookings on WhatsApp, room status on a whiteboard, drinks in a notebook, and a bill assembled by hand at checkout.
 
-- **GH1 \[Day 1\]** Can I set up all my rooms (type, rate, status) and see live status for every room at a glance, replacing the whiteboard?
-- **GH2 \[Day 1\]** Can I create a booking in one flow (room, guest, dates, confirm), for a walk-in or a future reservation?
-- **GH3 \[Day 1\]** Does the system prevent double-booking a room for overlapping dates?
-- **GH4 \[Day 1\]** When a returning guest arrives, do I find them with their history instead of retyping?
-- **GH5 \[Week 1\]** Can I log drinks, meals and laundry against an active stay in a few taps, deducting stock as a normal sale does?
-- **GH6 \[Week 1\]** At checkout, do I get one bill (room charge plus consumption plus manual lines minus deposits) with no arithmetic?
-- **GH7 \[Week 1\]** Can I take a deposit or part-payment at check-in and see the balance still owing?
-- **GH8 \[Week 1\]** Am I warned at checkout if there is an unpaid balance, with an owner override?
-- **GH9 \[Week 1\]** Can I print or share the invoice (PDF or link), and does it stay in the guest's history afterwards?
-- **GH10 \[Week 1\]** Can I mark rooms clean, dirty or under maintenance, and report a room issue?
-- **GH11 \[Week 1\]** If I correct a guest's details later, do past invoices stay exactly as issued?
-- **GH12 \[Month 1\]** Are occupancy and revenue per room correct for the period, including empty periods, with no strange figures?
-- **GH13 \[Month 1\]** Do invoices carry tax correctly where the property is tax-registered?
-- **GH14 \[Scope\]** Booking.com or Airbnb sync, a public booking website, multi-property management (Growth plan) and automated seasonal pricing are out of scope. Is that stated honestly?
+- ✅ **GH1 \[Day 1\]** Can I set up all my rooms (type, rate, status) and see live status for every room at a glance, replacing the whiteboard?
+- ✅ **GH2 \[Day 1\]** Can I create a booking in one flow (room, guest, dates, confirm), for a walk-in or a future reservation?
+- ✅ **GH3 \[Day 1\]** Does the system prevent double-booking a room for overlapping dates?
+- 🟡 **GH4 \[Day 1\]** When a returning guest arrives, do I find them with their history instead of retyping?
+- 🟡 **GH5 \[Week 1\]** Can I log drinks, meals and laundry against an active stay in a few taps, deducting stock as a normal sale does?
+- 🟡 **GH6 \[Week 1\]** At checkout, do I get one bill (room charge plus consumption plus manual lines minus deposits) with no arithmetic?
+- ✅ **GH7 \[Week 1\]** Can I take a deposit or part-payment at check-in and see the balance still owing?
+- 🟡 **GH8 \[Week 1\]** Am I warned at checkout if there is an unpaid balance, with an owner override?
+- 🟡 **GH9 \[Week 1\]** Can I print or share the invoice (PDF or link), and does it stay in the guest's history afterwards?
+- ✅ **GH10 \[Week 1\]** Can I mark rooms clean, dirty or under maintenance, and report a room issue?
+- 🔴 **GH11 \[Week 1\]** If I correct a guest's details later, do past invoices stay exactly as issued?
+- 🟡 **GH12 \[Month 1\]** Are occupancy and revenue per room correct for the period, including empty periods, with no strange figures?
+- ✅ **GH13 \[Month 1\]** Do invoices carry tax correctly where the property is tax-registered?
+- 🟡 **GH14 \[Scope\]** Booking.com or Airbnb sync, a public booking website, multi-property management (Growth plan) and automated seasonal pricing are out of scope. Is that stated honestly?
 
 **Moment of value:** the first checkout where the full bill, including the bar tab, appears correct without the owner adding anything up.
 
@@ -202,19 +204,19 @@ Everything in Duka applies. These are the extra questions that come with more it
 
 **The problem we claim to solve:** fee collection and tracking. This is deliberately not a school management system.
 
-- **SC1 \[Day 1\]** Can I set up classes, terms and students (name, admission number, class, guardian contact) in bulk, not one by one?
-- **SC2 \[Day 1\]** Can I define a fee structure per class and term with its line items?
-- **SC3 \[Day 1\]** Can I generate fee invoices for a whole term in one action?
-- **SC4 \[Day 1\]** Can I record payments (M-Pesa, cash, bank) in instalments and see each student's balance?
-- **SC5 \[Week 1\]** Can I see the list of defaulters for a term or class at any moment?
-- **SC6 \[Week 1\]** Can I see expected versus collected versus outstanding by class?
-- **SC7 \[Week 1\]** Can I give a parent a receipt or statement they can keep, for example on WhatsApp?
-- **SC8 \[Week 1\]** Can I send reminders to the parents of defaulters? (Confirm this works for fees specifically.)
-- **SC9 \[Week 1\]** Can a student move class or leave mid-term without breaking their invoices?
-- **SC10 \[Week 1\]** Can the bursar and the head teacher have different access?
-- **SC11 \[Month 1\]** Can the bursar reconcile M-Pesa payments to students without Excel?
-- **SC12 \[Month 1\]** Does the school tuck shop work as a normal duka inside the same account?
-- **SC13 \[Scope\]** CBC or 8-4-4 grading, report cards, timetables and attendance are not included. Do the product and marketing say 'fee administration' and not 'school management'?
+- 🔴 **SC1 \[Day 1\]** Can I set up classes, terms and students (name, admission number, class, guardian contact) in bulk, not one by one?
+- ✅ **SC2 \[Day 1\]** Can I define a fee structure per class and term with its line items?
+- ✅ **SC3 \[Day 1\]** Can I generate fee invoices for a whole term in one action?
+- ✅ **SC4 \[Day 1\]** Can I record payments (M-Pesa, cash, bank) in instalments and see each student's balance?
+- ✅ **SC5 \[Week 1\]** Can I see the list of defaulters for a term or class at any moment?
+- ✅ **SC6 \[Week 1\]** Can I see expected versus collected versus outstanding by class?
+- 🔴 **SC7 \[Week 1\]** Can I give a parent a receipt or statement they can keep, for example on WhatsApp?
+- 🔴 **SC8 \[Week 1\]** Can I send reminders to the parents of defaulters? (Confirm this works for fees specifically.)
+- 🟡 **SC9 \[Week 1\]** Can a student move class or leave mid-term without breaking their invoices?
+- 🔴 **SC10 \[Week 1\]** Can the bursar and the head teacher have different access?
+- 🔴 **SC11 \[Month 1\]** Can the bursar reconcile M-Pesa payments to students without Excel?
+- ✅ **SC12 \[Month 1\]** Does the school tuck shop work as a normal duka inside the same account?
+- 🟡 **SC13 \[Scope\]** CBC or 8-4-4 grading, report cards, timetables and attendance are not included. Do the product and marketing say 'fee administration' and not 'school management'?
 
 **Moment of value:** the head teacher sees exactly who owes what this term, by class, before the board meeting.
 
@@ -224,21 +226,21 @@ Everything in Duka applies. These are the extra questions that come with more it
 
 **The problem we claim to solve:** recurring billing tied to network access. When someone stops paying they should be cut off, and when they pay they should be reconnected, without the owner doing it by hand.
 
-- **ISP1 \[Day 1\]** Can I keep a searchable subscriber register (name, phone, connection type, status)?
-- **ISP2 \[Day 1\]** Can I define plans (for example 10Mbps home, KES 2,500 a month) and assign one to each subscriber?
-- **ISP3 \[Day 1\]** Do invoices generate on each subscriber's billing cycle with no manual arithmetic?
-- **ISP4 \[Day 1\]** Can I record a payment (cash or M-Pesa) and see the balance update correctly?
-- **ISP5 \[Week 1\]** Can I see who is overdue, by how much and for how many days?
-- **ISP6 \[Week 1\]** Can I send payment reminders by SMS or WhatsApp?
-- **ISP7 \[Week 1\]** Can I suspend a non-payer and reactivate them on payment, and does the router actually cut and restore service? Test against a real MikroTik, not a simulation.
-- **ISP8 \[Week 1\]** If the router is unreachable when a suspend should happen, do I see it, is it retried, and is there a record of what was attempted?
-- **ISP9 \[Week 1\]** Is there a safeguard so one mistake or bug cannot disconnect every customer at once (confirmation, limits on bulk actions)?
-- **ISP10 \[Week 1\]** Can I issue equipment (router, ONT, cable) to a subscriber or job and have stock deducted?
-- **ISP11 \[Week 1\]** Can I create installation and repair jobs, assign a technician (Team plan), and mark them complete?
-- **ISP12 \[Week 1\]** Can I log support tickets against a subscriber and see open ones across the business?
-- **ISP13 \[Week 1\]** Are router credentials stored securely, and does the connection method work with routers behind NAT on customer sites?
-- **ISP14 \[Month 1\]** Can I see monthly recurring revenue, collection rate and churn?
-- **ISP15 \[Scope\]** A second router or point of presence is a Growth feature. Network monitoring, RADIUS hosting, hotspot vouchers and tower mapping are out of scope. Are these stated honestly?
+- ✅ **ISP1 \[Day 1\]** Can I keep a searchable subscriber register (name, phone, connection type, status)?
+- ✅ **ISP2 \[Day 1\]** Can I define plans (for example 10Mbps home, KES 2,500 a month) and assign one to each subscriber?
+- ✅ **ISP3 \[Day 1\]** Do invoices generate on each subscriber's billing cycle with no manual arithmetic?
+- ✅ **ISP4 \[Day 1\]** Can I record a payment (cash or M-Pesa) and see the balance update correctly?
+- 🟡 **ISP5 \[Week 1\]** Can I see who is overdue, by how much and for how many days?
+- 🟡 **ISP6 \[Week 1\]** Can I send payment reminders by SMS or WhatsApp?
+- 🟡 **ISP7 \[Week 1\]** Can I suspend a non-payer and reactivate them on payment, and does the router actually cut and restore service? Test against a real MikroTik, not a simulation.
+- ✅ **ISP8 \[Week 1\]** If the router is unreachable when a suspend should happen, do I see it, is it retried, and is there a record of what was attempted?
+- 🟡 **ISP9 \[Week 1\]** Is there a safeguard so one mistake or bug cannot disconnect every customer at once (confirmation, limits on bulk actions)?
+- ✅ **ISP10 \[Week 1\]** Can I issue equipment (router, ONT, cable) to a subscriber or job and have stock deducted?
+- 🟡 **ISP11 \[Week 1\]** Can I create installation and repair jobs, assign a technician (Team plan), and mark them complete?
+- ✅ **ISP12 \[Week 1\]** Can I log support tickets against a subscriber and see open ones across the business?
+- 🟡 **ISP13 \[Week 1\]** Are router credentials stored securely, and does the connection method work with routers behind NAT on customer sites?
+- 🟡 **ISP14 \[Month 1\]** Can I see monthly recurring revenue, collection rate and churn?
+- 🟡 **ISP15 \[Scope\]** A second router or point of presence is a Growth feature. Network monitoring, RADIUS hosting, hotspot vouchers and tower mapping are out of scope. Are these stated honestly?
 
 **Moment of value:** a lapsed subscriber pays by M-Pesa and is reconnected with nobody touching a router.
 
@@ -293,23 +295,23 @@ A note on method: these questions come from the scope documents and the module s
 - 🔴 **No** — not built, not reachable in the product, or contradicted by the implementation.
 - ⚪ **Unknown** — needs live/field/hardware/retention measurement that the repo cannot provide.
 
-**Tally:** 38 ✅ code-verified · 51 🟡 partly · 31 🔴 no · 2 ⚪ unknown (123 questions).
+**Tally after the 6 November pass:** 46 ✅ code-verified · 48 🟡 partly · 27 🔴 no · 2 ⚪ unknown (123 questions).
 
-**Verification after the only code change (honest landing copy in `content.ts`):** frontend **55 files / 307 tests passed**, repo typecheck **5/5 packages**, lint **0 errors** (existing warnings only) and the production frontend build passed. Backend was unchanged; its last full run was **110 suites / 884 tests**.
+**Verification after the 6 November implementation pass:** frontend **56 files / 309 tests**, backend **112 suites / 896 tests**, repo typecheck **5/5 packages**, lint **0 errors** (existing warnings only) and the production build **5/5 packages** all pass. Production itself still runs the earlier `0d0cada` image; the new fixes are not deployed yet.
 
 ### 12.1 Critical blockers found first
 
-These matter more than an individual question because they affect trust or make several vertical flows unreachable:
+These mattered more than an individual question because they affected trust or made several vertical flows unreachable. Six of the nine are now resolved (C14 on 3 November; items 4–8 on 6 November). The remaining three are a product decision (C19), a schema-level tax change (C24) and field/hardware verification — not missing screens.
 
-1. **C14 was corrected during this audit.** The landing page no longer says the owner's M-Pesa payments are automatically matched (`content.ts` now says "Record M-Pesa in one place" / "One daily total for every payment"). The owner-customer reconciliation feature is still not built, but it is no longer claimed.
-2. **C19 is a trial mismatch.** The landing page and terms promise a 14-day full-feature trial, but `entitlements.service.ts` explicitly says trial mechanics/expiry are out of scope and treats every no-subscription org as an unbounded Team trial. No `trialEndsAt` is set or enforced.
-3. **C24 only taxes invoices, not every sale.** `InvoiceTaxService` is enforced for `Invoice` rows (guest house/ISP and manual invoice lines). Retail `InventoryTransaction` sales and school `FeeInvoice` rows do not go through it, so "tax on every sale" is not true.
-4. **Stock corrections bypass the ledger.** `EditItemSheet` sends a direct quantity `PATCH /inventory/variants/:id`; `InventoryService.updateVariant()` updates quantity without creating an `InventoryTransaction`. A stock count correction can therefore overwrite history and fail DK8/C11.
-5. **Several vertical screens call relative `/api/...` paths that do not exist.** Restaurant table orders (`/api/table-orders`), chemist batch receipt (`/api/stock-batches`), wholesale tiered pricing (`/api/tiered-pricing/:id`) and student detail (`/api/students/:id`) are component-local fetches. There are no Next route handlers or rewrites; the real backend is a separate Nest application reached through `apiGet/apiPost`. These screens are broken/dead as shipped.
-6. **School fee management is mostly a placeholder.** The `invoices`, `defaulters` and `summary` tabs in `school-fees/page.tsx` render static text. The student detail page that hosts `RecordPaymentSheet` calls the broken `/api/students/:id` path. The backend endpoints exist, but the owner cannot use them from the screen.
-7. **No owner data export.** CSV export exists only in the platform admin directory/audit surfaces. There is no owner-facing export of inventory, sales, invoices, fees or tax records.
-8. **ISP billing-cycle invoices are manual.** `IspInvoicesService.generateForSubscriber()` exists, but there is no scheduled billing-cycle generator; only the router suspend/reconciliation jobs are cron-driven. "Invoices generate on each cycle" is therefore not true.
-9. **Real hardware is still unverified.** Router suspend/reconnect, retries, audit rows and drift detection are tested in code, but the repo cannot prove a real MikroTik cut/restore or an installed iOS PWA camera path.
+1. **C14 — resolved (3 Nov).** The landing page no longer claims owner M-Pesa payments are automatically matched. The owner-customer reconciliation feature is still not built, and it is no longer claimed.
+2. **C19 — open.** The landing page and terms promise a 14-day full-feature trial, but `entitlements.service.ts` still treats every no-subscription org as an unbounded Team trial. No `trialEndsAt` is set or enforced. This needs a product decision (enforce expiry or change the promise) before it is changed, because enforcing it against existing production orgs would lock them out.
+3. **C24 — open.** `InvoiceTaxService` is enforced for `Invoice` rows only. Retail `InventoryTransaction` sales and school `FeeInvoice` rows still do not go through it, so “tax on every sale” is not true. Tax records for retail/fees need a schema-backed record, not just a metadata stamp.
+4. **Stock corrections — resolved (6 Nov).** `InventoryService.updateVariant()` now writes an `ADJUSTMENT` `InventoryTransaction` (before/change/after + actor) in the same database transaction as the quantity projection. Table-order closes also write `SALE` ledger rows. A dedicated counted-vs-system screen is still deferred (DK8 remains 🟡).
+5. **Dead `/api/...` vertical screens — resolved (6 Nov).** Table orders (page, open sheet, view), chemist batch receipt, wholesale tiered pricing and student detail now call the Nest API through `apiGet/apiPost`. The reachable screens are wired into Edit Variant or the vertical page, and the wrong tiered-pricing request body was fixed.
+6. **School fee management — resolved (6 Nov).** The `invoices`, `defaulters` and `summary` tabs render live backend data; DRAFT invoices can be issued; the student detail page loads and records payments. Receipts/statements and reminders remain separate gaps (SC7/SC8/SC11).
+7. **Owner data export — resolved (6 Nov).** New `/exports/:dataset` endpoints and Settings → Your data CSV downloads cover inventory, transactions, invoices, fee invoices, credit and tax records.
+8. **ISP billing-cycle invoices — resolved (6 Nov).** A daily `IspBillingCycleJob` generates and issues one invoice per active subscriber per anchored cycle, idempotently.
+9. **Real hardware and devices — still unverified.** Router suspend/reconnect, retries, audit rows and drift detection are tested in code, but the repo cannot prove a real MikroTik cut/restore or an installed iOS PWA camera path. The production cross-check found `ROUTER_ENCRYPTION_KEY` missing on 6 November; it was set on 10 November (ISP13/F-39). A reachable router and a real device session are still required.
 
 ### 12.2 Cross-cutting questions
 
@@ -325,7 +327,7 @@ These matter more than an individual question because they affect trust or make 
 | C8 | ✅ Code-verified | `StaffManagementCard`, invite codes, `StaffAdminService`, `RolesGuard`/`@Roles`, permission overrides; tests in `staff-admin.service.spec.ts`, `roles.guard.spec.ts`. | Confirm the invite flow on a real second phone. |
 | C9 | 🟡 Partly | Stock movements carry `actorId` and a `STAFF_ACTIVITY` alert; no org audit trail for price edits or variant deletion (`updateVariant`/`deleteVariant` have no audit row). Admin audit exists only for platform admins. | Add an org-scoped audit view for product price changes, deletions and stock corrections. |
 | C10 | ✅ Code-verified | `removeStaffMember` deletes the org membership; every guarded request re-resolves membership, so the removed user loses API access immediately. | Clerk session remains valid for other orgs; that is correct multi-tenant behaviour. |
-| C11 | ✅ Code-verified | `InventoryTransaction` ledger with before/change/after and actor; `TransactionsService` writes the ledger alongside the quantity projection. | Except the direct variant edit in blockers item 4; route those edits through the ledger. |
+| C11 | ✅ Code-verified | `InventoryTransaction` ledger with before/change/after and actor; `TransactionsService` writes it, and `InventoryService.updateVariant()` now writes an `ADJUSTMENT` row (with actor) for every quantity change. Table-order close also writes `SALE` rows. | A dedicated counted-vs-system stock-count screen is still missing (DK8); the ledger path itself is now closed. |
 | C12 | 🟡 Partly | `FinanceBreakdownService` computes revenue/COGS/opex/net profit and credit; `VerticalAnalyticsService` uses explicit EAT day bounds. `FinanceService.getDateRange()` and the frontend `DateRangeProvider` use server/browser local time. | Make Finance day/month boundaries explicitly EAT and add a reconciliation check against a real M-Pesa/cash notebook. |
 | C13 | 🟡 Partly | Invoice `Payment.method` supports CASH/MPESA/CARD; credits support partial payments. Retail sales (`CreateTransactionDto`) have no payment method, and there is no shift/day-close surface. | Add payment method to retail sales and an end-of-day/shift close report. |
 | C14 | ✅ Code-verified | Copy corrected during this audit: `content.ts` now says "Record M-Pesa in one place" and "One daily total for every payment"; it no longer claims automatic matching. No owner-customer M-Pesa ingestion/reconciliation integration exists; only Paystack subscription billing is present. | Build statement/API reconciliation before claiming automatic matching again. |
@@ -341,7 +343,7 @@ These matter more than an individual question because they affect trust or make 
 | C24 | 🔴 No | `InvoiceTaxService` calculates tax only on `Invoice` creation/line items. Retail `InventoryTransaction` sales and school `FeeInvoice` rows bypass it; `invoice-tax-enforcement.spec.ts` only enforces the invoice table path. | Extend tax calculation to every taxable retail sale/receipt and fee invoice, or narrow the claim to invoiced verticals. |
 | C25 | 🟡 Partly | Tax tab is read-only and shows filed/pending/failed from KRA-confirmed records (`tax-report.service.ts`); it can only be as complete as the invoice-only tax path (C24). | Add retail/fee tax records, then the tab's "truth" covers all sales. |
 | C26 | ✅ Code-verified | `claims.ts` marks `taxEtims: 'coming_soon'`; FAQ says eTIMS is only claimed once live and verified; `isLive` gating prevents the live claim. | Keep the gate until a real production KRA filing is verified. |
-| C27 | 🔴 No | Only `admin/directory` and `admin/audit` expose CSV export. No owner-facing export of sales, inventory, invoices, fees or tax records. | Build an owner data-export endpoint and UI, with a machine-readable format. |
+| C27 | ✅ Code-verified | New tenant-scoped `GET /exports/:dataset` (inventory, transactions, invoices, fee-invoices, credit, tax) and Settings → Your data CSV downloads. `data-export.service.spec.ts` + `lib/data-export.spec.ts`. | Confirm a real owner downloads and opens each CSV; no PDF/ZIP bundle yet. |
 | C28 | 🟡 Partly | Marketing WhatsApp CTAs use `whatsappHref()` and only render when `NEXT_PUBLIC_WHATSAPP_NUMBER` is set; legal pages give support email. No in-app support inbox and no response-time evidence. | Set the number, add an in-app Help/WhatsApp link, and measure response time. |
 | C29 | ✅ Code-verified | `legal/privacy` explains org ownership, staff access, processors and Kenya DPA language; Settings shows role/permission controls. | Human legal review is still required; the page is plain language, not legal advice. |
 
@@ -356,7 +358,7 @@ These matter more than an individual question because they affect trust or make 
 | DK5 | ✅ Code-verified | `CreditRecord` created for `isCredit` SALE; Finance → Credit lists debtor, total, paid and due date. | No customer entity/phone statement, just a client-name record. |
 | DK6 | ✅ Code-verified | `CreditService.recordPayment()` updates `amountPaid`/status and writes an INCOME ledger row. | A real partial-payment round trip is still recommended. |
 | DK7 | 🟡 Partly | `TransactionTypeDto.WASTAGE` and assistant/`/ai` support wastage; `QuickTransactionSheet` only exposes Sale/Stock In. | Add Wastage to the manual sheet and a reason picker. |
-| DK8 | 🔴 No | `EditItemSheet` PATCHes `quantity` directly; `InventoryService.updateVariant()` does not create an `InventoryTransaction`. No stock-count/adjustment screen exists. | Build a counted-vs-system flow that writes an ADJUSTMENT ledger row; never direct-overwrite. |
+| DK8 | 🟡 Partly | Changing quantity in `EditItemSheet` now writes an `ADJUSTMENT` ledger row (before/change/after + actor) in the same transaction as the projection. | Still no counted-vs-system stock-count screen or reason picker; add that flow before calling this a stock count. |
 | DK9 | 🔴 No | No retail receipt component/print/WhatsApp share; only guest-house invoices have `InvoiceView` + print. | Build a sale receipt (print and shareable link/WhatsApp). |
 | DK10 | 🟡 Partly | `FinanceService.getItemProfile()` returns revenue/COGS/profit/margin per item; Finance explorer can open an item profile. | No ranked "most profitable items" view; add a sortable margin/profit table. |
 | DK11 | 🟡 Partly | `getBusinessOverview()` and monthly P&L/expense breakdown are implemented; `FinanceService.getDateRange()` is not EAT-explicit. | Fix EAT boundaries and reconcile a pilot month against the owner's notebook. |
@@ -379,7 +381,7 @@ These matter more than an individual question because they affect trust or make 
 | ID | Status | Evidence | Gap / required action |
 |---|---|---|---|
 | WS1 | ✅ Code-verified | Packaging units + base quantity; wholesale assistant resolves packaging; purchase/sale use the same item quantity. | Real carton/piece counting check. |
-| WS2 | ✅ Code-verified | `TieredPricingService.resolvePrice()` and `TransactionsService` apply tier price; `tiered-pricing.service.spec.ts`, wholesale assistant tests. | No owner-facing tier editor (blockers item 5); assistant-only/manual API is a workaround. |
+| WS2 | ✅ Code-verified | `TieredPricingService.resolvePrice()` applies tier prices; `TieredPricingSheet` is now reachable from Edit Variant for wholesalers and uses `apiGet/apiPost` (the old body shape was also wrong). | Confirm the editor and live sale price on a real wholesaler account. |
 | WS3 | 🟡 Partly | `record_bulk_sale` handles one item/cartons; `record_wholesale_sale` handles one line. No multi-line manual sale screen. | Build a multi-line wholesale order cart. |
 | WS4 | 🟡 Partly | `CreditRecord` list shows debtor, total, paid, due date; `list_debtors` filters open balances. | No ageing buckets (30/60/90); add ageing. |
 | WS5 | ✅ Code-verified | Finance → Credit payment modal + `CreditService.recordPayment()`. | Confirm the payment/ledger effect with an owner. |
@@ -394,7 +396,7 @@ These matter more than an individual question because they affect trust or make 
 | ID | Status | Evidence | Gap / required action |
 |---|---|---|---|
 | CH1 | 🔴 No | Unit is free text (`InventoryItem.unit`; AddItemSheet defaults to arbitrary text). No tablet/capsule/ml/sachet/strip/box enum. | Add proper pharmaceutical unit selection and conversion rules. |
-| CH2 | 🟡 Partly | `StockBatch` model, `receive_stock_batch` assistant tool, AddItem expiry/batch fields. `ReceiveBatchSheet` exists but is not imported anywhere and uses relative `/api/stock-batches`. | Wire a working batch-receipt screen through `apiPost('/stock-batches')`. |
+| CH2 | ✅ Code-verified | `StockBatch` + `ReceiveBatchSheet` now wired into Edit Variant for chemists, posting through `apiPost('/stock-batches')`; batch receipt increments stock transactionally. | Real batch entry on a chemist phone; supplier batch numbers remain free text. |
 | CH3 | 🟡 Partly | `TransactionsService` deducts batches ordered by expiry and appends batch names to the note; no UI shows the chosen batch clearly. | Show batch allocation on the sale/transaction detail screen. |
 | CH4 | 🟡 Partly | `AlertsService.checkExpiryRisk()` uses ≤30/≤60/otherwise severity; dashboard has 30-day and 30–90-day lists. | No separate 30/60/90 alerts; add explicit buckets and money-at-risk. |
 | CH5 | 🔴 No | FIFO will deduct an already-expired batch; no expiry-date guard in `TransactionsService`. | Block/warn on expired batch at sale time and require an override reason. |
@@ -411,11 +413,11 @@ These matter more than an individual question because they affect trust or make 
 | ID | Status | Evidence | Gap / required action |
 |---|---|---|---|
 | RS1 | 🔴 No | `InventoryItem.isComposite`/`RecipeIngredient` exist and `AddItemSheet` can submit recipe lines, but the sheet has no recipe-editor UI and no tool creates recipes. | Build a recipe builder (ingredients + quantities) and cost preview. |
-| RS2 | 🟡 Partly | `TransactionsService` deducts composite ingredient stock for a SALE; `record_recipe_consumption` works. `TableOrdersService.closeOrder()` deducts directly without ledger rows. | Make table close use the same ledgered transaction path. |
-| RS3 | 🔴 No | `table-orders/page.tsx`, `OpenTableSheet` and `TableOrdersView` call relative `/api/table-orders`; no Next route/rewrite exists. | Route these through `apiGet/apiPost` to the Nest backend and verify the whole order flow. |
+| RS2 | ✅ Code-verified | Composite SALE deducts ingredients; `TableOrdersService.closeOrder()` now aggregates deductions, guards negative stock and writes one `SALE` ledger row per item/ingredient with the actor. | Confirm a real table close against stock. |
+| RS3 | ✅ Code-verified | Table Orders page, open-table sheet, add-item sheet and close action all use the Nest API via `apiGet/apiPost`; items can be added and the bill closed. | Kitchen/preparation state and split payment are still separate gaps (RS4/RS9). |
 | RS4 | 🔴 No | `TableOrderStatus` only has OPEN/PAID/VOIDED; no kitchen/prepared state or kitchen view. | Add item/order preparation status and a kitchen display. |
 | RS5 | 🔴 No | No recipe-cost calculation or per-dish margin view; composite selling price exists but ingredient cost is not rolled up. | Add cost per plate and margin per dish. |
-| RS6 | 🟡 Partly | Assistant `close_table_order`/`record_recipe_consumption` check stock before proposing; manual `closeOrder` does not. | Add the same stock guard to the manual table close. |
+| RS6 | ✅ Code-verified | Manual `closeOrder()` refuses to go negative and names the short ingredient before writing anything; the assistant path already checked stock. | Field check with a genuinely short ingredient. |
 | RS7 | 🟡 Partly | WASTAGE transaction type and assistant wastage path exist; no restaurant waste UI. | Add a waiter/kitchen wastage action with reason. |
 | RS8 | 🟡 Partly | Inventory price editing changes future `sellingPrice`; existing order lines store their own `unitPrice`. No restaurant menu screen or price history. | Add a menu/price editor and history. |
 | RS9 | 🔴 No | Table orders have no payments/splits; only a single close action. | Add split cash/M-Pesa payment per table. |
@@ -448,9 +450,9 @@ These matter more than an individual question because they affect trust or make 
 | SC1 | 🔴 No | `AddClassSheet`, `AddTermSheet`, `AddStudentSheet` create one record at a time; no CSV/bulk-student import. | Add bulk import (CSV/paste) with validation. |
 | SC2 | ✅ Code-verified | `AcademicTermsService.create()` creates fee structures per term/class; `AddTermSheet`. | Confirm a real class-specific fee structure. |
 | SC3 | ✅ Code-verified | `SchoolFeesService.generateForTerm()` is idempotent; School Fees page calls it. | Confirm with a real term and existing invoices. |
-| SC4 | 🟡 Partly | Backend `recordPayment()` and `RecordPaymentSheet` exist, but the student detail page uses the broken `/api/students/:id`; the fees page has no invoice list. | Fix the student detail API path and expose invoices/payments in School Fees. |
-| SC5 | 🟡 Partly | `getDefaulters()` endpoint + dashboard overdue list; the School Fees "Defaulters" tab is a placeholder. | Wire the defaulters tab to `/school-fees/term/:termId/defaulters`. |
-| SC6 | ✅ Code-verified | `getTermSummary()` and school dashboard expected/collected/outstanding by class. | Wire/verify the term-summary tab; dashboard already shows the totals. |
+| SC4 | ✅ Code-verified | Student detail now loads via `apiGet('/students/:id')`; School Fees lists term invoices, can issue a DRAFT invoice and records instalments through `RecordPaymentSheet`. | Confirm a real M-Pesa/cash instalment round trip and receipt. |
+| SC5 | ✅ Code-verified | The Defaulters tab now loads `/school-fees/term/:termId/defaulters` with name, class, balance and status. | Confirm with a real term and a settled student. |
+| SC6 | ✅ Code-verified | The Summary tab now renders `getTermSummary()` totals and per-class collection, not placeholder text. | Confirm the numbers against a real term. |
 | SC7 | 🔴 No | No fee receipt/statement generator or WhatsApp share. | Build a receipt/statement from `FeeInvoice`/`FeePayment`. |
 | SC8 | 🔴 No | Dashboard recommendation says "consider SMS reminders"; no fee-specific reminder send path/consent. | Add a consent-aware fee reminder (SMS/WhatsApp) and log it. |
 | SC9 | 🟡 Partly | Students can be updated/deactivated; invoices reference student not class. No class-move/deactivate UI on the student detail. | Add class transfer/leaver flow that preserves issued invoices. |
@@ -465,7 +467,7 @@ These matter more than an individual question because they affect trust or make 
 |---|---|---|---|
 | ISP1 | ✅ Code-verified | `SubscribersService` CRUD/list; subscriber page/search and detail. | Real subscriber register check. |
 | ISP2 | ✅ Code-verified | `ServicePlan` model/CRUD and subscriber `planId`; service-plans page. | Real plan assignment check. |
-| ISP3 | 🔴 No | `IspInvoicesService.generateForSubscriber()` exists, but no cron/billing-cycle generator. Only router suspend/reconciliation are scheduled. | Add a billing-cycle invoice job or state that invoices are manual. |
+| ISP3 | ✅ Code-verified | New `IspBillingCycleJob` runs daily at 06:00, generates and issues one invoice per active subscriber per anchored cycle (monthly/quarterly/annual), and skips an existing invoice for that period. `billing-cycle.job.spec.ts` covers the cycle maths, generation and idempotency. | Deploy and watch one real cycle; due date defaults to 7 days after cycle start. |
 | ISP4 | ✅ Code-verified | `IspInvoicesService.recordPayment()` stores method and updates paid/status. | Confirm cash/M-Pesa reference entry with an owner. |
 | ISP5 | 🟡 Partly | BillingSuspendJob finds overdue invoices; dashboard shows suspended count, not an overdue amount/days list. | Add an aged overdue-subscriber report. |
 | ISP6 | 🟡 Partly | Manual WhatsApp/tel links; generic assistant `send_sms`; no automated subscriber reminder job. | Add consent-aware renewal reminders (SMS/WhatsApp). |
@@ -475,10 +477,45 @@ These matter more than an individual question because they affect trust or make 
 | ISP10 | ✅ Code-verified | `EquipmentService.issue()` deducts stock, writes ledger, optionally adds invoice line; tests. | Confirm with real equipment. |
 | ISP11 | 🟡 Partly | Work orders with `technicianName`, status transitions, WhatsApp dispatch; `WorkOrdersService`. | Technician is a free-text name, not a Team user/role; no Team-plan enforcement. |
 | ISP12 | ✅ Code-verified | Tickets CRUD/transitions/list; open-ticket count on dashboard. | Real support round trip. |
-| ISP13 | 🟡 Partly | AES-256-CBC encrypted API password; safe select; TLS; UI callout to restrict API-SSL to backend IP. | Requires a public/forwarded router; NAT/customer-site routers are not supported and not documented. |
+| ISP13 | 🟡 Partly | AES-256-CBC encrypted API password; safe select; TLS; UI callout to restrict API-SSL to backend IP. **Production fix (10 Nov): `ROUTER_ENCRYPTION_KEY` was added to the running backend and the service restarted. The 11:15 reconciliation run then logged `Timeout` instead of “key not set”, so decryption runs.** A reachable MikroTik and real cut/restore test are still required. | NAT/customer-site routers remain unsupported and undocumented; run the Phase 6 field test with a reachable router. |
 | ISP14 | 🟡 Partly | `IspController.getDashboard()` returns monthlyRevenue + subscriber counts/active rate. | No MRR trend, collection rate or churn rate; add these metrics. |
 | ISP15 | 🟡 Partly | Paywall/docs state Growth multi-location and out-of-scope NMS/RADIUS/GIS/hotspot. | Product/marketing don't state the ISP scope exclusions; add honest copy. |
 
-### 12.11 What can be marked Yes today
+### 12.11 What is code-verified today (not yet the final Yes)
 
-Only the ✅ code-verified rows should be considered ready for the Section 11 owner-device validation; they are not yet the document's final **Yes** because no real-phone/customer session was run in this audit. The highest-value next actions are the remaining blockers in §12.1, especially C19 (trial), C24 (tax scope), the broken `/api` vertical screens, and the stock-correction ledger bypass. C14 is resolved as honest copy; owner-payment matching remains unbuilt and unclaimed.
+Only the ✅ code-verified rows should be considered ready for the Section 11 owner-device validation; they are not yet the document's final **Yes** because no real-phone/customer session was run. After 6 November there is no unassessed row left: 46 are code-verified, 48 partly, 27 no and 2 unknown. The highest-value next actions are the two remaining product blockers (C19 trial, C24 tax scope), the real-device/hardware session, and the commercial gaps that still read 🔴: retail payment method/day close/receipts (C13, MM3, MM7, DK9), chemist expiry safety (CH5, CH6, CH9, CH11), restaurant kitchen/margin/split payment (RS4, RS5, RS9, RS10), and guest-house invoice immutability (GH11). C14 is resolved as honest copy; owner-payment matching remains unbuilt and unclaimed.
+
+---
+
+## 13. Production cross-check and implementation pass — 6 November 2026
+
+**What was checked.** The Northflank API was queried for the `default` project. It contains one service, `hisaflow` (combined build/deployment, Dockerfile `Dockerfile.northflank`). Build status was **SUCCESS** and deployment **COMPLETED** at the time of the check, running commit **`0d0cada`** — the repo HEAD at the start of this pass. Runtime logs showed the hourly `BillingSuspendJob` and the 15-minute `ReconciliationJob` actually running, with no crash loop. The frontend is the Vercel deployment described in `hisaflow-deployment.md`; Northflank only serves the Nest backend.
+
+**What production exposed.** The reconciliation job logged this warning every cycle:
+
+```text
+ReconciliationJob: could not connect to router Main POP Gateway (192.168.88.1)
+— ROUTER_ENCRYPTION_KEY env var is not set
+```
+
+So router-backed ISP features could not work in the live environment even though the code and mocked tests pass. **Fixed 10 November:** the key was added to the API service and the service restarted (F-39). The configured `192.168.88.1` is still a private address, so a real MikroTik cut/restore remains the field proof. The live claim stays 🟡 until that session.
+
+**Gateway deployment (13 November).** The gateway moved to Cloud Run `hisaflow-litellm` (`hisaflow` / `europe-west1`): 1 vCPU, 2 GiB, min 0 / max 2, request-based billing, running the official `litellm` proxy command against the same `config.yaml`. Health, `/v1/models`, standard/assistant/vision completions and SSE streaming all returned `200`; the Northflank backend now points at `https://hisaflow-litellm-cgqiivalxa-ew.a.run.app/v1` with the matching master key. The old Northflank `hisaflow-gateway` was removed. See `hisaflow-deployment.md` §2.2 and findings F-40–F-43.
+
+**Fixes shipped in this pass.**
+
+| Area | Change | Files |
+| --- | --- | --- |
+| Stock ledger | Quantity edits now write an `ADJUSTMENT` row with actor inside the same transaction; metadata-only edits do not. | `inventory.service.ts`, `inventory.controller.ts` |
+| Table orders | Page/sheets use the Nest API; add-item flow added; close aggregates deductions, blocks negative stock and writes `SALE` ledger rows with actor. | `table-orders/*`, `restaurant/TableOrdersView.tsx`, `restaurant/OpenTableSheet.tsx`, `restaurant/AddTableItemSheet.tsx`, `table-orders.service.ts` (frontend) |
+| Chemist batches | `ReceiveBatchSheet` wired into Edit Variant for CHEMIST and posts to `/stock-batches`. | `chemist/ReceiveBatchSheet.tsx`, `mobile/EditItemSheet.tsx` |
+| Wholesale pricing | `TieredPricingSheet` wired into Edit Variant for WHOLESALER; request body corrected from `{rules}` to the array the controller expects. | `wholesale/TieredPricingSheet.tsx`, `tiered-pricing.service.ts` (frontend) |
+| School fees | Invoices/defaulters/summary tabs wired; DRAFT invoices can be issued; student detail uses `/students/:id`; payment success refreshes instead of reloading. | `school-fees/page.tsx`, `students/[id]/page.tsx`, `RecordPaymentSheet.tsx`, `students.service.ts` |
+| Owner export | Tenant-scoped CSV exports for inventory, transactions, invoices, fee invoices, credit and tax; Settings → Your data download UI. | `data-export.module/controller/service.ts`, `DataExportCard.tsx`, `lib/data-export.ts` |
+| ISP billing | Daily anchored billing-cycle job (monthly/quarterly/annual), generates and issues invoices idempotently. | `isp/invoices/billing-cycle.job.ts` |
+| ISP plans | Frontend cycle values aligned to the Prisma enum (`MONTHLY`, `QUARTERLY`, `ANNUALLY`) instead of invalid `DAILY/WEEKLY/ANNUAL` values. | `services/isp.service.ts`, `service-plans/page.tsx` |
+| AI gateway | Cloud Run `hisaflow-litellm` with the official LiteLLM proxy (1 vCPU, 2 GiB, min 0 / max 2, request-based billing); backend URL/key updated and the missing router key set. Northflank gateway removed. | `apps/gateway/Dockerfile`, Cloud Run service spec, Northflank runtime env |
+
+**Verification (local, full CI equivalent).** `pnpm typecheck` 5/5 packages · `pnpm lint` 0 errors (warnings only) · backend tests **112 suites / 896 tests** · frontend tests **56 files / 309 tests** · admin/theme tests pass · `pnpm build` 5/5 packages. The changed backend tests include the ledger, table-close and billing-cycle paths.
+
+**What is still not a Yes.** No owner/device session was run, so the ✅ rows remain “code-verified, pending Section 11”. The 2 ⚪ rows (C18 assistant retention, C22 price-value evidence) need live telemetry/customer data. The 27 🔴 rows are documented above with the specific missing build; they are not silently marked done. The next release should set `ROUTER_ENCRYPTION_KEY`, decide C19/C24, and book the guest-house and chemist owner sessions.

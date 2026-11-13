@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { CatalogSource, StockStatus } from '@prisma/client';
+import { CatalogSource, StockStatus, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { InventoryService } from './inventory.service';
 import { expectEveryCallScopedToOrg } from '../../test-utils/tenant-isolation';
@@ -29,9 +29,28 @@ function build(opts: { catalog?: any; off?: any; upc?: any; productExists?: bool
     update: jest.fn(async ({ where, data }: any) => ({ barcode: where.barcode, ...data })),
     create: jest.fn(async ({ data }: any) => ({ ...data })),
   };
-  const db: any = { product, inventoryItem, productCatalogEntry: catalogEntry };
+  const inventoryTransaction = {
+    create: jest.fn(async ({ data }: any) => ({ id: 'tx_1', ...data })),
+  };
+  const $transaction = jest.fn(async (operations: Promise<unknown>[]) =>
+    Promise.all(operations),
+  );
+  const db: any = {
+    product,
+    inventoryItem,
+    productCatalogEntry: catalogEntry,
+    inventoryTransaction,
+    $transaction,
+  };
   const service = new InventoryService({ db } as unknown as PrismaService);
-  return { service, product, inventoryItem, catalogEntry };
+  return {
+    service,
+    product,
+    inventoryItem,
+    catalogEntry,
+    inventoryTransaction,
+    $transaction,
+  };
 }
 
 describe('InventoryService — listing and barcode lookup', () => {
@@ -174,6 +193,35 @@ describe('InventoryService — variants and stock status', () => {
 
     await service.updateVariant('v1', { quantity: 99 }, ORG);
     expect(inventoryItem.update.mock.calls[1][0].data.status).toBe(StockStatus.HEALTHY);
+  });
+
+  it('writes an ADJUSTMENT ledger row for a stock correction', async () => {
+    const { service, inventoryItem, inventoryTransaction, $transaction } = build();
+
+    await service.updateVariant('v1', { quantity: 4 }, ORG, 'user_1');
+
+    expect($transaction).toHaveBeenCalledTimes(1);
+    expect(inventoryItem.update.mock.calls[0][0].data.quantity).toBe(4);
+    expect(inventoryTransaction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId: ORG,
+        itemId: 'v1',
+        type: TransactionType.ADJUSTMENT,
+        quantityBefore: 10,
+        quantityChange: -6,
+        quantityAfter: 4,
+        actorId: 'user_1',
+      }),
+    });
+  });
+
+  it('does not write a ledger row for a metadata-only edit', async () => {
+    const { service, inventoryTransaction, $transaction } = build();
+
+    await service.updateVariant('v1', { name: 'Renamed' }, ORG);
+
+    expect($transaction).not.toHaveBeenCalled();
+    expect(inventoryTransaction.create).not.toHaveBeenCalled();
   });
 
   it('refuses to edit a variant in another org', async () => {

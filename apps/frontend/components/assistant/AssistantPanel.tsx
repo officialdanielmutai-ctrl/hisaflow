@@ -25,6 +25,7 @@ import {
 } from '@/lib/assistant';
 import NoteProposalEditor from './NoteProposalEditor';
 import ProposalCard from './ProposalCard';
+import { AssistantMessageText } from './AssistantMessageText';
 import UnsupportedIntentsCard from './UnsupportedIntentsCard';
 
 interface ChatMessage {
@@ -380,7 +381,7 @@ export function AssistantPanel() {
           <p className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4 text-sm text-[var(--color-text-secondary)]">
             {loadingHistory
               ? 'Restoring your conversation…'
-              : 'Ask about your stock, sales or customers. I can read your data and prepare changes for you to approve.'}
+              : 'Ask about your stock, sales, customers or spending — or ask for advice. I can read your data, suggest next steps and prepare changes for you to approve.'}
           </p>
         )}
         {messages.map((message) => (
@@ -392,7 +393,11 @@ export function AssistantPanel() {
                 : 'self-start rounded-2xl bg-[var(--color-bg-elevated)] px-4 py-2 text-sm text-[var(--color-text-primary)]'
             }
           >
-            {message.text}
+            {message.role === 'assistant' ? (
+              <AssistantMessageText text={message.text} />
+            ) : (
+              message.text
+            )}
           </div>
         ))}
         {sending && (

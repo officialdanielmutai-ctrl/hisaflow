@@ -72,6 +72,41 @@ describe('ToolRegistryService', () => {
     ]);
   });
 
+  it('makes optional primitive arguments nullable for strict providers', () => {
+    const registry = build([
+      tool('report', {
+        parameters: {
+          type: 'object',
+          properties: {
+            days: { type: 'number' },
+            status: { type: 'string', enum: ['OPEN', 'CLOSED'] },
+            limit: { type: 'number' },
+            itemId: { type: 'string' },
+          },
+          required: ['limit'],
+          additionalProperties: false,
+        },
+      }),
+    ]);
+
+    const [schema] = registry.toSchemas(registry.list());
+    const parameters = schema.parameters as {
+      properties: Record<string, { type: unknown; enum?: unknown[] }>;
+    };
+
+    expect(parameters.properties.days.type).toEqual(['number', 'null']);
+    expect(parameters.properties.status.type).toEqual(['string', 'null']);
+    expect(parameters.properties.status.enum).toContain(null);
+    expect(parameters.properties.itemId.type).toEqual(['string', 'null']);
+    // Required arguments stay strict.
+    expect(parameters.properties.limit.type).toBe('number');
+    // The provider's original definition is not mutated.
+    const original = registry.get('report')!.parameters as {
+      properties: Record<string, { type: unknown }>;
+    };
+    expect(original.properties.days.type).toBe('number');
+  });
+
   it('aggregates tools from every registered provider', () => {
     const registry = buildFrom([
       { all: () => [tool('foundation')] },

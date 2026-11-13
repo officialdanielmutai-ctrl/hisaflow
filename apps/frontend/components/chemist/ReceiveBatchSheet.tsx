@@ -1,61 +1,73 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { createStockBatch } from '@/services/stock-batches.service';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+} from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export function ReceiveBatchSheet({
   itemId,
   children,
+  onSuccess,
 }: {
-  itemId: string
-  children: React.ReactNode
+  itemId: string;
+  children: React.ReactNode;
+  onSuccess?: () => void;
 }) {
-  const [open, setOpen] = useState(false)
-  const [batchNumber, setBatchNumber] = useState('')
-  const [expiryDate, setExpiryDate] = useState('')
-  const [quantity, setQuantity] = useState('')
-  const [costPrice, setCostPrice] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const { getToken } = useAuth();
+  const { membership } = useMyOrganization();
+  const [open, setOpen] = useState(false);
+  const [batchNumber, setBatchNumber] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [costPrice, setCostPrice] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const orgId = membership?.organization.id;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
-      setLoading(true)
-      setError('')
-      const res = await fetch('/api/stock-batches', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          itemId,
-          batchNumber,
+      setLoading(true);
+      setError('');
+      const token = await getToken();
+      if (!token || !orgId) throw new Error('Not authenticated');
+
+      await createStockBatch(
+        {
+          inventoryItemId: itemId,
+          batchNumber: batchNumber.trim(),
           expiryDate,
           quantity: Number(quantity),
           costPrice: costPrice ? Number(costPrice) : undefined,
-        }),
-      })
-      if (!res.ok) throw new Error('Failed to receive batch')
+        },
+        token,
+        orgId,
+      );
 
-      setOpen(false)
-      setBatchNumber('')
-      setExpiryDate('')
-      setQuantity('')
-      setCostPrice('')
-    } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      setOpen(false);
+      setBatchNumber('');
+      setExpiryDate('');
+      setQuantity('');
+      setCostPrice('');
+      onSuccess?.();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -126,5 +138,5 @@ export function ReceiveBatchSheet({
         </form>
       </SheetContent>
     </Sheet>
-  )
+  );
 }

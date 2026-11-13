@@ -7,6 +7,38 @@ import {
   type ToolSchema,
 } from '../tool.types';
 
+const NULLABLE_PRIMITIVES = new Set(['string', 'number', 'integer', 'boolean']);
+
+/**
+ * Models sometimes send an omitted optional argument as JSON `null`. Some
+ * providers validate the generated tool call against the schema before the
+ * backend sees it, so an optional `{ type: 'number' }` produces a 400. Make
+ * optional primitives explicitly nullable while keeping required fields strict.
+ * The argument validators also treat null as absent.
+ */
+function withNullableOptionalProperties(
+  parameters: Record<string, unknown>,
+): Record<string, unknown> {
+  const clone = JSON.parse(JSON.stringify(parameters)) as Record<string, unknown>;
+  const properties = clone.properties;
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
+    return clone;
+  }
+  const required = Array.isArray(clone.required) ? clone.required : [];
+  for (const [name, value] of Object.entries(
+    properties as Record<string, Record<string, unknown>>,
+  )) {
+    if (required.includes(name) || !value || typeof value !== 'object') continue;
+    if (typeof value.type === 'string' && NULLABLE_PRIMITIVES.has(value.type)) {
+      value.type = [value.type, 'null'];
+    }
+    if (Array.isArray(value.enum) && !value.enum.includes(null)) {
+      value.enum = [...value.enum, null];
+    }
+  }
+  return clone;
+}
+
 /**
  * The one place that answers "which capabilities exist and which is this org
  * allowed to be offered?". Capabilities are aggregated from every registered
@@ -73,7 +105,7 @@ export class ToolRegistryService {
     return tools.map((tool) => ({
       name: tool.name,
       description: tool.description,
-      parameters: tool.parameters,
+      parameters: withNullableOptionalProperties(tool.parameters),
     }));
   }
 }

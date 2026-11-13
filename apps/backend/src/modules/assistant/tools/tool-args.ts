@@ -58,7 +58,8 @@ export function asOptionalNonNegative(
 }
 
 export function asLimit(value: unknown, fallback: number, max = 50): number {
-  if (value === undefined) return fallback;
+  // Models routinely serialise an omitted optional argument as `null`.
+  if (value === undefined || value === null) return fallback;
   const requested = asPositiveNumber(value, 'limit');
   return Math.min(max, Math.max(1, Math.floor(requested)));
 }

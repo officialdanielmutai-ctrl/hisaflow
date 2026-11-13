@@ -55,29 +55,71 @@ argument`, that is a BuildKit cache/overlay failure on the builder rather than
 a repo dependency error. Retry the deployment; if it recurs, set `NO_CACHE=1`
 on the affected Railway service (or clear its build cache) and redeploy.
 
-### 2.2 Northflank gateway service (LiteLLM Docker image)
+### 2.2 LiteLLM gateway (Cloud Run)
 
-The second Railway service is the LiteLLM gateway in `apps/gateway` (port **4000**). Its Northflank service should use **Deploy with Docker image**, not a buildpack. The image is published by `.github/workflows/gateway-image.yml` to GitHub Container Registry on every push to `main` that touches `apps/gateway/**`:
+The LiteLLM gateway runs as a separate **Cloud Run** service, not inside the
+Northflank API service. The old Northflank `hisaflow-gateway` service was
+removed on 2026-11-13.
+
+| Setting | Value |
+| --- | --- |
+| GCP project | `hisaflow` |
+| Region | `europe-west1` |
+| Service | `hisaflow-litellm` |
+| URL | `https://hisaflow-litellm-cgqiivalxa-ew.a.run.app` |
+| Image | `ghcr.io/officialdanielmutai-ctrl/hisaflow-gateway:sha-debe792` |
+| Command | `litellm --config /app/config.yaml --port 8080 --host 0.0.0.0` |
+| CPU / memory | `1` vCPU / `2Gi` |
+| Scaling | min `0`, max `2` |
+| Billing | request-based; CPU is throttled outside requests (no instance-based billing) |
+| Timeout | `300s` |
+| Ingress / auth | all ingress; `roles/run.invoker` granted to `allUsers` because the Northflank backend calls it without a Google identity token |
+
+The service runs the **official LiteLLM proxy** on 2 GiB, with the full
+`config.yaml` model aliases, router settings and fallback chain. The image is
+the same GHCR image built by `.github/workflows/gateway-image.yml`; Cloud Run
+overrides the image's default command so it runs `litellm` rather than the slim
+`app.py` fallback.
+
+**Gateway environment.** Set these on the Cloud Run revision:
+
+- `LITELLM_MASTER_KEY` — random secret; the API service uses the same value.
+- `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY` — the enabled pool.
+- `LITELLM_LOCAL_MODEL_COST_MAP=True` — avoids a remote cost-map fetch on cold start.
+- `TZ=UTC` — keeps scheduled work deterministic.
+
+`PORT` is reserved by Cloud Run and set automatically to `8080`; do not put it
+in the container environment.
+
+**Local key warning.** `apps/gateway/.env` is gitignored and its
+`LITELLM_MASTER_KEY` may be stale after a rotation. Sending an old key to the
+live gateway makes LiteLLM treat it as a virtual key and try to look it up in a
+database, returning `400 No connected db` instead of `401`. Use the current
+Cloud Run master key when testing the live gateway; do not infer an outage from
+that error until the key is verified.
+
+**API-service connection.** The Northflank backend uses:
 
 ```text
-ghcr.io/officialdanielmutai-ctrl/hisaflow-gateway:latest
+LITELLM_BASE_URL=https://hisaflow-litellm-cgqiivalxa-ew.a.run.app/v1
+LITELLM_MASTER_KEY=<same value as the gateway>
+ROUTER_ENCRYPTION_KEY=<stable 32+ character secret>
 ```
 
-For a pinned deployment, use the immutable commit tag instead:
+The first two were updated on 2026-11-13 when the gateway moved from Northflank
+to Cloud Run. The API service was restarted and its root health endpoint
+returned `200`.
 
-```text
-ghcr.io/officialdanielmutai-ctrl/hisaflow-gateway:sha-<short-commit>
-```
+**Verified 2026-11-13.** Cloud Run reports the service `Ready`
+(`CONDITION_SUCCEEDED`). Health `200`, model list `200`, and
+`hisaflow-standard`, `hisaflow-assistant`, `hisaflow-vision` plus a streaming
+completion all returned `200`.
 
-The workflow builds with `apps/gateway` as the Docker context (the Dockerfile copies `config.yaml` from that directory) and publishes `linux/amd64`, which is what Northflank runs. If the GHCR package is private, add a Northflank registry credential for `ghcr.io` (GitHub username + a PAT with `read:packages`). If it is public, no credential is needed.
-
-Northflank settings: port **4000**, protocol **HTTP**, health check path `/health` (or `/health/liveliness` if the current LiteLLM image exposes it), and **at least 512 MB RAM** (LiteLLM is Python; 256 MB is tight).
-
-**Gateway-only variables:** `LITELLM_MASTER_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`. The CSV also lists `CEREBRAS_API_KEY` and `MISTRAL_API_KEY`, but those providers are currently disabled in `apps/gateway/config.yaml`; keep them only if you plan to re-enable them after the tool-calling spike. `GEMINI_MODEL` is not read by the gateway config (the model IDs are pinned in `config.yaml`).
-
-**Main backend variables:** `ETIMS_API_BASE_URL`, `ETIMS_API_KEY`, `ETIMS_BRANCH_ID`, `ETIMS_DEVICE_SERIAL`, `ETIMS_REQUEST_TIMEOUT_MS`, `ETIMS_VSCU_BASE_URL`, `PAYSTACK_BASE_URL`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_SECRET_KEY`, plus `LITELLM_BASE_URL=https://<gateway-service>/v1` and the same `LITELLM_MASTER_KEY` used by the gateway. Those ETIMS/Paystack values belong on the main NestJS service, not on the gateway. The backend calls the gateway at `/v1`; the gateway does not call the backend.
-
-The repository's `docker-compose.yml` now uses `context: ./apps/gateway` so a local `docker compose up --build gateway` matches the CI image context.
+**Redeploy note.** The Cloud Run MCP `deploy_container_image` tool only accepts
+project, region, service and image; it does not preserve the command, env,
+memory or scaling settings. Redeploy with the Cloud Run Admin API (or a script
+that sends the full service spec) or the service will fall back to defaults.
+The Cloud Run Admin API is also what set the 2 GiB / min 0 / max 2 spec.
 
 ## 3. Environment variables
 
@@ -114,6 +156,9 @@ Set these on the backend host; they are **not** `NEXT_PUBLIC_*` and must never b
 | `CORS_ORIGINS` | comma-separated origins | Optional extra allowed origins (for example a preview domain) |
 | `LITELLM_BASE_URL` | `https://<gateway-service>/v1` | OpenAI-compatible base URL; include `/v1` |
 | `LITELLM_MASTER_KEY` | same value as the gateway | Shared bearer key for gateway calls |
+| `ROUTER_ENCRYPTION_KEY` | long random secret (32+ chars) | AES-256-CBC key for MikroTik API passwords. `RouterActionService` cannot decrypt a saved password without it; keep it stable or router passwords must be re-entered after rotation. |
+
+**Production check (2026-11-06 → fixed 2026-11-10):** the Northflank `hisaflow` service had been logging `ROUTER_ENCRYPTION_KEY env var is not set` every reconciliation cycle. The key was added to the API service on 2026-11-10 and the service restarted. The 11:15 reconciliation cycle then logged `could not connect to router Main POP Gateway (192.168.88.1) — Timeout` instead, proving the key is loaded and decryption now runs. The remaining proof is the Phase 6 MikroTik field test: `192.168.88.1` is a private address, so a reachable test router is still required before ISP7/ISP13 can be marked Yes.
 
 After deploying with live keys, open **Paystack Dashboard → Settings → API Keys & Webhooks → Webhook URL** and set it to:
 

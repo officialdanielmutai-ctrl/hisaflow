@@ -29,11 +29,27 @@ function build(opts: { order?: any } = {}) {
   const inventoryItem = {
     update: jest.fn(async ({ where, data }: any) => ({ id: where.id, ...data })),
   };
-  const tx = { tableOrder, inventoryItem };
+  const inventoryTransaction = {
+    create: jest.fn(async ({ data }: any) => ({ id: 'tx_1', ...data })),
+  };
+  const tx = { tableOrder, inventoryItem, inventoryTransaction };
   const $transaction = jest.fn(async (cb: any) => cb(tx));
-  const db: any = { tableOrder, tableOrderItem, inventoryItem, $transaction };
+  const db: any = {
+    tableOrder,
+    tableOrderItem,
+    inventoryItem,
+    inventoryTransaction,
+    $transaction,
+  };
   const service = new TableOrdersService({ db } as unknown as PrismaService);
-  return { service, tableOrder, tableOrderItem, inventoryItem, $transaction };
+  return {
+    service,
+    tableOrder,
+    tableOrderItem,
+    inventoryItem,
+    inventoryTransaction,
+    $transaction,
+  };
 }
 
 describe('TableOrdersService', () => {
@@ -113,43 +129,76 @@ describe('TableOrdersService', () => {
   });
 
   it('closes an order by deducting simple inventory and marking PAID', async () => {
-    const { service, tableOrder, inventoryItem, $transaction } = build({
+    const { service, tableOrder, inventoryItem, inventoryTransaction, $transaction } = build({
       order: {
         id: 'order_1',
         organizationId: ORG,
         status: 'OPEN',
+        tableLabel: 'T1',
         items: [
           {
             quantity: decimal(2),
-            item: { id: 'i1', isComposite: false, recipeLines: [] },
+            item: {
+              id: 'i1',
+              name: 'Coke',
+              unit: 'bottle',
+              quantity: decimal(10),
+              isComposite: false,
+              recipeLines: [],
+            },
           },
         ],
       },
     });
 
-    await service.closeOrder('order_1', ORG);
+    await service.closeOrder('order_1', ORG, 'user_1');
 
     expect($transaction).toHaveBeenCalledTimes(1);
     expect(inventoryItem.update).toHaveBeenCalledWith({
       where: { id: 'i1' },
-      data: { quantity: { decrement: expect.any(Prisma.Decimal) } },
+      data: { quantity: 8 },
+    });
+    expect(inventoryTransaction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId: ORG,
+        itemId: 'i1',
+        type: 'SALE',
+        quantityBefore: 10,
+        quantityChange: -2,
+        quantityAfter: 8,
+        actorId: 'user_1',
+      }),
     });
     expect(tableOrder.update.mock.calls[0][0].data).toMatchObject({ status: 'PAID' });
   });
 
   it('closes a composite order by deducting each recipe ingredient', async () => {
-    const { service, inventoryItem } = build({
+    const { service, inventoryItem, inventoryTransaction } = build({
       order: {
         id: 'order_1',
         organizationId: ORG,
         status: 'OPEN',
+        tableLabel: 'T2',
         items: [
           {
             quantity: decimal(2),
             item: {
               id: 'meal',
+              name: 'Beef stew',
+              unit: 'plate',
+              quantity: decimal(0),
               isComposite: true,
-              recipeLines: [{ ingredientId: 'ing_1', quantityUsed: decimal('0.5') }],
+              recipeLines: [
+                {
+                  quantityUsed: decimal('0.5'),
+                  ingredient: {
+                    id: 'ing_1',
+                    name: 'Beef',
+                    unit: 'kg',
+                    quantity: decimal(5),
+                  },
+                },
+              ],
             },
           },
         ],
@@ -159,7 +208,47 @@ describe('TableOrdersService', () => {
     await service.closeOrder('order_1', ORG);
 
     expect(inventoryItem.update).toHaveBeenCalledTimes(1);
-    expect(inventoryItem.update.mock.calls[0][0].where).toEqual({ id: 'ing_1' });
+    expect(inventoryItem.update.mock.calls[0][0]).toEqual({
+      where: { id: 'ing_1' },
+      data: { quantity: 4 },
+    });
+    expect(inventoryTransaction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        itemId: 'ing_1',
+        quantityBefore: 5,
+        quantityChange: -1,
+        quantityAfter: 4,
+      }),
+    });
+  });
+
+  it('refuses to close when an ingredient would go negative', async () => {
+    const { service, inventoryItem } = build({
+      order: {
+        id: 'order_1',
+        organizationId: ORG,
+        status: 'OPEN',
+        tableLabel: 'T3',
+        items: [
+          {
+            quantity: decimal(2),
+            item: {
+              id: 'i1',
+              name: 'Coke',
+              unit: 'bottle',
+              quantity: decimal(1),
+              isComposite: false,
+              recipeLines: [],
+            },
+          },
+        ],
+      },
+    });
+
+    await expect(service.closeOrder('order_1', ORG)).rejects.toThrow(
+      'Insufficient stock for Coke',
+    );
+    expect(inventoryItem.update).not.toHaveBeenCalled();
   });
 
   it('refuses to close an order that is not OPEN', async () => {

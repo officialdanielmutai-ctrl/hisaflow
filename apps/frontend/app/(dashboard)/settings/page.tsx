@@ -22,6 +22,7 @@ import { useRole } from '@/hooks/useRole'
 import StaffManagementCard from '@/components/settings/StaffManagementCard'
 import RouterSettingsCard from '@/components/settings/RouterSettingsCard'
 import BusinessLogoCard from '@/components/settings/BusinessLogoCard'
+import { DataExportCard } from '@/components/settings/DataExportCard'
 import {
   SettingsActionRow,
   SettingsLinkRow,
@@ -150,6 +151,16 @@ export default function SettingsPage() {
             title="Billing & plan"
             description="Your subscription, seats and payment method."
           />
+        </SettingsGroup>
+      )}
+
+      {/* ── Your data ───────────────────────────────────────────────────────── */}
+      {canManageStaff && (
+        <SettingsGroup
+          title="Your data"
+          description="Download your own records at any time. Nothing is locked in."
+        >
+          <DataExportCard />
         </SettingsGroup>
       )}
 

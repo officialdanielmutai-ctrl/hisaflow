@@ -7,6 +7,8 @@ import { apiPatch, apiDelete } from '@/lib/api-client';
 import { useAuth } from '@clerk/nextjs';
 import { useMyOrganization } from '@/hooks/useMyOrganization';
 import { useRole } from '@/hooks/useRole';
+import { ReceiveBatchSheet } from '@/components/chemist/ReceiveBatchSheet';
+import { TieredPricingSheet } from '@/components/wholesale/TieredPricingSheet';
 
 interface EditItemSheetProps {
   item: InventoryItem | null;
@@ -18,7 +20,7 @@ interface EditItemSheetProps {
 export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: EditItemSheetProps) {
   const { getToken } = useAuth();
   const { membership } = useMyOrganization();
-  const { isStaff } = useRole();
+  const { isStaff, isChemist, isWholesaler } = useRole();
 
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('');
@@ -299,6 +301,34 @@ export default function EditItemSheet({ item, open, onOpenChange, onSuccess }: E
                 />
               </div>
             </div>
+
+            {(isChemist || isWholesaler) && (
+              <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-4">
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)]">
+                  {isChemist ? 'Batch & expiry' : 'Wholesale pricing'}
+                </p>
+                {isChemist && (
+                  <ReceiveBatchSheet itemId={item.id} onSuccess={onSuccess}>
+                    <button
+                      type="button"
+                      className="w-full rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-semibold transition-colors hover:bg-[var(--color-bg-base)]"
+                    >
+                      Receive a new batch
+                    </button>
+                  </ReceiveBatchSheet>
+                )}
+                {isWholesaler && (
+                  <TieredPricingSheet itemId={item.id} onSuccess={onSuccess}>
+                    <button
+                      type="button"
+                      className="w-full rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm font-semibold transition-colors hover:bg-[var(--color-bg-base)]"
+                    >
+                      Set quantity price tiers
+                    </button>
+                  </TieredPricingSheet>
+                )}
+              </div>
+            )}
 
             {/* Packaging for this variant */}
             <div className="mt-2 pt-4 border-t border-[var(--color-border)]">

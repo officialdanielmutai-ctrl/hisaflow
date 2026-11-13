@@ -6,6 +6,7 @@ import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles, AppRole } from '../../core/decorators/roles.decorator';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
 
 @UseGuards(ClerkAuthGuard, RolesGuard)
 @Controller('inventory')
@@ -59,8 +60,9 @@ export class InventoryController {
     @Param('variantId') variantId: string,
     @Body() dto: UpdateVariantDto,
     @OrgContext() orgId: string,
+    @CurrentUser() user: { id?: string },
   ) {
-    return this.inventoryService.updateVariant(variantId, dto, orgId);
+    return this.inventoryService.updateVariant(variantId, dto, orgId, user?.id);
   }
 
   @Roles(AppRole.OWNER, AppRole.MANAGER)

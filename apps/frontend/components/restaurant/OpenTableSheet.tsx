@@ -1,54 +1,63 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { createTableOrder } from '@/services/table-orders.service';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+} from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface OpenTableSheetProps {
-  children: React.ReactNode
-  onOpenSuccess: () => void
+  children: React.ReactNode;
+  onOpenSuccess: () => void;
 }
 
 export function OpenTableSheet({
   children,
   onOpenSuccess,
 }: OpenTableSheetProps) {
-  const [open, setOpen] = useState(false)
-  const [label, setLabel] = useState('')
-  const [notes, setNotes] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const { getToken } = useAuth();
+  const { membership } = useMyOrganization();
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const orgId = membership?.organization.id;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
-      setLoading(true)
-      setError('')
-      const res = await fetch('/api/table-orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tableLabel: label, notes }),
-      })
-      if (!res.ok) throw new Error('Failed to open table')
+      setLoading(true);
+      setError('');
+      const token = await getToken();
+      if (!token || !orgId) throw new Error('Not authenticated');
 
-      setOpen(false)
-      setLabel('')
-      setNotes('')
-      onOpenSuccess()
-    } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      await createTableOrder(
+        { tableLabel: label.trim(), notes: notes.trim() || undefined },
+        token,
+        orgId,
+      );
+
+      setOpen(false);
+      setLabel('');
+      setNotes('');
+      onOpenSuccess();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -92,5 +101,5 @@ export function OpenTableSheet({
         </form>
       </SheetContent>
     </Sheet>
-  )
+  );
 }

@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
+import { TransactionType } from '@prisma/client';
 import { CreateTableOrderDto, AddOrderItemDto } from './dto/create-table-order.dto';
 
 @Injectable()
@@ -82,7 +83,7 @@ export class TableOrdersService {
     });
   }
 
-  async closeOrder(orderId: string, orgId: string) {
+  async closeOrder(orderId: string, orgId: string, actorId?: string) {
     return this.prisma.db.$transaction(async (tx) => {
       const order = await tx.tableOrder.findFirstOrThrow({
         where: { id: orderId, organizationId: orgId },
@@ -90,7 +91,7 @@ export class TableOrdersService {
           items: {
             include: {
               item: {
-                include: { recipeLines: true },
+                include: { recipeLines: { include: { ingredient: true } } },
               },
             },
           },
@@ -101,21 +102,71 @@ export class TableOrdersService {
         throw new BadRequestException('Order is not OPEN');
       }
 
+      // Aggregate every deduction per stock item first, so two lines that use
+      // the same ingredient (or two composite dishes sharing it) produce one
+      // consistent ledger row instead of racing stale quantities.
+      const deductions = new Map<
+        string,
+        { name: string; unit: string; before: number; quantity: number }
+      >();
+
+      const addDeduction = (
+        item: { id: string; name: string; unit: string; quantity: unknown },
+        quantity: number,
+      ) => {
+        const existing = deductions.get(item.id);
+        if (existing) {
+          existing.quantity += quantity;
+          return;
+        }
+        deductions.set(item.id, {
+          name: item.name,
+          unit: item.unit,
+          before: Number(item.quantity),
+          quantity,
+        });
+      };
+
       for (const tableItem of order.items) {
+        const lineQuantity = Number(tableItem.quantity);
         if (tableItem.item.isComposite) {
           for (const ingredient of tableItem.item.recipeLines) {
-            const deductionQuantity = ingredient.quantityUsed.toNumber() * tableItem.quantity.toNumber();
-            await tx.inventoryItem.update({
-              where: { id: ingredient.ingredientId },
-              data: { quantity: { decrement: deductionQuantity } },
-            });
+            addDeduction(
+              ingredient.ingredient,
+              ingredient.quantityUsed.toNumber() * lineQuantity,
+            );
           }
         } else {
-          await tx.inventoryItem.update({
-            where: { id: tableItem.item.id },
-            data: { quantity: { decrement: tableItem.quantity } },
-          });
+          addDeduction(tableItem.item, lineQuantity);
         }
+      }
+
+      for (const [itemId, deduction] of deductions) {
+        const after = deduction.before - deduction.quantity;
+        if (after < 0) {
+          throw new BadRequestException(
+            `Insufficient stock for ${deduction.name}`,
+          );
+        }
+
+        await tx.inventoryItem.update({
+          where: { id: itemId },
+          data: { quantity: after },
+        });
+
+        await tx.inventoryTransaction.create({
+          data: {
+            organizationId: orgId,
+            itemId,
+            type: TransactionType.SALE,
+            quantityBefore: deduction.before,
+            quantityChange: -deduction.quantity,
+            quantityAfter: after,
+            reason: `Table order ${order.tableLabel} closed`,
+            actorId: actorId ?? null,
+            source: 'manual',
+          },
+        });
       }
 
       return tx.tableOrder.update({

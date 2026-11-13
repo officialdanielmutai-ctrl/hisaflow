@@ -219,6 +219,29 @@ describe('AssistantAgentService', () => {
     expect(system?.content).toContain('list_inventory');
   });
 
+  it('directs sales, catalogue and advisory questions to the reporting tools', async () => {
+    const { service, provider } = build({
+      tools: [readTool('get_sales_report', jest.fn(async () => ({})))],
+      completions: [{ content: 'Sales were up.', toolCalls: [] }],
+    });
+
+    await service.run('org_1', 'user_1', false, 'how were sales?');
+
+    const calls = (provider.complete as jest.Mock).mock.calls;
+    const system = (
+      calls[0][0] as Array<{ role: string; content: string }>
+    ).find((message) => message.role === 'system');
+    expect(system?.content).toContain('call get_sales_report');
+    expect(system?.content).toContain('Never say you cannot report sales');
+    expect(system?.content).toContain('analyse_catalogue');
+    expect(system?.content).toContain('practical business advisor');
+    expect(system?.content).toContain('Do not give medical, dosage, legal or accounting advice');
+    expect(system?.content).toContain('comparedWithPreviousPeriod');
+    expect(system?.content).toContain('record_expense');
+    expect(system?.content).toContain('adjust_stock');
+    expect(system?.content).toContain('Do not wrap your reply in code fences');
+  });
+
   it('passes an empty read result back so the model can say there is nothing', async () => {
     const execute = jest.fn(async () => []);
     const { service, provider } = build({

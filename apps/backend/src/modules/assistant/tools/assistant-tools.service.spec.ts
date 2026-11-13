@@ -12,19 +12,112 @@ const CTX = {
   isImpersonated: false,
 } satisfies ToolContext;
 
-function build(options: { items?: Array<Record<string, unknown>> } = {}) {
+function inRange(
+  value: unknown,
+  range?: { gte?: Date; lte?: Date },
+): boolean {
+  if (!(value instanceof Date) || !range) return true;
+  if (range.gte && value < range.gte) return false;
+  if (range.lte && value > range.lte) return false;
+  return true;
+}
+
+interface BuildOptions {
+  items?: Array<Record<string, unknown>>;
+  transactions?: Array<Record<string, unknown>>;
+  businessTransactions?: Array<Record<string, unknown>>;
+  credits?: Array<Record<string, unknown>>;
+  alerts?: Array<Record<string, unknown>>;
+  taxRecords?: Array<Record<string, unknown>>;
+  taxRegistration?: Record<string, unknown> | null;
+  members?: Array<Record<string, unknown>>;
+  notesList?: Array<Record<string, unknown>>;
+}
+
+function build(options: BuildOptions = {}) {
   const items = options.items ?? [];
+  const inventoryTransactions = options.transactions ?? [];
+  const businessTxRecords = options.businessTransactions ?? [];
+  const credits = options.credits ?? [];
+  const alerts = options.alerts ?? [];
+  const taxRecords = options.taxRecords ?? [];
+  const members = options.members ?? [];
+  const notesList = options.notesList ?? [];
   const db = {
     inventoryItem: {
       findMany: jest.fn(async () => items),
       findFirst: jest.fn(async () => items[0] ?? null),
     },
+    inventoryTransaction: {
+      findMany: jest.fn(
+        async (query: {
+          where?: {
+            type?: string;
+            itemId?: string;
+            createdAt?: { gte?: Date; lte?: Date };
+          };
+        }) =>
+          inventoryTransactions.filter((tx) => {
+            const where = query?.where ?? {};
+            if (where.type && tx.type !== where.type) return false;
+            if (where.itemId && tx.itemId !== where.itemId) return false;
+            return inRange(tx.createdAt, where.createdAt);
+          }),
+      ),
+    },
+    businessTransaction: {
+      findMany: jest.fn(
+        async (query: {
+          where?: { type?: string; date?: { gte?: Date; lte?: Date } };
+        }) =>
+          businessTxRecords.filter((tx) => {
+            const where = query?.where ?? {};
+            if (where.type && tx.type !== where.type) return false;
+            return inRange(tx.date, where.date);
+          }),
+      ),
+    },
+    creditRecord: {
+      findMany: jest.fn(async () => credits),
+    },
+    alert: {
+      findMany: jest.fn(async () =>
+        alerts.filter((alert) => alert.status === 'UNRESOLVED'),
+      ),
+      findFirst: jest.fn(
+        async (query: { where?: { id?: string } }) =>
+          alerts.find((alert) => alert.id === query?.where?.id) ?? null,
+      ),
+      count: jest.fn(
+        async () => alerts.filter((alert) => alert.status === 'UNRESOLVED').length,
+      ),
+    },
+    taxInvoiceRecord: {
+      findMany: jest.fn(
+        async (query: {
+          where?: { createdAt?: { gte?: Date; lte?: Date } };
+        }) =>
+          taxRecords.filter((record) =>
+            inRange(record.createdAt, query?.where?.createdAt),
+          ),
+      ),
+    },
+    taxRegistration: {
+      findUnique: jest.fn(async () => options.taxRegistration ?? null),
+    },
+    orgMembership: {
+      findMany: jest.fn(async () => members),
+    },
   };
-  const notes = { create: jest.fn(async () => ({ id: 'note_1' })) };
+  const notes = {
+    create: jest.fn(async () => ({ id: 'note_1' })),
+    findAll: jest.fn(async () => notesList),
+  };
   const transactions = { create: jest.fn(async () => ({ id: 'tx_1' })) };
   const inventory = {
     create: jest.fn(async () => ({ id: 'product_1' })),
     updateVariant: jest.fn(async () => ({ id: 'i1' })),
+    deleteVariant: jest.fn(async () => ({ id: 'i1', isActive: false })),
   };
   const comms = {
     assertConsent: jest.fn(async () => undefined),
@@ -67,6 +160,13 @@ function build(options: { items?: Array<Record<string, unknown>> } = {}) {
       ],
     })),
   };
+  const businessTransactions = {
+    createBusinessTransaction: jest.fn(async () => ({ id: 'business_1' })),
+  };
+  const alertsService = {
+    resolveAlert: jest.fn(async () => ({ id: 'a1', status: 'RESOLVED' })),
+    resolveAllAlerts: jest.fn(async () => ({ resolved: 1 })),
+  };
   const service = new AssistantToolsService(
     { db } as never,
     inventory as never,
@@ -76,13 +176,28 @@ function build(options: { items?: Array<Record<string, unknown>> } = {}) {
     unsupported as never,
     finance as never,
     financeSearch as never,
+    businessTransactions as never,
+    alertsService as never,
   );
   const byName = (name: string): ToolDefinition => {
     const tool = service.all().find((entry) => entry.name === name);
     if (!tool) throw new Error(`missing tool ${name}`);
     return tool;
   };
-  return { service, db, inventory, notes, transactions, comms, unsupported, finance, financeSearch, byName };
+  return {
+    service,
+    db,
+    inventory,
+    notes,
+    transactions,
+    comms,
+    unsupported,
+    finance,
+    financeSearch,
+    businessTransactions,
+    alertsService,
+    byName,
+  };
 }
 
 describe('AssistantToolsService.get_low_stock', () => {

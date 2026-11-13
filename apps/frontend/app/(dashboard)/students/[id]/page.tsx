@@ -1,40 +1,43 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { RecordPaymentSheet } from "@/components/school/RecordPaymentSheet";
+import { useAuth } from '@clerk/nextjs';
+import { useParams } from 'next/navigation';
+import useSWR from 'swr';
+import { apiPost } from '@/lib/api-client';
+import { useMyOrganization } from '@/hooks/useMyOrganization';
+import { getStudent, type StudentFeeInvoice } from '@/services/students.service';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { RecordPaymentSheet } from '@/components/school/RecordPaymentSheet';
 
 export default function StudentProfilePage() {
   const params = useParams();
-  const studentId = params?.id;
-  
-  const [student, setStudent] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const studentId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const { getToken } = useAuth();
+  const { membership } = useMyOrganization();
+  const orgId = membership?.organization.id;
 
-  useEffect(() => {
-    if (!studentId) return;
-    
-    async function fetchStudent() {
-      try {
-        const res = await fetch(`/api/students/${studentId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setStudent(data);
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchStudent();
-  }, [studentId]);
+  const { data: student, isLoading, mutate } = useSWR(
+    studentId && orgId ? ['student', orgId, studentId] : null,
+    async () => {
+      const token = await getToken();
+      if (!token || !orgId || !studentId) throw new Error('Not authenticated');
+      return getStudent(studentId, token, orgId);
+    },
+  );
 
-  if (loading) {
+  const issueInvoice = async (invoiceId: string) => {
+    if (!orgId) return;
+    const token = await getToken();
+    if (!token) return;
+    await apiPost(`/school-fees/invoice/${invoiceId}/issue`, token, orgId, {});
+    await mutate();
+  };
+
+  if (isLoading) {
     return (
       <div className="p-6 space-y-6 max-w-5xl mx-auto">
         <Skeleton className="h-32 w-full rounded-xl" />
@@ -46,6 +49,10 @@ export default function StudentProfilePage() {
   if (!student) {
     return <div className="p-6 text-center">Student not found</div>;
   }
+
+  const guardianLabel = student.guardianName
+    ? `${student.guardianName}${student.guardianPhone ? ` (${student.guardianPhone})` : ''}`
+    : null;
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -60,13 +67,13 @@ export default function StudentProfilePage() {
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-3xl font-bold">{student.name}</h1>
             <div className="text-muted-foreground mt-2 space-x-4">
-              <span>Adm: {student.admissionNumber}</span>
+              <span>Adm: {student.admissionNumber || '—'}</span>
               <span>•</span>
-              <span>Class: {student.className || "Unassigned"}</span>
+              <span>Class: {student.class?.name || 'Unassigned'}</span>
             </div>
-            {student.parentName && (
+            {guardianLabel && (
               <div className="text-sm mt-4 bg-muted inline-block px-3 py-1 rounded-full">
-                Parent: {student.parentName} ({student.parentPhone})
+                Guardian: {guardianLabel}
               </div>
             )}
           </div>
@@ -77,41 +84,73 @@ export default function StudentProfilePage() {
       <h2 className="text-2xl font-bold mt-8 mb-4">Fee Invoices</h2>
       {student.feeInvoices && student.feeInvoices.length > 0 ? (
         <div className="space-y-4">
-          {student.feeInvoices.map((invoice: any) => {
-            const balance = invoice.totalExpected - invoice.amountPaid;
+          {student.feeInvoices.map((invoice: StudentFeeInvoice) => {
+            const expected =
+              Number(invoice.totalExpected) - Number(invoice.adjustmentsTotal ?? 0);
+            const paid = Number(invoice.amountPaid);
+            const balance = expected - paid;
             const isPaid = balance <= 0;
+            const isDraft = invoice.status === 'DRAFT';
+
             return (
-              <Card key={invoice.id} className={isPaid ? "border-green-200" : "border-orange-200"}>
+              <Card
+                key={invoice.id}
+                className={isPaid ? 'border-green-200' : 'border-orange-200'}
+              >
                 <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
-                    <div className="font-semibold">{invoice.termName}</div>
-                    <div className="text-sm text-muted-foreground">Due: {new Date(invoice.dueDate).toLocaleDateString()}</div>
+                    <div className="font-semibold">
+                      {invoice.term?.name ?? 'Fee invoice'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {invoice.dueDate
+                        ? `Due: ${new Date(invoice.dueDate).toLocaleDateString()}`
+                        : 'No due date'}
+                    </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-6">
                     <div className="text-right">
                       <div className="text-sm text-muted-foreground">Expected</div>
-                      <div className="font-medium">KES {invoice.totalExpected.toLocaleString()}</div>
+                      <div className="font-medium">
+                        KES {expected.toLocaleString()}
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="text-sm text-muted-foreground">Paid</div>
-                      <div className="font-medium text-green-600">KES {invoice.amountPaid.toLocaleString()}</div>
+                      <div className="font-medium text-green-600">
+                        KES {paid.toLocaleString()}
+                      </div>
                     </div>
                     <div className="text-right min-w-[80px]">
                       <div className="text-sm text-muted-foreground">Balance</div>
-                      <div className="font-bold text-destructive">KES {balance.toLocaleString()}</div>
+                      <div className="font-bold text-destructive">
+                        KES {Math.max(balance, 0).toLocaleString()}
+                      </div>
                     </div>
-                    
+
                     <div>
                       {isPaid ? (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 text-green-700 border-green-200"
+                        >
                           Cleared
                         </Badge>
+                      ) : isDraft ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => issueInvoice(invoice.id)}
+                        >
+                          Issue invoice
+                        </Button>
                       ) : (
-                        <RecordPaymentSheet 
-                          invoiceId={invoice.id} 
-                          totalExpected={invoice.totalExpected} 
-                          amountPaid={invoice.amountPaid} 
+                        <RecordPaymentSheet
+                          invoiceId={invoice.id}
+                          totalExpected={expected}
+                          amountPaid={paid}
+                          onSuccess={() => mutate()}
                         />
                       )}
                     </div>

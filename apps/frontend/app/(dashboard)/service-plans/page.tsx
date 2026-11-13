@@ -31,11 +31,9 @@ import {
 } from '@/services/isp.service';
 
 const CYCLE_LABELS: Record<BillingCycle, string> = {
-  DAILY: 'Daily',
-  WEEKLY: 'Weekly',
   MONTHLY: 'Monthly',
   QUARTERLY: 'Quarterly',
-  ANNUAL: 'Annual',
+  ANNUALLY: 'Annual',
 };
 
 const CONN_LABELS: Record<ConnectionType, string> = {
@@ -347,10 +345,8 @@ export default function ServicePlansPage() {
                     className="mt-1 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)]"
                   >
                     <option value="MONTHLY">Monthly</option>
-                    <option value="DAILY">Daily</option>
-                    <option value="WEEKLY">Weekly</option>
                     <option value="QUARTERLY">Quarterly</option>
-                    <option value="ANNUAL">Annual</option>
+                    <option value="ANNUALLY">Annual</option>
                   </select>
                 </div>
                 <div>

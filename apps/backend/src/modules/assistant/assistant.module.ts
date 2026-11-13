@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AiIngestionModule } from '../ai-ingestion/ai-ingestion.module';
+import { AlertsModule } from '../alerts/alerts.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { FinanceModule } from '../finance/finance.module';
 import { GuestsModule } from '../guests/guests.module';
@@ -42,6 +43,7 @@ import { AssistantMemoryService } from './memory/assistant-memory.service';
 @Module({
   imports: [
     AiIngestionModule,
+    AlertsModule,
     BookingsModule,
     FinanceModule,
     GuestsModule,

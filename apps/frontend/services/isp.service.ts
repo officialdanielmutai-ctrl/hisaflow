@@ -2,7 +2,7 @@ import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
 
 export type SubscriberStatus = 'ACTIVE' | 'SUSPENDED' | 'CHURNED';
 export type ConnectionType = 'PPPOE' | 'HOTSPOT' | 'STATIC_IP';
-export type BillingCycle = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+export type BillingCycle = 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
 export type WorkOrderType = 'INSTALLATION' | 'REPAIR' | 'RELOCATION' | 'MAINTENANCE';
 export type WorkOrderStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';

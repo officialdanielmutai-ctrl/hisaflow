@@ -169,6 +169,106 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-11-13 — Assistant reporting, catalogue advice and natural replies.**
+  Fixed the production report that the assistant could not answer sales
+  questions and expanded the shared tool registry beyond vertical-only reads.
+  New foundation read tools: `get_sales_report` (current period, credit sales,
+  margin, top items, by-category and a same-length previous-period comparison),
+  `analyse_catalogue` (fast movers, slow/dead stock, low stock, margin risks,
+  packaging gaps, category gaps and labelled new-item ideas),
+  `get_credit_summary`, `get_expense_report`, `get_active_alerts`,
+  `get_purchase_report`, `get_recent_transactions`, `list_notes`,
+  `get_tax_summary` and `list_team_members`; `resolve_alert`, `record_expense`,
+  `record_income`, `adjust_stock`, `archive_inventory_item` and the now-shared
+  `record_credit_payment` are governed write proposals. The agent prompt now
+  routes sales, spending, credit, tax,
+  notes and catalogue questions to those tools, adds practical advisory
+  guidance (trade-offs, assumptions, next action) and explicit limits on
+  medical, dosage, legal and accounting advice. The assistant reply renderer
+  now presents light Markdown as natural prose, turns JSON fences into labelled
+  values, renders tables as readable bullets, strips code/backticks and ignores
+  horizontal rules/blockquote markers. The Finance inline ask box reuses the
+  same renderer, so it no longer shows raw Markdown either. Suggestion chips
+  and tool labels cover the new tools. Guards: `assistant-reporting-tools.service.spec.ts`,
+  `assistant.module.spec.ts` (reporting tools in all eight verticals),
+  `assistant-agent.service.spec.ts`, `lib/assistant.spec.ts`,
+  `AssistantMessageText.spec.tsx`. The live-model characterization pass
+  (`apps/backend/scripts/assistant-characterization.mjs`) passed 22/22 cases on
+  the primary assistant model and 6/6 smoke cases through the production
+  gateway, including the C16 ambiguity case (two sugar matches asked, no sale).
+  Results: `context/assistant-characterization-2026-11-13.md`. The eval also
+  exposed a real Groq rejection of optional `null` arguments; the registry now
+  makes every non-required primitive nullable and the shared validators treat
+  `null` as absent, with a registry regression test. Verified: backend `tsc` +
+  assistant suite (21 suites / 244 tests), frontend `tsc` + assistant Vitest
+  (56 tests), and module ESLint with no errors. The only remaining assistant
+  field work is an owner-device session on the new reporting/advice tools.
+
+- **2026-11-13 — LiteLLM gateway moved to Cloud Run.** Deployed
+  `hisaflow-litellm` in GCP project `hisaflow`, region `europe-west1`, with the
+  official LiteLLM proxy command against the existing image
+  (`ghcr.io/officialdanielmutai-ctrl/hisaflow-gateway:sha-debe792`): 1 vCPU,
+  2 GiB RAM, min 0 / max 2 instances, request-based billing with CPU throttled
+  outside requests, 300s timeout, public Cloud Run URL
+  `https://hisaflow-litellm-cgqiivalxa-ew.a.run.app`. Set the provider keys,
+  rotated master key, `LITELLM_LOCAL_MODEL_COST_MAP=True` and `TZ=UTC`;
+  `PORT` is Cloud Run-reserved (8080). Updated the Northflank backend
+  `LITELLM_BASE_URL` to `https://hisaflow-litellm-cgqiivalxa-ew.a.run.app/v1`
+  with the matching master key, restarted it, and deleted the old Northflank
+  `hisaflow-gateway` service. Verified health, `/v1/models`,
+  `hisaflow-standard`, `hisaflow-assistant`, `hisaflow-vision` and SSE
+  streaming (all 200). The Cloud Run MCP `deploy_container_image` tool cannot
+  preserve command/env/memory/scaling, so production changes must use the Cloud
+  Run Admin API or a full-spec deploy script (F-43). See
+  `hisaflow-deployment.md` §2.2 and findings F-40–F-43.
+
+- **2026-11-10 — LiteLLM gateway deployed on Northflank.** Created the separate
+  `hisaflow-gateway` deployment service in project `default` (Europe West,
+  `nf-compute-20`, 512 MB, port 4000,
+  `https://http--hisaflow-gateway--8fycj6t62r9g.code.run`). The official
+  LiteLLM proxy OOM-killed at 512 MB and the 1 GB plan is rejected by the free
+  project allowance (1 GB total, shared with the 512 MB API service), so
+  `apps/gateway/app.py` runs the same `config.yaml` model aliases and fallback
+  chain through the LiteLLM SDK + FastAPI/uvicorn on the pinned
+  `main-v1.80.15-stable` image. Published as
+  `ghcr.io/officialdanielmutai-ctrl/hisaflow-gateway:sha-debe792` (commits
+  `70fa860` and `debe792`); the service uses ~45–63% of 512 MB and serves
+  health, `/v1/models`, standard/assistant/vision completions and SSE streaming
+  with `200`s. Also replaced the gateway's invalid Gemini key with the valid
+  API-service key, rotated `LITELLM_MASTER_KEY`, pointed the backend's dead
+  Railway `LITELLM_BASE_URL` at the Northflank gateway, and added the missing
+  `ROUTER_ENCRYPTION_KEY` to the API service; the next reconciliation cycle
+  logged `Timeout` instead of “key not set”, confirming decryption runs. See
+  `hisaflow-deployment.md`
+  §2.2 and F-39–F-42. Remaining: a paid/allowance increase to run the official
+  1 GB proxy, and a reachable MikroTik field test. **Superseded by the
+  2026-11-13 Cloud Run move above; the Northflank gateway was removed.**
+
+- **2026-11-06 — Vertical Value Checklist implementation pass.** Acted on the
+  3 November audit instead of leaving it as a status report. Fixed the blockers
+  that were code problems: stock quantity edits now write an `ADJUSTMENT`
+  ledger row with the actor (F-28); every remaining relative `/api/...` fetch
+  in table orders, chemist batch receipt, wholesale tiered pricing and student
+  detail now goes through `apiGet/apiPost` (F-29), with the batch/pricing
+  sheets reachable from Edit Variant; School Fees invoices/defaulters/summary
+  tabs and student detail are live (F-30); owner CSV export exists for
+  inventory, transactions, invoices, fee invoices, credit and tax via
+  `/exports/:dataset` and Settings → Your data (F-31); and a daily
+  `IspBillingCycleJob` generates and issues invoices idempotently (F-32).
+  Table orders also gained an add-item flow, ledgered/guarded close, and the
+  service-plan UI was corrected to the real Prisma cycle enum (F-38).
+  Cross-checked production through Northflank: service `hisaflow` build
+  SUCCESS, deployment COMPLETED at `0d0cada`, hourly suspend and 15-minute
+  reconciliation jobs running. Production logs exposed
+  `ROUTER_ENCRYPTION_KEY env var is not set`, recorded as F-39; router actions
+  cannot work live until that secret is configured. Verification: repo
+  typecheck 5/5, lint 0 errors (warnings only), backend **112 suites / 896
+  tests**, frontend **56 files / 309 tests**, build 5/5. The checklist now has
+  a status mark on all 123 questions: **46 code-verified, 48 partly, 27 no,
+  2 unknown**. Remaining decisions/field work: C19 trial enforcement, C24
+  retail/fee tax, real MikroTik and installed-iOS sessions. See the checklist
+  §12–§13 and `hisaflow-open-findings.md` F-28–F-39.
+
 - **2026-11-03 — Northflank LiteLLM gateway image path.** Added
   `.github/workflows/gateway-image.yml` to build `apps/gateway` and publish the
   custom LiteLLM gateway image to GHCR. Northflank's second service (Deploy
@@ -203,7 +303,8 @@ Update this file after every meaningful implementation change.
   5/5, lint 0 errors (warnings only) and the production frontend build all pass.
   Backend was unchanged (last full run: 110 suites / 884 tests). The next step is
   the Section 11 owner-device validation and prioritisation of the documented
-  gaps.
+  gaps. **Superseded by the 2026-11-06 implementation pass below: 46
+  code-verified / 48 partly / 27 no / 2 unknown.**
 - **2026-10-30 — Paystack live connection.** Connected the backend to the
   live Paystack account using the live secret/public keys in the ignored
   backend `.env` (never committed). Verified the live credentials against

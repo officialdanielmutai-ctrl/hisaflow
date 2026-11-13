@@ -41,6 +41,8 @@ import { TaxModule } from './modules/tax/tax.module';
 import { AdminModule } from './modules/admin/admin.module';
 // ── Home workspace customisation ─────────────────────────────────────────────
 import { WorkspaceModule } from './modules/workspace/workspace.module';
+// ── Owner data export ────────────────────────────────────────────────────────
+import { DataExportModule } from './modules/data-export/data-export.module';
 
 @Module({
   imports: [
@@ -80,6 +82,8 @@ import { WorkspaceModule } from './modules/workspace/workspace.module';
     AdminModule,
     // Home workspace customisation
     WorkspaceModule,
+    // Owner-scoped data export (C27)
+    DataExportModule,
   ],
   controllers: [AppController],
   providers: [AppService],
