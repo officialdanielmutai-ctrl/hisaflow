@@ -17,6 +17,14 @@ This document records how the marketing site and the authenticated app are hoste
 
 `www.hisaflow.com` redirects to the apex. The apex and the app subdomain are **two domains on one deployment**; host-aware routing in `apps/frontend/middleware.ts` decides what each host may serve.
 
+**Current production endpoints (2026-11-13).** `hisaflow.com` / `www.hisaflow.com`
+serve the Vercel deployment; the authenticated app routes are protected by Clerk
+and return its 404 (not a marketing 404) to anonymous requests. The Northflank
+API is live at `https://p01--hisaflow--8fycj6t62r9g.code.run` and its root health
+check returns `200`. The documented `app.hisaflow.com` and `api.hisaflow.com`
+records are not in DNS yet, so the split-host configuration is not active.
+The production gateway is the Cloud Run service below.
+
 ## 2. Hosting (Vercel, pnpm monorepo)
 
 1. Create a Vercel project from the repo.

@@ -60,6 +60,7 @@ once it is resolved, with a PR/date note.
 | F-41 | AI gateway / keys | High | Resolved (2026-11-10) | The gateway `.env` Gemini key returned 403; the API service's valid Gemini key was copied in. Standard, assistant, vision and streaming calls now return 200. |
 | F-42 | AI gateway / backend | High | Resolved (2026-11-13) | The backend `LITELLM_BASE_URL` pointed at a dead Railway URL; it now points at the Cloud Run gateway `https://hisaflow-litellm-cgqiivalxa-ew.a.run.app/v1` with the matching master key. |
 | F-43 | AI gateway / redeploy | Medium | Open | The Cloud Run MCP `deploy_container_image` tool only accepts image/project/region/service; it does not preserve command, env, memory or scaling. A naive redeploy would reset the service to defaults. |
+| F-45 | Deployment / split domains | Info | Open | `app.hisaflow.com` and `api.hisaflow.com` return NXDOMAIN; production currently runs single-origin on `www.hisaflow.com` with the Northflank API host. The app works, but the documented split-host routing is not active. |
 | F-44 | Assistant / reporting & advice | High | Resolved (2026-11-13) | The assistant could not answer sales questions or analyse the catalogue, its shared tool set stopped at inventory/finance reads, and replies rendered Markdown/JSON as raw code. Added sales, purchase, catalogue, credit, expense, alert, recent-activity, notes, tax and team read tools plus governed `resolve_alert`, `record_expense`, `record_income`, `adjust_stock`, `archive_inventory_item` and shared `record_credit_payment`; prompted for practical advice with safety limits; and replaced raw Markdown/code fences with natural prose, labelled data rows and readable tables. |
 
 ---
@@ -494,6 +495,12 @@ The full question-by-question audit lives in `HisaFlow Vertical Value Checklist.
 - **Where:** `cloud-run` MCP, `deploy_container_image` tool.
 - **Impact:** the tool accepts only `project`, `region`, `service` and `imageUrl`. It does not set or preserve `command`, `args`, runtime env, 2 GiB memory, min 0 / max 2 or CPU throttling. A naive redeploy would reset the service and could take the backend offline.
 - **Resolution:** redeploy through the Cloud Run Admin API with the full service spec (as done on 2026-11-13), or use a checked-in deploy script that reads the provider keys from the environment. Do not use the MCP image-only deploy for production updates.
+
+### F-45 — Documented app/api subdomains are not configured
+- **Where:** DNS for `hisaflow.com` and the Vercel/Northflank host settings.
+- **Evidence (2026-11-13):** `app.hisaflow.com` and `api.hisaflow.com` return NXDOMAIN from Google Public DNS. `www.hisaflow.com` serves the Vercel deployment and the Northflank API is live at `https://p01--hisaflow--8fycj6t62r9g.code.run` (root health `200`).
+- **Impact:** the target topology in §1 is not active; the app still works single-origin, but the documented `app.` and `api.` URLs cannot be advertised or used as `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_API_URL`.
+- **Resolution:** add `app` and `api` CNAMEs at the registrar, add the app domain to the Vercel project, and point `NEXT_PUBLIC_API_URL` at the backend host (or add an `api` proxy). Then re-check Clerk allowed origins and the split-host redirect rules.
 
 ### F-44 — Assistant could not report sales, advise on the catalogue or write natural replies
 - **Where:** `apps/backend/src/modules/assistant/tools/assistant-tools.service.ts`, `agent/assistant-agent.service.ts`, `apps/frontend/components/assistant/AssistantMessageText.tsx`, `apps/frontend/lib/assistant.ts`.

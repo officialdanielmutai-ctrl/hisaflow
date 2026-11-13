@@ -169,6 +169,19 @@ Update this file after every meaningful implementation change.
 
 ## Session Notes
 
+- **2026-11-13 — Assistant release deployed to production.** Commit `cc04fe1`
+  is on `main`. GitHub Actions CI is green; the Vercel deployment completed;
+  the Northflank `hisaflow` build and deploy succeeded; the backend root health
+  check returns `200` at
+  `https://p01--hisaflow--8fycj6t62r9g.code.run`; and the Cloud Run gateway
+  health and a production `hisaflow-assistant` smoke set are green (6/6). The
+  live characterization set is recorded in
+  `context/assistant-characterization-2026-11-13.md` (22/22 primary-model cases,
+  C16 ambiguity pass). The documented `app.hisaflow.com` / `api.hisaflow.com`
+  split domains are not in DNS yet: production currently serves the app from
+  `www.hisaflow.com` and the API from the Northflank host. Anonymous requests
+  to protected app routes return a Clerk 404, not a marketing 404.
+
 - **2026-11-13 — Assistant reporting, catalogue advice and natural replies.**
   Fixed the production report that the assistant could not answer sales
   questions and expanded the shared tool registry beyond vertical-only reads.
