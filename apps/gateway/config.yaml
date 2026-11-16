@@ -110,19 +110,23 @@ router_settings:
   allowed_fails: 2
   cooldown_time: 60
 
-# ----------------------------------------------------------------------
-# FALLBACK CHAIN
-# The standard pool is a shuffle of verified providers, so it does not
-# reference the (disabled) Bedrock premium deployment. The assistant and
-# vision groups keep their ordered, non-shuffled fallbacks.
-# ----------------------------------------------------------------------
-fallbacks:
-  - hisaflow-assistant:
-      - hisaflow-assistant-fallback-1
-  - hisaflow-assistant-fallback-1:
-      - hisaflow-assistant-fallback-2
-  - hisaflow-vision:
-      - hisaflow-vision-fallback-1
+  # ----------------------------------------------------------------------
+  # FALLBACK CHAIN
+  # LiteLLM's proxy only forwards `router_settings` to the Router. A
+  # top-level `fallbacks:` key is silently ignored by the pinned proxy
+  # (v1.80.15), which produced "Available Model Group Fallbacks=None" and
+  # left Groq 429s with no fallback. Keep the chain nested here.
+  # The standard pool is a shuffle of verified providers, so it does not
+  # reference the (disabled) Bedrock premium deployment. The assistant and
+  # vision groups keep their ordered, non-shuffled fallbacks.
+  # ----------------------------------------------------------------------
+  fallbacks:
+    - hisaflow-assistant:
+        - hisaflow-assistant-fallback-1
+    - hisaflow-assistant-fallback-1:
+        - hisaflow-assistant-fallback-2
+    - hisaflow-vision:
+        - hisaflow-vision-fallback-1
 
 # ----------------------------------------------------------------------
 # LITELLM GLOBAL SETTINGS

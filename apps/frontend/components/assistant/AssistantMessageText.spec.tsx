@@ -25,6 +25,22 @@ describe('AssistantMessageText', () => {
     expect(screen.queryByText(/[{}]/)).not.toBeInTheDocument();
   });
 
+  it('renders product records as readable items without exposing internal IDs', () => {
+    render(
+      <AssistantMessageText
+        text={
+          '```json\n[{"id":"item_1","name":"Maize flour","quantity":2,"unit":"kg"},{"id":"item_2","name":"Sugar","quantity":5,"unit":"kg"}]\n```'
+        }
+      />,
+    );
+
+    expect(
+      screen.getByText('Maize flour — Quantity: 2; Unit: kg'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Sugar — Quantity: 5; Unit: kg')).toBeInTheDocument();
+    expect(screen.queryByText(/item_[12]/)).not.toBeInTheDocument();
+  });
+
   it('renders inline code as readable text, not a code block', () => {
     render(<AssistantMessageText text={'Sell **unga** at `KES 120`.'} />);
 

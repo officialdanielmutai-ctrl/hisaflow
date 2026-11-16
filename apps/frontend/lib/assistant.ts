@@ -79,6 +79,50 @@ function formatPrimitive(value: unknown): string {
   return JSON.stringify(value);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isInternalDataKey(key: string): boolean {
+  return (
+    key === 'id' ||
+    key.endsWith('Id') ||
+    key === 'createdAt' ||
+    key === 'updatedAt' ||
+    key === 'organizationId' ||
+    key === 'userId'
+  );
+}
+
+function namedRecordList(value: unknown): AssistantMessageBlock | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const records = value.filter(
+    (entry): entry is Record<string, unknown> & { name: string } =>
+      isRecord(entry) && typeof entry.name === 'string',
+  );
+  if (records.length !== value.length) return null;
+
+  return {
+    type: 'bullet',
+    items: records.map((record) => {
+      const details = Object.entries(record)
+        .filter(
+          ([key, entry]) =>
+            key !== 'name' &&
+            !isInternalDataKey(key) &&
+            (entry === null || typeof entry !== 'object'),
+        )
+        .map(
+          ([key, entry]) =>
+            `${humanizeKey(key)}: ${formatPrimitive(entry)}`,
+        );
+      return details.length
+        ? `${record.name} — ${details.join('; ')}`
+        : record.name;
+    }),
+  };
+}
+
 function flattenData(
   value: unknown,
   prefix: string,
@@ -102,6 +146,7 @@ function flattenData(
   }
   if (value && typeof value === 'object') {
     for (const [key, entry] of Object.entries(value)) {
+      if (isInternalDataKey(key)) continue;
       const label = prefix
         ? `${prefix} · ${humanizeKey(key)}`
         : humanizeKey(key);
@@ -123,8 +168,11 @@ function fencedBlock(content: string): AssistantMessageBlock | null {
   if (!trimmed) return null;
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     try {
+      const parsed: unknown = JSON.parse(trimmed);
+      const namedRecords = namedRecordList(parsed);
+      if (namedRecords) return namedRecords;
       const rows: AssistantDataRow[] = [];
-      flattenData(JSON.parse(trimmed), '', rows);
+      flattenData(parsed, '', rows);
       if (rows.length > 0 && rows.length <= 40) {
         return { type: 'data', rows };
       }
@@ -537,10 +585,6 @@ export function displayValue(value: unknown): string {
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 /**

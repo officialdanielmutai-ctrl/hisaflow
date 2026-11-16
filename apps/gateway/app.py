@@ -22,9 +22,13 @@ with open(CONFIG_PATH, encoding="utf-8") as handle:
     CONFIG = yaml.safe_load(handle) or {}
 
 ROUTER_SETTINGS = CONFIG.get("router_settings") or {}
+# LiteLLM's proxy only passes `router_settings` into the Router, so the
+# supported location for the fallback chain is `router_settings.fallbacks`.
+# Keep the top-level read as a fallback for older/slim configs.
+FALLBACKS = ROUTER_SETTINGS.get("fallbacks") or CONFIG.get("fallbacks")
 router = Router(
     model_list=CONFIG.get("model_list", []),
-    fallbacks=CONFIG.get("fallbacks"),
+    fallbacks=FALLBACKS,
     routing_strategy=ROUTER_SETTINGS.get("routing_strategy", "simple-shuffle"),
     num_retries=ROUTER_SETTINGS.get("num_retries", 2),
     retry_after=ROUTER_SETTINGS.get("retry_after", 0),

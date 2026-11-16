@@ -44,6 +44,28 @@ function activeLines(raw: string): string[] {
     .filter((line) => line.length > 0 && !line.startsWith('#'));
 }
 
+/** The active fallback entries nested under router_settings. */
+function configuredFallbackLines(raw: string): string[] {
+  const rawLines = raw.split(/\r?\n/);
+  const routerStart = rawLines.findIndex((line) =>
+    /^router_settings:\s*$/.test(line),
+  );
+  if (routerStart === -1) return [];
+  const fallbackStart = rawLines.findIndex(
+    (line, index) =>
+      index > routerStart && /^\s{2}fallbacks:\s*$/.test(line),
+  );
+  if (fallbackStart === -1) return [];
+  const fallbackLines: string[] = [];
+  for (const line of rawLines.slice(fallbackStart + 1)) {
+    if (!line.trim() || line.trim().startsWith('#')) continue;
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
+    if (indent <= 2) break;
+    fallbackLines.push(line.trim());
+  }
+  return fallbackLines;
+}
+
 describe('LiteLLM gateway config (Q-005 regression guard)', () => {
   const raw = readFileSync(CONFIG_PATH, 'utf8');
   const lines = activeLines(raw);
@@ -73,12 +95,7 @@ describe('LiteLLM gateway config (Q-005 regression guard)', () => {
         .filter((name): name is string => Boolean(name)),
     );
 
-    const start = lines.findIndex((line) => line === 'fallbacks:');
-    expect(start).toBeGreaterThanOrEqual(0);
-    const end = lines.findIndex(
-      (line, index) => index > start && /^[a-z_]+:$/.test(line),
-    );
-    const fallbackLines = lines.slice(start + 1, end === -1 ? undefined : end);
+    const fallbackLines = configuredFallbackLines(raw);
     const referenced = fallbackLines.flatMap(
       (line) => line.match(/hisaflow-[a-z0-9-]+/g) ?? [],
     );
@@ -87,6 +104,28 @@ describe('LiteLLM gateway config (Q-005 regression guard)', () => {
     for (const name of referenced) {
       expect(groups.has(name)).toBe(true);
     }
+  });
+
+  it('places fallbacks inside router_settings for the pinned LiteLLM proxy', () => {
+    // LiteLLM v1.80.15 only forwards `router_settings` to the Router. A
+    // top-level `fallbacks:` key is accepted by YAML but silently ignored,
+    // which is how production ended up with `Available Model Group
+    // Fallbacks=None` and no failover on Groq 429s.
+    const rawLines = raw.split(/\r?\n/);
+    const topLevelFallback = rawLines.some((line) =>
+      /^fallbacks:\s*$/.test(line),
+    );
+    expect(topLevelFallback).toBe(false);
+
+    const routerStart = rawLines.findIndex((line) =>
+      /^router_settings:\s*$/.test(line),
+    );
+    expect(routerStart).toBeGreaterThanOrEqual(0);
+    const nestedFallback = rawLines.findIndex(
+      (line, index) => index > routerStart && /^\s{2}fallbacks:\s*$/.test(line),
+    );
+    expect(nestedFallback).toBeGreaterThan(routerStart);
+    expect(configuredFallbackLines(raw).length).toBeGreaterThan(0);
   });
 
   it('does not reference the unprovisioned premium/Bedrock fallback', () => {

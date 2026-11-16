@@ -386,7 +386,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     return {
       name: 'get_sales_report',
       description:
-        'Report stock/item sales for a period: number of sales, units, revenue, cost of sales, gross profit, credit sales and the best-selling items. Read-only. Use this for questions like “how were sales this week?”, “what sold best yesterday?” or “what is my average sale?”. This covers sales recorded against inventory (including bar/tuck-shop sales); use get_financial_breakdown for room, plan or school-fee revenue. Never invent a sales figure.',
+        'Report recorded sales revenue for a period. Revenue includes stock sales for retail/restaurant businesses, room and ISP invoice payments, and school fee collections plus stock sales for schools. The stock-specific count, units, average, credit totals, items and daily series are labelled separately. Read-only. Use for questions like “how were sales this week?”, “what sold best yesterday?” or “how much did we collect?”. Never invent a sales figure.',
       kind: 'read',
       riskLevel: 'low',
       parameters: {
@@ -394,13 +394,13 @@ export class AssistantToolsService implements AssistantToolProvider {
         properties: {
           days: {
             type: 'number',
-            description: 'Lookback window in days (default 7, maximum 365).',
+            description: 'Lookback window in days (default 30, maximum 365).',
           },
           from: { type: 'string', description: 'Optional ISO start date.' },
           to: { type: 'string', description: 'Optional ISO end date.' },
           limit: {
             type: 'number',
-            description: 'Maximum top items to return (default 5).',
+            description: 'Maximum top items/sources to return (default 5).',
           },
         },
         required: [],
@@ -408,35 +408,99 @@ export class AssistantToolsService implements AssistantToolProvider {
       },
       execute: async (raw, ctx) => {
         const args = asRecord(raw);
-        const period = this.resolvePeriod(args, 7);
+        // Owners usually mean “recently” rather than literally the last seven
+        // days. A 30-day default avoids a misleading zero when trading was
+        // recorded earlier in the month; the model narrows it when the user
+        // explicitly says “today” or “this week”.
+        const period = this.resolvePeriod(args, 30);
         const limit = asLimit(args.limit, 5);
         const windowMs = period.end.getTime() - period.start.getTime();
         const previousEnd = new Date(period.start.getTime() - 1);
         const previousStart = new Date(previousEnd.getTime() - windowMs);
 
-        const [current, previous, credits] = await Promise.all([
-          this.salesSnapshot(ctx.organizationId, period.start, period.end),
-          this.salesSnapshot(ctx.organizationId, previousStart, previousEnd),
-          this.prisma.db.creditRecord.findMany({
-            where: {
-              organizationId: ctx.organizationId,
-              status: { in: ['UNPAID', 'PARTIAL'] },
-            },
-            select: { amountTotal: true, amountPaid: true },
-          }),
-        ]);
+        const [current, previous, credits, lastSale, currentFinance, previousFinance] =
+          await Promise.all([
+            this.salesSnapshot(ctx.organizationId, period.start, period.end),
+            this.salesSnapshot(ctx.organizationId, previousStart, previousEnd),
+            this.prisma.db.creditRecord.findMany({
+              where: {
+                organizationId: ctx.organizationId,
+                status: { in: ['UNPAID', 'PARTIAL'] },
+              },
+              select: { amountTotal: true, amountPaid: true },
+            }),
+            // If the selected window is empty, tell the model when the last
+            // real movement was so it can offer a wider period instead of
+            // claiming the business has no sales at all.
+            this.prisma.db.inventoryTransaction.findFirst({
+              where: { organizationId: ctx.organizationId, type: 'SALE' },
+              orderBy: { createdAt: 'desc' },
+              select: { createdAt: true },
+            }),
+            this.finance.getBreakdownForPeriod(
+              ctx.organizationId,
+              period.start,
+              period.end,
+            ),
+            this.finance.getBreakdownForPeriod(
+              ctx.organizationId,
+              previousStart,
+              previousEnd,
+            ),
+          ]);
 
         const creditOutstanding = credits.reduce(
           (sum, credit) =>
             sum + (Number(credit.amountTotal) - Number(credit.amountPaid)),
           0,
         );
+        const schoolFeesRevenue = (finance: typeof currentFinance) =>
+          finance.breakdowns
+            .filter(
+              (group) =>
+                group.key === 'revenue-source' &&
+                group.title === 'Fees collected by class',
+            )
+            .flatMap((group) => group.rows)
+            .reduce((sum, row) => sum + Number(row.amount), 0);
+        const reportRevenue = (
+          stockRevenue: number,
+          finance: typeof currentFinance,
+        ) => {
+          if (ctx.businessType === 'GUEST_HOUSE' || ctx.businessType === 'ISP') {
+            return finance.revenue;
+          }
+          if (ctx.businessType === 'SCHOOL') {
+            return stockRevenue + schoolFeesRevenue(finance);
+          }
+          return stockRevenue;
+        };
+        const currentRevenue = reportRevenue(current.revenue, currentFinance);
+        const previousRevenue = reportRevenue(previous.revenue, previousFinance);
         const changePct =
-          previous.revenue > 0
-            ? ((current.revenue - previous.revenue) / previous.revenue) * 100
-            : current.revenue > 0
+          previousRevenue > 0
+            ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
+            : currentRevenue > 0
               ? 100
               : 0;
+        const revenueSources = currentFinance.breakdowns
+          .filter(
+            (group) =>
+              group.key === 'revenue-source' ||
+              (ctx.businessType === 'GUEST_HOUSE' &&
+                group.key === 'revenue-mix'),
+          )
+          .flatMap((group) =>
+            group.rows.map((row) => ({
+              source: group.title,
+              label: row.label,
+              amount: round2(row.amount),
+              count: row.count ?? null,
+            })),
+          )
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, limit);
+        const emptyPeriod = currentRevenue === 0 && current.salesCount === 0;
 
         return {
           period: {
@@ -444,20 +508,31 @@ export class AssistantToolsService implements AssistantToolProvider {
             to: period.end.toISOString(),
             days: period.days,
           },
-          totalSales: current.salesCount,
-          totalUnits: round2(current.totalUnits),
-          revenue: round2(current.revenue),
+          stockSalesCount: current.salesCount,
+          stockUnits: round2(current.totalUnits),
+          // Revenue is vertical-aware (stock sales, restaurant orders, room
+          // payments, ISP plan payments or school fees). Stock-only turnover
+          // stays available separately so the two are never double-counted.
+          revenue: round2(currentRevenue),
+          stockRevenue: round2(current.revenue),
           costOfSales: round2(current.costOfSales),
-          grossProfit: round2(current.grossProfit),
+          grossProfit: round2(currentRevenue - current.costOfSales),
           grossMarginPct:
-            current.revenue > 0
-              ? round2((current.grossProfit / current.revenue) * 100)
+            currentRevenue > 0
+              ? round2(
+                  ((currentRevenue - current.costOfSales) / currentRevenue) *
+                    100,
+                )
               : 0,
           averageSaleValue:
             current.salesCount > 0
               ? round2(current.revenue / current.salesCount)
               : 0,
-          creditSales: {
+          averageStockSaleValue:
+            current.salesCount > 0
+              ? round2(current.revenue / current.salesCount)
+              : 0,
+          stockCreditSales: {
             count: current.creditSales,
             revenue: round2(current.creditRevenue),
             outstanding: round2(Math.max(0, creditOutstanding)),
@@ -465,9 +540,10 @@ export class AssistantToolsService implements AssistantToolProvider {
           comparedWithPreviousPeriod: {
             from: previousStart.toISOString(),
             to: previousEnd.toISOString(),
-            revenue: round2(previous.revenue),
-            units: round2(previous.totalUnits),
-            sales: previous.salesCount,
+            revenue: round2(previousRevenue),
+            stockRevenue: round2(previous.revenue),
+            stockUnits: round2(previous.totalUnits),
+            stockSales: previous.salesCount,
             revenueChangePct: round2(changePct),
             direction:
               changePct > 0 ? 'up' : changePct < 0 ? 'down' : 'flat',
@@ -476,12 +552,15 @@ export class AssistantToolsService implements AssistantToolProvider {
             .sort((a, b) => b.units - a.units || b.revenue - a.revenue)
             .slice(0, limit)
             .map((item) => ({
-              ...item,
+              name: item.name,
+              unit: item.unit,
+              sales: item.sales,
               units: round2(item.units),
               revenue: round2(item.revenue),
               cost: round2(item.cost),
               profit: round2(item.profit),
             })),
+          topRevenueSources: revenueSources,
           byCategory: Array.from(current.categories.values())
             .sort((a, b) => b.revenue - a.revenue)
             .map((category) => ({
@@ -490,9 +569,18 @@ export class AssistantToolsService implements AssistantToolProvider {
               revenue: round2(category.revenue),
               profit: round2(category.profit),
             })),
-          byDay: Array.from(current.days.values())
+          // Cap the daily series so a 12-month request cannot balloon the
+          // model context (a direct cause of provider rate-limit failures).
+          stockSalesByDay: Array.from(current.days.values())
             .sort((a, b) => a.date.localeCompare(b.date))
+            .slice(-31)
             .map((day) => ({ ...day, revenue: round2(day.revenue) })),
+          lastStockSaleAt: lastSale?.createdAt.toISOString() ?? null,
+          note: emptyPeriod
+            ? lastSale
+              ? `No sales or invoice payments were recorded in this period. The last stock sale was on ${lastSale.createdAt.toISOString().slice(0, 10)}; ask for a wider period to include it.`
+              : 'No sales or invoice payments have been recorded yet.'
+            : undefined,
         };
       },
     };
@@ -805,7 +893,6 @@ export class AssistantToolsService implements AssistantToolProvider {
           type: string;
           title: string;
           reason: string;
-          itemId?: string;
           category?: string;
         }> = [];
         for (const item of topSellers) {
@@ -814,7 +901,6 @@ export class AssistantToolsService implements AssistantToolProvider {
               type: 'restock',
               title: `Restock ${item.name}`,
               reason: `${item.unitsSold} ${item.unit} sold in the last ${days} days and only ${item.quantity} remain.`,
-              itemId: item.id,
             });
           }
           if (item.packagingUnits === 0) {
@@ -822,7 +908,6 @@ export class AssistantToolsService implements AssistantToolProvider {
               type: 'pack_size',
               title: `Add a bulk pack size for ${item.name}`,
               reason: `It is a fast mover (${item.unitsSold} ${item.unit} in ${days} days) but has no carton/pack unit, so bulk buyers must count base units.`,
-              itemId: item.id,
             });
           }
         }
@@ -839,7 +924,6 @@ export class AssistantToolsService implements AssistantToolProvider {
             type: 'price_review',
             title: `Review the price of ${item.name}`,
             reason: `Selling price is ${item.sellingPrice ?? 0} against a cost of ${item.costPrice ?? 0} (margin ${item.marginPct ?? 0}%).`,
-            itemId: item.id,
           });
         }
         for (const item of slowMovers) {
@@ -847,9 +931,11 @@ export class AssistantToolsService implements AssistantToolProvider {
             type: 'dead_stock',
             title: `Review or clear ${item.name}`,
             reason: `${item.quantity} ${item.unit} in stock with no sales in the last ${days} days.`,
-            itemId: item.id,
           });
         }
+
+        const publicCatalogueItems = (rows: typeof catalogue) =>
+          rows.map(({ id: _id, ...item }) => item);
 
         return {
           generatedAt: new Date().toISOString(),
@@ -862,19 +948,23 @@ export class AssistantToolsService implements AssistantToolProvider {
             ),
           ),
           categories,
-          topSellers,
-          lowStock,
-          outOfStock,
-          slowMovers,
-          marginRisks,
-          packagingGaps,
+          topSellers: publicCatalogueItems(topSellers),
+          lowStock: publicCatalogueItems(lowStock),
+          outOfStock: publicCatalogueItems(outOfStock),
+          slowMovers: publicCatalogueItems(slowMovers),
+          marginRisks: publicCatalogueItems(marginRisks),
+          packagingGaps: publicCatalogueItems(packagingGaps),
           categoryGaps,
           suggestedNewItems: categoryGaps.map((category) => ({
             category: category.category,
             reason: `Only ${category.skuCount} product(s) in a category with ${category.revenue.toFixed(0)} in sales; consider adding a complementary product.`,
           })),
           suggestions: suggestions.slice(0, Math.max(limit * 2, 10)),
-          catalogue: catalogue.slice(0, 50),
+          // Deliberately no raw catalogue array here: returning 50 full item
+          // objects made the tool result larger than the model's remaining
+          // token budget, which caused provider 429s and pushed weaker
+          // fallbacks into inventing products. The focused lists above are
+          // enough evidence for an answer.
           note:
             catalogue.length === 0
               ? 'This organization has no active catalogue items yet.'
@@ -1552,7 +1642,6 @@ export class AssistantToolsService implements AssistantToolProvider {
         const items = await this.prisma.db.inventoryItem.findMany({
           where: { organizationId: ctx.organizationId, isActive: true },
           select: {
-            id: true,
             name: true,
             unit: true,
             quantity: true,
@@ -1565,7 +1654,6 @@ export class AssistantToolsService implements AssistantToolProvider {
           )
           .slice(0, limit)
           .map((item) => ({
-            id: item.id,
             name: item.name,
             unit: item.unit,
             quantity: Number(item.quantity),
@@ -1645,7 +1733,6 @@ export class AssistantToolsService implements AssistantToolProvider {
           orderBy: { name: 'asc' },
           take: limit,
           select: {
-            id: true,
             name: true,
             unit: true,
             quantity: true,
@@ -1655,7 +1742,6 @@ export class AssistantToolsService implements AssistantToolProvider {
           },
         });
         return items.map((item) => ({
-          id: item.id,
           name: item.name,
           unit: item.unit,
           quantity: Number(item.quantity),

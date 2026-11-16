@@ -214,6 +214,8 @@ describe('AssistantAgentService', () => {
     ).find((message) => message.role === 'system');
     expect(system?.content).toContain('NO built-in knowledge');
     expect(system?.content).toContain('Never invent');
+    expect(system?.content).toContain('copy its exact name from the tool result');
+    expect(system?.content).toContain('Never expose internal IDs');
     expect(system?.content).toContain('call the matching read tool');
     expect(system?.content).toContain('call create_note');
     expect(system?.content).toContain('list_inventory');
@@ -234,6 +236,7 @@ describe('AssistantAgentService', () => {
     expect(system?.content).toContain('call get_sales_report');
     expect(system?.content).toContain('Never say you cannot report sales');
     expect(system?.content).toContain('analyse_catalogue');
+    expect(system?.content).toContain('Only recommend new products at the category level');
     expect(system?.content).toContain('practical business advisor');
     expect(system?.content).toContain('Do not give medical, dosage, legal or accounting advice');
     expect(system?.content).toContain('comparedWithPreviousPeriod');

@@ -302,6 +302,18 @@ export class FinanceService {
     return this.financeBreakdown.getBreakdown(organizationId, start, end);
   }
 
+  /**
+   * Vertical-aware revenue for an explicit period. Assistant reporting tools
+   * need arbitrary windows ("this week", "last month"), not just rolling30.
+   */
+  getBreakdownForPeriod(
+    organizationId: string,
+    start: Date,
+    end: Date,
+  ): Promise<FinanceBreakdown> {
+    return this.financeBreakdown.getBreakdown(organizationId, start, end);
+  }
+
   // ── Private Helper: Date Range ─────────────────────────────────────────────
   private getDateRange(dateMode: 'rolling30' | 'calendar'): { start: Date; end: Date } {
     const now = new Date();

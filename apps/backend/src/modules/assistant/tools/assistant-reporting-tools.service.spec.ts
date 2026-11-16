@@ -14,6 +14,23 @@ const CTX = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const EMPTY_FINANCE_BREAKDOWN = {
+  businessType: 'DUKA',
+  revenue: 0,
+  cogs: 0,
+  grossProfit: 0,
+  grossMarginPct: null,
+  otherIncome: 0,
+  operatingExpenses: 0,
+  maintenanceCosts: 0,
+  netProfit: 0,
+  netMarginPct: null,
+  dailyTrend: [],
+  expensesByCategory: [],
+  breakdowns: [],
+  leaks: [],
+};
+
 function inRange(
   value: unknown,
   range?: { gte?: Date; lte?: Date },
@@ -28,6 +45,8 @@ interface BuildOptions {
   items?: Array<Record<string, unknown>>;
   transactions?: Array<Record<string, unknown>>;
   businessTransactions?: Array<Record<string, unknown>>;
+  financeBreakdowns?: Array<Record<string, unknown>>;
+  lastSale?: Record<string, unknown> | null;
   credits?: Array<Record<string, unknown>>;
   alerts?: Array<Record<string, unknown>>;
   taxRecords?: Array<Record<string, unknown>>;
@@ -67,6 +86,18 @@ function build(options: BuildOptions = {}) {
             return inRange(tx.createdAt, where.createdAt);
           }),
       ),
+      findFirst: jest.fn(async () => {
+        if (options.lastSale !== undefined) return options.lastSale;
+        return (
+          inventoryTransactions
+            .filter((tx) => tx.type === 'SALE')
+            .sort(
+              (a, b) =>
+                (b.createdAt as Date).getTime() -
+                (a.createdAt as Date).getTime(),
+            )[0] ?? null
+        );
+      }),
     },
     businessTransaction: {
       findMany: jest.fn(
@@ -129,6 +160,7 @@ function build(options: BuildOptions = {}) {
     send: jest.fn(async () => ({ status: 'MOCKED', recipient: 'x' })),
   };
   const unsupported = { record: jest.fn(async () => ({ recorded: true })) };
+  let financeCall = 0;
   const finance = {
     getBreakdown: jest.fn(async () => ({
       businessType: 'DUKA',
@@ -146,6 +178,10 @@ function build(options: BuildOptions = {}) {
       breakdowns: [],
       leaks: [],
     })),
+    getBreakdownForPeriod: jest.fn(
+      async () =>
+        options.financeBreakdowns?.[financeCall++] ?? EMPTY_FINANCE_BREAKDOWN,
+    ),
   };
   const financeSearch = {
     search: jest.fn(async () => ({
@@ -256,21 +292,22 @@ describe('AssistantToolsService.get_sales_report', () => {
       CTX,
     );
 
-    expect(result.totalSales).toBe(2);
+    expect(result.stockSalesCount).toBe(2);
+    expect(result.stockUnits).toBe(5);
     expect(result.revenue).toBe(850);
     expect(result.costOfSales).toBe(500);
     expect(result.grossProfit).toBe(350);
     expect(result.grossMarginPct).toBe(41.18);
-    expect(result.averageSaleValue).toBe(425);
-    expect(result.creditSales).toEqual({
+    expect(result.averageStockSaleValue).toBe(425);
+    expect(result.stockCreditSales).toEqual({
       count: 1,
       revenue: 400,
       outstanding: 300,
     });
     expect(result.comparedWithPreviousPeriod).toMatchObject({
       revenue: 400,
-      units: 4,
-      sales: 1,
+      stockUnits: 4,
+      stockSales: 1,
       revenueChangePct: 112.5,
       direction: 'up',
     });
@@ -279,6 +316,8 @@ describe('AssistantToolsService.get_sales_report', () => {
       units: 5,
       revenue: 850,
     });
+    expect(result.topItems[0]).not.toHaveProperty('itemId');
+    expect(result.topItems[0]).not.toHaveProperty('id');
     expect(result.byCategory[0]).toMatchObject({
       category: 'Grocery',
       units: 5,
@@ -290,12 +329,73 @@ describe('AssistantToolsService.get_sales_report', () => {
     const { byName } = build();
     const result: any = await byName('get_sales_report').execute?.({}, CTX);
     expect(result).toMatchObject({
-      totalSales: 0,
+      stockSalesCount: 0,
       revenue: 0,
       grossProfit: 0,
       averageSaleValue: 0,
       topItems: [],
     });
+  });
+
+  it('reports invoice revenue without mixing expenses into revenue sources', async () => {
+    const { byName } = build({
+      financeBreakdowns: [
+        {
+          ...EMPTY_FINANCE_BREAKDOWN,
+          businessType: 'GUEST_HOUSE',
+          revenue: 2500,
+          breakdowns: [
+            {
+              key: 'revenue-source',
+              title: 'Revenue by room',
+              rows: [{ label: 'Room 4', amount: 2500, count: 2 }],
+            },
+            {
+              key: 'expenses-by-category',
+              title: 'Expenses by category',
+              rows: [{ label: 'Repairs', amount: 900, count: 1 }],
+            },
+          ],
+        },
+        {
+          ...EMPTY_FINANCE_BREAKDOWN,
+          businessType: 'GUEST_HOUSE',
+          revenue: 2000,
+          breakdowns: [
+            {
+              key: 'revenue-source',
+              title: 'Revenue by room',
+              rows: [{ label: 'Room 4', amount: 2000, count: 2 }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const result: any = await byName('get_sales_report').execute?.(
+      { days: 7 },
+      { ...CTX, businessType: 'GUEST_HOUSE' },
+    );
+
+    expect(result).toMatchObject({
+      stockSalesCount: 0,
+      revenue: 2500,
+      comparedWithPreviousPeriod: {
+        revenue: 2000,
+        revenueChangePct: 25,
+        direction: 'up',
+      },
+      topRevenueSources: [
+        {
+          label: 'Room 4',
+          amount: 2500,
+          count: 2,
+        },
+      ],
+    });
+    expect(result.topRevenueSources).not.toContainEqual(
+      expect.objectContaining({ label: 'Repairs' }),
+    );
   });
 });
 
@@ -356,6 +456,7 @@ describe('AssistantToolsService.analyse_catalogue', () => {
 
     expect(result.catalogueSize).toBe(3);
     expect(result.topSellers[0]).toMatchObject({ name: 'Sugar', unitsSold: 10 });
+    expect(result.topSellers[0]).not.toHaveProperty('id');
     expect(result.lowStock.map((item: { name: string }) => item.name)).toContain(
       'Sugar',
     );
@@ -378,6 +479,7 @@ describe('AssistantToolsService.analyse_catalogue', () => {
         'dead_stock',
       ]),
     );
+    expect(result.suggestions[0]).not.toHaveProperty('itemId');
   });
 
   it('states plainly when the catalogue is empty', async () => {
