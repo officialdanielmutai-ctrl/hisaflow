@@ -242,6 +242,7 @@ function sale(
     source?: string;
     appliedTierPrice?: number;
     name?: string;
+    productName?: string;
     category?: string;
     costPrice?: number;
     sellingPrice?: number;
@@ -263,6 +264,7 @@ function sale(
     item: {
       id: 'i1',
       name: options.name ?? 'Sugar',
+      product: options.productName ? { name: options.productName } : null,
       unit: 'kg',
       category: options.category ?? 'Grocery',
       costPrice: options.costPrice ?? 100,
@@ -277,7 +279,7 @@ describe('AssistantToolsService.get_sales_report', () => {
   it('reports revenue, margin, credit and a previous-period comparison', async () => {
     const { byName } = build({
       transactions: [
-        sale('t1', now, 3),
+        sale('t1', now, 3, { name: 'Default', productName: 'Sugar' }),
         sale('t2', now, 2, { source: 'credit', appliedTierPrice: 200 }),
         sale('t3', new Date(now.getTime() - 10 * DAY_MS), 4, {
           costPrice: 60,

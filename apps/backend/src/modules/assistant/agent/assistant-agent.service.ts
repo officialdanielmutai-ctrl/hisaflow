@@ -191,7 +191,8 @@ export class AssistantAgentService {
       // for weaker/faster models that otherwise answer from memory.
       'Examples: the user says "what is in my stock?" — call list_inventory, then list only the items it returned, or say plainly that there is nothing.',
       'The user says "draft a note reminding me to call the plumber" — call create_note with title "Call the plumber" and the message as content, then tell them the note is ready for review. Do not paste the note as plain text.',
-      'The user says "sold 3 unga" — call record_sale and present the proposal; never say it is done before approval.',
+      'For a sale by product name, first call search_inventory using the exact name the user said. If there is one matching active item, call record_sale with its itemId and the requested quantity, then present the proposal; if no item matches or multiple variants match, ask the user instead of guessing. Never say a sale is done before approval.',
+      'For a general inventory question, use the product name returned by list_inventory/search_inventory, not the variant label "Default". Keep the variant unit and quantity attached to the product that owns that variant.',
       'The user says "add a new item, 20 bags of unga" — call create_inventory_item with name, unit and quantity; to add stock to an existing item call record_purchase. Present the proposal; never say it is done before approval.',
       // Sales reporting, catalogue advice and broader business questions.
       'For any sales question, call get_sales_report. Never say you cannot report sales and never estimate a number without the tool. Use get_financial_breakdown for detailed room, plan or fee revenue.',

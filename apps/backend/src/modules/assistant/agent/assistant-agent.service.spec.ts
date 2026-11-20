@@ -219,6 +219,8 @@ describe('AssistantAgentService', () => {
     expect(system?.content).toContain('call the matching read tool');
     expect(system?.content).toContain('call create_note');
     expect(system?.content).toContain('list_inventory');
+    expect(system?.content).toContain('call search_inventory');
+    expect(system?.content).toContain('variant label "Default"');
   });
 
   it('directs sales, catalogue and advisory questions to the reporting tools', async () => {

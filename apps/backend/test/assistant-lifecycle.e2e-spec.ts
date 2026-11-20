@@ -128,6 +128,61 @@ describe('Assistant governed write path (e2e, real Postgres)', () => {
     expect(emptyResponse.body.result).toEqual([]);
   });
 
+  it('uses product names for default variants and resolves named sale proposals', async () => {
+    const { org, owner } = await seedOrg('ProductVariant', 'DUKA');
+    const product = await prisma.db.product.create({
+      data: { organizationId: org.id, name: 'Unga' },
+    });
+    const variant = await prisma.db.inventoryItem.create({
+      data: {
+        organizationId: org.id,
+        productId: product.id,
+        name: 'Default',
+        unit: '2 kg bag',
+        quantity: new Prisma.Decimal('10'),
+        reorderThreshold: new Prisma.Decimal('0'),
+      },
+    });
+
+    const listed = await request(app, '/assistant/tools/list_inventory/run', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: { args: {} },
+    });
+    expect(listed.status).toBe(201);
+    expect(listed.body.result).toContainEqual(
+      expect.objectContaining({ id: variant.id, name: 'Unga', unit: '2 kg bag' }),
+    );
+
+    const searched = await request(app, '/assistant/tools/search_inventory/run', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: { args: { query: 'Unga' } },
+    });
+    expect(searched.status).toBe(201);
+    expect(searched.body.result).toContainEqual(
+      expect.objectContaining({ id: variant.id, name: 'Unga' }),
+    );
+
+    const proposed = await request(app, '/assistant/proposals', {
+      method: 'POST',
+      orgId: org.id,
+      userId: owner.id,
+      body: {
+        tool: 'record_sale',
+        args: { itemName: 'Unga', quantity: 3 },
+      },
+    });
+    expect(proposed.status).toBe(201);
+    expect(proposed.body.proposal.args).toMatchObject({
+      itemId: variant.id,
+      quantity: 3,
+    });
+    expect(proposed.body.proposal.summary).toContain('Unga');
+  });
+
   it('reads and proposes shared inventory tools with no feature-flag rows (default on)', async () => {
     // Production applies the schema with `prisma db push`, so the flag table can
     // be empty. The assistant must still work across verticals; this is the

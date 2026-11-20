@@ -90,6 +90,26 @@ function appliedTierPrice(metadata: unknown): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+function inventoryDisplayName(item: {
+  name?: string | null;
+  product?: { name?: string | null } | null;
+}): string {
+  const variantName = item.name?.trim() || 'Unknown item';
+  const productName = item.product?.name?.trim();
+  if (!productName) {
+    return variantName.toLowerCase() === 'default'
+      ? 'Unlabelled inventory item'
+      : variantName;
+  }
+  if (
+    variantName.toLowerCase() === 'default' ||
+    variantName.toLowerCase() === productName.toLowerCase()
+  ) {
+    return productName;
+  }
+  return `${productName} (${variantName})`;
+}
+
 function asImportance(value: unknown): NoteImportance {
   if (value === undefined || value === null) return NoteImportance.MEDIUM;
   if (typeof value !== 'string' || !IMPORTANCE.includes(value as Importance)) {
@@ -186,7 +206,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       this.transactionTool({
         name: 'record_sale',
         description:
-          'Record a sale of an inventory item to a customer. Requires approval.',
+          'Record a sale of an inventory item to a customer. Requires approval. Resolve a named item using search_inventory first. You may pass its itemId or its exact product name as itemName; never guess between multiple matches.',
         type: TransactionTypeDto.SALE,
         direction: 'out',
         verticals: ['DUKA', 'MINI_MART', 'RESTAURANT', 'CHEMIST'],
@@ -280,6 +300,7 @@ export class AssistantToolsService implements AssistantToolProvider {
             category: true,
             costPrice: true,
             sellingPrice: true,
+            product: { select: { name: true } },
           },
         },
       },
@@ -333,7 +354,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       const key = sale.itemId;
       const existing = items.get(key) ?? {
         itemId: key,
-        name: sale.item?.name ?? 'Unknown item',
+        name: sale.item ? inventoryDisplayName(sale.item) : 'Unknown item',
         unit: sale.item?.unit ?? '',
         units: 0,
         sales: 0,
@@ -630,6 +651,7 @@ export class AssistantToolsService implements AssistantToolProvider {
                 unit: true,
                 category: true,
                 costPrice: true,
+                product: { select: { name: true } },
               },
             },
           },
@@ -660,7 +682,9 @@ export class AssistantToolsService implements AssistantToolProvider {
 
           const existing = items.get(purchase.itemId) ?? {
             itemId: purchase.itemId,
-            name: purchase.item?.name ?? 'Unknown item',
+            name: purchase.item
+              ? inventoryDisplayName(purchase.item)
+              : 'Unknown item',
             unit: purchase.item?.unit ?? '',
             units: 0,
             purchases: 0,
@@ -750,6 +774,7 @@ export class AssistantToolsService implements AssistantToolProvider {
             costPrice: true,
             sellingPrice: true,
             packaging: { select: { id: true, name: true, quantityPerUnit: true } },
+            product: { select: { name: true } },
           },
         });
         const history = await this.prisma.db.inventoryTransaction.findMany({
@@ -828,7 +853,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           categoryMap.set(category, categoryStats);
           return {
             id: item.id,
-            name: item.name,
+            name: inventoryDisplayName(item),
             unit: item.unit,
             category,
             quantity: round2(quantity),
@@ -1647,6 +1672,7 @@ export class AssistantToolsService implements AssistantToolProvider {
             unit: true,
             quantity: true,
             reorderThreshold: true,
+            product: { select: { name: true } },
           },
         });
         return items
@@ -1656,7 +1682,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           .slice(0, limit)
           .map((item) => ({
             id: item.id,
-            name: item.name,
+            name: inventoryDisplayName(item),
             unit: item.unit,
             quantity: Number(item.quantity),
             reorderThreshold: item.reorderThreshold,
@@ -1670,7 +1696,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     return {
       name: 'search_inventory',
       description:
-        'Search the organization inventory by product name. Read-only. Use this before quoting a specific item; never invent a match.',
+        'Search active inventory by product or variant name. Read-only. Use this to resolve the exact inventory item before proposing a sale; never invent a match.',
       kind: 'read',
       riskLevel: 'low',
       parameters: {
@@ -1690,14 +1716,27 @@ export class AssistantToolsService implements AssistantToolProvider {
           where: {
             organizationId: ctx.organizationId,
             isActive: true,
-            name: { contains: query, mode: 'insensitive' },
+            OR: [
+              { name: { contains: query, mode: 'insensitive' } },
+              {
+                product: {
+                  is: { name: { contains: query, mode: 'insensitive' } },
+                },
+              },
+            ],
           },
           take: limit,
-          select: { id: true, name: true, unit: true, quantity: true },
+          select: {
+            id: true,
+            name: true,
+            unit: true,
+            quantity: true,
+            product: { select: { name: true } },
+          },
         });
         return items.map((item) => ({
           id: item.id,
-          name: item.name,
+          name: inventoryDisplayName(item),
           unit: item.unit,
           quantity: Number(item.quantity),
         }));
@@ -1713,7 +1752,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     return {
       name: 'list_inventory',
       description:
-        'List the organization inventory items and their current quantities. Read-only. Call this before answering any general question about what is in stock. If it returns an empty list, the organization has no inventory items yet — say so and do not invent examples.',
+        'List active inventory products (not their internal variant labels) and their current quantities. Read-only. Call this before answering any general question about what is in stock. If a product has multiple variants, the variant is included in parentheses. If it returns an empty list, the organization has no inventory items yet — say so and do not invent examples.',
       kind: 'read',
       riskLevel: 'low',
       parameters: {
@@ -1742,11 +1781,12 @@ export class AssistantToolsService implements AssistantToolProvider {
             reorderThreshold: true,
             costPrice: true,
             sellingPrice: true,
+            product: { select: { name: true } },
           },
         });
         return items.map((item) => ({
           id: item.id,
-          name: item.name,
+          name: inventoryDisplayName(item),
           unit: item.unit,
           quantity: Number(item.quantity),
           reorderThreshold: item.reorderThreshold,
@@ -1850,18 +1890,80 @@ export class AssistantToolsService implements AssistantToolProvider {
       parameters: {
         type: 'object',
         properties: {
-          itemId: { type: 'string' },
+          ...(name === 'record_sale'
+            ? {
+                itemId: {
+                  type: 'string',
+                  description: 'Exact item ID from search_inventory.',
+                },
+                itemName: {
+                  type: 'string',
+                  description:
+                    'Exact product name from inventory, used only when there is one matching active item.',
+                },
+              }
+            : { itemId: { type: 'string' } }),
           quantity: { type: 'number' },
           ...(wastage
             ? { wastageReason: { type: 'string', enum: [...WASTAGE_REASONS] } }
             : {}),
         },
-        required: ['itemId', 'quantity'],
+        required: name === 'record_sale' ? ['quantity'] : ['itemId', 'quantity'],
         additionalProperties: false,
       },
       buildProposal: async (raw, ctx) => {
         const args = asRecord(raw);
-        const itemId = asString(args.itemId, 'itemId', 100);
+        let itemId: string;
+        if (args.itemId !== undefined && args.itemId !== null) {
+          itemId = asString(args.itemId, 'itemId', 100);
+        } else if (type === TransactionTypeDto.SALE && args.itemName != null) {
+          const itemName = asString(args.itemName, 'itemName', 200);
+          const matches = await this.prisma.db.inventoryItem.findMany({
+            where: {
+              organizationId: ctx.organizationId,
+              isActive: true,
+              OR: [
+                { name: { equals: itemName, mode: 'insensitive' } },
+                {
+                  product: {
+                    is: { name: { equals: itemName, mode: 'insensitive' } },
+                  },
+                },
+              ],
+            },
+            take: 3,
+            select: {
+              id: true,
+              name: true,
+              unit: true,
+              quantity: true,
+              product: { select: { name: true } },
+            },
+          });
+          if (matches.length === 0) {
+            throw new BadRequestException(
+              `No active inventory item matches "${itemName}".`,
+            );
+          }
+          if (matches.length > 1) {
+            const choices = matches
+              .map(
+                (item) =>
+                  `${inventoryDisplayName(item)} (${item.quantity} ${item.unit} in stock)`,
+              )
+              .join(', ');
+            throw new BadRequestException(
+              `More than one inventory item matches "${itemName}": ${choices}. Ask which one to sell.`,
+            );
+          }
+          itemId = matches[0].id;
+        } else {
+          throw new BadRequestException(
+            type === TransactionTypeDto.SALE
+              ? 'Provide an itemId from search_inventory or an exact itemName.'
+              : 'Provide an itemId.',
+          );
+        }
         const quantity = asPositiveNumber(args.quantity, 'quantity');
         const item = await this.prisma.db.inventoryItem.findFirst({
           where: { id: itemId, organizationId: ctx.organizationId },
@@ -1871,6 +1973,7 @@ export class AssistantToolsService implements AssistantToolProvider {
             unit: true,
             quantity: true,
             isComposite: true,
+            product: { select: { name: true } },
           },
         });
         if (!item) {
@@ -1890,8 +1993,11 @@ export class AssistantToolsService implements AssistantToolProvider {
           args: wastage
             ? { itemId: item.id, quantity, wastageReason: asWastageReason(args.wastageReason) }
             : { itemId: item.id, quantity },
-          summary: `${verb} ${quantity} ${item.unit} of ${item.name}`,
-          diff: { item: item.name, quantity: { before, after } },
+          summary: `${verb} ${quantity} ${item.unit} of ${inventoryDisplayName(item)}`,
+          diff: {
+            item: inventoryDisplayName(item),
+            quantity: { before, after },
+          },
           riskLevel: direction === 'in' ? 'low' : 'medium',
         };
       },

@@ -204,7 +204,14 @@ describe('AssistantToolsService.get_low_stock', () => {
   it('scopes the query to the organization and returns only low items', async () => {
     const { byName, db } = build({
       items: [
-        { id: 'i1', name: 'Maize flour', unit: 'kg', quantity: 2, reorderThreshold: 5 },
+        {
+          id: 'i1',
+          name: 'Default',
+          product: { name: 'Maize flour' },
+          unit: 'kg',
+          quantity: 2,
+          reorderThreshold: 5,
+        },
         { id: 'i2', name: 'Sugar', unit: 'kg', quantity: 20, reorderThreshold: 5 },
       ],
     });
@@ -235,7 +242,8 @@ describe('AssistantToolsService.list_inventory', () => {
       items: [
         {
           id: 'i1',
-          name: 'Maize flour',
+          name: 'Default',
+          product: { name: 'Maize flour' },
           unit: 'kg',
           quantity: 2,
           reorderThreshold: 5,
@@ -266,11 +274,80 @@ describe('AssistantToolsService.list_inventory', () => {
     ]);
   });
 
+  it('uses the parent product name instead of the default variant label', async () => {
+    const { byName } = build({
+      items: [
+        {
+          id: 'i1',
+          name: 'Default',
+          product: { name: 'Sugar' },
+          unit: 'kg bag',
+          quantity: 10,
+          reorderThreshold: 0,
+          costPrice: null,
+          sellingPrice: 120,
+        },
+      ],
+    });
+
+    await expect(byName('list_inventory').execute?.({}, CTX)).resolves.toEqual([
+      {
+        id: 'i1',
+        name: 'Sugar',
+        unit: 'kg bag',
+        quantity: 10,
+        reorderThreshold: 0,
+        costPrice: null,
+        sellingPrice: 120,
+      },
+    ]);
+  });
+
   it('returns an empty list for an organization with no inventory', async () => {
     const { byName } = build({ items: [] });
     const tool = byName('list_inventory');
 
     await expect(tool.execute?.({}, CTX)).resolves.toEqual([]);
+  });
+});
+
+describe('AssistantToolsService.search_inventory', () => {
+  it('matches by parent product name and returns the product label', async () => {
+    const { byName, db } = build({
+      items: [
+        {
+          id: 'i1',
+          name: 'Default',
+          product: { name: 'Sugar' },
+          unit: 'kg bag',
+          quantity: 10,
+        },
+      ],
+    });
+
+    const result = await byName('search_inventory').execute?.(
+      { query: 'Sugar' },
+      CTX,
+    );
+
+    expect(db.inventoryItem.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          organizationId: 'org_1',
+          isActive: true,
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              product: {
+                is: { name: { contains: 'Sugar', mode: 'insensitive' } },
+              },
+            }),
+          ]),
+        }),
+      }),
+    );
+    expect(result).toEqual([
+      { id: 'i1', name: 'Sugar', unit: 'kg bag', quantity: 10 },
+    ]);
   });
 });
 
@@ -384,6 +461,64 @@ describe('AssistantToolsService.record_sale', () => {
       item: 'Maize flour',
       quantity: { before: 20, after: 17 },
     });
+  });
+
+  it('resolves an exact product name to its sole active inventory variant', async () => {
+    const { byName, db } = build({
+      items: [
+        {
+          id: 'i1',
+          name: 'Default',
+          product: { name: 'Unga' },
+          unit: '2 kg bag',
+          quantity: 10,
+        },
+      ],
+    });
+
+    const draft = await byName('record_sale').buildProposal?.(
+      { itemName: 'Unga', quantity: 3 },
+      CTX,
+    );
+
+    expect(db.inventoryItem.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          organizationId: 'org_1',
+          isActive: true,
+        }),
+      }),
+    );
+    expect(draft?.args).toEqual({ itemId: 'i1', quantity: 3 });
+    expect(draft?.summary).toBe('Sell 3 2 kg bag of Unga');
+  });
+
+  it('asks for clarification when a product name matches multiple variants', async () => {
+    const { byName } = build({
+      items: [
+        {
+          id: 'i1',
+          name: 'Default',
+          product: { name: 'Unga' },
+          unit: '2 kg bag',
+          quantity: 10,
+        },
+        {
+          id: 'i2',
+          name: 'Default',
+          product: { name: 'Unga' },
+          unit: '5 kg bag',
+          quantity: 4,
+        },
+      ],
+    });
+
+    await expect(
+      byName('record_sale').buildProposal?.(
+        { itemName: 'Unga', quantity: 1 },
+        CTX,
+      ),
+    ).rejects.toThrow('Ask which one to sell.');
   });
 
   it('refuses an item outside the organization', async () => {
