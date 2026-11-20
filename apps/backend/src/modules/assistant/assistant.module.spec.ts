@@ -128,6 +128,7 @@ describe('AssistantModule wiring', () => {
       expect(names).toContain('create_note');
       expect(names).toContain('create_inventory_item');
       expect(names).toContain('update_inventory_item');
+      expect(names).toContain('add_inventory_packaging_option');
       expect(names).toContain('record_purchase');
       expect(names).toContain('record_wastage');
     }

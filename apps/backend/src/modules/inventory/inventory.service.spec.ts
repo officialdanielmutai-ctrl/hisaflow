@@ -7,7 +7,15 @@ import { expectEveryCallScopedToOrg } from '../../test-utils/tenant-isolation';
 const ORG = 'org_a';
 const OTHER_ORG = 'org_b';
 
-function build(opts: { catalog?: any; off?: any; upc?: any; productExists?: boolean } = {}) {
+function build(
+  opts: {
+    catalog?: any;
+    off?: any;
+    upc?: any;
+    productExists?: boolean;
+    packaging?: Array<{ name: string }>;
+  } = {},
+) {
   const product = {
     findMany: jest.fn(async () => [{ id: 'p1', organizationId: ORG, variants: [] }]),
     findFirst: jest.fn(async (args: any) =>
@@ -22,7 +30,15 @@ function build(opts: { catalog?: any; off?: any; upc?: any; productExists?: bool
   const inventoryItem = {
     create: jest.fn(async ({ data }: any) => ({ id: 'v2', ...data })),
     findFirst: jest.fn(async (args: any) =>
-      args?.where?.organizationId !== ORG ? null : { id: 'v1', organizationId: ORG, quantity: 10, reorderThreshold: 3 },
+      args?.where?.organizationId !== ORG
+        ? null
+        : {
+            id: 'v1',
+            organizationId: ORG,
+            quantity: 10,
+            reorderThreshold: 3,
+            packaging: opts.packaging ?? [],
+          },
     ),
     update: jest.fn(async ({ where, data }: any) => ({
       id: where.id,
@@ -84,6 +100,34 @@ describe('InventoryService — listing and barcode lookup', () => {
 
     await expect(service.findByBarcode('123456', OTHER_ORG)).rejects.toThrow(NotFoundException);
     expectEveryCallScopedToOrg(inventoryItem.findFirst, OTHER_ORG);
+  });
+
+  it('adds a packaging option without replacing existing options', async () => {
+    const { service, inventoryItem } = build();
+
+    await service.addPackagingOption(
+      'v1',
+      { name: 'Carton of 12', quantityPerUnit: 12 },
+      ORG,
+    );
+
+    expect(inventoryItem.findFirst).toHaveBeenCalledWith({
+      where: { id: 'v1', organizationId: ORG, isActive: true },
+      select: { id: true, packaging: { select: { name: true } } },
+    });
+    expect(inventoryItem.update).toHaveBeenCalledWith({
+      where: { id: 'v1' },
+      data: { packaging: { create: { name: 'Carton of 12', quantityPerUnit: 12 } } },
+      include: { packaging: true },
+    });
+  });
+
+  it('rejects duplicate packaging names case-insensitively', async () => {
+    const { service } = build({ packaging: [{ name: 'Carton of 12' }] });
+
+    await expect(
+      service.addPackagingOption('v1', { name: 'carton of 12', quantityPerUnit: 12 }, ORG),
+    ).rejects.toThrow('already exists');
   });
 
   it('returns a catalog hit and bumps its confirmation count', async () => {
@@ -297,6 +341,17 @@ describe('InventoryService — variants and stock status', () => {
 
     await service.updateVariant('v1', { quantity: 99 }, ORG);
     expect(inventoryItem.update.mock.calls[1][0].data.status).toBe(StockStatus.HEALTHY);
+  });
+
+  it('updates the reorder threshold and recalculates low-stock status', async () => {
+    const { service, inventoryItem } = build();
+
+    await service.updateVariant('v1', { reorderThreshold: 10 }, ORG);
+
+    expect(inventoryItem.update.mock.calls[0][0].data).toMatchObject({
+      reorderThreshold: 10,
+      status: StockStatus.LOW,
+    });
   });
 
   it('writes an ADJUSTMENT ledger row for a stock correction', async () => {

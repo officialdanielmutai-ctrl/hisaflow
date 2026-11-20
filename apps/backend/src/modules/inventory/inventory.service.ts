@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto, UpdateVariantDto } from './dto/update-product.dto';
@@ -530,6 +530,44 @@ export class InventoryService {
     ]);
 
     return updated;
+  }
+
+  async addPackagingOption(
+    variantId: string,
+    packaging: {
+      name: string;
+      quantityPerUnit: number;
+      barcode?: string;
+      costPrice?: number;
+      sellingPrice?: number;
+    },
+    organizationId: string,
+  ) {
+    const variant = await this.prisma.db.inventoryItem.findFirst({
+      where: { id: variantId, organizationId, isActive: true },
+      select: {
+        id: true,
+        packaging: { select: { name: true } },
+      },
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Active inventory variant not found in this organization.');
+    }
+
+    if (variant.packaging.length >= 20) {
+      throw new BadRequestException('This variant already has the maximum of 20 packaging options.');
+    }
+
+    if (variant.packaging.some((option) => option.name.trim().toLowerCase() === packaging.name.trim().toLowerCase())) {
+      throw new BadRequestException('A packaging option with this name already exists for this variant.');
+    }
+
+    return this.prisma.db.inventoryItem.update({
+      where: { id: variant.id },
+      data: { packaging: { create: packaging } },
+      include: { packaging: true },
+    });
   }
 
   async deleteVariant(variantId: string, organizationId: string) {

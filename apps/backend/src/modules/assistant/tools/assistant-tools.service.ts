@@ -180,6 +180,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       }),
       this.createInventoryItem(),
       this.updateInventoryItem(),
+      this.addInventoryPackagingOption(),
       this.adjustStock(),
       this.archiveInventoryItem(),
       this.businessTransactionTool({
@@ -1963,7 +1964,11 @@ export class AssistantToolsService implements AssistantToolProvider {
           description: { type: 'string' },
           unit: { type: 'string' },
           quantity: { type: 'number' },
-          reorderThreshold: { type: 'number' },
+          reorderThreshold: {
+            type: 'number',
+            minimum: 0,
+            description: 'Quantity at or below which this variant is considered low stock.',
+          },
           costPrice: { type: 'number' },
           sellingPrice: { type: 'number' },
           category: { type: 'string' },
@@ -2299,7 +2304,11 @@ export class AssistantToolsService implements AssistantToolProvider {
           quantity: { type: 'number', minimum: 0 },
           costPrice: { type: 'number' },
           sellingPrice: { type: 'number' },
-          reorderThreshold: { type: 'number' },
+          reorderThreshold: {
+            type: 'number',
+            minimum: 0,
+            description: 'Quantity at or below which this variant is considered low stock.',
+          },
           barcode: { type: 'string' },
           expiryDate: { type: 'string' },
           batchNumber: { type: 'string' },
@@ -2478,6 +2487,99 @@ export class AssistantToolsService implements AssistantToolProvider {
           },
           ctx.organizationId,
           ctx.userId,
+        );
+      },
+    };
+  }
+
+  private addInventoryPackagingOption(): ToolDefinition {
+    return {
+      name: 'add_inventory_packaging_option',
+      description:
+        'Add one saleable packaging option to an existing inventory variant without removing or replacing its current packaging options. Requires approval. Use when the user asks to add a carton, box, pack or other package size.',
+      kind: 'write',
+      riskLevel: 'low',
+      roles: [AppRole.OWNER, AppRole.MANAGER],
+      parameters: {
+        type: 'object',
+        properties: {
+          itemId: { type: 'string' },
+          name: { type: 'string', description: 'Distinct packaging option name, such as "Carton of 12".' },
+          quantityPerUnit: {
+            type: 'integer',
+            minimum: 1,
+            description: 'Number of this variant’s base units contained in one package.',
+          },
+          barcode: { type: 'string' },
+          costPrice: { type: 'number', minimum: 0 },
+          sellingPrice: { type: 'number', minimum: 0 },
+        },
+        required: ['itemId', 'name', 'quantityPerUnit'],
+        additionalProperties: false,
+      },
+      buildProposal: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const itemId = asString(args.itemId, 'itemId', 100);
+        const name = asString(args.name, 'name', 100);
+        const quantityPerUnit = asPositiveNumber(args.quantityPerUnit, 'quantityPerUnit');
+        if (!Number.isInteger(quantityPerUnit)) {
+          throw new BadRequestException('"quantityPerUnit" must be a whole number.');
+        }
+        const packaging = {
+          name,
+          quantityPerUnit,
+          barcode: asOptionalString(args.barcode, 'barcode', 100),
+          costPrice: asOptionalNonNegative(args.costPrice, 'costPrice'),
+          sellingPrice: asOptionalNonNegative(args.sellingPrice, 'sellingPrice'),
+        };
+        const item = await this.prisma.db.inventoryItem.findFirst({
+          where: { id: itemId, organizationId: ctx.organizationId, isActive: true },
+          select: {
+            id: true,
+            name: true,
+            product: { select: { name: true } },
+            packaging: { select: { name: true, quantityPerUnit: true } },
+          },
+        });
+        if (!item) {
+          throw new BadRequestException('No matching active item in this organization.');
+        }
+        if (item.packaging.length >= 20) {
+          throw new BadRequestException('This item already has the maximum of 20 packaging options.');
+        }
+        if (item.packaging.some((option) => option.name.trim().toLowerCase() === name.trim().toLowerCase())) {
+          throw new BadRequestException('A packaging option with this name already exists for this item.');
+        }
+        const itemLabel = inventoryDisplayName(item);
+        return {
+          args: { itemId: item.id, packaging },
+          summary: `Add ${name} (${quantityPerUnit} ${item.name} per package) to ${itemLabel}`,
+          diff: {
+            item: itemLabel,
+            packaging: {
+              before: item.packaging,
+              add: packaging,
+            },
+          },
+        };
+      },
+      commit: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const packaging = asRecord(args.packaging);
+        const quantityPerUnit = asPositiveNumber(packaging.quantityPerUnit, 'quantityPerUnit');
+        if (!Number.isInteger(quantityPerUnit)) {
+          throw new BadRequestException('"quantityPerUnit" must be a whole number.');
+        }
+        return this.inventory.addPackagingOption(
+          asString(args.itemId, 'itemId', 100),
+          {
+            name: asString(packaging.name, 'name', 100),
+            quantityPerUnit,
+            barcode: asOptionalString(packaging.barcode, 'barcode', 100),
+            costPrice: asOptionalNonNegative(packaging.costPrice, 'costPrice'),
+            sellingPrice: asOptionalNonNegative(packaging.sellingPrice, 'sellingPrice'),
+          },
+          ctx.organizationId,
         );
       },
     };

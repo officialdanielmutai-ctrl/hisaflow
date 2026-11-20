@@ -105,6 +105,7 @@ function build(options: BuildOptions = {}) {
   const inventory = {
     create: jest.fn(async () => ({ id: 'product_1' })),
     addVariant: jest.fn(async () => ({ id: 'variant_1' })),
+    addPackagingOption: jest.fn(async () => ({ id: 'i1' })),
     updateVariant: jest.fn(async () => ({ id: 'i1' })),
     deleteVariant: jest.fn(async () => ({ id: 'i1', isActive: false })),
   };
@@ -858,6 +859,7 @@ describe('AssistantToolsService.update_inventory_item', () => {
       {
         itemId: 'i1',
         quantity: 2,
+        reorderThreshold: 8,
         measureValue: 10,
         measureUnit: 'kg',
         barcode: '54321',
@@ -873,6 +875,7 @@ describe('AssistantToolsService.update_inventory_item', () => {
     expect(draft?.diff).toHaveProperty('item', 'Unga');
     expect(draft?.args.updates).toMatchObject({
       quantity: 2,
+      reorderThreshold: 8,
       measureValue: 10,
       measureUnit: 'kg',
       barcode: '54321',
@@ -885,6 +888,7 @@ describe('AssistantToolsService.update_inventory_item', () => {
       'i1',
       expect.objectContaining({
         quantity: 2,
+        reorderThreshold: 8,
         measureValue: 10,
         barcode: '54321',
         packaging: [{ name: 'Case', quantityPerUnit: 12 }],
@@ -892,6 +896,68 @@ describe('AssistantToolsService.update_inventory_item', () => {
       'org_1',
       'user_1',
     );
+  });
+
+  it('adds a packaging option without replacing the existing options', async () => {
+    const { byName, inventory } = build({
+      items: [
+        {
+          id: 'i1',
+          name: '500 ml bottle',
+          product: { name: 'Juice' },
+          packaging: [{ name: 'Crate of 6', quantityPerUnit: 6 }],
+        },
+      ],
+    });
+    const tool = byName('add_inventory_packaging_option');
+    const draft = await tool.buildProposal?.(
+      {
+        itemId: 'i1',
+        name: 'Case of 12',
+        quantityPerUnit: 12,
+        sellingPrice: 2000,
+      },
+      CTX,
+    );
+
+    expect(draft?.summary).toContain('Add Case of 12 (12 500 ml bottle per package) to Juice (500 ml bottle)');
+    expect(draft?.diff).toMatchObject({
+      packaging: {
+        before: [{ name: 'Crate of 6', quantityPerUnit: 6 }],
+        add: { name: 'Case of 12', quantityPerUnit: 12, sellingPrice: 2000 },
+      },
+    });
+    await tool.commit?.(draft?.args ?? {}, CTX);
+    expect(inventory.addPackagingOption).toHaveBeenCalledWith(
+      'i1',
+      {
+        name: 'Case of 12',
+        quantityPerUnit: 12,
+        barcode: undefined,
+        costPrice: undefined,
+        sellingPrice: 2000,
+      },
+      'org_1',
+    );
+  });
+
+  it('rejects a duplicate packaging option name', async () => {
+    const { byName } = build({
+      items: [
+        {
+          id: 'i1',
+          name: 'Juice',
+          packaging: [{ name: 'Case of 12', quantityPerUnit: 12 }],
+        },
+      ],
+    });
+
+    await expect(
+      byName('add_inventory_packaging_option').buildProposal?.(
+        { itemId: 'i1', name: 'case of 12', quantityPerUnit: 12 },
+        CTX,
+      ),
+    ).rejects.toThrow('already exists');
   });
 
   it('rejects when no changes are supplied', async () => {
