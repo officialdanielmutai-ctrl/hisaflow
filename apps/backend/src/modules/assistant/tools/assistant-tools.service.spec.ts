@@ -219,6 +219,7 @@ describe('AssistantToolsService.get_low_stock', () => {
     );
     expect(result).toEqual([
       {
+        id: 'i1',
         name: 'Maize flour',
         unit: 'kg',
         quantity: 2,
@@ -254,6 +255,7 @@ describe('AssistantToolsService.list_inventory', () => {
     );
     expect(result).toEqual([
       {
+        id: 'i1',
         name: 'Maize flour',
         unit: 'kg',
         quantity: 2,

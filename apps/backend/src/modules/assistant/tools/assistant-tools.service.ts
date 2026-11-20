@@ -1642,6 +1642,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         const items = await this.prisma.db.inventoryItem.findMany({
           where: { organizationId: ctx.organizationId, isActive: true },
           select: {
+            id: true,
             name: true,
             unit: true,
             quantity: true,
@@ -1654,6 +1655,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           )
           .slice(0, limit)
           .map((item) => ({
+            id: item.id,
             name: item.name,
             unit: item.unit,
             quantity: Number(item.quantity),
@@ -1733,6 +1735,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           orderBy: { name: 'asc' },
           take: limit,
           select: {
+            id: true,
             name: true,
             unit: true,
             quantity: true,
@@ -1742,6 +1745,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           },
         });
         return items.map((item) => ({
+          id: item.id,
           name: item.name,
           unit: item.unit,
           quantity: Number(item.quantity),
