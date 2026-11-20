@@ -48,10 +48,26 @@ describe('VerticalAnalyticsService', () => {
       db.inventoryTransaction.findMany
         .mockResolvedValueOnce([{ quantityChange: -2, item: { costPrice: 100 } }])
         .mockResolvedValueOnce([
-          { itemId: 'i1', quantityChange: -5, item: { name: 'Soda', unit: 'btl', quantity: 10 } },
+          {
+            itemId: 'i1',
+            quantityChange: -5,
+            item: {
+              name: '500 ml bottle',
+              product: { name: 'Soda' },
+              unit: 'btl',
+              quantity: 10,
+            },
+          },
         ]);
       db.inventoryItem.findMany.mockResolvedValue([
-        { id: 'i1', name: 'Soda', unit: 'btl', quantity: 10, reorderThreshold: 20 },
+        {
+          id: 'i1',
+          name: '500 ml bottle',
+          product: { name: 'Soda' },
+          unit: 'btl',
+          quantity: 10,
+          reorderThreshold: 20,
+        },
         { id: 'i2', name: 'Beer', unit: 'btl', quantity: 50, reorderThreshold: 10 },
       ]);
 
@@ -68,10 +84,10 @@ describe('VerticalAnalyticsService', () => {
         { id: 'b1', guestName: 'Jane', roomName: 'R1', checkOutDate: future },
       ]);
       expect(result.fastMovingStock).toEqual([
-        { itemId: 'i1', name: 'Soda', unit: 'btl', currentQty: 10, totalConsumed: 5 },
+        { itemId: 'i1', name: 'Soda (500 ml bottle)', unit: 'btl', currentQty: 10, totalConsumed: 5 },
       ]);
       expect(result.lowStockItems).toEqual([
-        { itemId: 'i1', name: 'Soda', unit: 'btl', quantity: 10, reorderThreshold: 20 },
+        { itemId: 'i1', name: 'Soda (500 ml bottle)', unit: 'btl', quantity: 10, reorderThreshold: 20 },
       ]);
       expect(db.room.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: expect.objectContaining({ organizationId: ORG }) }),

@@ -392,6 +392,7 @@ export class InventoryService {
       }>;
     },
     organizationId: string,
+    actorId?: string,
   ) {
     const product = await this.prisma.db.product.findFirst({
       where: { id: productId, organizationId },
@@ -425,6 +426,20 @@ export class InventoryService {
         packaging: {
           create: variant.packaging ?? [],
         },
+        ...(variant.quantity > 0 && {
+          transactions: {
+            create: {
+              organization: { connect: { id: organizationId } },
+              type: TransactionType.ADJUSTMENT,
+              quantityBefore: 0,
+              quantityChange: variant.quantity,
+              quantityAfter: variant.quantity,
+              reason: 'Opening stock for new inventory variant',
+              actorId: actorId ?? null,
+              source: actorId ? 'assistant' : 'manual',
+            },
+          },
+        }),
       },
       include: { packaging: true },
     });

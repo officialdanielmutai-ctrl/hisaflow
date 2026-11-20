@@ -3,6 +3,7 @@ import { PrismaService } from '../../infrastructure/prisma.service';
 import { AlertType, AlertSeverity } from '@prisma/client';
 import { AfricasTalkingProvider } from '../../infrastructure/providers/africas-talking.provider';
 import { NotificationsService } from '../notifications/notifications.service';
+import { inventoryDisplayName } from '../inventory/inventory-display-name';
 
 @Injectable()
 export class AlertsService {
@@ -28,9 +29,11 @@ export class AlertsService {
   private async checkStockLevels(organizationId: string) {
     const items = await this.prisma.db.inventoryItem.findMany({
       where: { organizationId, isActive: true },
+      include: { product: { select: { name: true } } },
     });
 
     for (const item of items) {
+      const itemName = inventoryDisplayName(item);
       const qty = Number(item.quantity);
       const threshold = Number(item.reorderThreshold ?? 0);
       const isOut = qty === 0;
@@ -43,8 +46,8 @@ export class AlertsService {
           itemId: item.id,
           type: AlertType.OUT_OF_STOCK,
           severity: AlertSeverity.CRITICAL,
-          title: `${item.name} is out of stock`,
-          description: `${item.name} has zero stock remaining. Restock immediately to avoid lost sales.`,
+          title: `${itemName} is out of stock`,
+          description: `${itemName} has zero stock remaining. Restock immediately to avoid lost sales.`,
         });
         // Auto-resolve LOW_STOCK if it existed (out of stock supersedes it)
         await this.autoResolveAlert(organizationId, item.id, AlertType.LOW_STOCK);
@@ -60,8 +63,8 @@ export class AlertsService {
           itemId: item.id,
           type: AlertType.LOW_STOCK,
           severity: AlertSeverity.WARNING,
-          title: `${item.name} is running low`,
-          description: `${item.name} has ${qty} ${item.unit} left (reorder threshold: ${threshold}). Consider restocking soon.`,
+          title: `${itemName} is running low`,
+          description: `${itemName} has ${qty} ${item.unit} left (reorder threshold: ${threshold}). Consider restocking soon.`,
         });
 
         // Send SMS only once (on create) — handled inside upsertAlert via the return value
@@ -72,7 +75,7 @@ export class AlertsService {
         if (org?.phone) {
           await this.africasTalking.sendSms(
             org.phone,
-            `Low stock alert: ${item.name} has ${qty} ${item.unit} remaining.`,
+            `Low stock alert: ${itemName} has ${qty} ${item.unit} remaining.`,
           ).catch(() => {}); // non-fatal
         }
       } else if (qty > threshold) {

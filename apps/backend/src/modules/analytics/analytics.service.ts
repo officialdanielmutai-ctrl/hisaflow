@@ -3,6 +3,7 @@ import { PrismaService } from '../../infrastructure/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { VerticalAnalyticsService } from './vertical-analytics.service';
+import { inventoryDisplayName } from '../inventory/inventory-display-name';
 
 @Injectable()
 export class AnalyticsService {
@@ -34,6 +35,7 @@ export class AnalyticsService {
         }),
         this.prisma.db.inventoryItem.findMany({
           where: { organizationId, isActive: true },
+          include: { product: { select: { name: true } } },
         }),
         this.prisma.db.alert.findMany({
           where: { organizationId, resolvedAt: null },
@@ -169,6 +171,7 @@ export class AnalyticsService {
         }),
         this.prisma.db.inventoryItem.findMany({
           where: { organizationId, isActive: true },
+          include: { product: { select: { name: true } } },
         }),
         this.prisma.db.alert.findMany({
           where: { organizationId, resolvedAt: null },
@@ -221,7 +224,7 @@ export class AnalyticsService {
       .slice(0, 5)
       .map(item => ({
         id: item.id,
-        name: item.name,
+        name: inventoryDisplayName(item),
         quantity: Number(item.quantity),
         unit: item.unit,
       }));
@@ -280,7 +283,13 @@ export class AnalyticsService {
     // Fetch all active items then filter in JS — avoids invalid column-to-column Prisma where
     const allItems = await this.prisma.db.inventoryItem.findMany({
       where: { organizationId, isActive: true },
-      select: { id: true, name: true, quantity: true, reorderThreshold: true },
+      select: {
+        id: true,
+        name: true,
+        quantity: true,
+        reorderThreshold: true,
+        product: { select: { name: true } },
+      },
     });
 
     const lowStockItems = allItems.filter(
@@ -298,17 +307,17 @@ export class AnalyticsService {
 
     const lowStockList =
       lowStockItems
-        .map((p) => `${p.name} (${p.quantity} left, threshold ${p.reorderThreshold})`)
+        .map((p) => `${inventoryDisplayName(p)} (${p.quantity} left, threshold ${p.reorderThreshold})`)
         .join(', ') || 'none';
-    const outOfStockList = outOfStockItems.map((p) => p.name).join(', ') || 'none';
+    const outOfStockList = outOfStockItems.map(inventoryDisplayName).join(', ') || 'none';
 
     const topSellersWithNames = await Promise.all(
       topSellers.map(async (ts) => {
         const item = await this.prisma.db.inventoryItem.findUnique({
           where: { id: ts.itemId },
-          select: { name: true },
+          select: { name: true, product: { select: { name: true } } },
         });
-        return `${item?.name ?? 'Unknown'} (${Math.abs(Number(ts._sum.quantityChange ?? 0))} sold)`;
+        return `${item ? inventoryDisplayName(item) : 'Unknown'} (${Math.abs(Number(ts._sum.quantityChange ?? 0))} sold)`;
       }),
     );
     const topSellersStr = topSellersWithNames.join(', ') || 'none';

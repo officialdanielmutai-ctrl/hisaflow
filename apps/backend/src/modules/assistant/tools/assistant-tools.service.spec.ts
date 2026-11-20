@@ -754,6 +754,7 @@ describe('AssistantToolsService.add_inventory_variant', () => {
         packaging: [expect.objectContaining({ name: 'Carton', quantityPerUnit: 6 })],
       }),
       'org_1',
+      'user_1',
     );
   });
 

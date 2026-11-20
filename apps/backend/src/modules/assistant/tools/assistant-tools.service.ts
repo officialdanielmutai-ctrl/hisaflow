@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma.service';
 import { InventoryService } from '../../inventory/inventory.service';
+import { inventoryDisplayName } from '../../inventory/inventory-display-name';
 import { NotesService } from '../../notes/notes.service';
 import { NoteImportance } from '../../notes/dto/create-note.dto';
 import { TransactionsService } from '../../transactions/transactions.service';
@@ -67,18 +68,6 @@ function appliedTierPrice(metadata: unknown): number | null {
   const raw = (metadata as Record<string, unknown>).appliedTierPrice;
   const value = typeof raw === 'number' ? raw : Number(raw);
   return Number.isFinite(value) && value > 0 ? value : null;
-}
-
-function inventoryDisplayName(item: { name?: string | null; product?: { name?: string | null } | null }): string {
-  const variantName = item.name?.trim() || 'Unknown item';
-  const productName = item.product?.name?.trim();
-  if (!productName) {
-    return variantName.toLowerCase() === 'default' ? 'Unlabelled inventory item' : variantName;
-  }
-  if (variantName.toLowerCase() === 'default' || variantName.toLowerCase() === productName.toLowerCase()) {
-    return productName;
-  }
-  return `${productName} (${variantName})`;
 }
 
 function asImportance(value: unknown): NoteImportance {
@@ -2284,6 +2273,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           asString(args.productId, 'productId', 100),
           normalised.variant,
           ctx.organizationId,
+          ctx.userId,
         );
       },
     };

@@ -137,7 +137,8 @@ describe('AlertsService', () => {
           {
             id: 'i1',
             organizationId: ORG,
-            name: 'Milk',
+            name: 'Default',
+            product: { name: 'Milk' },
             unit: 'litres',
             quantity: 3,
             reorderThreshold: 5,
@@ -152,6 +153,8 @@ describe('AlertsService', () => {
 
       const lowStock = upserts(alert).find((c) => c.create.type === AlertType.LOW_STOCK);
       expect(lowStock.create.severity).toBe(AlertSeverity.WARNING);
+      expect(lowStock.create.title).toBe('Milk is running low');
+      expect(lowStock.create.description).toContain('Milk has 3 litres left');
       expect(organization.findUnique).toHaveBeenCalledWith({
         where: { id: ORG },
         select: { phone: true },
@@ -159,6 +162,10 @@ describe('AlertsService', () => {
       expect(africasTalking.sendSms).toHaveBeenCalledWith(
         '+254700000000',
         expect.stringContaining('Low stock'),
+      );
+      expect(africasTalking.sendSms).toHaveBeenCalledWith(
+        '+254700000000',
+        'Low stock alert: Milk has 3 litres remaining.',
       );
     });
 

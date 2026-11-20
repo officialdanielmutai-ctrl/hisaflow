@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
+import { inventoryDisplayName } from '../inventory/inventory-display-name';
 
 @Injectable()
 export class VerticalAnalyticsService {
@@ -134,14 +135,28 @@ export class VerticalAnalyticsService {
         select: {
           itemId: true,
           quantityChange: true,
-          item: { select: { name: true, unit: true, quantity: true } },
+          item: {
+            select: {
+              name: true,
+              unit: true,
+              quantity: true,
+              product: { select: { name: true } },
+            },
+          },
         },
       }),
 
       // All active items for low-stock calculation
       this.prisma.db.inventoryItem.findMany({
         where: { organizationId, isActive: true },
-        select: { id: true, name: true, unit: true, quantity: true, reorderThreshold: true },
+        select: {
+          id: true,
+          name: true,
+          unit: true,
+          quantity: true,
+          reorderThreshold: true,
+          product: { select: { name: true } },
+        },
       }),
     ]);
 
@@ -175,7 +190,7 @@ export class VerticalAnalyticsService {
         existing.totalConsumed += consumed;
       } else {
         fastMovingMap.set(tx.itemId, {
-          name: tx.item.name,
+          name: inventoryDisplayName(tx.item),
           unit: tx.item.unit,
           currentQty: Number(tx.item.quantity),
           totalConsumed: consumed,
@@ -195,7 +210,7 @@ export class VerticalAnalyticsService {
       .sort((a, b) => Number(a.quantity) - Number(b.quantity))
       .map((i) => ({
         itemId: i.id,
-        name: i.name,
+        name: inventoryDisplayName(i),
         unit: i.unit,
         quantity: Number(i.quantity),
         reorderThreshold: Number(i.reorderThreshold),

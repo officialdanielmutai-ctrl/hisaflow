@@ -228,6 +228,7 @@ describe('InventoryService — variants and stock status', () => {
         sellingPrice: 300,
       },
       ORG,
+      'user_1',
     );
 
     expect(product.findFirst).toHaveBeenCalledWith({
@@ -241,6 +242,18 @@ describe('InventoryService — variants and stock status', () => {
           name: '5 kg bag',
           quantity: 4,
           status: StockStatus.HEALTHY,
+          transactions: {
+            create: {
+              organization: { connect: { id: ORG } },
+              type: TransactionType.ADJUSTMENT,
+              quantityBefore: 0,
+              quantityChange: 4,
+              quantityAfter: 4,
+              reason: 'Opening stock for new inventory variant',
+              actorId: 'user_1',
+              source: 'assistant',
+            },
+          },
         }),
         include: { packaging: true },
       }),
