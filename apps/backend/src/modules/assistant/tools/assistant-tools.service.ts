@@ -28,28 +28,12 @@ import {
 const IMPORTANCE = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 type Importance = (typeof IMPORTANCE)[number];
 
-const WASTAGE_REASONS = [
-  'expired',
-  'damaged',
-  'stolen',
-  'spoiled',
-  'broken',
-  'contaminated',
-  'lost',
-  'other',
-] as const;
+const WASTAGE_REASONS = ['expired', 'damaged', 'stolen', 'spoiled', 'broken', 'contaminated', 'lost', 'other'] as const;
 type WastageReason = (typeof WASTAGE_REASONS)[number];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const TRANSACTION_TYPES = [
-  'SALE',
-  'PURCHASE',
-  'WASTAGE',
-  'ADJUSTMENT',
-  'RETURN',
-  'TRANSFER',
-] as const;
+const TRANSACTION_TYPES = ['SALE', 'PURCHASE', 'WASTAGE', 'ADJUSTMENT', 'RETURN', 'TRANSFER'] as const;
 
 const NOTE_STATUSES = ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'ARCHIVED'] as const;
 
@@ -68,12 +52,7 @@ const EXPENSE_CATEGORIES = [
   'OTHER_EXPENSE',
 ] as const;
 
-const INCOME_CATEGORIES = [
-  'SERVICE_FEE',
-  'REFUND',
-  'GRANT',
-  'OTHER_INCOME',
-] as const;
+const INCOME_CATEGORIES = ['SERVICE_FEE', 'REFUND', 'GRANT', 'OTHER_INCOME'] as const;
 
 const RECURRENCE_RULES = ['MONTHLY', 'WEEKLY', 'YEARLY'] as const;
 
@@ -90,21 +69,13 @@ function appliedTierPrice(metadata: unknown): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
-function inventoryDisplayName(item: {
-  name?: string | null;
-  product?: { name?: string | null } | null;
-}): string {
+function inventoryDisplayName(item: { name?: string | null; product?: { name?: string | null } | null }): string {
   const variantName = item.name?.trim() || 'Unknown item';
   const productName = item.product?.name?.trim();
   if (!productName) {
-    return variantName.toLowerCase() === 'default'
-      ? 'Unlabelled inventory item'
-      : variantName;
+    return variantName.toLowerCase() === 'default' ? 'Unlabelled inventory item' : variantName;
   }
-  if (
-    variantName.toLowerCase() === 'default' ||
-    variantName.toLowerCase() === productName.toLowerCase()
-  ) {
+  if (variantName.toLowerCase() === 'default' || variantName.toLowerCase() === productName.toLowerCase()) {
     return productName;
   }
   return `${productName} (${variantName})`;
@@ -113,9 +84,7 @@ function inventoryDisplayName(item: {
 function asImportance(value: unknown): NoteImportance {
   if (value === undefined || value === null) return NoteImportance.MEDIUM;
   if (typeof value !== 'string' || !IMPORTANCE.includes(value as Importance)) {
-    throw new BadRequestException(
-      `"importance" must be one of ${IMPORTANCE.join(', ')}.`,
-    );
+    throw new BadRequestException(`"importance" must be one of ${IMPORTANCE.join(', ')}.`);
   }
   return value as NoteImportance;
 }
@@ -126,10 +95,7 @@ function asImportance(value: unknown): NoteImportance {
  * the request still becomes a reviewable proposal instead of failing validation
  * and being pasted back as plain text.
  */
-function normaliseTitle(
-  title: string | undefined,
-  content: string | undefined,
-): string | undefined {
+function normaliseTitle(title: string | undefined, content: string | undefined): string | undefined {
   const trimmedTitle = title?.trim();
   if (trimmedTitle) return trimmedTitle.slice(0, 200);
   const body = content?.trim();
@@ -144,9 +110,7 @@ function normaliseTitle(
 function asWastageReason(value: unknown): WastageReason {
   if (value === undefined || value === null) return 'other';
   if (typeof value !== 'string' || !WASTAGE_REASONS.includes(value as WastageReason)) {
-    throw new BadRequestException(
-      `"wastageReason" must be one of ${WASTAGE_REASONS.join(', ')}.`,
-    );
+    throw new BadRequestException(`"wastageReason" must be one of ${WASTAGE_REASONS.join(', ')}.`);
   }
   return value as WastageReason;
 }
@@ -203,6 +167,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       this.getFinancialBreakdown(),
       this.searchBusinessFinances(),
       this.createNote(),
+      this.addInventoryVariant(),
       this.transactionTool({
         name: 'record_sale',
         description:
@@ -213,15 +178,13 @@ export class AssistantToolsService implements AssistantToolProvider {
       }),
       this.transactionTool({
         name: 'record_purchase',
-        description:
-          'Record stock received or bought from a supplier. Requires approval.',
+        description: 'Record stock received or bought from a supplier. Requires approval.',
         type: TransactionTypeDto.PURCHASE,
         direction: 'in',
       }),
       this.transactionTool({
         name: 'record_wastage',
-        description:
-          'Write off expired, damaged, stolen or spoiled stock. Requires approval.',
+        description: 'Write off expired, damaged, stolen or spoiled stock. Requires approval.',
         type: TransactionTypeDto.WASTAGE,
         direction: 'out',
         wastage: true,
@@ -252,23 +215,15 @@ export class AssistantToolsService implements AssistantToolProvider {
   }
 
   // ── shared period resolver ──────────────────────────────────────────────
-  private resolvePeriod(
-    args: Record<string, unknown>,
-    defaultDays: number,
-  ): { start: Date; end: Date; days: number } {
-    const days =
-      args.days === undefined || args.days === null
-        ? defaultDays
-        : asPositiveNumber(args.days, 'days');
+  private resolvePeriod(args: Record<string, unknown>, defaultDays: number): { start: Date; end: Date; days: number } {
+    const days = args.days === undefined || args.days === null ? defaultDays : asPositiveNumber(args.days, 'days');
     if (days > 365) {
       throw new BadRequestException('"days" must be 365 or fewer.');
     }
     const from = asOptionalDate(args.from, 'from');
     const to = asOptionalDate(args.to, 'to');
     const end = to ? new Date(to) : new Date();
-    const start = from
-      ? new Date(from)
-      : new Date(end.getTime() - days * DAY_MS);
+    const start = from ? new Date(from) : new Date(end.getTime() - days * DAY_MS);
     if (start.getTime() > end.getTime()) {
       throw new BadRequestException('"from" must be before "to".');
     }
@@ -280,11 +235,7 @@ export class AssistantToolsService implements AssistantToolProvider {
    * are measured exactly the same way. The model only ever sees the numbers
    * returned here; it never estimates them.
    */
-  private async salesSnapshot(
-    organizationId: string,
-    start: Date,
-    end: Date,
-  ) {
+  private async salesSnapshot(organizationId: string, start: Date, end: Date) {
     const sales = await this.prisma.db.inventoryTransaction.findMany({
       where: {
         organizationId,
@@ -323,7 +274,13 @@ export class AssistantToolsService implements AssistantToolProvider {
     >();
     const categories = new Map<
       string,
-      { category: string; units: number; sales: number; revenue: number; profit: number }
+      {
+        category: string;
+        units: number;
+        sales: number;
+        revenue: number;
+        profit: number;
+      }
     >();
     const days = new Map<string, { date: string; sales: number; revenue: number }>();
     let revenue = 0;
@@ -335,8 +292,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     for (const sale of sales) {
       const quantity = Math.abs(Number(sale.quantityChange));
       if (!Number.isFinite(quantity) || quantity <= 0) continue;
-      const unitPrice =
-        appliedTierPrice(sale.metadata) ?? Number(sale.item?.sellingPrice ?? 0);
+      const unitPrice = appliedTierPrice(sale.metadata) ?? Number(sale.item?.sellingPrice ?? 0);
       const unitCost = Number(sale.item?.costPrice ?? 0);
       const saleRevenue = unitPrice * quantity;
       const saleCost = unitCost * quantity;
@@ -439,55 +395,38 @@ export class AssistantToolsService implements AssistantToolProvider {
         const previousEnd = new Date(period.start.getTime() - 1);
         const previousStart = new Date(previousEnd.getTime() - windowMs);
 
-        const [current, previous, credits, lastSale, currentFinance, previousFinance] =
-          await Promise.all([
-            this.salesSnapshot(ctx.organizationId, period.start, period.end),
-            this.salesSnapshot(ctx.organizationId, previousStart, previousEnd),
-            this.prisma.db.creditRecord.findMany({
-              where: {
-                organizationId: ctx.organizationId,
-                status: { in: ['UNPAID', 'PARTIAL'] },
-              },
-              select: { amountTotal: true, amountPaid: true },
-            }),
-            // If the selected window is empty, tell the model when the last
-            // real movement was so it can offer a wider period instead of
-            // claiming the business has no sales at all.
-            this.prisma.db.inventoryTransaction.findFirst({
-              where: { organizationId: ctx.organizationId, type: 'SALE' },
-              orderBy: { createdAt: 'desc' },
-              select: { createdAt: true },
-            }),
-            this.finance.getBreakdownForPeriod(
-              ctx.organizationId,
-              period.start,
-              period.end,
-            ),
-            this.finance.getBreakdownForPeriod(
-              ctx.organizationId,
-              previousStart,
-              previousEnd,
-            ),
-          ]);
+        const [current, previous, credits, lastSale, currentFinance, previousFinance] = await Promise.all([
+          this.salesSnapshot(ctx.organizationId, period.start, period.end),
+          this.salesSnapshot(ctx.organizationId, previousStart, previousEnd),
+          this.prisma.db.creditRecord.findMany({
+            where: {
+              organizationId: ctx.organizationId,
+              status: { in: ['UNPAID', 'PARTIAL'] },
+            },
+            select: { amountTotal: true, amountPaid: true },
+          }),
+          // If the selected window is empty, tell the model when the last
+          // real movement was so it can offer a wider period instead of
+          // claiming the business has no sales at all.
+          this.prisma.db.inventoryTransaction.findFirst({
+            where: { organizationId: ctx.organizationId, type: 'SALE' },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
+          }),
+          this.finance.getBreakdownForPeriod(ctx.organizationId, period.start, period.end),
+          this.finance.getBreakdownForPeriod(ctx.organizationId, previousStart, previousEnd),
+        ]);
 
         const creditOutstanding = credits.reduce(
-          (sum, credit) =>
-            sum + (Number(credit.amountTotal) - Number(credit.amountPaid)),
+          (sum, credit) => sum + (Number(credit.amountTotal) - Number(credit.amountPaid)),
           0,
         );
         const schoolFeesRevenue = (finance: typeof currentFinance) =>
           finance.breakdowns
-            .filter(
-              (group) =>
-                group.key === 'revenue-source' &&
-                group.title === 'Fees collected by class',
-            )
+            .filter((group) => group.key === 'revenue-source' && group.title === 'Fees collected by class')
             .flatMap((group) => group.rows)
             .reduce((sum, row) => sum + Number(row.amount), 0);
-        const reportRevenue = (
-          stockRevenue: number,
-          finance: typeof currentFinance,
-        ) => {
+        const reportRevenue = (stockRevenue: number, finance: typeof currentFinance) => {
           if (ctx.businessType === 'GUEST_HOUSE' || ctx.businessType === 'ISP') {
             return finance.revenue;
           }
@@ -507,9 +446,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         const revenueSources = currentFinance.breakdowns
           .filter(
             (group) =>
-              group.key === 'revenue-source' ||
-              (ctx.businessType === 'GUEST_HOUSE' &&
-                group.key === 'revenue-mix'),
+              group.key === 'revenue-source' || (ctx.businessType === 'GUEST_HOUSE' && group.key === 'revenue-mix'),
           )
           .flatMap((group) =>
             group.rows.map((row) => ({
@@ -539,20 +476,9 @@ export class AssistantToolsService implements AssistantToolProvider {
           costOfSales: round2(current.costOfSales),
           grossProfit: round2(currentRevenue - current.costOfSales),
           grossMarginPct:
-            currentRevenue > 0
-              ? round2(
-                  ((currentRevenue - current.costOfSales) / currentRevenue) *
-                    100,
-                )
-              : 0,
-          averageSaleValue:
-            current.salesCount > 0
-              ? round2(current.revenue / current.salesCount)
-              : 0,
-          averageStockSaleValue:
-            current.salesCount > 0
-              ? round2(current.revenue / current.salesCount)
-              : 0,
+            currentRevenue > 0 ? round2(((currentRevenue - current.costOfSales) / currentRevenue) * 100) : 0,
+          averageSaleValue: current.salesCount > 0 ? round2(current.revenue / current.salesCount) : 0,
+          averageStockSaleValue: current.salesCount > 0 ? round2(current.revenue / current.salesCount) : 0,
           stockCreditSales: {
             count: current.creditSales,
             revenue: round2(current.creditRevenue),
@@ -566,8 +492,7 @@ export class AssistantToolsService implements AssistantToolProvider {
             stockUnits: round2(previous.totalUnits),
             stockSales: previous.salesCount,
             revenueChangePct: round2(changePct),
-            direction:
-              changePct > 0 ? 'up' : changePct < 0 ? 'down' : 'flat',
+            direction: changePct > 0 ? 'up' : changePct < 0 ? 'down' : 'flat',
           },
           topItems: Array.from(current.items.values())
             .sort((a, b) => b.units - a.units || b.revenue - a.revenue)
@@ -682,9 +607,7 @@ export class AssistantToolsService implements AssistantToolProvider {
 
           const existing = items.get(purchase.itemId) ?? {
             itemId: purchase.itemId,
-            name: purchase.item
-              ? inventoryDisplayName(purchase.item)
-              : 'Unknown item',
+            name: purchase.item ? inventoryDisplayName(purchase.item) : 'Unknown item',
             unit: purchase.item?.unit ?? '',
             units: 0,
             purchases: 0,
@@ -705,10 +628,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           totalPurchases: purchases.length,
           totalUnits: round2(totalUnits),
           totalCost: round2(totalCost),
-          averagePurchaseCost:
-            purchases.length > 0
-              ? round2(totalCost / purchases.length)
-              : 0,
+          averagePurchaseCost: purchases.length > 0 ? round2(totalCost / purchases.length) : 0,
           topItems: Array.from(items.values())
             .sort((a, b) => b.cost - a.cost || b.units - a.units)
             .slice(0, limit)
@@ -717,8 +637,7 @@ export class AssistantToolsService implements AssistantToolProvider {
               units: round2(item.units),
               cost: round2(item.cost),
             })),
-          note:
-            'Costs use the item\u2019s current cost price; a purchase recorded without a cost price contributes zero cost.',
+          note: 'Costs use the item\u2019s current cost price; a purchase recorded without a cost price contributes zero cost.',
         };
       },
     };
@@ -749,10 +668,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       },
       execute: async (raw, ctx) => {
         const args = asRecord(raw);
-        const days =
-          args.days === undefined || args.days === null
-            ? 30
-            : asPositiveNumber(args.days, 'days');
+        const days = args.days === undefined || args.days === null ? 30 : asPositiveNumber(args.days, 'days');
         if (days > 365) {
           throw new BadRequestException('"days" must be 365 or fewer.');
         }
@@ -773,7 +689,9 @@ export class AssistantToolsService implements AssistantToolProvider {
             reorderThreshold: true,
             costPrice: true,
             sellingPrice: true,
-            packaging: { select: { id: true, name: true, quantityPerUnit: true } },
+            packaging: {
+              select: { id: true, name: true, quantityPerUnit: true },
+            },
             product: { select: { name: true } },
           },
         });
@@ -795,7 +713,12 @@ export class AssistantToolsService implements AssistantToolProvider {
         const itemById = new Map(items.map((item) => [item.id, item]));
         const stats = new Map<
           string,
-          { recentUnits: number; historyUnits: number; revenue: number; lastSoldAt: Date | null }
+          {
+            recentUnits: number;
+            historyUnits: number;
+            revenue: number;
+            lastSoldAt: Date | null;
+          }
         >();
         for (const sale of history) {
           const quantity = Math.abs(Number(sale.quantityChange));
@@ -811,9 +734,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           current.historyUnits += quantity;
           if (sale.createdAt >= recentStart) {
             current.recentUnits += quantity;
-            current.revenue +=
-              (appliedTierPrice(sale.metadata) ??
-                Number(item.sellingPrice ?? 0)) * quantity;
+            current.revenue += (appliedTierPrice(sale.metadata) ?? Number(item.sellingPrice ?? 0)) * quantity;
           }
           if (!current.lastSoldAt || sale.createdAt > current.lastSoldAt) {
             current.lastSoldAt = sale.createdAt;
@@ -836,8 +757,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           const quantity = Number(item.quantity);
           const costPrice = Number(item.costPrice ?? 0);
           const sellingPrice = Number(item.sellingPrice ?? 0);
-          const marginPct =
-            sellingPrice > 0 ? ((sellingPrice - costPrice) / sellingPrice) * 100 : null;
+          const marginPct = sellingPrice > 0 ? ((sellingPrice - costPrice) / sellingPrice) * 100 : null;
           const category = item.category?.trim() || 'Uncategorised';
           const categoryStats = categoryMap.get(category) ?? {
             category,
@@ -857,11 +777,9 @@ export class AssistantToolsService implements AssistantToolProvider {
             unit: item.unit,
             category,
             quantity: round2(quantity),
-            reorderThreshold:
-              item.reorderThreshold == null ? null : Number(item.reorderThreshold),
+            reorderThreshold: item.reorderThreshold == null ? null : Number(item.reorderThreshold),
             costPrice: item.costPrice == null ? null : Number(item.costPrice),
-            sellingPrice:
-              item.sellingPrice == null ? null : Number(item.sellingPrice),
+            sellingPrice: item.sellingPrice == null ? null : Number(item.sellingPrice),
             marginPct: marginPct == null ? null : round2(marginPct),
             unitsSold: round2(stat?.recentUnits ?? 0),
             revenue: round2(stat?.revenue ?? 0),
@@ -877,31 +795,23 @@ export class AssistantToolsService implements AssistantToolProvider {
         const lowStock = catalogue
           .filter(
             (item) =>
-              item.reorderThreshold !== null &&
-              item.reorderThreshold > 0 &&
-              item.quantity <= item.reorderThreshold,
+              item.reorderThreshold !== null && item.reorderThreshold > 0 && item.quantity <= item.reorderThreshold,
           )
           .slice(0, limit);
         const outOfStock = catalogue.filter((item) => item.quantity <= 0).slice(0, limit);
         const slowMovers = catalogue
           .filter((item) => item.quantity > 0 && item.unitsSold === 0)
-          .sort(
-            (a, b) =>
-              b.quantity * (b.costPrice ?? 0) - a.quantity * (a.costPrice ?? 0),
-          )
+          .sort((a, b) => b.quantity * (b.costPrice ?? 0) - a.quantity * (a.costPrice ?? 0))
           .slice(0, limit);
         const marginRisks = catalogue
           .filter(
             (item) =>
               item.sellingPrice !== null &&
               item.costPrice !== null &&
-              (item.sellingPrice <= item.costPrice ||
-                (item.marginPct !== null && item.marginPct < 10)),
+              (item.sellingPrice <= item.costPrice || (item.marginPct !== null && item.marginPct < 10)),
           )
           .slice(0, limit);
-        const packagingGaps = topSellers
-          .filter((item) => item.packagingUnits === 0)
-          .slice(0, limit);
+        const packagingGaps = topSellers.filter((item) => item.packagingUnits === 0).slice(0, limit);
         const categories = Array.from(categoryMap.values())
           .map((category) => ({
             ...category,
@@ -959,19 +869,13 @@ export class AssistantToolsService implements AssistantToolProvider {
           });
         }
 
-        const publicCatalogueItems = (rows: typeof catalogue) =>
-          rows.map(({ id: _id, ...item }) => item);
+        const publicCatalogueItems = (rows: typeof catalogue) => rows.map(({ id: _id, ...item }) => item);
 
         return {
           generatedAt: new Date().toISOString(),
           salesWindowDays: days,
           catalogueSize: catalogue.length,
-          stockValueAtCost: round2(
-            catalogue.reduce(
-              (sum, item) => sum + item.quantity * (item.costPrice ?? 0),
-              0,
-            ),
-          ),
+          stockValueAtCost: round2(catalogue.reduce((sum, item) => sum + item.quantity * (item.costPrice ?? 0), 0)),
           categories,
           topSellers: publicCatalogueItems(topSellers),
           lowStock: publicCatalogueItems(lowStock),
@@ -990,10 +894,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           // token budget, which caused provider 429s and pushed weaker
           // fallbacks into inventing products. The focused lists above are
           // enough evidence for an answer.
-          note:
-            catalogue.length === 0
-              ? 'This organization has no active catalogue items yet.'
-              : undefined,
+          note: catalogue.length === 0 ? 'This organization has no active catalogue items yet.' : undefined,
         };
       },
     };
@@ -1023,9 +924,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         const records = await this.prisma.db.creditRecord.findMany({
           where: {
             organizationId: ctx.organizationId,
-            ...(includePaid
-              ? {}
-              : { status: { in: ['UNPAID', 'PARTIAL'] } }),
+            ...(includePaid ? {} : { status: { in: ['UNPAID', 'PARTIAL'] } }),
           },
           include: {
             transaction: { select: { item: { select: { name: true } } } },
@@ -1035,7 +934,13 @@ export class AssistantToolsService implements AssistantToolProvider {
         });
 
         const now = Date.now();
-        const aging = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, over90: 0 };
+        const aging = {
+          current: 0,
+          days1to30: 0,
+          days31to60: 0,
+          days61to90: 0,
+          over90: 0,
+        };
         let totalCredit = 0;
         let totalPaid = 0;
         let totalOutstanding = 0;
@@ -1132,7 +1037,11 @@ export class AssistantToolsService implements AssistantToolProvider {
           const amount = Number(expense.amount);
           total += amount;
           const category = expense.category?.trim() || 'OTHER_EXPENSE';
-          const row = byCategory.get(category) ?? { category, count: 0, total: 0 };
+          const row = byCategory.get(category) ?? {
+            category,
+            count: 0,
+            total: 0,
+          };
           row.count += 1;
           row.total += amount;
           byCategory.set(category, row);
@@ -1225,7 +1134,10 @@ export class AssistantToolsService implements AssistantToolProvider {
             type: 'string',
             description: `Optional movement type: ${TRANSACTION_TYPES.join(', ')}.`,
           },
-          itemId: { type: 'string', description: 'Optional inventory item ID.' },
+          itemId: {
+            type: 'string',
+            description: 'Optional inventory item ID.',
+          },
           limit: {
             type: 'number',
             description: 'Maximum movements to return (default 20).',
@@ -1236,10 +1148,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       },
       execute: async (raw, ctx) => {
         const args = asRecord(raw);
-        const days =
-          args.days === undefined || args.days === null
-            ? 7
-            : asPositiveNumber(args.days, 'days');
+        const days = args.days === undefined || args.days === null ? 7 : asPositiveNumber(args.days, 'days');
         if (days > 365) {
           throw new BadRequestException('"days" must be 365 or fewer.');
         }
@@ -1264,10 +1173,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           take: Math.max(limit * 10, 500),
         });
 
-        const totalsByType: Record<
-          string,
-          { movements: number; units: number }
-        > = {};
+        const totalsByType: Record<string, { movements: number; units: number }> = {};
         for (const movement of movements) {
           const row = totalsByType[movement.type] ?? {
             movements: 0,
@@ -1339,28 +1245,15 @@ export class AssistantToolsService implements AssistantToolProvider {
       execute: async (raw, ctx) => {
         const args = asRecord(raw);
         const status = asOptionalEnum(args.status, 'status', NOTE_STATUSES);
-        const importance = asOptionalEnum(
-          args.importance,
-          'importance',
-          IMPORTANCE,
-        );
-        const query = (
-          asOptionalString(args.query, 'query', 120) ?? ''
-        ).toLowerCase();
+        const importance = asOptionalEnum(args.importance, 'importance', IMPORTANCE);
+        const query = (asOptionalString(args.query, 'query', 120) ?? '').toLowerCase();
         const limit = asLimit(args.limit, 20, 50);
 
-        const visible = await this.notes.findAll(
-          ctx.organizationId,
-          ctx.userId,
-          { status },
-        );
+        const visible = await this.notes.findAll(ctx.organizationId, ctx.userId, { status });
         const filtered = visible.filter((note) => {
           if (importance && note.importance !== importance) return false;
           if (!query) return true;
-          return (
-            note.title.toLowerCase().includes(query) ||
-            (note.content ?? '').toLowerCase().includes(query)
-          );
+          return note.title.toLowerCase().includes(query) || (note.content ?? '').toLowerCase().includes(query);
         });
 
         return {
@@ -1380,8 +1273,7 @@ export class AssistantToolsService implements AssistantToolProvider {
             author: note.author?.name ?? null,
             checklist: {
               total: note.checklistItems.length,
-              completed: note.checklistItems.filter((item) => item.isCompleted)
-                .length,
+              completed: note.checklistItems.filter((item) => item.isCompleted).length,
             },
           })),
         };
@@ -1502,9 +1394,7 @@ export class AssistantToolsService implements AssistantToolProvider {
               attempts: record.syncQueue?.attempts ?? 0,
             })),
           note:
-            registration === null
-              ? 'No KRA eTIMS registration has been recorded for this business yet.'
-              : undefined,
+            registration === null ? 'No KRA eTIMS registration has been recorded for this business yet.' : undefined,
         };
       },
     };
@@ -1573,10 +1463,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         additionalProperties: false,
       },
       execute: async (_raw, ctx) => {
-        const breakdown = await this.finance.getBreakdown(
-          ctx.organizationId,
-          'rolling30',
-        );
+        const breakdown = await this.finance.getBreakdown(ctx.organizationId, 'rolling30');
         return {
           businessType: breakdown.businessType,
           period: 'last 30 days',
@@ -1613,7 +1500,8 @@ export class AssistantToolsService implements AssistantToolProvider {
         properties: {
           query: {
             type: 'string',
-            description: 'What to search for, e.g. a room name, plan, client or category. Empty returns the largest attributes.',
+            description:
+              'What to search for, e.g. a room name, plan, client or category. Empty returns the largest attributes.',
           },
         },
         required: [],
@@ -1622,11 +1510,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       execute: async (raw, ctx) => {
         const args = asRecord(raw);
         const query = asOptionalString(args.query, 'query', 120) ?? '';
-        const result = await this.financeSearch.search(
-          ctx.organizationId,
-          query,
-          'rolling30',
-        );
+        const result = await this.financeSearch.search(ctx.organizationId, query, 'rolling30');
         return {
           period: 'last 30 days',
           totalMatched: result.totalMatched,
@@ -1676,9 +1560,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           },
         });
         return items
-          .filter(
-            (item) => Number(item.quantity) <= Number(item.reorderThreshold ?? 0),
-          )
+          .filter((item) => Number(item.quantity) <= Number(item.reorderThreshold ?? 0))
           .slice(0, limit)
           .map((item) => ({
             id: item.id,
@@ -1790,14 +1672,9 @@ export class AssistantToolsService implements AssistantToolProvider {
           unit: item.unit,
           quantity: Number(item.quantity),
           reorderThreshold: item.reorderThreshold,
-          costPrice:
-            item.costPrice === null || item.costPrice === undefined
-              ? null
-              : Number(item.costPrice),
+          costPrice: item.costPrice === null || item.costPrice === undefined ? null : Number(item.costPrice),
           sellingPrice:
-            item.sellingPrice === null || item.sellingPrice === undefined
-              ? null
-              : Number(item.sellingPrice),
+            item.sellingPrice === null || item.sellingPrice === undefined ? null : Number(item.sellingPrice),
         }));
       },
     };
@@ -1817,8 +1694,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         properties: {
           title: {
             type: 'string',
-            description:
-              'Short title. Optional; derived from the content if omitted.',
+            description: 'Short title. Optional; derived from the content if omitted.',
           },
           content: {
             type: 'string',
@@ -1827,8 +1703,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           importance: { type: 'string', enum: [...IMPORTANCE] },
           dueDate: {
             type: 'string',
-            description:
-              'Optional due date/time, ISO 8601 (for example 2026-10-20T09:00:00Z).',
+            description: 'Optional due date/time, ISO 8601 (for example 2026-10-20T09:00:00Z).',
           },
         },
         required: [],
@@ -1856,15 +1731,8 @@ export class AssistantToolsService implements AssistantToolProvider {
    * request still becomes a reviewable proposal instead of failing validation.
    */
   private normaliseNoteArgs(raw: Record<string, unknown>) {
-    const content = asOptionalString(
-      raw.content ?? raw.body ?? raw.text,
-      'content',
-      10000,
-    );
-    const title = normaliseTitle(
-      asOptionalString(raw.title, 'title', 200),
-      content,
-    );
+    const content = asOptionalString(raw.content ?? raw.body ?? raw.text, 'content', 10000);
+    const title = normaliseTitle(asOptionalString(raw.title, 'title', 200), content);
     if (!title) {
       throw new BadRequestException('Provide a note title or content.');
     }
@@ -1898,15 +1766,12 @@ export class AssistantToolsService implements AssistantToolProvider {
                 },
                 itemName: {
                   type: 'string',
-                  description:
-                    'Exact product name from inventory, used only when there is one matching active item.',
+                  description: 'Exact product name from inventory, used only when there is one matching active item.',
                 },
               }
             : { itemId: { type: 'string' } }),
           quantity: { type: 'number' },
-          ...(wastage
-            ? { wastageReason: { type: 'string', enum: [...WASTAGE_REASONS] } }
-            : {}),
+          ...(wastage ? { wastageReason: { type: 'string', enum: [...WASTAGE_REASONS] } } : {}),
         },
         required: name === 'record_sale' ? ['quantity'] : ['itemId', 'quantity'],
         additionalProperties: false,
@@ -1941,16 +1806,11 @@ export class AssistantToolsService implements AssistantToolProvider {
             },
           });
           if (matches.length === 0) {
-            throw new BadRequestException(
-              `No active inventory item matches "${itemName}".`,
-            );
+            throw new BadRequestException(`No active inventory item matches "${itemName}".`);
           }
           if (matches.length > 1) {
             const choices = matches
-              .map(
-                (item) =>
-                  `${inventoryDisplayName(item)} (${item.quantity} ${item.unit} in stock)`,
-              )
+              .map((item) => `${inventoryDisplayName(item)} (${item.quantity} ${item.unit} in stock)`)
               .join(', ');
             throw new BadRequestException(
               `More than one inventory item matches "${itemName}": ${choices}. Ask which one to sell.`,
@@ -1991,7 +1851,11 @@ export class AssistantToolsService implements AssistantToolProvider {
         const verb = wastage ? 'Write off' : direction === 'in' ? 'Receive' : 'Sell';
         return {
           args: wastage
-            ? { itemId: item.id, quantity, wastageReason: asWastageReason(args.wastageReason) }
+            ? {
+                itemId: item.id,
+                quantity,
+                wastageReason: asWastageReason(args.wastageReason),
+              }
             : { itemId: item.id, quantity },
           summary: `${verb} ${quantity} ${item.unit} of ${inventoryDisplayName(item)}`,
           diff: {
@@ -2023,10 +1887,83 @@ export class AssistantToolsService implements AssistantToolProvider {
 
   // ── write: new inventory item ───────────────────────────────────────────
   private createInventoryItem(): ToolDefinition {
+    const normalizePackaging = (value: unknown) => {
+      if (value === undefined || value === null) return undefined;
+      if (!Array.isArray(value) || value.length > 20) {
+        throw new BadRequestException('"packaging" must be an array of at most 20 packaging options.');
+      }
+      return value.map((entry, index) => {
+        const packaging = asRecord(entry);
+        const quantityPerUnit = asPositiveNumber(packaging.quantityPerUnit, `packaging[${index}].quantityPerUnit`);
+        if (!Number.isInteger(quantityPerUnit)) {
+          throw new BadRequestException(`"packaging[${index}].quantityPerUnit" must be a whole number.`);
+        }
+        return {
+          name: asString(packaging.name, `packaging[${index}].name`, 100),
+          quantityPerUnit,
+          barcode: asOptionalString(packaging.barcode, `packaging[${index}].barcode`, 100),
+          costPrice: asOptionalNonNegative(packaging.costPrice, `packaging[${index}].costPrice`),
+          sellingPrice: asOptionalNonNegative(packaging.sellingPrice, `packaging[${index}].sellingPrice`),
+        };
+      });
+    };
+    const normalizeVariant = (value: unknown, index: number) => {
+      const variant = asRecord(value);
+      return {
+        name: asString(variant.name, `variants[${index}].name`, 100),
+        unit: asString(variant.unit, `variants[${index}].unit`, 40),
+        measureValue: asOptionalNonNegative(variant.measureValue, `variants[${index}].measureValue`),
+        measureUnit: asOptionalString(variant.measureUnit, `variants[${index}].measureUnit`, 40),
+        quantity: asOptionalNonNegative(variant.quantity, `variants[${index}].quantity`) ?? 0,
+        reorderThreshold: asOptionalNonNegative(variant.reorderThreshold, `variants[${index}].reorderThreshold`) ?? 0,
+        costPrice: asOptionalNonNegative(variant.costPrice, `variants[${index}].costPrice`),
+        sellingPrice: asOptionalNonNegative(variant.sellingPrice, `variants[${index}].sellingPrice`),
+        barcode: asOptionalString(variant.barcode, `variants[${index}].barcode`, 100),
+        expiryDate: asOptionalDate(variant.expiryDate, `variants[${index}].expiryDate`),
+        batchNumber: asOptionalString(variant.batchNumber, `variants[${index}].batchNumber`, 60),
+        packaging: normalizePackaging(variant.packaging),
+      };
+    };
+    const normalizeArgs = (raw: unknown) => {
+      const args = asRecord(raw);
+      const name = asString(args.name, 'name', 200);
+      const category = asOptionalString(args.category, 'category', 100);
+      const description = asOptionalString(args.description, 'description', 1000);
+      if (args.variants !== undefined && args.variants !== null) {
+        if (!Array.isArray(args.variants) || args.variants.length === 0 || args.variants.length > 20) {
+          throw new BadRequestException('"variants" must contain between 1 and 20 variants.');
+        }
+        const variants = args.variants.map(normalizeVariant);
+        const duplicateNames = variants
+          .map((variant) => variant.name.toLocaleLowerCase())
+          .filter((variantName, index, all) => all.indexOf(variantName) !== index);
+        if (duplicateNames.length > 0) {
+          throw new BadRequestException('Variant names must be unique within a product.');
+        }
+        return { name, category, description, variants };
+      }
+      return {
+        name,
+        category,
+        description,
+        unit: asOptionalString(args.unit, 'unit', 40) ?? 'units',
+        quantity: asOptionalNonNegative(args.quantity, 'quantity') ?? 0,
+        reorderThreshold: asOptionalNonNegative(args.reorderThreshold, 'reorderThreshold'),
+        costPrice: asOptionalNonNegative(args.costPrice, 'costPrice'),
+        sellingPrice: asOptionalNonNegative(args.sellingPrice, 'sellingPrice'),
+        expiryDate: asOptionalDate(args.expiryDate, 'expiryDate'),
+        batchNumber: asOptionalString(args.batchNumber, 'batchNumber', 60),
+        measureValue: asOptionalNonNegative(args.measureValue, 'measureValue'),
+        measureUnit: asOptionalString(args.measureUnit, 'measureUnit', 40),
+        barcode: asOptionalString(args.barcode, 'barcode', 100),
+        packaging: normalizePackaging(args.packaging),
+      };
+    };
+
     return {
       name: 'create_inventory_item',
       description:
-        'Create a new inventory item with an opening quantity. Requires approval.',
+        'Create a new product with one or more independently tracked variants and opening stock. Each variant has its own unit, quantity, reorder level and prices; packaging options are optional. Requires approval. Use variants when a product is sold in different sizes or forms.',
       kind: 'write',
       riskLevel: 'low',
       roles: [AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF],
@@ -2034,6 +1971,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         type: 'object',
         properties: {
           name: { type: 'string' },
+          description: { type: 'string' },
           unit: { type: 'string' },
           quantity: { type: 'number' },
           reorderThreshold: { type: 'number' },
@@ -2042,59 +1980,115 @@ export class AssistantToolsService implements AssistantToolProvider {
           category: { type: 'string' },
           expiryDate: { type: 'string', description: 'ISO date.' },
           batchNumber: { type: 'string' },
+          measureValue: { type: 'number' },
+          measureUnit: { type: 'string' },
+          barcode: { type: 'string' },
+          packaging: {
+            type: 'array',
+            maxItems: 20,
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                quantityPerUnit: { type: 'integer', minimum: 1 },
+                barcode: { type: 'string' },
+                costPrice: { type: 'number' },
+                sellingPrice: { type: 'number' },
+              },
+              required: ['name', 'quantityPerUnit'],
+              additionalProperties: false,
+            },
+          },
+          variants: {
+            type: 'array',
+            minItems: 1,
+            maxItems: 20,
+            description: 'Use for products with multiple sizes/forms. Each entry is one independently tracked variant.',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                unit: { type: 'string' },
+                measureValue: { type: 'number' },
+                measureUnit: { type: 'string' },
+                quantity: { type: 'number' },
+                reorderThreshold: { type: 'number' },
+                costPrice: { type: 'number' },
+                sellingPrice: { type: 'number' },
+                barcode: { type: 'string' },
+                expiryDate: { type: 'string' },
+                batchNumber: { type: 'string' },
+                packaging: {
+                  type: 'array',
+                  maxItems: 20,
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      quantityPerUnit: { type: 'integer', minimum: 1 },
+                      barcode: { type: 'string' },
+                      costPrice: { type: 'number' },
+                      sellingPrice: { type: 'number' },
+                    },
+                    required: ['name', 'quantityPerUnit'],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ['name', 'unit'],
+              additionalProperties: false,
+            },
+          },
         },
         required: ['name'],
         additionalProperties: false,
       },
       buildProposal: (raw) => {
-        const args = asRecord(raw);
-        const name = asString(args.name, 'name', 200);
-        const unit = asOptionalString(args.unit, 'unit', 40) ?? 'units';
-        const quantity = asOptionalNonNegative(args.quantity, 'quantity') ?? 0;
-        const normalised = {
-          name,
-          unit,
-          quantity,
-          reorderThreshold: asOptionalNonNegative(
-            args.reorderThreshold,
-            'reorderThreshold',
-          ),
-          costPrice: asOptionalNonNegative(args.costPrice, 'costPrice'),
-          sellingPrice: asOptionalNonNegative(args.sellingPrice, 'sellingPrice'),
-          category: asOptionalString(args.category, 'category', 100),
-          expiryDate: asOptionalDate(args.expiryDate, 'expiryDate'),
-          batchNumber: asOptionalString(args.batchNumber, 'batchNumber', 60),
-        };
+        const normalised = normalizeArgs(raw);
+        const variants = 'variants' in normalised ? normalised.variants : undefined;
+        const summary = variants
+          ? `Create ${normalised.name} with ${variants.length} variants: ${variants
+              .map((variant) => `${variant.name} (${variant.quantity} ${variant.unit})`)
+              .join(', ')}`
+          : `Create new item “${normalised.name}” with ${normalised.quantity} ${normalised.unit} in stock`;
         return {
           args: normalised,
-          summary: `Create new item “${name}” with ${quantity} ${unit} in stock`,
+          summary,
           diff: { before: null, after: normalised },
           riskLevel: 'low',
         };
       },
       commit: async (raw, ctx) => {
-        const args = asRecord(raw);
-        const name = asString(args.name, 'name', 200);
-        const unit = asOptionalString(args.unit, 'unit', 40) ?? 'units';
-        const quantity = asOptionalNonNegative(args.quantity, 'quantity') ?? 0;
-        const reorderThreshold = asOptionalNonNegative(
-          args.reorderThreshold,
-          'reorderThreshold',
-        );
-        const costPrice = asOptionalNonNegative(args.costPrice, 'costPrice');
-        const sellingPrice = asOptionalNonNegative(
-          args.sellingPrice,
-          'sellingPrice',
-        );
-        const category = asOptionalString(args.category, 'category', 100);
-        const expiryDate = asOptionalDate(args.expiryDate, 'expiryDate');
-        const batchNumber = asOptionalString(args.batchNumber, 'batchNumber', 60);
+        const normalised = normalizeArgs(raw);
+        if ('variants' in normalised) {
+          return this.inventory.create(normalised, ctx.organizationId);
+        }
+        const {
+          name,
+          unit,
+          quantity,
+          reorderThreshold,
+          costPrice,
+          sellingPrice,
+          category,
+          description,
+          expiryDate,
+          batchNumber,
+        } = normalised;
         // Expiry/batch metadata is carried on the variant, so create that way.
-        if (expiryDate !== undefined || batchNumber !== undefined) {
+        if (
+          expiryDate !== undefined ||
+          batchNumber !== undefined ||
+          normalised.measureValue !== undefined ||
+          normalised.measureUnit !== undefined ||
+          normalised.barcode !== undefined ||
+          normalised.packaging !== undefined
+        ) {
           return this.inventory.create(
             {
               name,
               category,
+              description,
               variants: [
                 {
                   name: 'Default',
@@ -2103,8 +2097,12 @@ export class AssistantToolsService implements AssistantToolProvider {
                   reorderThreshold: reorderThreshold ?? 0,
                   costPrice,
                   sellingPrice,
+                  measureValue: normalised.measureValue,
+                  measureUnit: normalised.measureUnit,
+                  barcode: normalised.barcode,
                   expiryDate,
                   batchNumber,
+                  packaging: normalised.packaging,
                 },
               ],
             },
@@ -2114,6 +2112,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         return this.inventory.create(
           {
             name,
+            description,
             unit,
             quantity,
             reorderThreshold,
@@ -2127,12 +2126,175 @@ export class AssistantToolsService implements AssistantToolProvider {
     };
   }
 
+  private addInventoryVariant(): ToolDefinition {
+    const normalizeArgs = (raw: unknown) => {
+      const args = asRecord(raw);
+      let packaging:
+        | Array<{
+            name: string;
+            quantityPerUnit: number;
+            barcode?: string;
+            costPrice?: number;
+            sellingPrice?: number;
+          }>
+        | undefined;
+      if (args.packaging !== undefined && args.packaging !== null) {
+        if (!Array.isArray(args.packaging) || args.packaging.length > 20) {
+          throw new BadRequestException('"packaging" must be an array of at most 20 packaging options.');
+        }
+        packaging = args.packaging.map((entry, index) => {
+          const pack = asRecord(entry);
+          const quantityPerUnit = asPositiveNumber(pack.quantityPerUnit, `packaging[${index}].quantityPerUnit`);
+          if (!Number.isInteger(quantityPerUnit)) {
+            throw new BadRequestException(`"packaging[${index}].quantityPerUnit" must be a whole number.`);
+          }
+          return {
+            name: asString(pack.name, `packaging[${index}].name`, 100),
+            quantityPerUnit,
+            barcode: asOptionalString(pack.barcode, `packaging[${index}].barcode`, 100),
+            costPrice: asOptionalNonNegative(pack.costPrice, `packaging[${index}].costPrice`),
+            sellingPrice: asOptionalNonNegative(pack.sellingPrice, `packaging[${index}].sellingPrice`),
+          };
+        });
+      }
+      return {
+        productName: asString(args.productName, 'productName', 200),
+        variant: {
+          name: asString(args.name, 'name', 100),
+          unit: asString(args.unit, 'unit', 40),
+          measureValue: asOptionalNonNegative(args.measureValue, 'measureValue'),
+          measureUnit: asOptionalString(args.measureUnit, 'measureUnit', 40),
+          quantity: asOptionalNonNegative(args.quantity, 'quantity') ?? 0,
+          reorderThreshold: asOptionalNonNegative(args.reorderThreshold, 'reorderThreshold') ?? 0,
+          costPrice: asOptionalNonNegative(args.costPrice, 'costPrice'),
+          sellingPrice: asOptionalNonNegative(args.sellingPrice, 'sellingPrice'),
+          barcode: asOptionalString(args.barcode, 'barcode', 100),
+          expiryDate: asOptionalDate(args.expiryDate, 'expiryDate'),
+          batchNumber: asOptionalString(args.batchNumber, 'batchNumber', 60),
+          packaging,
+        },
+      };
+    };
+
+    return {
+      name: 'add_inventory_variant',
+      description:
+        'Add a new independently stocked size or form to an existing product. Requires approval. Use only after confirming the product exists; this creates a separate stock balance and does not convert stock from another variant.',
+      kind: 'write',
+      riskLevel: 'low',
+      roles: [AppRole.OWNER, AppRole.MANAGER, AppRole.STAFF],
+      parameters: {
+        type: 'object',
+        properties: {
+          productName: {
+            type: 'string',
+            description: 'Exact existing parent product name.',
+          },
+          name: {
+            type: 'string',
+            description: 'Variant label, for example "5 kg bag".',
+          },
+          unit: { type: 'string', description: 'Stock unit for this variant.' },
+          measureValue: { type: 'number' },
+          measureUnit: { type: 'string' },
+          quantity: { type: 'number' },
+          reorderThreshold: { type: 'number' },
+          costPrice: { type: 'number' },
+          sellingPrice: { type: 'number' },
+          barcode: { type: 'string' },
+          expiryDate: { type: 'string' },
+          batchNumber: { type: 'string' },
+          packaging: {
+            type: 'array',
+            maxItems: 20,
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                quantityPerUnit: { type: 'integer', minimum: 1 },
+                barcode: { type: 'string' },
+                costPrice: { type: 'number' },
+                sellingPrice: { type: 'number' },
+              },
+              required: ['name', 'quantityPerUnit'],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ['productName', 'name', 'unit'],
+        additionalProperties: false,
+      },
+      buildProposal: async (raw, ctx) => {
+        const normalised = normalizeArgs(raw);
+        const matches = await this.prisma.db.product.findMany({
+          where: {
+            organizationId: ctx.organizationId,
+            name: { equals: normalised.productName, mode: 'insensitive' },
+          },
+          take: 2,
+          select: {
+            id: true,
+            name: true,
+            variants: {
+              where: { isActive: true },
+              select: { name: true },
+            },
+          },
+        });
+        if (matches.length === 0) {
+          throw new BadRequestException(
+            `No existing product matches "${normalised.productName}". Create the product first.`,
+          );
+        }
+        if (matches.length > 1) {
+          throw new BadRequestException(
+            `More than one product matches "${normalised.productName}". Ask the user to identify the correct product.`,
+          );
+        }
+        if (
+          matches[0].variants.some(
+            (variant) =>
+              variant.name.toLocaleLowerCase() ===
+              normalised.variant.name.toLocaleLowerCase(),
+          )
+        ) {
+          throw new BadRequestException(
+            `An active "${normalised.variant.name}" variant already exists for "${matches[0].name}". Update that variant instead.`,
+          );
+        }
+        const args = {
+          productId: matches[0].id,
+          productName: matches[0].name,
+          ...normalised.variant,
+        };
+        return {
+          args,
+          summary: `Add ${args.name} variant to ${args.productName} with ${args.quantity} ${args.unit} in stock`,
+          diff: { before: null, after: normalised.variant },
+          riskLevel: args.quantity > 0 ? 'medium' : 'low',
+        };
+      },
+      commit: async (raw, ctx) => {
+        const args = asRecord(raw);
+        const normalised = normalizeArgs({
+          ...args,
+          productName: args.productName,
+        });
+        return this.inventory.addVariant(
+          asString(args.productId, 'productId', 100),
+          normalised.variant,
+          ctx.organizationId,
+        );
+      },
+    };
+  }
+
   // ── write: update an existing inventory item (variant fields) ───────────
   private updateInventoryItem(): ToolDefinition {
     return {
       name: 'update_inventory_item',
       description:
-        'Change an existing inventory item\u2019s name, unit, prices or reorder threshold. Requires approval.',
+        'Edit an existing inventory variant. Supports its name, unit/measure, stock quantity, reorder level, cost/selling prices, barcode, expiry/batch data and packaging options. Quantity changes are recorded as stock adjustments. Requires approval.',
       kind: 'write',
       riskLevel: 'low',
       roles: [AppRole.OWNER, AppRole.MANAGER],
@@ -2142,9 +2304,32 @@ export class AssistantToolsService implements AssistantToolProvider {
           itemId: { type: 'string' },
           name: { type: 'string' },
           unit: { type: 'string' },
+          measureValue: { type: 'number' },
+          measureUnit: { type: 'string' },
+          quantity: { type: 'number', minimum: 0 },
           costPrice: { type: 'number' },
           sellingPrice: { type: 'number' },
           reorderThreshold: { type: 'number' },
+          barcode: { type: 'string' },
+          expiryDate: { type: 'string' },
+          batchNumber: { type: 'string' },
+          packaging: {
+            type: 'array',
+            maxItems: 20,
+            description: 'Replaces the current packaging options for this variant.',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                quantityPerUnit: { type: 'integer', minimum: 1 },
+                barcode: { type: 'string' },
+                costPrice: { type: 'number' },
+                sellingPrice: { type: 'number' },
+              },
+              required: ['name', 'quantityPerUnit'],
+              additionalProperties: false,
+            },
+          },
         },
         required: ['itemId'],
         additionalProperties: false,
@@ -2161,6 +2346,22 @@ export class AssistantToolsService implements AssistantToolProvider {
             costPrice: true,
             sellingPrice: true,
             reorderThreshold: true,
+            measureValue: true,
+            measureUnit: true,
+            quantity: true,
+            barcode: true,
+            expiryDate: true,
+            batchNumber: true,
+            product: { select: { name: true } },
+            packaging: {
+              select: {
+                name: true,
+                quantityPerUnit: true,
+                barcode: true,
+                costPrice: true,
+                sellingPrice: true,
+              },
+            },
           },
         });
         if (!item) {
@@ -2171,37 +2372,83 @@ export class AssistantToolsService implements AssistantToolProvider {
         const unit = asOptionalString(args.unit, 'unit', 40);
         const costPrice = asOptionalNonNegative(args.costPrice, 'costPrice');
         const sellingPrice = asOptionalNonNegative(args.sellingPrice, 'sellingPrice');
-        const reorderThreshold = asOptionalNonNegative(
-          args.reorderThreshold,
-          'reorderThreshold',
-        );
+        const reorderThreshold = asOptionalNonNegative(args.reorderThreshold, 'reorderThreshold');
+        const measureValue = asOptionalNonNegative(args.measureValue, 'measureValue');
+        const measureUnit = asOptionalString(args.measureUnit, 'measureUnit', 40);
+        const quantity = asOptionalNonNegative(args.quantity, 'quantity');
+        const barcode = asOptionalString(args.barcode, 'barcode', 100);
+        const expiryDate = asOptionalDate(args.expiryDate, 'expiryDate');
+        const batchNumber = asOptionalString(args.batchNumber, 'batchNumber', 60);
+        let packaging:
+          | Array<{
+              name: string;
+              quantityPerUnit: number;
+              barcode?: string;
+              costPrice?: number;
+              sellingPrice?: number;
+            }>
+          | undefined;
+        if (args.packaging !== undefined && args.packaging !== null) {
+          if (!Array.isArray(args.packaging) || args.packaging.length > 20) {
+            throw new BadRequestException('"packaging" must be an array of at most 20 packaging options.');
+          }
+          packaging = args.packaging.map((entry, index) => {
+            const pack = asRecord(entry);
+            const quantityPerUnit = asPositiveNumber(pack.quantityPerUnit, `packaging[${index}].quantityPerUnit`);
+            if (!Number.isInteger(quantityPerUnit)) {
+              throw new BadRequestException(`"packaging[${index}].quantityPerUnit" must be a whole number.`);
+            }
+            return {
+              name: asString(pack.name, `packaging[${index}].name`, 100),
+              quantityPerUnit,
+              barcode: asOptionalString(pack.barcode, `packaging[${index}].barcode`, 100),
+              costPrice: asOptionalNonNegative(pack.costPrice, `packaging[${index}].costPrice`),
+              sellingPrice: asOptionalNonNegative(pack.sellingPrice, `packaging[${index}].sellingPrice`),
+            };
+          });
+        }
         if (name !== undefined) updates.name = name;
         if (unit !== undefined) updates.unit = unit;
+        if (measureValue !== undefined) updates.measureValue = measureValue;
+        if (measureUnit !== undefined) updates.measureUnit = measureUnit;
+        if (quantity !== undefined) updates.quantity = quantity;
         if (costPrice !== undefined) updates.costPrice = costPrice;
         if (sellingPrice !== undefined) updates.sellingPrice = sellingPrice;
         if (reorderThreshold !== undefined) updates.reorderThreshold = reorderThreshold;
+        if (barcode !== undefined) updates.barcode = barcode;
+        if (expiryDate !== undefined) updates.expiryDate = expiryDate;
+        if (batchNumber !== undefined) updates.batchNumber = batchNumber;
+        if (packaging !== undefined) updates.packaging = packaging;
         if (Object.keys(updates).length === 0) {
           throw new BadRequestException('No changes were supplied.');
         }
+        const itemLabel = inventoryDisplayName(item);
         return {
           args: { itemId: item.id, updates },
-          summary: `Update ${item.name} (${Object.keys(updates).join(', ')})`,
+          summary: `Update ${itemLabel} (${Object.keys(updates).join(', ')})`,
           diff: {
-            item: item.name,
+            item: itemLabel,
             before: {
               name: item.name,
               unit: item.unit,
               costPrice: item.costPrice == null ? null : Number(item.costPrice),
-              sellingPrice:
-                item.sellingPrice == null ? null : Number(item.sellingPrice),
-              reorderThreshold:
-                item.reorderThreshold == null
-                  ? null
-                  : Number(item.reorderThreshold),
+              sellingPrice: item.sellingPrice == null ? null : Number(item.sellingPrice),
+              reorderThreshold: item.reorderThreshold == null ? null : Number(item.reorderThreshold),
+              measureValue: item.measureValue == null ? null : Number(item.measureValue),
+              measureUnit: item.measureUnit,
+              quantity: Number(item.quantity ?? 0),
+              barcode: item.barcode,
+              expiryDate: item.expiryDate?.toISOString() ?? null,
+              batchNumber: item.batchNumber,
+              packaging: (item.packaging ?? []).map((pack) => ({
+                ...pack,
+                costPrice: pack.costPrice == null ? null : Number(pack.costPrice),
+                sellingPrice: pack.sellingPrice == null ? null : Number(pack.sellingPrice),
+              })),
             },
             after: updates,
           },
-          riskLevel: 'low',
+          riskLevel: updates.quantity !== undefined ? 'medium' : 'low',
         };
       },
       commit: async (raw, ctx) => {
@@ -2213,17 +2460,34 @@ export class AssistantToolsService implements AssistantToolProvider {
           {
             name: asOptionalString(updates.name, 'name', 200),
             unit: asOptionalString(updates.unit, 'unit', 40),
+            measureValue: asOptionalNonNegative(updates.measureValue, 'measureValue'),
+            measureUnit: asOptionalString(updates.measureUnit, 'measureUnit', 40),
+            quantity: asOptionalNonNegative(updates.quantity, 'quantity'),
             costPrice: asOptionalNonNegative(updates.costPrice, 'costPrice'),
-            sellingPrice: asOptionalNonNegative(
-              updates.sellingPrice,
-              'sellingPrice',
-            ),
-            reorderThreshold: asOptionalNonNegative(
-              updates.reorderThreshold,
-              'reorderThreshold',
-            ),
+            sellingPrice: asOptionalNonNegative(updates.sellingPrice, 'sellingPrice'),
+            reorderThreshold: asOptionalNonNegative(updates.reorderThreshold, 'reorderThreshold'),
+            barcode: asOptionalString(updates.barcode, 'barcode', 100),
+            expiryDate: asOptionalDate(updates.expiryDate, 'expiryDate'),
+            batchNumber: asOptionalString(updates.batchNumber, 'batchNumber', 60),
+            packaging: Array.isArray(updates.packaging)
+              ? updates.packaging.map((entry, index) => {
+                  const pack = asRecord(entry);
+                  const quantityPerUnit = asPositiveNumber(pack.quantityPerUnit, `packaging[${index}].quantityPerUnit`);
+                  if (!Number.isInteger(quantityPerUnit)) {
+                    throw new BadRequestException(`"packaging[${index}].quantityPerUnit" must be a whole number.`);
+                  }
+                  return {
+                    name: asString(pack.name, `packaging[${index}].name`, 100),
+                    quantityPerUnit,
+                    barcode: asOptionalString(pack.barcode, `packaging[${index}].barcode`, 100),
+                    costPrice: asOptionalNonNegative(pack.costPrice, `packaging[${index}].costPrice`),
+                    sellingPrice: asOptionalNonNegative(pack.sellingPrice, `packaging[${index}].sellingPrice`),
+                  };
+                })
+              : undefined,
           },
           ctx.organizationId,
+          ctx.userId,
         );
       },
     };
@@ -2266,9 +2530,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           select: { id: true, name: true, unit: true, quantity: true },
         });
         if (!item) {
-          throw new BadRequestException(
-            'No matching active item in this organization.',
-          );
+          throw new BadRequestException('No matching active item in this organization.');
         }
         const before = Number(item.quantity);
         return {
@@ -2320,9 +2582,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           select: { id: true, name: true, quantity: true, unit: true },
         });
         if (!item) {
-          throw new BadRequestException(
-            'No matching active item in this organization.',
-          );
+          throw new BadRequestException('No matching active item in this organization.');
         }
         return {
           args: { itemId: item.id },
@@ -2336,10 +2596,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       },
       commit: async (raw, ctx) => {
         const args = asRecord(raw);
-        return this.inventory.deleteVariant(
-          asString(args.itemId, 'itemId', 100),
-          ctx.organizationId,
-        );
+        return this.inventory.deleteVariant(asString(args.itemId, 'itemId', 100), ctx.organizationId);
       },
     };
   }
@@ -2364,9 +2621,15 @@ export class AssistantToolsService implements AssistantToolProvider {
             type: 'string',
             description: `One of: ${config.categories.join(', ')}.`,
           },
-          amount: { type: 'number', description: 'Amount in the business currency.' },
+          amount: {
+            type: 'number',
+            description: 'Amount in the business currency.',
+          },
           description: { type: 'string' },
-          date: { type: 'string', description: 'Optional ISO date; defaults to today.' },
+          date: {
+            type: 'string',
+            description: 'Optional ISO date; defaults to today.',
+          },
           staffName: {
             type: 'string',
             description: 'For salary entries, the staff member paid.',
@@ -2382,26 +2645,13 @@ export class AssistantToolsService implements AssistantToolProvider {
       },
       buildProposal: (raw) => {
         const args = asRecord(raw);
-        const category = asEnum(
-          args.category,
-          'category',
-          config.categories,
-        );
+        const category = asEnum(args.category, 'category', config.categories);
         const amount = asPositiveNumber(args.amount, 'amount');
-        const description = asOptionalString(
-          args.description,
-          'description',
-          500,
-        );
+        const description = asOptionalString(args.description, 'description', 500);
         const date = asOptionalDate(args.date, 'date');
         const staffName = asOptionalString(args.staffName, 'staffName', 100);
-        const recurrenceRule = asOptionalEnum(
-          args.recurrenceRule,
-          'recurrenceRule',
-          RECURRENCE_RULES,
-        );
-        const isRecurring =
-          args.isRecurring === true || recurrenceRule !== undefined;
+        const recurrenceRule = asOptionalEnum(args.recurrenceRule, 'recurrenceRule', RECURRENCE_RULES);
+        const isRecurring = args.isRecurring === true || recurrenceRule !== undefined;
         const label = category.replace(/_/g, ' ').toLowerCase();
         const normalised = {
           type: config.type,
@@ -2422,27 +2672,16 @@ export class AssistantToolsService implements AssistantToolProvider {
       },
       commit: async (raw, ctx) => {
         const args = asRecord(raw);
-        return this.businessTransactions.createBusinessTransaction(
-          ctx.organizationId,
-          {
-            type: config.type,
-            category: asEnum(args.category, 'category', config.categories),
-            amount: asPositiveNumber(args.amount, 'amount'),
-            description: asOptionalString(
-              args.description,
-              'description',
-              500,
-            ),
-            staffName: asOptionalString(args.staffName, 'staffName', 100),
-            date: asOptionalDate(args.date, 'date'),
-            isRecurring: args.isRecurring === true,
-            recurrenceRule: asOptionalEnum(
-              args.recurrenceRule,
-              'recurrenceRule',
-              RECURRENCE_RULES,
-            ),
-          },
-        );
+        return this.businessTransactions.createBusinessTransaction(ctx.organizationId, {
+          type: config.type,
+          category: asEnum(args.category, 'category', config.categories),
+          amount: asPositiveNumber(args.amount, 'amount'),
+          description: asOptionalString(args.description, 'description', 500),
+          staffName: asOptionalString(args.staffName, 'staffName', 100),
+          date: asOptionalDate(args.date, 'date'),
+          isRecurring: args.isRecurring === true,
+          recurrenceRule: asOptionalEnum(args.recurrenceRule, 'recurrenceRule', RECURRENCE_RULES),
+        });
       },
     };
   }
@@ -2478,9 +2717,7 @@ export class AssistantToolsService implements AssistantToolProvider {
             where: { organizationId: ctx.organizationId, resolvedAt: null },
           });
           if (open === 0) {
-            throw new BadRequestException(
-              'There are no unresolved alerts to clear.',
-            );
+            throw new BadRequestException('There are no unresolved alerts to clear.');
           }
           return {
             args: { all: true },
@@ -2498,9 +2735,7 @@ export class AssistantToolsService implements AssistantToolProvider {
           select: { id: true, title: true, status: true },
         });
         if (!alert) {
-          throw new BadRequestException(
-            'No matching alert in this organization.',
-          );
+          throw new BadRequestException('No matching alert in this organization.');
         }
         if (alert.status === 'RESOLVED') {
           throw new BadRequestException('That alert is already resolved.');
@@ -2520,10 +2755,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         if (args.all === true) {
           return this.alerts.resolveAllAlerts(ctx.organizationId);
         }
-        return this.alerts.resolveAlert(
-          asString(args.alertId, 'alertId', 100),
-          ctx.organizationId,
-        );
+        return this.alerts.resolveAlert(asString(args.alertId, 'alertId', 100), ctx.organizationId);
       },
     };
   }
@@ -2532,8 +2764,7 @@ export class AssistantToolsService implements AssistantToolProvider {
   private sendEmail(): ToolDefinition {
     return {
       name: 'send_email',
-      description:
-        'Draft and send an email to a customer. Requires approval; opt-out consent is checked.',
+      description: 'Draft and send an email to a customer. Requires approval; opt-out consent is checked.',
       kind: 'communicate',
       riskLevel: 'high',
       roles: [AppRole.OWNER, AppRole.MANAGER],
@@ -2553,11 +2784,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         const recipient = asString(args.recipient, 'recipient', 200);
         const subject = asString(args.subject, 'subject', 200);
         const message = asString(args.message, 'message', 2000);
-        const recipientName = asOptionalString(
-          args.recipientName,
-          'recipientName',
-          100,
-        );
+        const recipientName = asOptionalString(args.recipientName, 'recipientName', 100);
         await this.comms.assertConsent(ctx.organizationId, 'EMAIL', recipient);
         return {
           args: { recipient, recipientName, subject, message },
@@ -2586,8 +2813,7 @@ export class AssistantToolsService implements AssistantToolProvider {
   private sendSms(): ToolDefinition {
     return {
       name: 'send_sms',
-      description:
-        'Draft and send an SMS to a customer. Requires approval; opt-out consent is checked.',
+      description: 'Draft and send an SMS to a customer. Requires approval; opt-out consent is checked.',
       kind: 'communicate',
       riskLevel: 'high',
       roles: [AppRole.OWNER, AppRole.MANAGER],
@@ -2605,11 +2831,7 @@ export class AssistantToolsService implements AssistantToolProvider {
         const args = asRecord(raw);
         const recipient = asString(args.recipient, 'recipient', 40);
         const message = asString(args.message, 'message', 1000);
-        const recipientName = asOptionalString(
-          args.recipientName,
-          'recipientName',
-          100,
-        );
+        const recipientName = asOptionalString(args.recipientName, 'recipientName', 100);
         await this.comms.assertConsent(ctx.organizationId, 'SMS', recipient);
         return {
           args: { recipient, recipientName, message },
@@ -2650,11 +2872,7 @@ export class AssistantToolsService implements AssistantToolProvider {
       },
       execute: async (raw, ctx) => {
         const args = asRecord(raw);
-        return this.unsupported.record(
-          ctx.organizationId,
-          ctx.userId,
-          asString(args.request, 'request', 1000),
-        );
+        return this.unsupported.record(ctx.organizationId, ctx.userId, asString(args.request, 'request', 1000));
       },
     };
   }

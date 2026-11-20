@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsPositive, Min, ValidateNested, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsNumber, Min, ValidateNested, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreatePackagingUnitDto } from './create-product.dto';
 
@@ -62,4 +62,12 @@ export class UpdateVariantDto {
   @IsOptional()
   @IsString()
   barcode?: string;
+
+  @IsOptional()
+  @IsString()
+  expiryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
 }

@@ -201,10 +201,9 @@ export class InventoryService {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 4000);
 
-      const response = await fetch(
-        `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(barcode)}`,
-        { signal: controller.signal },
-      );
+      const response = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(barcode)}`, {
+        signal: controller.signal,
+      });
       clearTimeout(timeout);
 
       if (!response.ok) return null;
@@ -220,7 +219,7 @@ export class InventoryService {
         name,
         brand: item.brand || null,
         category: item.category || null,
-        imageUrl: (item.images && item.images.length > 0) ? item.images[0] : null,
+        imageUrl: item.images && item.images.length > 0 ? item.images[0] : null,
       };
     } catch (error) {
       console.error('UPCitemdb lookup failed:', error);
@@ -249,7 +248,9 @@ export class InventoryService {
       source: CatalogSource;
     },
   ) {
-    const existing = await this.prisma.db.productCatalogEntry.findUnique({ where: { barcode } });
+    const existing = await this.prisma.db.productCatalogEntry.findUnique({
+      where: { barcode },
+    });
 
     if (!existing) {
       return this.prisma.db.productCatalogEntry.create({
@@ -290,14 +291,16 @@ export class InventoryService {
     if (dto.variants && dto.variants.length > 0) {
       variantsData = dto.variants;
     } else {
-      variantsData = [{
-        name: 'Default',
-        unit: dto.unit || 'units',
-        quantity: dto.quantity || 0,
-        reorderThreshold: dto.reorderThreshold || 0,
-        costPrice: dto.costPrice,
-        sellingPrice: dto.sellingPrice,
-      }];
+      variantsData = [
+        {
+          name: 'Default',
+          unit: dto.unit || 'units',
+          quantity: dto.quantity || 0,
+          reorderThreshold: dto.reorderThreshold || 0,
+          costPrice: dto.costPrice,
+          sellingPrice: dto.sellingPrice,
+        },
+      ];
     }
 
     const product = await this.prisma.db.product.create({
@@ -321,17 +324,18 @@ export class InventoryService {
               (v.quantity || 0) > (v.reorderThreshold || 0)
                 ? StockStatus.HEALTHY
                 : (v.quantity || 0) > 0
-                ? StockStatus.LOW
-                : StockStatus.OUT_OF_STOCK,
+                  ? StockStatus.LOW
+                  : StockStatus.OUT_OF_STOCK,
             barcode: v.barcode,
             expiryDate: this.parseExpiryDate(v.expiryDate),
             batchNumber: v.batchNumber,
             isComposite: v.isComposite || false,
             recipeLines: {
-              create: v.recipeLines?.map((rl: any) => ({
-                ingredientId: rl.ingredientId,
-                quantityUsed: rl.quantityUsed,
-              })) || [],
+              create:
+                v.recipeLines?.map((rl: any) => ({
+                  ingredientId: rl.ingredientId,
+                  quantityUsed: rl.quantityUsed,
+                })) || [],
             },
             packaging: {
               create:
@@ -365,6 +369,67 @@ export class InventoryService {
     return product;
   }
 
+  async addVariant(
+    productId: string,
+    variant: {
+      name: string;
+      unit: string;
+      measureValue?: number;
+      measureUnit?: string;
+      quantity: number;
+      reorderThreshold: number;
+      costPrice?: number;
+      sellingPrice?: number;
+      barcode?: string;
+      expiryDate?: string;
+      batchNumber?: string;
+      packaging?: Array<{
+        name: string;
+        quantityPerUnit: number;
+        barcode?: string;
+        costPrice?: number;
+        sellingPrice?: number;
+      }>;
+    },
+    organizationId: string,
+  ) {
+    const product = await this.prisma.db.product.findFirst({
+      where: { id: productId, organizationId },
+      select: { id: true },
+    });
+    if (!product) {
+      throw new NotFoundException('Product not found in this organization.');
+    }
+
+    return this.prisma.db.inventoryItem.create({
+      data: {
+        organization: { connect: { id: organizationId } },
+        product: { connect: { id: product.id } },
+        name: variant.name,
+        unit: variant.unit,
+        measureValue: variant.measureValue,
+        measureUnit: variant.measureUnit,
+        quantity: variant.quantity,
+        reorderThreshold: variant.reorderThreshold,
+        costPrice: variant.costPrice,
+        sellingPrice: variant.sellingPrice,
+        barcode: variant.barcode,
+        expiryDate: this.parseExpiryDate(variant.expiryDate),
+        batchNumber: variant.batchNumber,
+        status:
+          variant.quantity > variant.reorderThreshold
+            ? StockStatus.HEALTHY
+            : variant.quantity > 0
+              ? StockStatus.LOW
+              : StockStatus.OUT_OF_STOCK,
+        packaging: {
+          create: variant.packaging ?? [],
+        },
+      },
+      include: { packaging: true },
+    });
+  }
+
   async update(id: string, dto: UpdateProductDto, organizationId: string) {
     const product = await this.prisma.db.product.findFirst({
       where: { id, organizationId },
@@ -385,12 +450,7 @@ export class InventoryService {
     });
   }
 
-  async updateVariant(
-    variantId: string,
-    dto: UpdateVariantDto,
-    organizationId: string,
-    actorId?: string,
-  ) {
+  async updateVariant(variantId: string, dto: UpdateVariantDto, organizationId: string, actorId?: string) {
     const variant = await this.prisma.db.inventoryItem.findFirst({
       where: { id: variantId, organizationId },
     });
@@ -401,8 +461,7 @@ export class InventoryService {
 
     const beforeQty = Number(variant.quantity);
     const newQty = dto.quantity !== undefined ? dto.quantity : beforeQty;
-    const newThreshold =
-      dto.reorderThreshold !== undefined ? dto.reorderThreshold : Number(variant.reorderThreshold);
+    const newThreshold = dto.reorderThreshold !== undefined ? dto.reorderThreshold : Number(variant.reorderThreshold);
     const status: StockStatus =
       newQty > newThreshold ? StockStatus.HEALTHY : newQty > 0 ? StockStatus.LOW : StockStatus.OUT_OF_STOCK;
 
@@ -418,6 +477,8 @@ export class InventoryService {
         costPrice: dto.costPrice,
         sellingPrice: dto.sellingPrice,
         barcode: dto.barcode,
+        expiryDate: dto.expiryDate === undefined ? undefined : this.parseExpiryDate(dto.expiryDate),
+        batchNumber: dto.batchNumber,
         status,
         ...(dto.packaging && {
           packaging: {

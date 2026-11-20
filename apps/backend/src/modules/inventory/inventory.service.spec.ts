@@ -14,27 +14,33 @@ function build(opts: { catalog?: any; off?: any; upc?: any; productExists?: bool
       args?.where?.organizationId !== ORG ? null : { id: 'p1', organizationId: ORG },
     ),
     create: jest.fn(async ({ data }: any) => ({ id: 'p1', ...data })),
-    update: jest.fn(async ({ where, data }: any) => ({ id: where.id, ...data })),
+    update: jest.fn(async ({ where, data }: any) => ({
+      id: where.id,
+      ...data,
+    })),
   };
   const inventoryItem = {
+    create: jest.fn(async ({ data }: any) => ({ id: 'v2', ...data })),
     findFirst: jest.fn(async (args: any) =>
-      args?.where?.organizationId !== ORG
-        ? null
-        : { id: 'v1', organizationId: ORG, quantity: 10, reorderThreshold: 3 },
+      args?.where?.organizationId !== ORG ? null : { id: 'v1', organizationId: ORG, quantity: 10, reorderThreshold: 3 },
     ),
-    update: jest.fn(async ({ where, data }: any) => ({ id: where.id, ...data })),
+    update: jest.fn(async ({ where, data }: any) => ({
+      id: where.id,
+      ...data,
+    })),
   };
   const catalogEntry = {
     findUnique: jest.fn(async () => opts.catalog ?? null),
-    update: jest.fn(async ({ where, data }: any) => ({ barcode: where.barcode, ...data })),
+    update: jest.fn(async ({ where, data }: any) => ({
+      barcode: where.barcode,
+      ...data,
+    })),
     create: jest.fn(async ({ data }: any) => ({ ...data })),
   };
   const inventoryTransaction = {
     create: jest.fn(async ({ data }: any) => ({ id: 'tx_1', ...data })),
   };
-  const $transaction = jest.fn(async (operations: Promise<unknown>[]) =>
-    Promise.all(operations),
-  );
+  const $transaction = jest.fn(async (operations: Promise<unknown>[]) => Promise.all(operations));
   const db: any = {
     product,
     inventoryItem,
@@ -82,7 +88,14 @@ describe('InventoryService — listing and barcode lookup', () => {
 
   it('returns a catalog hit and bumps its confirmation count', async () => {
     const { service, catalogEntry } = build({
-      catalog: { barcode: '111', name: 'Shared Sugar', brand: 'B', category: 'dry', unit: 'kg', imageUrl: null },
+      catalog: {
+        barcode: '111',
+        name: 'Shared Sugar',
+        brand: 'B',
+        category: 'dry',
+        unit: 'kg',
+        imageUrl: null,
+      },
     });
 
     const result = await service.lookupExternalProduct('111');
@@ -100,16 +113,30 @@ describe('InventoryService — listing and barcode lookup', () => {
       ok: true,
       json: async () => ({
         status: 1,
-        product: { product_name: 'Oat Milk', brands: 'Bio, Other', categories: 'Dairy, Plant', image_front_url: 'x' },
+        product: {
+          product_name: 'Oat Milk',
+          brands: 'Bio, Other',
+          categories: 'Dairy, Plant',
+          image_front_url: 'x',
+        },
       }),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const result = await service.lookupExternalProduct('222');
 
-    expect(result).toMatchObject({ name: 'Oat Milk', brand: 'Bio', category: 'Dairy', source: 'OPEN_FOOD_FACTS' });
+    expect(result).toMatchObject({
+      name: 'Oat Milk',
+      brand: 'Bio',
+      category: 'Dairy',
+      source: 'OPEN_FOOD_FACTS',
+    });
     expect(catalogEntry.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ barcode: '222', name: 'Oat Milk', source: CatalogSource.OPEN_FOOD_FACTS }),
+      data: expect.objectContaining({
+        barcode: '222',
+        name: 'Oat Milk',
+        source: CatalogSource.OPEN_FOOD_FACTS,
+      }),
     });
   });
 
@@ -138,17 +165,29 @@ describe('InventoryService — shared catalog upsert', () => {
   it('creates an entry when the barcode is new', async () => {
     const { service, catalogEntry } = build();
 
-    await service.upsertCatalogEntry('444', { name: 'New Thing', source: CatalogSource.MANUAL });
+    await service.upsertCatalogEntry('444', {
+      name: 'New Thing',
+      source: CatalogSource.MANUAL,
+    });
 
     expect(catalogEntry.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ barcode: '444', name: 'New Thing', source: CatalogSource.MANUAL }),
+      data: expect.objectContaining({
+        barcode: '444',
+        name: 'New Thing',
+        source: CatalogSource.MANUAL,
+      }),
     });
   });
 
   it('never overwrites an existing entry from an external provider', async () => {
-    const { service, catalogEntry } = build({ catalog: { barcode: '444', name: 'Trusted' } });
+    const { service, catalogEntry } = build({
+      catalog: { barcode: '444', name: 'Trusted' },
+    });
 
-    await service.upsertCatalogEntry('444', { name: 'External Guess', source: CatalogSource.OPEN_FOOD_FACTS });
+    await service.upsertCatalogEntry('444', {
+      name: 'External Guess',
+      source: CatalogSource.OPEN_FOOD_FACTS,
+    });
 
     expect(catalogEntry.update).toHaveBeenCalledWith({
       where: { barcode: '444' },
@@ -157,7 +196,9 @@ describe('InventoryService — shared catalog upsert', () => {
   });
 
   it('lets a manual contribution overwrite the name of an existing entry', async () => {
-    const { service, catalogEntry } = build({ catalog: { barcode: '444', name: 'Old', brand: 'X' } });
+    const { service, catalogEntry } = build({
+      catalog: { barcode: '444', name: 'Old', brand: 'X' },
+    });
 
     await service.upsertCatalogEntry('444', {
       name: 'Corrected',
@@ -172,6 +213,58 @@ describe('InventoryService — shared catalog upsert', () => {
 });
 
 describe('InventoryService — variants and stock status', () => {
+  it('adds an independently tracked variant only to a product in the same org', async () => {
+    const { service, product, inventoryItem } = build();
+
+    await service.addVariant(
+      'p1',
+      {
+        name: '5 kg bag',
+        unit: 'bag',
+        measureValue: 5,
+        measureUnit: 'kg',
+        quantity: 4,
+        reorderThreshold: 1,
+        sellingPrice: 300,
+      },
+      ORG,
+    );
+
+    expect(product.findFirst).toHaveBeenCalledWith({
+      where: { id: 'p1', organizationId: ORG },
+      select: { id: true },
+    });
+    expect(inventoryItem.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          product: { connect: { id: 'p1' } },
+          name: '5 kg bag',
+          quantity: 4,
+          status: StockStatus.HEALTHY,
+        }),
+        include: { packaging: true },
+      }),
+    );
+  });
+
+  it('refuses to add a variant to a product in another org', async () => {
+    const { service, inventoryItem } = build();
+
+    await expect(
+      service.addVariant(
+        'p1',
+        {
+          name: '5 kg bag',
+          unit: 'bag',
+          quantity: 0,
+          reorderThreshold: 0,
+        },
+        OTHER_ORG,
+      ),
+    ).rejects.toThrow(NotFoundException);
+    expect(inventoryItem.create).not.toHaveBeenCalled();
+  });
+
   it('derives HEALTHY / LOW / OUT_OF_STOCK on the default variant', async () => {
     const { service, product } = build();
 
@@ -179,9 +272,7 @@ describe('InventoryService — variants and stock status', () => {
     await service.create({ name: 'Salt', unit: 'kg', quantity: 2, reorderThreshold: 3 }, ORG);
     await service.create({ name: 'Oil', unit: 'ltr', quantity: 0 }, ORG);
 
-    const statuses = product.create.mock.calls.map(
-      (call) => call[0].data.variants.create[0].status,
-    );
+    const statuses = product.create.mock.calls.map((call) => call[0].data.variants.create[0].status);
     expect(statuses).toEqual([StockStatus.HEALTHY, StockStatus.LOW, StockStatus.OUT_OF_STOCK]);
   });
 
@@ -227,9 +318,7 @@ describe('InventoryService — variants and stock status', () => {
   it('refuses to edit a variant in another org', async () => {
     const { service, inventoryItem } = build();
 
-    await expect(service.updateVariant('v1', { quantity: 1 }, OTHER_ORG)).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(service.updateVariant('v1', { quantity: 1 }, OTHER_ORG)).rejects.toThrow(NotFoundException);
     expect(inventoryItem.update).not.toHaveBeenCalled();
   });
 
@@ -238,7 +327,9 @@ describe('InventoryService — variants and stock status', () => {
 
     await service.deleteVariant('v1', ORG);
 
-    expect(inventoryItem.update.mock.calls[0][0].data).toEqual({ isActive: false });
+    expect(inventoryItem.update.mock.calls[0][0].data).toEqual({
+      isActive: false,
+    });
   });
 
   it('refuses to delete a variant in another org', async () => {

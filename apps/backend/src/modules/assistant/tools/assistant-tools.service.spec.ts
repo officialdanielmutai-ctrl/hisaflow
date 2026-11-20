@@ -12,10 +12,7 @@ const CTX = {
   isImpersonated: false,
 } satisfies ToolContext;
 
-function inRange(
-  value: unknown,
-  range?: { gte?: Date; lte?: Date },
-): boolean {
+function inRange(value: unknown, range?: { gte?: Date; lte?: Date }): boolean {
   if (!(value instanceof Date) || !range) return true;
   if (range.gte && value < range.gte) return false;
   if (range.lte && value > range.lte) return false;
@@ -24,6 +21,7 @@ function inRange(
 
 interface BuildOptions {
   items?: Array<Record<string, unknown>>;
+  products?: Array<Record<string, unknown>>;
   transactions?: Array<Record<string, unknown>>;
   businessTransactions?: Array<Record<string, unknown>>;
   credits?: Array<Record<string, unknown>>;
@@ -44,6 +42,9 @@ function build(options: BuildOptions = {}) {
   const members = options.members ?? [];
   const notesList = options.notesList ?? [];
   const db = {
+    product: {
+      findMany: jest.fn(async () => options.products ?? []),
+    },
     inventoryItem: {
       findMany: jest.fn(async () => items),
       findFirst: jest.fn(async () => items[0] ?? null),
@@ -66,40 +67,27 @@ function build(options: BuildOptions = {}) {
       ),
     },
     businessTransaction: {
-      findMany: jest.fn(
-        async (query: {
-          where?: { type?: string; date?: { gte?: Date; lte?: Date } };
-        }) =>
-          businessTxRecords.filter((tx) => {
-            const where = query?.where ?? {};
-            if (where.type && tx.type !== where.type) return false;
-            return inRange(tx.date, where.date);
-          }),
+      findMany: jest.fn(async (query: { where?: { type?: string; date?: { gte?: Date; lte?: Date } } }) =>
+        businessTxRecords.filter((tx) => {
+          const where = query?.where ?? {};
+          if (where.type && tx.type !== where.type) return false;
+          return inRange(tx.date, where.date);
+        }),
       ),
     },
     creditRecord: {
       findMany: jest.fn(async () => credits),
     },
     alert: {
-      findMany: jest.fn(async () =>
-        alerts.filter((alert) => alert.status === 'UNRESOLVED'),
-      ),
+      findMany: jest.fn(async () => alerts.filter((alert) => alert.status === 'UNRESOLVED')),
       findFirst: jest.fn(
-        async (query: { where?: { id?: string } }) =>
-          alerts.find((alert) => alert.id === query?.where?.id) ?? null,
+        async (query: { where?: { id?: string } }) => alerts.find((alert) => alert.id === query?.where?.id) ?? null,
       ),
-      count: jest.fn(
-        async () => alerts.filter((alert) => alert.status === 'UNRESOLVED').length,
-      ),
+      count: jest.fn(async () => alerts.filter((alert) => alert.status === 'UNRESOLVED').length),
     },
     taxInvoiceRecord: {
-      findMany: jest.fn(
-        async (query: {
-          where?: { createdAt?: { gte?: Date; lte?: Date } };
-        }) =>
-          taxRecords.filter((record) =>
-            inRange(record.createdAt, query?.where?.createdAt),
-          ),
+      findMany: jest.fn(async (query: { where?: { createdAt?: { gte?: Date; lte?: Date } } }) =>
+        taxRecords.filter((record) => inRange(record.createdAt, query?.where?.createdAt)),
       ),
     },
     taxRegistration: {
@@ -116,6 +104,7 @@ function build(options: BuildOptions = {}) {
   const transactions = { create: jest.fn(async () => ({ id: 'tx_1' })) };
   const inventory = {
     create: jest.fn(async () => ({ id: 'product_1' })),
+    addVariant: jest.fn(async () => ({ id: 'variant_1' })),
     updateVariant: jest.fn(async () => ({ id: 'i1' })),
     deleteVariant: jest.fn(async () => ({ id: 'i1', isActive: false })),
   };
@@ -212,7 +201,13 @@ describe('AssistantToolsService.get_low_stock', () => {
           quantity: 2,
           reorderThreshold: 5,
         },
-        { id: 'i2', name: 'Sugar', unit: 'kg', quantity: 20, reorderThreshold: 5 },
+        {
+          id: 'i2',
+          name: 'Sugar',
+          unit: 'kg',
+          quantity: 20,
+          reorderThreshold: 5,
+        },
       ],
     });
     const tool = byName('get_low_stock');
@@ -325,10 +320,7 @@ describe('AssistantToolsService.search_inventory', () => {
       ],
     });
 
-    const result = await byName('search_inventory').execute?.(
-      { query: 'Sugar' },
-      CTX,
-    );
+    const result = await byName('search_inventory').execute?.({ query: 'Sugar' }, CTX);
 
     expect(db.inventoryItem.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -345,9 +337,7 @@ describe('AssistantToolsService.search_inventory', () => {
         }),
       }),
     );
-    expect(result).toEqual([
-      { id: 'i1', name: 'Sugar', unit: 'kg bag', quantity: 10 },
-    ]);
+    expect(result).toEqual([{ id: 'i1', name: 'Sugar', unit: 'kg bag', quantity: 10 }]);
   });
 });
 
@@ -370,19 +360,14 @@ describe('AssistantToolsService.create_note', () => {
   it('rejects an empty title', () => {
     const { byName } = build();
     const tool = byName('create_note');
-    expect(() => tool.buildProposal?.({ title: '   ' }, CTX)).toThrow(
-      BadRequestException,
-    );
+    expect(() => tool.buildProposal?.({ title: '   ' }, CTX)).toThrow(BadRequestException);
   });
 
   it('commits through NotesService with the server identity', async () => {
     const { byName, notes } = build();
     const tool = byName('create_note');
 
-    await tool.commit?.(
-      { title: 'Restock', importance: 'HIGH' },
-      CTX,
-    );
+    await tool.commit?.({ title: 'Restock', importance: 'HIGH' }, CTX);
 
     expect(notes.create).toHaveBeenCalledWith('org_1', 'user_1', {
       title: 'Restock',
@@ -395,10 +380,7 @@ describe('AssistantToolsService.create_note', () => {
     const { byName, notes } = build();
     const tool = byName('create_note');
 
-    const draft = await tool.buildProposal?.(
-      { content: 'Call the plumber tomorrow\nAlso check the water tank' },
-      CTX,
-    );
+    const draft = await tool.buildProposal?.({ content: 'Call the plumber tomorrow\nAlso check the water tank' }, CTX);
 
     expect(draft?.args.title).toBe('Call the plumber tomorrow');
     expect(draft?.args.content).toContain('Also check the water tank');
@@ -421,16 +403,10 @@ describe('AssistantToolsService.create_note', () => {
     const { byName, notes } = build();
     const tool = byName('create_note');
 
-    const draft = await tool.buildProposal?.(
-      { title: 'Call plumber', dueDate: '2026-10-20T09:00:00Z' },
-      CTX,
-    );
+    const draft = await tool.buildProposal?.({ title: 'Call plumber', dueDate: '2026-10-20T09:00:00Z' }, CTX);
     expect(draft?.args.dueDate).toBe('2026-10-20T09:00:00.000Z');
 
-    await tool.commit?.(
-      { title: 'Call plumber', dueDate: '2026-10-20T09:00:00Z' },
-      CTX,
-    );
+    await tool.commit?.({ title: 'Call plumber', dueDate: '2026-10-20T09:00:00Z' }, CTX);
     expect(notes.create).toHaveBeenCalledWith(
       'org_1',
       'user_1',
@@ -446,10 +422,7 @@ describe('AssistantToolsService.record_sale', () => {
     });
     const tool = byName('record_sale');
 
-    const draft = await tool.buildProposal?.(
-      { itemId: 'i1', quantity: 3 },
-      CTX,
-    );
+    const draft = await tool.buildProposal?.({ itemId: 'i1', quantity: 3 }, CTX);
 
     expect(db.inventoryItem.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -476,10 +449,7 @@ describe('AssistantToolsService.record_sale', () => {
       ],
     });
 
-    const draft = await byName('record_sale').buildProposal?.(
-      { itemName: 'Unga', quantity: 3 },
-      CTX,
-    );
+    const draft = await byName('record_sale').buildProposal?.({ itemName: 'Unga', quantity: 3 }, CTX);
 
     expect(db.inventoryItem.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -513,31 +483,34 @@ describe('AssistantToolsService.record_sale', () => {
       ],
     });
 
-    await expect(
-      byName('record_sale').buildProposal?.(
-        { itemName: 'Unga', quantity: 1 },
-        CTX,
-      ),
-    ).rejects.toThrow('Ask which one to sell.');
+    await expect(byName('record_sale').buildProposal?.({ itemName: 'Unga', quantity: 1 }, CTX)).rejects.toThrow(
+      'Ask which one to sell.',
+    );
   });
 
   it('refuses an item outside the organization', async () => {
     const { byName } = build({ items: [] });
     const tool = byName('record_sale');
-    await expect(
-      tool.buildProposal?.({ itemId: 'other_org_item', quantity: 1 }, CTX),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(tool.buildProposal?.({ itemId: 'other_org_item', quantity: 1 }, CTX)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('refuses to sell a composite menu item directly', async () => {
     const { byName } = build({
       items: [
-        { id: 'i1', name: 'Biryani', unit: 'plate', quantity: 0, isComposite: true },
+        {
+          id: 'i1',
+          name: 'Biryani',
+          unit: 'plate',
+          quantity: 0,
+          isComposite: true,
+        },
       ],
     });
-    await expect(
-      byName('record_sale').buildProposal?.({ itemId: 'i1', quantity: 1 }, CTX),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(byName('record_sale').buildProposal?.({ itemId: 'i1', quantity: 1 }, CTX)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('commits through TransactionsService as a SALE', async () => {
@@ -564,10 +537,7 @@ describe('AssistantToolsService.record_purchase / record_wastage', () => {
     const { byName } = build({
       items: [{ id: 'i1', name: 'Sugar', unit: 'kg', quantity: 10 }],
     });
-    const draft = await byName('record_purchase').buildProposal?.(
-      { itemId: 'i1', quantity: 5 },
-      CTX,
-    );
+    const draft = await byName('record_purchase').buildProposal?.({ itemId: 'i1', quantity: 5 }, CTX);
 
     expect(draft?.args).toEqual({ itemId: 'i1', quantity: 5 });
     expect(draft?.diff).toEqual({
@@ -582,10 +552,7 @@ describe('AssistantToolsService.record_purchase / record_wastage', () => {
     });
     const tool = byName('record_wastage');
 
-    const draft = await tool.buildProposal?.(
-      { itemId: 'i1', quantity: 2, wastageReason: 'expired' },
-      CTX,
-    );
+    const draft = await tool.buildProposal?.({ itemId: 'i1', quantity: 2, wastageReason: 'expired' }, CTX);
 
     expect(draft?.args).toEqual({
       itemId: 'i1',
@@ -597,10 +564,7 @@ describe('AssistantToolsService.record_purchase / record_wastage', () => {
       quantity: { before: 10, after: 8 },
     });
 
-    await tool.commit?.(
-      { itemId: 'i1', quantity: 2, wastageReason: 'expired' },
-      CTX,
-    );
+    await tool.commit?.({ itemId: 'i1', quantity: 2, wastageReason: 'expired' }, CTX);
     expect(transactions.create).toHaveBeenCalledWith(
       { itemId: 'i1', type: 'WASTAGE', quantity: 2, note: 'expired' },
       'org_1',
@@ -615,7 +579,12 @@ describe('AssistantToolsService.create_inventory_item', () => {
     const tool = byName('create_inventory_item');
 
     const draft = await tool.buildProposal?.(
-      { name: '  Cooking Oil ', quantity: 5, unit: 'litres', sellingPrice: 300 },
+      {
+        name: '  Cooking Oil ',
+        quantity: 5,
+        unit: 'litres',
+        sellingPrice: 300,
+      },
       CTX,
     );
 
@@ -668,6 +637,165 @@ describe('AssistantToolsService.create_inventory_item', () => {
       'org_1',
     );
   });
+
+  it('creates multiple independent variants with their own stock and prices', async () => {
+    const { byName, inventory } = build();
+    const tool = byName('create_inventory_item');
+    const draft = await tool.buildProposal?.(
+      {
+        name: 'Unga',
+        category: 'Flour',
+        variants: [
+          {
+            name: '2 kg bag',
+            unit: 'bag',
+            measureValue: 2,
+            measureUnit: 'kg',
+            quantity: 10,
+            reorderThreshold: 2,
+            costPrice: 100,
+            sellingPrice: 130,
+          },
+          {
+            name: '5 kg bag',
+            unit: 'bag',
+            measureValue: 5,
+            measureUnit: 'kg',
+            quantity: 4,
+            reorderThreshold: 1,
+            costPrice: 230,
+            sellingPrice: 280,
+          },
+        ],
+      },
+      CTX,
+    );
+
+    expect(draft?.summary).toContain('2 variants');
+    expect(draft?.args.variants).toHaveLength(2);
+    await tool.commit?.(draft?.args ?? {}, CTX);
+    expect(inventory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Unga',
+        category: 'Flour',
+        variants: [
+          expect.objectContaining({
+            name: '2 kg bag',
+            quantity: 10,
+            sellingPrice: 130,
+          }),
+          expect.objectContaining({
+            name: '5 kg bag',
+            quantity: 4,
+            sellingPrice: 280,
+          }),
+        ],
+      }),
+      'org_1',
+    );
+  });
+
+  it('rejects duplicate variant names', () => {
+    const { byName } = build();
+    expect(() =>
+      byName('create_inventory_item').buildProposal?.(
+        {
+          name: 'Unga',
+          variants: [
+            { name: '5 kg', unit: 'bag' },
+            { name: '5 KG', unit: 'bag' },
+          ],
+        },
+        CTX,
+      ),
+    ).toThrow('Variant names must be unique');
+  });
+});
+
+describe('AssistantToolsService.add_inventory_variant', () => {
+  it('resolves an org-scoped product and proposes a new stock variant', async () => {
+    const { byName, db, inventory } = build({
+      products: [{ id: 'product_1', name: 'Unga', variants: [] }],
+    });
+    const tool = byName('add_inventory_variant');
+    const draft = await tool.buildProposal?.(
+      {
+        productName: 'Unga',
+        name: '5 kg bag',
+        unit: 'bag',
+        measureValue: 5,
+        measureUnit: 'kg',
+        quantity: 0,
+        reorderThreshold: 2,
+        sellingPrice: 300,
+        packaging: [{ name: 'Carton', quantityPerUnit: 6 }],
+      },
+      CTX,
+    );
+
+    expect(db.product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          organizationId: 'org_1',
+          name: { equals: 'Unga', mode: 'insensitive' },
+        },
+      }),
+    );
+    expect(draft?.summary).toContain('Add 5 kg bag variant to Unga');
+    await tool.commit?.(draft?.args ?? {}, CTX);
+    expect(inventory.addVariant).toHaveBeenCalledWith(
+      'product_1',
+      expect.objectContaining({
+        name: '5 kg bag',
+        unit: 'bag',
+        measureValue: 5,
+        measureUnit: 'kg',
+        sellingPrice: 300,
+        packaging: [expect.objectContaining({ name: 'Carton', quantityPerUnit: 6 })],
+      }),
+      'org_1',
+    );
+  });
+
+  it('does not propose a variant when the parent product is missing or ambiguous', async () => {
+    const missing = build();
+    await expect(
+      missing
+        .byName('add_inventory_variant')
+        .buildProposal?.({ productName: 'Missing', name: '5 kg', unit: 'bag' }, CTX),
+    ).rejects.toThrow('Create the product first');
+
+    const ambiguous = build({
+      products: [
+        { id: 'p1', name: 'Unga' },
+        { id: 'p2', name: 'Unga' },
+      ],
+    });
+    await expect(
+      ambiguous
+        .byName('add_inventory_variant')
+        .buildProposal?.({ productName: 'Unga', name: '5 kg', unit: 'bag' }, CTX),
+    ).rejects.toThrow('identify the correct product');
+  });
+
+  it('rejects adding a duplicate active variant', async () => {
+    const { byName } = build({
+      products: [
+        {
+          id: 'product_1',
+          name: 'Unga',
+          variants: [{ name: '5 KG BAG' }],
+        },
+      ],
+    });
+
+    await expect(
+      byName('add_inventory_variant').buildProposal?.(
+        { productName: 'Unga', name: '5 kg bag', unit: 'bag' },
+        CTX,
+      ),
+    ).rejects.toThrow('already exists');
+  });
 });
 
 describe('AssistantToolsService.update_inventory_item', () => {
@@ -691,13 +819,77 @@ describe('AssistantToolsService.update_inventory_item', () => {
     expect(db.inventoryItem.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'i1', organizationId: 'org_1' } }),
     );
-    expect(draft?.args).toEqual({ itemId: 'i1', updates: { sellingPrice: 150 } });
+    expect(draft?.args).toEqual({
+      itemId: 'i1',
+      updates: { sellingPrice: 150 },
+    });
 
     await tool.commit?.(draft?.args ?? {}, CTX);
     expect(inventory.updateVariant).toHaveBeenCalledWith(
       'i1',
       expect.objectContaining({ sellingPrice: 150 }),
       'org_1',
+      'user_1',
+    );
+  });
+
+  it('proposes variant metadata and stock edits, with stock quantity marked medium risk', async () => {
+    const { byName, inventory } = build({
+      items: [
+        {
+          id: 'i1',
+          name: 'Default',
+          unit: 'bag',
+          quantity: 4,
+          reorderThreshold: 1,
+          product: { name: 'Unga' },
+          measureValue: 5,
+          measureUnit: 'kg',
+          barcode: '12345',
+          batchNumber: 'B1',
+          expiryDate: new Date('2027-01-01T00:00:00.000Z'),
+          packaging: [{ name: 'Carton', quantityPerUnit: 6 }],
+        },
+      ],
+    });
+    const tool = byName('update_inventory_item');
+    const draft = await tool.buildProposal?.(
+      {
+        itemId: 'i1',
+        quantity: 2,
+        measureValue: 10,
+        measureUnit: 'kg',
+        barcode: '54321',
+        expiryDate: '2028-02-01',
+        batchNumber: 'B2',
+        packaging: [{ name: 'Case', quantityPerUnit: 12 }],
+      },
+      CTX,
+    );
+
+    expect(draft?.riskLevel).toBe('medium');
+    expect(draft?.summary).toContain('Update Unga');
+    expect(draft?.diff).toHaveProperty('item', 'Unga');
+    expect(draft?.args.updates).toMatchObject({
+      quantity: 2,
+      measureValue: 10,
+      measureUnit: 'kg',
+      barcode: '54321',
+      expiryDate: expect.any(String),
+      batchNumber: 'B2',
+      packaging: [{ name: 'Case', quantityPerUnit: 12 }],
+    });
+    await tool.commit?.(draft?.args ?? {}, CTX);
+    expect(inventory.updateVariant).toHaveBeenCalledWith(
+      'i1',
+      expect.objectContaining({
+        quantity: 2,
+        measureValue: 10,
+        barcode: '54321',
+        packaging: [{ name: 'Case', quantityPerUnit: 12 }],
+      }),
+      'org_1',
+      'user_1',
     );
   });
 
@@ -705,9 +897,9 @@ describe('AssistantToolsService.update_inventory_item', () => {
     const { byName } = build({
       items: [{ id: 'i1', name: 'Sugar', unit: 'kg' }],
     });
-    await expect(
-      byName('update_inventory_item').buildProposal?.({ itemId: 'i1' }, CTX),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(byName('update_inventory_item').buildProposal?.({ itemId: 'i1' }, CTX)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });
 
@@ -717,15 +909,15 @@ describe('AssistantToolsService.send_email / send_sms', () => {
     const tool = byName('send_email');
 
     const draft = await tool.buildProposal?.(
-      { recipient: 'Customer@Example.com', subject: 'Statement', message: 'Hello' },
+      {
+        recipient: 'Customer@Example.com',
+        subject: 'Statement',
+        message: 'Hello',
+      },
       CTX,
     );
 
-    expect(comms.assertConsent).toHaveBeenCalledWith(
-      'org_1',
-      'EMAIL',
-      'Customer@Example.com',
-    );
+    expect(comms.assertConsent).toHaveBeenCalledWith('org_1', 'EMAIL', 'Customer@Example.com');
     expect(draft?.args).toMatchObject({
       recipient: 'Customer@Example.com',
       subject: 'Statement',
@@ -747,21 +939,12 @@ describe('AssistantToolsService.send_email / send_sms', () => {
     const { byName, comms } = build();
     const tool = byName('send_sms');
 
-    const draft = await tool.buildProposal?.(
-      { recipient: '0712345678', message: 'Your balance is KES 500' },
-      CTX,
-    );
+    const draft = await tool.buildProposal?.({ recipient: '0712345678', message: 'Your balance is KES 500' }, CTX);
 
-    expect(comms.assertConsent).toHaveBeenCalledWith(
-      'org_1',
-      'SMS',
-      '0712345678',
-    );
+    expect(comms.assertConsent).toHaveBeenCalledWith('org_1', 'SMS', '0712345678');
 
     await tool.commit?.(draft?.args ?? {}, CTX);
-    expect(comms.send).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: 'SMS', recipient: '0712345678' }),
-    );
+    expect(comms.send).toHaveBeenCalledWith(expect.objectContaining({ channel: 'SMS', recipient: '0712345678' }));
   });
 });
 
@@ -774,11 +957,7 @@ describe('AssistantToolsService.log_unsupported_intent', () => {
       CTX,
     );
 
-    expect(unsupported.record).toHaveBeenCalledWith(
-      'org_1',
-      'user_1',
-      'file my KRA return for last month',
-    );
+    expect(unsupported.record).toHaveBeenCalledWith('org_1', 'user_1', 'file my KRA return for last month');
     expect(result).toEqual({ recorded: true });
   });
 });

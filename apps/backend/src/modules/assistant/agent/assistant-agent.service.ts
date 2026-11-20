@@ -7,12 +7,7 @@ import { toPublicProposal } from '../proposal/public-proposal';
 import type { PublicProposal } from '../proposal/public-proposal';
 import { AssistantProviderService } from '../provider/assistant-provider.service';
 import type { ToolContext } from '../tool.types';
-import type {
-  AgentCompletion,
-  AgentMessage,
-  AgentResult,
-  AgentToolCall,
-} from './agent.types';
+import type { AgentCompletion, AgentMessage, AgentResult, AgentToolCall } from './agent.types';
 
 export const MAX_TOOL_CALLS_PER_TURN = 8;
 
@@ -42,15 +37,8 @@ export class AssistantAgentService {
     message: string,
     history: AgentMessage[] = [],
   ): Promise<AgentResult> {
-    const ctx = await this.context.build(
-      organizationId,
-      userId,
-      isImpersonated,
-    );
-    const available = await this.policy.filterTools(
-      this.registry.listFor(ctx),
-      ctx,
-    );
+    const ctx = await this.context.build(organizationId, userId, isImpersonated);
+    const available = await this.policy.filterTools(this.registry.listFor(ctx), ctx);
     const schemas = this.registry.toSchemas(available);
 
     const messages: AgentMessage[] = [
@@ -78,14 +66,9 @@ export class AssistantAgentService {
       } catch (error) {
         // Never let a provider/gateway failure become a 500. Keep any
         // proposals already collected and return an honest, retryable reply.
-        this.logger.error(
-          `Assistant turn failed: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
+        this.logger.error(`Assistant turn failed: ${error instanceof Error ? error.message : String(error)}`);
         return {
-          reply:
-            "I couldn't reach the AI service just now. Please try again in a moment.",
+          reply: "I couldn't reach the AI service just now. Please try again in a moment.",
           toolCalls: collected,
           proposals: proposed,
           capped: false,
@@ -150,8 +133,7 @@ export class AssistantAgentService {
             role: 'tool',
             toolCallId: call.id,
             content: JSON.stringify({
-              error:
-                error instanceof Error ? error.message : 'Tool execution failed.',
+              error: error instanceof Error ? error.message : 'Tool execution failed.',
             }),
           });
         }
@@ -194,6 +176,8 @@ export class AssistantAgentService {
       'For a sale by product name, first call search_inventory using the exact name the user said. If there is one matching active item, call record_sale with its itemId and the requested quantity, then present the proposal; if no item matches or multiple variants match, ask the user instead of guessing. Never say a sale is done before approval.',
       'For a general inventory question, use the product name returned by list_inventory/search_inventory, not the variant label "Default". Keep the variant unit and quantity attached to the product that owns that variant.',
       'The user says "add a new item, 20 bags of unga" — call create_inventory_item with name, unit and quantity; to add stock to an existing item call record_purchase. Present the proposal; never say it is done before approval.',
+      'When creating a product sold in multiple sizes/forms, use create_inventory_item with one distinct variants entry per size/form and its own unit, quantity, reorder level and prices. For an existing product, use add_inventory_variant only when the user explicitly asks to add a size/form. Never create a variant just to make a requested sale fit; if the requested unit/size is not in stock, explain the available variants and ask what the user wants.',
+      'Use update_inventory_item for requested variant edits (including stock quantity, measure, prices, barcode, expiry/batch data and packaging). Stock quantity corrections must go through this approved tool or adjust_stock so they are ledgered; never silently alter inventory.',
       // Sales reporting, catalogue advice and broader business questions.
       'For any sales question, call get_sales_report. Never say you cannot report sales and never estimate a number without the tool. Use get_financial_breakdown for detailed room, plan or fee revenue.',
       'For a question like "what should I stock?", "what is selling?", "what should I drop?" or "how can I improve profit?", call analyse_catalogue (and get_sales_report or get_active_alerts when relevant) first. Give at most three prioritised recommendations, each with the evidence from the tool and a concrete next action.',
