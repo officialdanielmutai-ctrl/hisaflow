@@ -13,9 +13,15 @@ This document records how the marketing site and the authenticated app are hoste
 | -------------- | -------------------------------------------- | --------------------------------------------------------- |
 | Marketing site | `hisaflow.com` (apex)                      | Landing page, `/legal/*`, `sitemap.xml`, `robots.txt`     |
 | App            | `app.hisaflow.com`                         | Dashboard, onboarding, paywall, settings, sign-in/sign-up |
+| Billing entry  | `billing.hisaflow.com`                     | Redirects to the authenticated app paywall                |
+| Admin panel    | `admin.hisaflow.com`                       | Internal operations panel                                 |
 | Backend API    | `api.hisaflow.com` (or the platform's URL) | `NEXT_PUBLIC_API_URL`                                     |
 
-`www.hisaflow.com` redirects to the apex. The apex and the app subdomain are **two domains on one deployment**; host-aware routing in `apps/frontend/middleware.ts` decides what each host may serve.
+`www.hisaflow.com` redirects to the apex. The apex, app, and billing entry are
+attached to the frontend deployment. Host-aware routing in
+`apps/frontend/middleware.ts` keeps marketing and authenticated app paths on
+their canonical hosts. The admin panel is a separate Vercel project rooted at
+`apps/admin`; its access is protected by the admin app's Clerk authorization.
 
 **Current production endpoints (2026-11-13).** `hisaflow.com` / `www.hisaflow.com`
 serve the Vercel deployment; the authenticated app routes are protected by Clerk
@@ -30,15 +36,27 @@ The production gateway is the Cloud Run service below.
 1. Create a Vercel project from the repo.
 2. Set **Root Directory** to `apps/frontend` so Vercel installs from the workspace root and builds the Next.js app.
 3. Framework preset: **Next.js** (default). Build command `pnpm build`, output handled by the framework.
-4. Add both domains to the project (Project → Settings → Domains):
+4. Add these domains to the frontend project (Project → Settings → Domains):
    - `hisaflow.com` (primary)
    - `www.hisaflow.com` → redirect to `hisaflow.com`
    - `app.hisaflow.com`
-5. DNS (at the registrar, `.co.ke`):
-   - `A` `@` → Vercel's `76.76.21.21` (or the value Vercel shows)
-   - `CNAME` `www` → `cname.vercel-dns.com`
-   - `CNAME` `app` → `cname.vercel-dns.com`
+   - `billing.hisaflow.com`
+5. Create a second Vercel project linked to the same repository with Root
+   Directory `apps/admin`, framework preset **Next.js**, and production branch
+   `main`. Add `admin.hisaflow.com` to that project.
+6. DNS (the domain currently uses Cloudflare nameservers; add records in the
+   Cloudflare DNS zone, not Vercel DNS):
+   - Keep the existing apex `A` record pointing at Vercel's current target.
+   - `CNAME` `www` → `cname.vercel-dns.com` (existing; redirects to apex)
+   - `CNAME` `app` → `37f526e2cef358b0.vercel-dns-017.com`
+   - `CNAME` `billing` → `37f526e2cef358b0.vercel-dns-017.com`
+   - `CNAME` `admin` → `c2d8306d675aaeca.vercel-dns-017.com`
    - `CNAME` `api` → the backend host
+
+   Use **DNS only** (disable Cloudflare proxy/orange-cloud mode) for these
+   Vercel records so Vercel can validate the domains and provision TLS. The
+   targets above are the current Vercel recommendations for the attached
+   projects; re-check them in Vercel if a domain is moved to another project.
 
 Preview deployments keep their `*.vercel.app` host. Because `NEXT_PUBLIC_APP_URL` is compared against the request host, host routing is a no-op on preview hosts and on `localhost`.
 
@@ -150,7 +168,21 @@ Set these for **Production** (and, where sensible, Preview) in the host dashboar
 
 Secrets (`CLERK_SECRET_KEY`, database URLs) are **never** committed. `.env.local` is gitignored.
 
-### 3.1 Backend environment (NestJS / billing)
+### 3.1 Admin project environment
+
+Set these on the separate `apps/admin` Vercel project for Production:
+
+| Variable | Production value | Notes |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | Same backend origin as the frontend | Admin API requests |
+| `NEXT_PUBLIC_CUSTOMER_APP_URL` | `https://app.hisaflow.com` | Destination for customer-app links |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` | Same Clerk production application as the frontend | Admin sign-in |
+
+The backend already allows `https://admin.hisaflow.com` as a CORS origin in
+`apps/backend/src/main.ts`; no additional CORS environment variable is needed
+for this hostname.
+
+### 3.2 Backend environment (NestJS / billing)
 
 Set these on the backend host; they are **not** `NEXT_PUBLIC_*` and must never be shipped to the browser.
 
@@ -160,7 +192,7 @@ Set these on the backend host; they are **not** `NEXT_PUBLIC_*` and must never b
 | `PAYSTACK_PUBLIC_KEY` | live public key | Stored for reference/future inline checkout; the current redirect flow does not need it client-side |
 | `PAYSTACK_BASE_URL` | `https://api.paystack.co` | Live API origin |
 | `FRONTEND_URL` | `https://app.hisaflow.com` | CORS origin for the customer app |
-| `ADMIN_URL` | `https://admin.hisaflow.com` | Optional CORS origin for the admin app |
+| `ADMIN_URL` | `https://admin.hisaflow.com` | Optional additional CORS origin; the production admin origin is already allowed in code |
 | `CORS_ORIGINS` | comma-separated origins | Optional extra allowed origins (for example a preview domain) |
 | `LITELLM_BASE_URL` | `https://<gateway-service>/v1` | OpenAI-compatible base URL; include `/v1` |
 | `LITELLM_MASTER_KEY` | same value as the gateway | Shared bearer key for gateway calls |
@@ -187,6 +219,7 @@ Active only when `NEXT_PUBLIC_APP_URL` is set and differs from `NEXT_PUBLIC_SITE
 | Host          | Path                                                                                                    | Result                                 |
 | ------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
 | `www.*`       | any                                                                                                     | `308` to apex, same path               |
+| `billing.*`   | any                                                                                                     | redirect to app `/paywall`, preserve query |
 | app subdomain | `/`                                                                                                     | redirect to `/dashboard`               |
 | app subdomain | `/legal/*`, `/sitemap.xml`                                                                              | redirect to the apex                   |
 | app subdomain | `/robots.txt`                                                                                           | `Disallow: /` (the app is not indexed) |
@@ -204,11 +237,17 @@ Authenticated visitors landing on the apex `/` still go to the dashboard, now di
 
 ## 6. Release checklist
 
-1. `pnpm --filter frontend build` and `pnpm --filter frontend test` are green locally.
+1. `pnpm --filter frontend build`, `pnpm --filter frontend test`, and the
+   corresponding `admin` checks are green locally.
 2. CI (`typecheck`, `lint`, tests, `build`) is green on the release branch / PR.
 3. Production env vars from Section 3 are set on the host.
-4. Both domains resolve and show valid TLS certificates.
-5. `https://hisaflow.com/` renders the landing page; `https://app.hisaflow.com/` lands on `/dashboard`.
-6. `https://hisaflow.com/sitemap.xml` and `/robots.txt` return the apex origin.
-7. Authenticated `/` on the apex redirects to the app subdomain.
-8. Lighthouse mobile meets the Section 5.4 budget on the marketing URL.
+4. The frontend and admin Vercel projects are linked to the correct app roots,
+   production environment variables are set, and GitHub CI is green.
+5. DNS records resolve and all four HTTPS hosts have valid TLS certificates.
+6. `https://hisaflow.com/` renders the landing page;
+   `https://app.hisaflow.com/` lands on `/dashboard`;
+   `https://billing.hisaflow.com/` redirects to `/paywall` on the app host; and
+   `https://admin.hisaflow.com/` renders the internal sign-in.
+7. `https://hisaflow.com/sitemap.xml` and `/robots.txt` return the apex origin.
+8. Authenticated `/` on the apex redirects to the app subdomain.
+9. Lighthouse mobile meets the Section 5.4 budget on the marketing URL.

@@ -68,6 +68,12 @@ export default E2E_AUTH_BYPASS
   const host = request.headers.get('host');
 
   if (SPLIT && SITE_HOST) {
+    if (APP_HOST && host === `billing.${SITE_HOST}`) {
+      return NextResponse.redirect(
+        new URL(`/paywall${search}`, `https://${APP_HOST}`),
+      );
+    }
+
     // Normalise `www` to the canonical marketing apex.
     if (host === `www.${SITE_HOST}`) {
       return NextResponse.redirect(
