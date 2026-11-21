@@ -47,6 +47,15 @@ function hostOf(origin: string): string | null {
 // `NEXT_PUBLIC_APP_URL` opt-in: when it is unset (local dev, CI, unit tests)
 // the app stays single-origin and this middleware behaves exactly as before.
 const SITE_HOST = hostOf(siteUrl());
+const SITE_APEX_HOST = SITE_HOST?.startsWith('www.')
+  ? SITE_HOST.slice('www.'.length)
+  : SITE_HOST;
+const SITE_ALIAS_HOST =
+  SITE_HOST && SITE_APEX_HOST
+    ? SITE_HOST.startsWith('www.')
+      ? SITE_APEX_HOST
+      : `www.${SITE_HOST}`
+    : null;
 const APP_HOST = hostOf(appUrl());
 const SPLIT = APP_HOST !== null && SITE_HOST !== null && APP_HOST !== SITE_HOST;
 
@@ -68,14 +77,13 @@ export default E2E_AUTH_BYPASS
   const host = request.headers.get('host');
 
   if (SPLIT && SITE_HOST) {
-    if (APP_HOST && host === `billing.${SITE_HOST}`) {
+    if (APP_HOST && SITE_APEX_HOST && host === `billing.${SITE_APEX_HOST}`) {
       return NextResponse.redirect(
         new URL(`/paywall${search}`, `https://${APP_HOST}`),
       );
     }
 
-    // Normalise `www` to the canonical marketing apex.
-    if (host === `www.${SITE_HOST}`) {
+    if (SITE_ALIAS_HOST && host === SITE_ALIAS_HOST) {
       return NextResponse.redirect(
         new URL(`https://${SITE_HOST}${pathname}${search}`),
       );

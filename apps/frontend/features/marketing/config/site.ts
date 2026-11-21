@@ -22,22 +22,23 @@ export const SITE = {
 /**
  * Canonical origin for SEO metadata, sitemap and structured data.
  *
- * The domain was not decided in `hisaflow-landing-page.md` Section 8.7, so it
- * is defaulted to the most likely public origin and overridable in one place
- * via `NEXT_PUBLIC_SITE_URL` before launch.
+ * The canonical public origin is www.hisaflow.com; `NEXT_PUBLIC_SITE_URL`
+ * overrides it for other environments.
  */
 export function siteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://hisaflow.com').replace(
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.hisaflow.com'
+  ).replace(
     /\/+$/,
     '',
   );
 }
 
 /**
- * Origin of the authenticated app. The marketing site owns the apex domain and
- * the app can live on a subdomain (default `https://app.hisaflow.com`). Set
- * `NEXT_PUBLIC_APP_URL` to the app origin in production; leave it unset for a
- * single-origin local setup, where every auth CTA stays a relative path.
+ * Origin of the authenticated app. The marketing site uses www.hisaflow.com,
+ * while the app lives on its own subdomain (default `https://app.hisaflow.com`).
+ * Set `NEXT_PUBLIC_APP_URL` to the app origin in production; leave it unset
+ * for a single-origin local setup, where every auth CTA stays a relative path.
  */
 export function appUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');

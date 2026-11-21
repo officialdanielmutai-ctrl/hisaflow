@@ -11,25 +11,25 @@ This document records how the marketing site and the authenticated app are hoste
 
 | Surface        | Domain                                       | Serves                                                    |
 | -------------- | -------------------------------------------- | --------------------------------------------------------- |
-| Marketing site | `hisaflow.com` (apex)                      | Landing page, `/legal/*`, `sitemap.xml`, `robots.txt`     |
+| Marketing site | `www.hisaflow.com` (canonical)             | Landing page, `/legal/*`, `sitemap.xml`, `robots.txt`     |
 | App            | `app.hisaflow.com`                         | Dashboard, onboarding, paywall, settings, sign-in/sign-up |
 | Billing entry  | `billing.hisaflow.com`                     | Redirects to the authenticated app paywall                |
 | Admin panel    | `admin.hisaflow.com`                       | Internal operations panel                                 |
 | Backend API    | `api.hisaflow.com` (or the platform's URL) | `NEXT_PUBLIC_API_URL`                                     |
 
-`www.hisaflow.com` redirects to the apex. The apex, app, and billing entry are
-attached to the frontend deployment. Host-aware routing in
+`hisaflow.com` redirects to `www.hisaflow.com`. The apex, www, app, and billing
+entry are attached to the frontend deployment. Host-aware routing in
 `apps/frontend/middleware.ts` keeps marketing and authenticated app paths on
 their canonical hosts. The admin panel is a separate Vercel project rooted at
 `apps/admin`; its access is protected by the admin app's Clerk authorization.
 
-**Current production endpoints (2026-11-13).** `hisaflow.com` / `www.hisaflow.com`
-serve the Vercel deployment; the authenticated app routes are protected by Clerk
-and return its 404 (not a marketing 404) to anonymous requests. The Northflank
-API is live at `https://p01--hisaflow--8fycj6t62r9g.code.run` and its root health
-check returns `200`. The documented `app.hisaflow.com` and `api.hisaflow.com`
-records are not in DNS yet, so the split-host configuration is not active.
-The production gateway is the Cloud Run service below.
+**Current production endpoints (2026-11-21).** The frontend and admin projects
+have production deployments. `hisaflow.com` redirects to the canonical
+`www.hisaflow.com`. The Northflank API is live at
+`https://p01--hisaflow--8fycj6t62r9g.code.run`; its root health check returned
+`200` in the previous verification. Cloudflare DNS records for `app`, `billing`,
+`admin`, and `api` are still pending, so those custom hostnames are not yet
+publicly reachable. The production gateway is the Cloud Run service below.
 
 ## 2. Hosting (Vercel, pnpm monorepo)
 
@@ -37,8 +37,8 @@ The production gateway is the Cloud Run service below.
 2. Set **Root Directory** to `apps/frontend` so Vercel installs from the workspace root and builds the Next.js app.
 3. Framework preset: **Next.js** (default). Build command `pnpm build`, output handled by the framework.
 4. Add these domains to the frontend project (Project → Settings → Domains):
-   - `hisaflow.com` (primary)
-   - `www.hisaflow.com` → redirect to `hisaflow.com`
+   - `www.hisaflow.com` (primary)
+   - `hisaflow.com` → redirect to `www.hisaflow.com`
    - `app.hisaflow.com`
    - `billing.hisaflow.com`
 5. Create a second Vercel project linked to the same repository with Root
@@ -47,7 +47,7 @@ The production gateway is the Cloud Run service below.
 6. DNS (the domain currently uses Cloudflare nameservers; add records in the
    Cloudflare DNS zone, not Vercel DNS):
    - Keep the existing apex `A` record pointing at Vercel's current target.
-   - `CNAME` `www` → `cname.vercel-dns.com` (existing; redirects to apex)
+   - `CNAME` `www` → `cname.vercel-dns.com` (existing; canonical marketing host)
    - `CNAME` `app` → `37f526e2cef358b0.vercel-dns-017.com`
    - `CNAME` `billing` → `37f526e2cef358b0.vercel-dns-017.com`
    - `CNAME` `admin` → `c2d8306d675aaeca.vercel-dns-017.com`
@@ -153,7 +153,7 @@ Set these for **Production** (and, where sensible, Preview) in the host dashboar
 
 | Variable                                                 | Production value             | Notes                                                                                                                                |
 | -------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_SITE_URL`                                   | `https://hisaflow.com`     | Canonical origin: metadata, Open Graph, sitemap, robots, JSON-LD                                                                     |
+| `NEXT_PUBLIC_SITE_URL`                                   | `https://www.hisaflow.com` | Canonical origin: metadata, Open Graph, sitemap, robots, JSON-LD                                                                     |
 | `NEXT_PUBLIC_APP_URL`                                    | `https://app.hisaflow.com` | Opt-in split: auth CTAs become absolute and middleware routes app paths to the subdomain. Leave unset for single-origin dev/preview. |
 | `NEXT_PUBLIC_API_URL`                                    | `https://api.hisaflow.com` | Backend base URL                                                                                                                     |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` | from Clerk                   | Must include both production domains in Clerk's allowed origins                                                                      |
@@ -218,22 +218,23 @@ Active only when `NEXT_PUBLIC_APP_URL` is set and differs from `NEXT_PUBLIC_SITE
 
 | Host          | Path                                                                                                    | Result                                 |
 | ------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `www.*`       | any                                                                                                     | `308` to apex, same path               |
+| apex          | any                                                                                                     | redirect to canonical `www` host      |
 | `billing.*`   | any                                                                                                     | redirect to app `/paywall`, preserve query |
 | app subdomain | `/`                                                                                                     | redirect to `/dashboard`               |
-| app subdomain | `/legal/*`, `/sitemap.xml`                                                                              | redirect to the apex                   |
+| app subdomain | `/legal/*`, `/sitemap.xml`                                                                              | redirect to canonical `www` host       |
 | app subdomain | `/robots.txt`                                                                                           | `Disallow: /` (the app is not indexed) |
-| apex          | app paths (`/dashboard`, `/onboarding`, `/paywall`, `/settings`, `/sign-in`, `/sign-up`, `/view-as`, …) | redirect to the app subdomain          |
-| apex          | `/`, `/legal/*`, `/sitemap.xml`, `/robots.txt`, static assets                                           | served                                 |
+| www           | app paths (`/dashboard`, `/onboarding`, `/paywall`, `/settings`, `/sign-in`, `/sign-up`, `/view-as`, …) | redirect to the app subdomain          |
+| www           | `/`, `/legal/*`, `/sitemap.xml`, `/robots.txt`, static assets                                           | served                                 |
 | either        | `/api/*`                                                                                                | never cross-host redirected            |
 
-Authenticated visitors landing on the apex `/` still go to the dashboard, now directly on the app subdomain when it is configured.
+Authenticated visitors landing on the canonical marketing host `/` still go
+to the dashboard, now directly on the app subdomain when it is configured.
 
 ## 5. SEO
 
-- `metadataBase` / canonical, Open Graph, `sitemap.xml`, `robots.txt` and `Organization`/`FAQ` JSON-LD all resolve from `NEXT_PUBLIC_SITE_URL` (`features/marketing/config/site.ts`), so the apex is the only indexable origin.
+- `metadataBase` / canonical, Open Graph, `sitemap.xml`, `robots.txt` and `Organization`/`FAQ` JSON-LD all resolve from `NEXT_PUBLIC_SITE_URL` (`features/marketing/config/site.ts`), so `www.hisaflow.com` is the only indexable origin.
 - The app subdomain answers `robots.txt` with `Disallow: /` and is excluded from the sitemap.
-- Legal pages stay on the apex so their URLs remain stable.
+- Legal pages stay on the canonical marketing host so their URLs remain stable.
 
 ## 6. Release checklist
 
@@ -244,10 +245,10 @@ Authenticated visitors landing on the apex `/` still go to the dashboard, now di
 4. The frontend and admin Vercel projects are linked to the correct app roots,
    production environment variables are set, and GitHub CI is green.
 5. DNS records resolve and all four HTTPS hosts have valid TLS certificates.
-6. `https://hisaflow.com/` renders the landing page;
+6. `https://www.hisaflow.com/` renders the landing page and `https://hisaflow.com/` redirects to it;
    `https://app.hisaflow.com/` lands on `/dashboard`;
    `https://billing.hisaflow.com/` redirects to `/paywall` on the app host; and
    `https://admin.hisaflow.com/` renders the internal sign-in.
-7. `https://hisaflow.com/sitemap.xml` and `/robots.txt` return the apex origin.
-8. Authenticated `/` on the apex redirects to the app subdomain.
+7. `https://www.hisaflow.com/sitemap.xml` and `/robots.txt` return the canonical origin.
+8. Authenticated `/` on the canonical marketing host redirects to the app subdomain.
 9. Lighthouse mobile meets the Section 5.4 budget on the marketing URL.
