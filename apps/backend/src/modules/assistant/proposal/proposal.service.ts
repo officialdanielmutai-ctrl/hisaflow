@@ -45,14 +45,31 @@ export class ProposalService {
     ctx: ToolContext,
     tool: ToolDefinition,
     draft: ProposalDraft,
-    options: { version?: number } = {},
+    options: { version?: number; conversationId?: string } = {},
   ): Promise<AssistantProposal> {
     const argsHash = hashArgs(draft.args);
     const now = new Date();
+
+    // S4 fix: supersede earlier PROPOSED proposals of the same tool type in this
+    // conversation so the user can never accidentally approve a stale one.
+    if (ctx.conversationId || options.conversationId) {
+      const convId = options.conversationId ?? ctx.conversationId;
+      await this.prisma.db.assistantProposal.updateMany({
+        where: {
+          organizationId: ctx.organizationId,
+          tool: tool.name,
+          status: 'PROPOSED',
+          ...(convId ? { conversationId: convId } : { userId: ctx.userId }),
+        },
+        data: { status: 'SUPERSEDED' as const },
+      });
+    }
+
     return this.prisma.db.assistantProposal.create({
       data: {
         organizationId: ctx.organizationId,
         userId: ctx.userId,
+        conversationId: options.conversationId ?? ctx.conversationId ?? null,
         tool: tool.name,
         argsJson: JSON.stringify(draft.args),
         argsHash,
@@ -77,7 +94,10 @@ export class ProposalService {
     tool: ToolDefinition,
     draft: ProposalDraft,
   ): Promise<AssistantProposal> {
-    return this.create(ctx, tool, draft, { version: previous.version + 1 });
+    return this.create(ctx, tool, draft, {
+      version: previous.version + 1,
+      conversationId: previous.conversationId ?? ctx.conversationId ?? undefined,
+    });
   }
 
   /** Tenant-scoped fetch: another org's id returns null, never a row. */

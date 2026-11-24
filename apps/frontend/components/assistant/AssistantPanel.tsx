@@ -39,7 +39,22 @@ function mergeProposals(
   current: AssistantProposal[],
   incoming: AssistantProposal[],
 ): AssistantProposal[] {
-  const map = new Map(current.map((proposal) => [proposal.id, proposal]));
+  const incomingProposedTools = new Set(
+    incoming
+      .filter((proposal) => proposal.status === 'PROPOSED')
+      .map((proposal) => proposal.tool),
+  );
+  const incomingIds = new Set(incoming.map((proposal) => proposal.id));
+  const map = new Map(
+    current.map((proposal) => [
+      proposal.id,
+      proposal.status === 'PROPOSED' &&
+      !incomingIds.has(proposal.id) &&
+      incomingProposedTools.has(proposal.tool)
+        ? { ...proposal, status: 'SUPERSEDED' as const }
+        : proposal,
+    ]),
+  );
   for (const proposal of incoming) map.set(proposal.id, proposal);
   return Array.from(map.values());
 }
@@ -224,6 +239,12 @@ export function AssistantPanel() {
       if (action === 'approve') {
         const updated = await approveAssistantProposal(id, token, orgId);
         setProposals((current) => mergeProposals(current, [updated]));
+        if (updated.status === 'EXECUTED') {
+          setResults((current) => ({
+            ...current,
+            [id]: 'Applied successfully.',
+          }));
+        }
       } else if (action === 'reject') {
         const updated = await rejectAssistantProposal(id, token, orgId);
         setProposals((current) => mergeProposals(current, [updated]));
@@ -284,8 +305,11 @@ export function AssistantPanel() {
         setProposals((current) => mergeProposals(current, [revised]));
         targetId = revised.id;
       }
-      await approveAssistantProposal(targetId, token, orgId);
-      const outcome = await executeAssistantProposal(targetId, token, orgId);
+      const approved = await approveAssistantProposal(targetId, token, orgId);
+      const outcome =
+        approved.status === 'EXECUTED'
+          ? { idempotent: false }
+          : await executeAssistantProposal(targetId, token, orgId);
       const refreshed = await listAssistantProposals(token, orgId);
       setProposals((current) => mergeProposals(current, refreshed));
       const message = outcome.idempotent ? 'Note already saved.' : 'Note saved.';
@@ -323,9 +347,14 @@ export function AssistantPanel() {
       if (!token) throw new Error('Not authenticated');
       const applied: Record<string, string> = {};
       for (const proposal of pending) {
-        await approveAssistantProposal(proposal.id, token, orgId);
-        await executeAssistantProposal(proposal.id, token, orgId);
-        applied[proposal.id] = 'Applied successfully.';
+        const updated = await approveAssistantProposal(proposal.id, token, orgId);
+        if (updated.status === 'APPROVED') {
+          await executeAssistantProposal(proposal.id, token, orgId);
+        }
+        applied[proposal.id] =
+          updated.status === 'FAILED'
+            ? 'Failed — you can retry below.'
+            : 'Applied successfully.';
       }
       const refreshed = await listAssistantProposals(token, orgId);
       setProposals(refreshed);

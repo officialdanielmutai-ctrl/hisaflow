@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { AssistantToolsService } from './assistant-tools.service';
+import { EntityResolutionService } from '../resolution/entity-resolution.service';
 import { AppRole } from '../../../core/decorators/roles.decorator';
 import type { ToolContext, ToolDefinition } from '../tool.types';
 
@@ -199,6 +200,7 @@ function build(options: BuildOptions = {}) {
     resolveAllAlerts: jest.fn(async () => ({ resolved: 1 })),
   };
 
+  const resolution = new EntityResolutionService({ db } as never);
   const service = new AssistantToolsService(
     { db } as never,
     inventory as never,
@@ -210,6 +212,7 @@ function build(options: BuildOptions = {}) {
     financeSearch as never,
     businessTransactions as never,
     alertsService as never,
+    resolution as never,
   );
 
   const byName = (name: string): ToolDefinition => {

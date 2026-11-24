@@ -36,8 +36,12 @@ export class AssistantAgentService {
     isImpersonated: boolean,
     message: string,
     history: AgentMessage[] = [],
+    conversationId?: string,
   ): Promise<AgentResult> {
-    const ctx = await this.context.build(organizationId, userId, isImpersonated);
+    const ctx = {
+      ...(await this.context.build(organizationId, userId, isImpersonated)),
+      conversationId,
+    };
     const available = await this.policy.filterTools(this.registry.listFor(ctx), ctx);
     const schemas = this.registry.toSchemas(available);
 
@@ -173,7 +177,7 @@ export class AssistantAgentService {
       // for weaker/faster models that otherwise answer from memory.
       'Examples: the user says "what is in my stock?" — call list_inventory, then list only the items it returned, or say plainly that there is nothing.',
       'The user says "draft a note reminding me to call the plumber" — call create_note with title "Call the plumber" and the message as content, then tell them the note is ready for review. Do not paste the note as plain text.',
-      'For a sale by product name, first call search_inventory using the exact name the user said. If there is one matching active item, call record_sale with its itemId and the requested quantity, then present the proposal; if no item matches or multiple variants match, ask the user instead of guessing. Never say a sale is done before approval.',
+      'To report or record a sale, call record_sale with itemName (e.g. "sugar", "unga", "milk", or specific brand) and the quantity. The item resolves automatically. Only call search_inventory first if the user is browsing or asking what is in stock rather than telling you what was sold. Never say a sale is done before approval.',
       'For a general inventory question, use the product name returned by list_inventory/search_inventory, not the variant label "Default". Keep the variant unit and quantity attached to the product that owns that variant.',
       'The user says "add a new item, 20 bags of unga" — call create_inventory_item with name, unit and quantity; to add stock to an existing item call record_purchase. Present the proposal; never say it is done before approval.',
       'When creating a product sold in multiple sizes/forms, use create_inventory_item with one distinct variants entry per size/form and its own unit, quantity, reorder level and prices. For an existing product, use add_inventory_variant only when the user explicitly asks to add a size/form. Never create a variant just to make a requested sale fit; if the requested unit/size is not in stock, explain the available variants and ask what the user wants.',

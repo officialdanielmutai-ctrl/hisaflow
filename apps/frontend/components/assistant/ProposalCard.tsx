@@ -155,7 +155,7 @@ export function ProposalCard({
 
       {(proposal.status === 'PROPOSED' || proposal.status === 'APPROVED') && (
         <p className="mt-1 text-[11px] font-semibold text-amber-700">
-          Proposed — not applied until you approve and apply it.
+          Proposed — not applied until you approve it.
         </p>
       )}
 
@@ -268,6 +268,12 @@ export function ProposalCard({
       {proposal.status === 'FAILED' && (
         <p className="mt-3 text-xs font-semibold text-red-700">
           This action failed. You can retry it.
+        </p>
+      )}
+
+      {proposal.status === 'SUPERSEDED' && (
+        <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+          Replaced by a newer request.
         </p>
       )}
 

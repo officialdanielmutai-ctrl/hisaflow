@@ -6,7 +6,8 @@ export type AssistantProposalStatus =
   | 'REJECTED'
   | 'EXPIRED'
   | 'EXECUTED'
-  | 'FAILED';
+  | 'FAILED'
+  | 'SUPERSEDED';
 export type AssistantRiskLevel = 'low' | 'medium' | 'high';
 
 export interface AssistantToolSchema {

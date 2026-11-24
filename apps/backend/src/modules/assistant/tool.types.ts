@@ -18,6 +18,8 @@ export interface ToolContext {
   businessType: string;
   tier: string;
   isImpersonated: boolean;
+  /** Current conversation ID, used for supersede scoping (S4 fix). */
+  conversationId?: string;
 }
 
 export interface ProposalDraft {

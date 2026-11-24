@@ -126,6 +126,16 @@ describe('ProposalCard', () => {
     ).toHaveAttribute('href', '/notes');
   });
 
+  it('shows superseded state without approval actions', () => {
+    render(<ProposalCard proposal={proposal({ status: 'SUPERSEDED' })} />);
+
+    expect(screen.getByText('Superseded')).toBeInTheDocument();
+    expect(screen.getByText(/replaced by a newer request/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /approve/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it('edits scalar and nested args and saves coerced values', () => {
     const onEdit = vi.fn();
     render(

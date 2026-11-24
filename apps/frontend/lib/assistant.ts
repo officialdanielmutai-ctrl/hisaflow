@@ -640,6 +640,8 @@ export function proposalStatusTone(status: AssistantProposalStatus): string {
       return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
     case 'FAILED':
       return 'bg-red-100 text-red-700 border border-red-200';
+    case 'SUPERSEDED':
+      return 'bg-slate-100 text-slate-500 border border-slate-200';
     case 'REJECTED':
     case 'EXPIRED':
     default:

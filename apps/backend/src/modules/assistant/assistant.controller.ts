@@ -167,7 +167,12 @@ export class AssistantController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
-      proposal: await this.assistant.approve(orgId, id, user.id),
+      proposal: await this.assistant.approve(
+        orgId,
+        id,
+        user.id,
+        Boolean(user.isImpersonated),
+      ),
     };
   }
 

@@ -13,6 +13,7 @@ import { AlertsService } from '../../alerts/alerts.service';
 import { AppRole } from '../../../core/decorators/roles.decorator';
 import { AssistantCommsService } from '../comms/assistant-comms.service';
 import { AssistantUnsupportedService } from '../unsupported/assistant-unsupported.service';
+import { EntityResolutionService } from '../resolution/entity-resolution.service';
 import type { AssistantToolProvider, ToolDefinition } from '../tool.types';
 import {
   asEnum,
@@ -134,6 +135,7 @@ export class AssistantToolsService implements AssistantToolProvider {
     private readonly financeSearch: FinanceSearchService,
     private readonly businessTransactions: BusinessTransactionsService,
     private readonly alerts: AlertsService,
+    private readonly resolution: EntityResolutionService,
   ) {}
 
   all(): ToolDefinition[] {
@@ -160,20 +162,22 @@ export class AssistantToolsService implements AssistantToolProvider {
       this.transactionTool({
         name: 'record_sale',
         description:
-          'Record a sale of an inventory item to a customer. Requires approval. Resolve a named item using search_inventory first. You may pass its itemId or its exact product name as itemName; never guess between multiple matches.',
+          'Record a sale of an inventory item to a customer. Requires approval. You can pass itemName directly (e.g. "sugar", "unga", "milk", or brand name) and it will be resolved automatically, or pass itemId if already known.',
         type: TransactionTypeDto.SALE,
         direction: 'out',
         verticals: ['DUKA', 'MINI_MART', 'RESTAURANT', 'CHEMIST'],
       }),
       this.transactionTool({
         name: 'record_purchase',
-        description: 'Record stock received or bought from a supplier. Requires approval.',
+        description:
+          'Record stock received or bought from a supplier. Requires approval. Pass itemName or itemId and quantity.',
         type: TransactionTypeDto.PURCHASE,
         direction: 'in',
       }),
       this.transactionTool({
         name: 'record_wastage',
-        description: 'Write off expired, damaged, stolen or spoiled stock. Requires approval.',
+        description:
+          'Write off expired, damaged, stolen or spoiled stock. Requires approval. Pass itemName or itemId, quantity, and reason.',
         type: TransactionTypeDto.WASTAGE,
         direction: 'out',
         wastage: true,
@@ -1603,14 +1607,31 @@ export class AssistantToolsService implements AssistantToolProvider {
             name: true,
             unit: true,
             quantity: true,
+            sellingPrice: true,
             product: { select: { name: true } },
           },
         });
-        return items.map((item) => ({
-          id: item.id,
-          name: inventoryDisplayName(item),
-          unit: item.unit,
-          quantity: Number(item.quantity),
+        if (items.length > 0) {
+          return items.map((item) => ({
+            id: item.id,
+            name: inventoryDisplayName(item),
+            unit: item.unit,
+            quantity: Number(item.quantity),
+            sellingPrice: item.sellingPrice ? Number(item.sellingPrice) : undefined,
+          }));
+        }
+        // Fallback to fuzzy & synonym entity resolution if exact contains returned no records
+        const resolution = await this.resolution.resolveInventoryItem(
+          ctx.organizationId,
+          query,
+          limit,
+        );
+        return resolution.candidates.map((c) => ({
+          id: c.id,
+          name: c.name,
+          unit: c.unit,
+          quantity: c.quantity,
+          sellingPrice: c.sellingPrice,
         }));
       },
     };
@@ -1748,71 +1769,70 @@ export class AssistantToolsService implements AssistantToolProvider {
       parameters: {
         type: 'object',
         properties: {
-          ...(name === 'record_sale'
-            ? {
-                itemId: {
-                  type: 'string',
-                  description: 'Exact item ID from search_inventory.',
-                },
-                itemName: {
-                  type: 'string',
-                  description: 'Exact product name from inventory, used only when there is one matching active item.',
-                },
-              }
-            : { itemId: { type: 'string' } }),
-          quantity: { type: 'number' },
+          itemId: {
+            type: 'string',
+            description: 'Item ID if known from search_inventory.',
+          },
+          itemName: {
+            type: 'string',
+            description:
+              'Product name or description (e.g. "sugar", "unga", "milk"). Will be automatically resolved.',
+          },
+          quantity: { type: 'number', description: 'Quantity of units.' },
           ...(wastage ? { wastageReason: { type: 'string', enum: [...WASTAGE_REASONS] } } : {}),
         },
-        required: name === 'record_sale' ? ['quantity'] : ['itemId', 'quantity'],
+        required: ['quantity'],
         additionalProperties: false,
       },
       buildProposal: async (raw, ctx) => {
         const args = asRecord(raw);
         let itemId: string;
         if (args.itemId !== undefined && args.itemId !== null) {
-          itemId = asString(args.itemId, 'itemId', 100);
-        } else if (type === TransactionTypeDto.SALE && args.itemName != null) {
-          const itemName = asString(args.itemName, 'itemName', 200);
-          const matches = await this.prisma.db.inventoryItem.findMany({
-            where: {
-              organizationId: ctx.organizationId,
-              isActive: true,
-              OR: [
-                { name: { equals: itemName, mode: 'insensitive' } },
-                {
-                  product: {
-                    is: { name: { equals: itemName, mode: 'insensitive' } },
-                  },
-                },
-              ],
-            },
-            take: 3,
-            select: {
-              id: true,
-              name: true,
-              unit: true,
-              quantity: true,
-              product: { select: { name: true } },
-            },
+          const rawId = asString(args.itemId, 'itemId', 100);
+          const directItem = await this.prisma.db.inventoryItem.findFirst({
+            where: { id: rawId, organizationId: ctx.organizationId, isActive: true },
+            select: { id: true },
           });
-          if (matches.length === 0) {
-            throw new BadRequestException(`No active inventory item matches "${itemName}".`);
+          if (directItem) {
+            itemId = directItem.id;
+          } else {
+            const res = await this.resolution.resolveInventoryItem(ctx.organizationId, rawId);
+            if (res.bestMatch) {
+              itemId = res.bestMatch.id;
+            } else if (res.candidates.length > 1) {
+              const choices = res.candidates
+                .map((c) => `${c.name} (${c.quantity} ${c.unit} in stock)`)
+                .join(', ');
+              throw new BadRequestException(
+                `More than one inventory item matches "${rawId}": ${choices}. Ask which one.`,
+              );
+            } else {
+              throw new BadRequestException(`No active inventory item matches "${rawId}".`);
+            }
           }
-          if (matches.length > 1) {
-            const choices = matches
-              .map((item) => `${inventoryDisplayName(item)} (${item.quantity} ${item.unit} in stock)`)
+        } else if (args.itemName != null) {
+          const itemName = asString(args.itemName, 'itemName', 200);
+          const res = await this.resolution.resolveInventoryItem(ctx.organizationId, itemName);
+          if (res.bestMatch) {
+            itemId = res.bestMatch.id;
+          } else if (res.candidates.length > 1) {
+            const verb =
+              type === TransactionTypeDto.SALE
+                ? 'sell'
+                : type === TransactionTypeDto.PURCHASE
+                  ? 'receive'
+                  : 'write off';
+            const choices = res.candidates
+              .map((c) => `${c.name} (${c.quantity} ${c.unit} in stock)`)
               .join(', ');
             throw new BadRequestException(
-              `More than one inventory item matches "${itemName}": ${choices}. Ask which one to sell.`,
+              `More than one inventory item matches "${itemName}": ${choices}. Ask which one to ${verb}.`,
             );
+          } else {
+            throw new BadRequestException(`No active inventory item matches "${itemName}".`);
           }
-          itemId = matches[0].id;
         } else {
-          throw new BadRequestException(
-            type === TransactionTypeDto.SALE
-              ? 'Provide an itemId from search_inventory or an exact itemName.'
-              : 'Provide an itemId.',
-          );
+          throw new BadRequestException('Provide an itemId or itemName.');
         }
         const quantity = asPositiveNumber(args.quantity, 'quantity');
         const item = await this.prisma.db.inventoryItem.findFirst({

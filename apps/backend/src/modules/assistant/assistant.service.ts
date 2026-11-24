@@ -7,6 +7,7 @@ import { ProposalService } from './proposal/proposal.service';
 import { toPublicProposal } from './proposal/public-proposal';
 import type { PublicProposal } from './proposal/public-proposal';
 import { AssistantExecutorService } from './executor/executor.service';
+import type { ExecutionResult } from './executor/executor.service';
 import { AssistantAgentService } from './agent/assistant-agent.service';
 import { AssistantUnsupportedService } from './unsupported/assistant-unsupported.service';
 import {
@@ -112,7 +113,13 @@ export class AssistantService {
     await this.policy.assertToolAllowed(tool, ctx);
     const draft = await tool.buildProposal(args, ctx);
     const revised = await this.proposals.revise(ctx, previous, tool, draft);
-    await this.proposals.reject(ctx.organizationId, id, ctx.userId);
+    const afterRevise = await this.proposals.getScoped(ctx.organizationId, id);
+    if (
+      afterRevise &&
+      (afterRevise.status === 'PROPOSED' || afterRevise.status === 'APPROVED')
+    ) {
+      await this.proposals.reject(ctx.organizationId, id, ctx.userId);
+    }
     return toPublicProposal(revised);
   }
 
@@ -153,6 +160,7 @@ export class AssistantService {
       isImpersonated,
       message,
       history,
+      conversation.id,
     );
 
     await this.memory.append(
@@ -196,10 +204,28 @@ export class AssistantService {
     organizationId: string,
     id: string,
     userId: string,
-  ): Promise<PublicProposal> {
-    return toPublicProposal(
-      await this.proposals.approve(organizationId, id, userId),
-    );
+    isImpersonated = false,
+  ): Promise<PublicProposal & { execution?: ExecutionResult }> {
+    // S3 fix: approve AND execute atomically in a single user tap.
+    // No need for a separate Apply button — the approval IS the trigger.
+    const approved = await this.proposals.approve(organizationId, id, userId);
+    const ctx = await this.context.build(organizationId, userId, isImpersonated);
+    try {
+      const execution = await this.executor.execute(organizationId, ctx, approved.id);
+      // Re-fetch the proposal now that it's EXECUTED so the returned status is correct.
+      const executed = await this.proposals.getScoped(organizationId, approved.id);
+      return {
+        ...toPublicProposal(executed ?? approved),
+        execution,
+      };
+    } catch (err) {
+      // Execution failed: return the approved-but-failed proposal with the error.
+      const failed = await this.proposals.getScoped(organizationId, approved.id);
+      return {
+        ...toPublicProposal(failed ?? approved),
+        execution: undefined,
+      };
+    }
   }
 
   async reject(
