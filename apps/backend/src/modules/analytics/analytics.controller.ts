@@ -1,9 +1,10 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { ClerkAuthGuard } from '../../core/guards/clerk-auth.guard';
 import { OrgContext } from '../../core/decorators/org-context.decorator';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles, AppRole } from '../../core/decorators/roles.decorator';
+import { DashboardQueryDto } from './dto/dashboard-query.dto';
 
 @UseGuards(ClerkAuthGuard, RolesGuard)
 @Controller('analytics')
@@ -12,8 +13,20 @@ export class AnalyticsController {
 
   @Roles(AppRole.OWNER, AppRole.MANAGER)
   @Get('dashboard')
-  getDashboard(@OrgContext() organizationId: string) {
-    return this.analyticsService.getDashboardSummary(organizationId);
+  getDashboard(
+    @OrgContext() organizationId: string,
+    @Query() query?: DashboardQueryDto,
+  ) {
+    return this.analyticsService.getDashboardSummary(organizationId, query);
+  }
+
+  @Roles(AppRole.OWNER, AppRole.MANAGER)
+  @Get('metrics')
+  getMetrics(
+    @OrgContext() organizationId: string,
+    @Query() query: DashboardQueryDto,
+  ) {
+    return this.analyticsService.getMetricSeries(organizationId, query);
   }
 
   @Get('staff-dashboard')
@@ -46,4 +59,3 @@ export class AnalyticsController {
     return this.analyticsService.getWholesaleDashboard(organizationId);
   }
 }
-

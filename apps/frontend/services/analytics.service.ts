@@ -1,4 +1,38 @@
 import { apiGet } from '@/lib/api-client';
+import type {
+  DailyPerformancePoint,
+  MetricDashboardResponse,
+  PeriodComparison,
+  ResolvedAnalyticsRange,
+  SeriesBucket,
+} from '@hisaflow/types';
+
+export interface GrowthTimeframeBucket {
+  total: number;
+  count: number;
+  comparison: PeriodComparison;
+}
+
+export interface DashboardSelectedPeriod {
+  range: ResolvedAnalyticsRange;
+  salesTotal: number;
+  expensesTotal: number;
+  profitTotal: number;
+  salesComparison: PeriodComparison;
+  expensesComparison: PeriodComparison;
+  profitComparison: PeriodComparison;
+  dailyPerformance: DailyPerformancePoint[];
+  sevenDaySales: SeriesBucket[];
+  sevenDayExpenses: SeriesBucket[];
+  sevenDayProfit: SeriesBucket[];
+  growthByTimeframe: {
+    '12h': GrowthTimeframeBucket;
+    '24h': GrowthTimeframeBucket;
+    week: GrowthTimeframeBucket;
+    month: GrowthTimeframeBucket;
+  };
+  generatedAt: string;
+}
 
 export interface DashboardData {
   greeting: { timeOfDay: 'morning' | 'afternoon' | 'evening' };
@@ -36,13 +70,46 @@ export interface DashboardData {
     reason: string;
     priority: 'HIGH' | 'MEDIUM' | 'LOW';
   }>;
+  selectedPeriod?: DashboardSelectedPeriod;
 }
 
 export async function getDashboardData(
   token: string,
-  organizationId: string
+  organizationId: string,
+  query?: { preset?: string; from?: string; to?: string },
+  signal?: AbortSignal,
 ): Promise<DashboardData> {
-  return apiGet<DashboardData>('/analytics/dashboard', token, organizationId);
+  const params = new URLSearchParams();
+  if (query?.preset) params.set('preset', query.preset);
+  if (query?.from) params.set('from', query.from);
+  if (query?.to) params.set('to', query.to);
+  const qs = params.toString();
+  return apiGet<DashboardData>(
+    `/analytics/dashboard${qs ? `?${qs}` : ''}`,
+    token,
+    organizationId,
+    signal,
+  );
+}
+
+export async function getMetricSeries(
+  token: string,
+  organizationId: string,
+  query: { metric?: string; preset?: string; from?: string; to?: string } = {},
+  signal?: AbortSignal,
+): Promise<MetricDashboardResponse> {
+  const params = new URLSearchParams();
+  if (query.metric) params.set('metric', query.metric);
+  if (query.preset) params.set('preset', query.preset);
+  if (query.from) params.set('from', query.from);
+  if (query.to) params.set('to', query.to);
+  const qs = params.toString();
+  return apiGet<MetricDashboardResponse>(
+    `/analytics/metrics${qs ? `?${qs}` : ''}`,
+    token,
+    organizationId,
+    signal,
+  );
 }
 
 export interface StaffDashboardData {
@@ -62,6 +129,7 @@ export interface StaffDashboardData {
     message: string;
     severity: 'WARNING' | 'CRITICAL' | 'INFO';
     type: string;
+    createdAt?: string;
   }>;
   lowStockWatchList: Array<{
     id: string;
@@ -78,7 +146,7 @@ export interface StaffDashboardData {
 
 export async function getStaffDashboardData(
   token: string,
-  organizationId: string
+  organizationId: string,
 ): Promise<StaffDashboardData> {
   return apiGet<StaffDashboardData>('/analytics/staff-dashboard', token, organizationId);
 }
@@ -100,6 +168,13 @@ export interface GuestHouseDashboardData {
   costThisMonth: number;
   profitThisMonth: number;
   outstandingBalance: number;
+  collectionHealthPct?: number;
+  revenueComparison?: PeriodComparison;
+  dailySeries?: {
+    revenue: SeriesBucket[];
+    occupancyPct: SeriesBucket[];
+  };
+  generatedAt?: string;
   departureAlerts: {
     overdue: BookingSummary[];
     today: BookingSummary[];
@@ -143,6 +218,11 @@ export interface SchoolDashboardData {
     paidCount: number;
     totalInvoices: number;
   };
+  collectionsComparison?: PeriodComparison;
+  dailySeries?: {
+    collections: SeriesBucket[];
+  };
+  generatedAt?: string;
   overdueInvoices: Array<{
     id: string;
     studentName: string;
@@ -159,7 +239,10 @@ export interface SchoolDashboardData {
   }>;
 }
 
-export async function getSchoolDashboardData(token: string, organizationId: string): Promise<SchoolDashboardData> {
+export async function getSchoolDashboardData(
+  token: string,
+  organizationId: string,
+): Promise<SchoolDashboardData> {
   return apiGet<SchoolDashboardData>('/analytics/school-dashboard', token, organizationId);
 }
 
@@ -171,6 +254,12 @@ export interface ChemistDashboardData {
   monthSales: number;
   lowStockCount: number;
   totalItems: number;
+  todaySalesComparison?: PeriodComparison;
+  monthSalesComparison?: PeriodComparison;
+  dailySeries?: {
+    sales: SeriesBucket[];
+  };
+  generatedAt?: string;
   expiringBatches: Array<{
     id: string;
     productName: string;
@@ -189,7 +278,10 @@ export interface ChemistDashboardData {
   alerts: Array<{ id: string; message: string; severity: string }>;
 }
 
-export async function getChemistDashboardData(token: string, organizationId: string): Promise<ChemistDashboardData> {
+export async function getChemistDashboardData(
+  token: string,
+  organizationId: string,
+): Promise<ChemistDashboardData> {
   return apiGet<ChemistDashboardData>('/analytics/chemist-dashboard', token, organizationId);
 }
 
@@ -201,6 +293,12 @@ export interface RestaurantDashboardData {
   openOrdersCount: number;
   openOrdersValue: number;
   paidOrdersToday: number;
+  revenueComparison?: PeriodComparison;
+  dailySeries?: {
+    revenue: SeriesBucket[];
+    orders: SeriesBucket[];
+  };
+  generatedAt?: string;
   openOrders: Array<{
     id: string;
     tableLabel: string | null;
@@ -212,7 +310,10 @@ export interface RestaurantDashboardData {
   alerts: Array<{ id: string; message: string; severity: string }>;
 }
 
-export async function getRestaurantDashboardData(token: string, organizationId: string): Promise<RestaurantDashboardData> {
+export async function getRestaurantDashboardData(
+  token: string,
+  organizationId: string,
+): Promise<RestaurantDashboardData> {
   return apiGet<RestaurantDashboardData>('/analytics/restaurant-dashboard', token, organizationId);
 }
 
@@ -226,6 +327,12 @@ export interface WholesaleDashboardData {
   openCreditCount: number;
   lowStockCount: number;
   totalItems: number;
+  todaySalesComparison?: PeriodComparison;
+  monthSalesComparison?: PeriodComparison;
+  dailySeries?: {
+    sales: SeriesBucket[];
+  };
+  generatedAt?: string;
   topDebtors: Array<{
     id: string;
     clientName: string;
@@ -236,6 +343,9 @@ export interface WholesaleDashboardData {
   alerts: Array<{ id: string; message: string; severity: string }>;
 }
 
-export async function getWholesaleDashboardData(token: string, organizationId: string): Promise<WholesaleDashboardData> {
+export async function getWholesaleDashboardData(
+  token: string,
+  organizationId: string,
+): Promise<WholesaleDashboardData> {
   return apiGet<WholesaleDashboardData>('/analytics/wholesale-dashboard', token, organizationId);
 }

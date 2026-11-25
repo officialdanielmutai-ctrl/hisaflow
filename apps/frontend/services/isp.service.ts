@@ -1,4 +1,5 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
+import type { PeriodComparison, SeriesBucket } from '@hisaflow/types';
 
 export type SubscriberStatus = 'ACTIVE' | 'SUSPENDED' | 'CHURNED';
 export type ConnectionType = 'PPPOE' | 'HOTSPOT' | 'STATIC_IP';
@@ -19,6 +20,13 @@ export interface IspDashboardData {
   openTickets: number;
   scheduledWorkOrders: number;
   monthlyRevenue: number;
+  revenueComparison?: PeriodComparison;
+  dailySeries?: {
+    revenue: SeriesBucket[];
+    tickets: SeriesBucket[];
+    workOrders: SeriesBucket[];
+  };
+  generatedAt?: string;
 }
 
 export function getIspDashboard(token: string, orgId: string): Promise<IspDashboardData> {

@@ -22,16 +22,6 @@ export interface DailyPerformancePoint {
   highlight?: boolean
 }
 
-const DEFAULT_DATA: DailyPerformancePoint[] = [
-  { day: 'Mon', sales: 42000, expenses: 18000 },
-  { day: 'Tue', sales: 68000, expenses: 24000 },
-  { day: 'Wed', sales: 91000, expenses: 31000 },
-  { day: 'Thu', sales: 145000, expenses: 38000, highlight: true },
-  { day: 'Fri', sales: 112000, expenses: 42000 },
-  { day: 'Sat', sales: 84000, expenses: 29000 },
-  { day: 'Sun', sales: 53000, expenses: 15000 },
-]
-
 function formatKES(val: number) {
   if (val >= 1000000) return `KES ${(val / 1000000).toFixed(1)}M`
   if (val >= 1000) return `KES ${(val / 1000).toFixed(0)}k`
@@ -39,7 +29,7 @@ function formatKES(val: number) {
 }
 
 export default function ModernAnalyticsChart({
-  data = DEFAULT_DATA,
+  data = [],
   className,
 }: {
   data?: DailyPerformancePoint[]
@@ -48,10 +38,24 @@ export default function ModernAnalyticsChart({
   const { label: dateRangeLabel } = useDateRange()
   const [metric, setMetric] = useState<'sales' | 'expenses'>('sales')
 
-  const maxPoint = data.reduce(
-    (prev, current) => (current[metric] > prev[metric] ? current : prev),
-    data[0] || { day: '', sales: 0, expenses: 0 }
-  )
+  const hasData = data.length > 0 && data.some((d) => d[metric] > 0)
+
+  const maxPoint = hasData
+    ? data.reduce(
+        (prev, current) => (current[metric] > prev[metric] ? current : prev),
+        data[0]
+      )
+    : null
+
+  /** Peak vs average delta — only shown when real data is present */
+  const peakBadge = (() => {
+    if (!hasData || !maxPoint) return null
+    const avg = data.reduce((s, d) => s + d[metric], 0) / data.length
+    if (avg === 0) return null
+    const pct = Math.round(((maxPoint[metric] - avg) / avg) * 100)
+    if (pct <= 0) return null
+    return `+${pct}% peak`
+  })()
 
   return (
     <div
@@ -67,10 +71,12 @@ export default function ModernAnalyticsChart({
             <h3 className="text-base font-bold text-[var(--color-text-primary)]">
               Performance Statistics
             </h3>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
-              <TrendingUp className="h-3 w-3" />
-              +17.8% peak
-            </span>
+            {peakBadge && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
+                <TrendingUp className="h-3 w-3" />
+                {peakBadge}
+              </span>
+            )}
           </div>
           <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
             Active view: {dateRangeLabel}
@@ -106,63 +112,71 @@ export default function ModernAnalyticsChart({
         </div>
       </div>
 
-      {/* Chart Canvas */}
+      {/* Chart Canvas — honest empty state when no real data */}
       <div className="h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            margin={{ top: 20, right: 10, left: -15, bottom: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-              stroke="var(--color-border)"
-              strokeOpacity={0.6}
-            />
-            <XAxis
-              dataKey="day"
-              tickLine={false}
-              axisLine={false}
-              tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
-              tickFormatter={(v) =>
-                v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`
-              }
-            />
-            <Tooltip
-              cursor={{ fill: 'var(--color-bg-elevated)', opacity: 0.5 }}
-              formatter={(value: any) => [
-                formatKES(Number(value)),
-                metric === 'sales' ? 'Sales' : 'Expenses',
-              ]}
-              contentStyle={{
-                borderRadius: 'var(--hf-radius-md)',
-                border: 'var(--hf-border-width) solid var(--hf-border-subtle)',
-                background: 'var(--hf-bg-surface)',
-                color: 'var(--hf-text-primary)',
-                fontSize: 12,
-                boxShadow: 'var(--hf-shadow-raised)',
-              }}
-            />
-            <Bar dataKey={metric} radius={[8, 8, 0, 0]} animationDuration={800}>
-              {data.map((entry, index) => {
-                const isPeak = entry.day === maxPoint.day
-                const fill = isPeak
-                  ? metric === 'sales'
-                    ? 'var(--hf-chart-1)'
-                    : 'var(--hf-chart-4)'
-                  : metric === 'sales'
-                    ? 'var(--hf-chart-2)'
-                    : 'var(--hf-chart-7)'
-                return <Cell key={`cell-${index}`} fill={fill} />
-              })}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        {!hasData ? (
+          <div className="h-full flex flex-col items-center justify-center gap-2 text-[var(--color-text-muted)]">
+            <ArrowUpRight className="h-8 w-8 opacity-30" />
+            <p className="text-xs font-medium">No activity recorded yet</p>
+            <p className="text-[11px] opacity-60">Data will appear here once transactions are logged</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              margin={{ top: 20, right: 10, left: -15, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--color-border)"
+                strokeOpacity={0.6}
+              />
+              <XAxis
+                dataKey="day"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
+                tickFormatter={(v) =>
+                  v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`
+                }
+              />
+              <Tooltip
+                cursor={{ fill: 'var(--color-bg-elevated)', opacity: 0.5 }}
+                formatter={(value: any) => [
+                  formatKES(Number(value)),
+                  metric === 'sales' ? 'Sales' : 'Expenses',
+                ]}
+                contentStyle={{
+                  borderRadius: 'var(--hf-radius-md)',
+                  border: 'var(--hf-border-width) solid var(--hf-border-subtle)',
+                  background: 'var(--hf-bg-surface)',
+                  color: 'var(--hf-text-primary)',
+                  fontSize: 12,
+                  boxShadow: 'var(--hf-shadow-raised)',
+                }}
+              />
+              <Bar dataKey={metric} radius={[8, 8, 0, 0]} animationDuration={800}>
+                {data.map((entry, index) => {
+                  const isPeak = maxPoint && entry.day === maxPoint.day
+                  const fill = isPeak
+                    ? metric === 'sales'
+                      ? 'var(--hf-chart-1)'
+                      : 'var(--hf-chart-4)'
+                    : metric === 'sales'
+                      ? 'var(--hf-chart-2)'
+                      : 'var(--hf-chart-7)'
+                  return <Cell key={`cell-${index}`} fill={fill} />
+                })}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   )

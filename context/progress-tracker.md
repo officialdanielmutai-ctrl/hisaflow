@@ -381,6 +381,36 @@ Update this file after every meaningful implementation change.
   non-image or oversized values; the URL path still works. Added back-end
   validation tests and front-end card/helper tests, plus a real-browser check
   that the canvas conversion produces a small `data:image/webp` result.
+- **2026-11-25 — Data Integrity Overhaul Across All Verticals.** Full audit,
+  diagnosis, backend aggregation, and frontend wiring to ensure every dashboard
+  visual, card, and chart faithfully reflects backend database records (see
+  `hisaflow-data-integrity-brief.md`):
+  - **Phase 0 & A:** Delivered `docs/data-integrity-inventory.md`,
+    `docs/data-integrity-diagnosis.md`, `docs/metrics-dictionary.md`, and
+    reusable audit script `apps/backend/scripts/audit-data-integrity.ts`.
+    Shared types in `packages/types/src/index.ts`.
+  - **Phase B (Backend):** Built `time-buckets.ts` resolving all ranges in
+    `Africa/Nairobi` (EAT, UTC+3) with zero-filled hourly/daily/monthly series;
+    rewrote `analytics.service.ts` and `vertical-analytics.service.ts`; fixed
+    Wholesale `creditRecord.findMany` pagination/take:5 bug; excluded Restaurant
+    composite ingredient rows from revenue totals; fixed Guest House maintenance
+    room exclusion; fixed ISP revenue to sum actual `Payment.amount` records;
+    implemented honest comparisons returning `deltaPct: null` when previous total
+    is 0 (no fake +100%).
+  - **Phase C & D (Frontend):** SWR cache invalidation on logout and org switch
+    (`useMyOrganization.tsx`, `SWRProvider.tsx`); Serwist SW NetworkOnly routing
+    for analytics endpoints; removed `DEFAULT_DATA` fixture (42k/68k/145k) and
+    hardcoded `+17.8% peak` badge from `ModernAnalyticsChart.tsx` in favour of
+    honest empty states and computed peak-vs-average deltas; wired desktop Bento
+    and mobile chart to `selectedPeriod.dailyPerformance` and `sevenDaySales`.
+  - **Phase E (Verticals):** Removed all hardcoded percentage deltas and
+    single-scalar multiplier sparkline arrays from `features/dashboard/config/*.ts`
+    for retail, chemist, restaurant, wholesale, guest-house, isp, and school.
+  - **Phase F (Guardrails & CI):** Added backend reconciliation suite
+    `data-integrity.spec.ts` (9 tests) and frontend guard suite
+    `lib/data-integrity-guard.spec.ts` (36 tests) enforcing that no hardcoded
+    fake analytics fixtures or deltas can creep into production code. Full CI
+    passed (971 backend + 360 frontend tests).
 - **2026-10-24 — Settings vertical gating and logo wiring.** Settings now
   renders the existing Business logo card for owners/managers, so the logo in
   the signed-in shell can be changed from Settings and reset to the email

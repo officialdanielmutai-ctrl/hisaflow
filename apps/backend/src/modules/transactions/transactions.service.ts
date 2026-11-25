@@ -121,7 +121,13 @@ export class TransactionsService {
           actorId: actorContext?.actorId ?? null,
           source: dto.isCredit ? 'credit' : 'manual',
           clientName: dto.clientName ?? null,
-          metadata: { ...dto.metadata, appliedTierPrice },
+          metadata: {
+            ...dto.metadata,
+            appliedTierPrice,
+            compositeQuantity: dto.quantity,
+            unitPrice: sellingPrice,
+            amountTotal,
+          },
         },
       });
 

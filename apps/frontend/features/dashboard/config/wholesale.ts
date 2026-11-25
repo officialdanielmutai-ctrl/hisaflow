@@ -3,6 +3,13 @@ import type { WholesaleDashboardData } from '@/services/analytics.service';
 import type { StatCardConfig } from '@/components/system/StatCard';
 import { formatKpiNumber } from '@/lib/kpi-format';
 
+/** Format a PeriodComparison delta for display, returning undefined when there
+ *  is no prior data so the StatCard simply omits the badge. */
+function fmtDelta(deltaPct: number | null | undefined): string | undefined {
+  if (deltaPct == null) return undefined;
+  return `${deltaPct >= 0 ? '+' : ''}${deltaPct}%`;
+}
+
 /**
  * Wholesale dashboard arrangement (overhaul Section 2.5).
  *
@@ -20,28 +27,26 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
       href: '/transactions?type=SALE',
       build: (data) => {
         const sales = formatKpiNumber(data.todaySales);
+        const cmp = data.todaySalesComparison;
+        const deltaValue = fmtDelta(cmp?.deltaPct);
         return {
           value: `KES ${sales.display}`,
           fullValue: `KES ${sales.full}`,
           footnote: 'Gross revenue',
-          delta: {
-            value: '+16%',
-            period: 'vs last month',
-            direction: 'up',
-            tone: 'success',
-          },
+          ...(deltaValue != null && {
+            delta: {
+              value: deltaValue,
+              period: 'vs yesterday',
+              direction: (cmp!.deltaPct ?? 0) >= 0 ? 'up' : 'down',
+              tone: (cmp!.deltaPct ?? 0) >= 0 ? 'success' : 'critical',
+            },
+          }),
           sparklineData:
-            data.todaySales > 0
-              ? [
-                  0,
-                  Math.round(data.todaySales * 0.45),
-                  Math.round(data.todaySales * 0.60),
-                  Math.round(data.todaySales * 0.55),
-                  Math.round(data.todaySales * 0.78),
-                  Math.round(data.todaySales * 0.88),
-                  data.todaySales,
-                ]
-              : [0, 0, 0, 0, 0, 0, 0],
+            data.dailySeries?.sales && data.dailySeries.sales.length > 0
+              ? data.dailySeries.sales.map((b) => b.value)
+              : data.todaySales > 0
+                ? [0, 0, 0, 0, 0, 0, data.todaySales]
+                : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },
@@ -54,22 +59,26 @@ export const WHOLESALE_KPI_ROWS: StatCardConfig<WholesaleDashboardData>[][] = [
       href: '/transactions?type=SALE',
       build: (data) => {
         const sales = formatKpiNumber(data.monthSales);
+        const cmp = data.monthSalesComparison;
+        const deltaValue = fmtDelta(cmp?.deltaPct);
         return {
           value: `KES ${sales.display}`,
           fullValue: `KES ${sales.full}`,
           footnote: 'Month to date',
+          ...(deltaValue != null && {
+            delta: {
+              value: deltaValue,
+              period: 'vs last month',
+              direction: (cmp!.deltaPct ?? 0) >= 0 ? 'up' : 'down',
+              tone: (cmp!.deltaPct ?? 0) >= 0 ? 'success' : 'critical',
+            },
+          }),
           sparklineData:
-            data.monthSales > 0
-              ? [
-                  0,
-                  Math.round(data.monthSales * 0.40),
-                  Math.round(data.monthSales * 0.58),
-                  Math.round(data.monthSales * 0.52),
-                  Math.round(data.monthSales * 0.75),
-                  Math.round(data.monthSales * 0.86),
-                  data.monthSales,
-                ]
-              : [0, 0, 0, 0, 0, 0, 0],
+            data.dailySeries?.sales && data.dailySeries.sales.length > 0
+              ? data.dailySeries.sales.map((b) => b.value)
+              : data.monthSales > 0
+                ? [0, 0, 0, 0, 0, 0, data.monthSales]
+                : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },

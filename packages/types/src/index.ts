@@ -98,6 +98,85 @@ export interface UserWorkspace {
   updatedAt?: string;
 }
 
+// ── Data-integrity analytics contract (hisaflow-data-integrity-brief.md §4.2) ─
+export type AnalyticsPreset =
+  | 'today'
+  | 'yesterday'
+  | '12h'
+  | '24h'
+  | '7d'
+  | 'week'
+  | 'last_week'
+  | '30d'
+  | 'month'
+  | 'last_month'
+  | 'year'
+  | 'custom';
+
+export type AnalyticsGranularity = 'hour' | 'day' | 'month';
+
+export interface SeriesBucket {
+  /** Bucket start ISO timestamp in Africa/Nairobi (+03:00). */
+  start: string;
+  /** Human-readable short bucket label (e.g. "Mon", "14:00", "Nov 25"). */
+  label: string;
+  /** Exact server-computed bucket numeric value (0 when no records). */
+  value: number;
+  /** Number of underlying records contributing to this bucket. */
+  count: number;
+}
+
+export type ComparisonStatus = 'ok' | 'no_previous_data' | 'not_applicable';
+
+export interface PeriodComparison {
+  previousTotal: number;
+  /** Null when previousTotal === 0 or not applicable; never fabricated as +100%. */
+  deltaPct: number | null;
+  status: ComparisonStatus;
+  periodLabel: string;
+}
+
+export interface ResolvedAnalyticsRange {
+  preset: AnalyticsPreset;
+  from: string;
+  to: string;
+  tz: 'Africa/Nairobi';
+  granularity: AnalyticsGranularity;
+  label: string;
+  partialPeriod: boolean;
+}
+
+export interface DailyPerformancePoint {
+  date: string;
+  day: string;
+  sales: number;
+  expenses: number;
+  salesCount: number;
+  expensesCount: number;
+}
+
+export interface MetricSeriesSummary {
+  total: number;
+  buckets: SeriesBucket[];
+  comparison: PeriodComparison;
+}
+
+export interface MetricDashboardResponse {
+  metric: string;
+  range: ResolvedAnalyticsRange;
+  total: number;
+  currency: string;
+  buckets: SeriesBucket[];
+  comparison: PeriodComparison;
+  meta: {
+    generatedAt: string;
+    rowCount: number;
+    partialPeriod: boolean;
+    reconciled: boolean;
+  };
+}
+
+
 /** The response shape for GET/PUT /workspace. A null workspace means the user
  *  has never saved one, so Home renders its built-in default. */
 export interface WorkspaceResponse {

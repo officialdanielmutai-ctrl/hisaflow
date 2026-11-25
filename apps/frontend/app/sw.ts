@@ -1,7 +1,7 @@
 ﻿/// <reference lib="webworker" />
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist } from "serwist";
+import { NetworkOnly, Serwist } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -16,7 +16,17 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: [
+    // Never cache authenticated dashboard/analytics/ledger API responses
+    {
+      matcher: ({ url }) =>
+        /^\/(analytics|isp|finance|transactions|organizations|bookings|rooms|inventory)\b/.test(
+          url.pathname,
+        ),
+      handler: new NetworkOnly(),
+    },
+    ...defaultCache,
+  ],
 });
 
 // ── Push Notification Handler ──────────────────────────────────────────────

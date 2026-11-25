@@ -106,7 +106,8 @@ export function getImpersonationToken(): string | null {
 export async function apiGet<T>(
   path: string,
   token: string,
-  organizationId: string
+  organizationId: string,
+  signal?: AbortSignal,
 ): Promise<T> {
   const impToken = getImpersonationToken();
   const headers: Record<string, string> = {
@@ -121,6 +122,7 @@ export async function apiGet<T>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     cache: 'no-store',
     headers,
+    signal,
   });
   return handleResponse<T>(response);
 }

@@ -4,6 +4,7 @@ import { FinanceService } from './finance.service';
 import { BusinessTransactionsService } from './business-transactions.service';
 import { FinanceAiService } from './finance-ai.service';
 import { FinanceBreakdownService } from './finance-breakdown.service';
+import { eatMonthBounds, toEatDateKey } from '../analytics/time-buckets';
 
 const ORG = 'org_a';
 const OTHER_ORG = 'org_b';
@@ -168,7 +169,7 @@ describe('FinanceService — unified business overview', () => {
 
     expect(overview.dateMode).toBe('calendar');
     expect(overview.periodStart).toBe(
-      new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10),
+      toEatDateKey(eatMonthBounds(0, now).start),
     );
   });
 

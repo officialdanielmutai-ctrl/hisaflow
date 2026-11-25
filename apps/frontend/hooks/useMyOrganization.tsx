@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { getMyOrganizations, type OrgMembership } from '@/services/organizations.service';
 
 const SESSION_KEY = 'hf:org';
@@ -53,7 +53,8 @@ const OrganizationContext = createContext<OrganizationContextType>({
 
 // -- Provider -----------------------------------------------------------------
 export function OrganizationProvider({ children }: { children: React.ReactNode }) {
-  const { getToken, isLoaded } = useAuth();
+  const { getToken, isLoaded, userId } = useAuth();
+  const { mutate } = useSWRConfig();
 
   const [isMounted, setIsMounted] = useState(false);
   const [activeOrgId, setActiveOrgIdState] = useState<string | null>(null);
@@ -116,10 +117,20 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     return () => window.removeEventListener('unhandledrejection', handleRejection);
   }, []);
 
+  useEffect(() => {
+    if (isLoaded && !userId) {
+      writeCachedOrg(null);
+      try { localStorage.removeItem(ACTIVE_ORG_KEY); } catch {}
+      void mutate(() => true, undefined, { revalidate: false });
+    }
+  }, [isLoaded, userId, mutate]);
+
   const loading = (!isMounted || !isLoaded || isLoading) && !revoked;
 
   const handleSetActiveOrgId = (id: string) => {
+    writeCachedOrg(null);
     saveActiveOrgId(id);
+    void mutate(() => true, undefined, { revalidate: false });
     window.location.href = '/';
   };
 

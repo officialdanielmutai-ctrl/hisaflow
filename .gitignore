@@ -47,6 +47,9 @@ node_modules
 # Local env overrides (never commit secrets)
 .env.local
 *.env.local
+.tmp*
+*.tmp
+
 
 # Playwright (Layer 4 smoke tests)
 e2e/test-results/

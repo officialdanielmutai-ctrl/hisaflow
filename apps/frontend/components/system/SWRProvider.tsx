@@ -6,19 +6,11 @@ export default function SWRProvider({ children }: { children: React.ReactNode })
   return (
     <SWRConfig
       value={{
-        // ── Global Performance Settings ──────────────────────────────
-        // keepPreviousData: true is the magic bullet for white screens.
-        // It ensures that when SWR keys change (e.g., navigating pages), 
-        // the previous data is kept on screen until the new data arrives, 
-        // preventing the UI from flashing back to loading skeletons.
-        keepPreviousData: true,
-        
-        // Prevent aggressive refetching that causes flashes
+        // Never leave stale numbers from a previous range or organisation on
+        // screen while a new query loads (hisaflow-data-integrity-brief.md §4.3).
+        keepPreviousData: false,
         revalidateOnFocus: false,
-        
-        // If a component mounts and asks for data we fetched <30s ago, 
-        // just use the cache. Don't hit the network again.
-        dedupingInterval: 30000,
+        dedupingInterval: 15000,
       }}
     >
       {children}

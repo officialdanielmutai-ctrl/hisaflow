@@ -6,6 +6,13 @@ import { UpdateBusinessTransactionDto } from './dto/update-business-transaction.
 import { BusinessTransactionsService, BusinessTransactionRecord } from './business-transactions.service';
 import { FinanceAiService, PriceSuggestion } from './finance-ai.service';
 import { FinanceBreakdownService, FinanceBreakdown } from './finance-breakdown.service';
+import {
+  eatDayBounds,
+  eatMonthBounds,
+  effectiveTransactionSaleAmount,
+  roundMoney,
+  toEatDateKey,
+} from '../analytics/time-buckets';
 
 export { BusinessTransactionRecord } from './business-transactions.service';
 export { PriceSuggestion } from './finance-ai.service';
@@ -190,8 +197,8 @@ export class FinanceService {
       periodDays,
       dateMode,
       periodLabel,
-      periodStart: start.toISOString().slice(0, 10),
-      periodEnd: end.toISOString().slice(0, 10),
+      periodStart: toEatDateKey(start),
+      periodEnd: toEatDateKey(end),
     };
   }
 
@@ -276,14 +283,13 @@ export class FinanceService {
     return this.financeAiService.getPriceSuggestions(organizationId);
   }
 
-  // ── Private Helper: Calendar-month P&L ─────────────────────────────────────
+  // ── Private Helper: Calendar-month P&L (EAT Africa/Nairobi) ────────────────
   private async getMonthSummary(
     organizationId: string,
     monthsAgo: number,
   ): Promise<{ revenue: number; expenses: number; netProfit: number }> {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
-    const end = new Date(now.getFullYear(), now.getMonth() - monthsAgo + 1, 0, 23, 59, 59);
+    const { start, end: nextStart } = eatMonthBounds(-monthsAgo);
+    const end = new Date(nextStart.getTime() - 1);
 
     const breakdown = await this.financeBreakdown.getBreakdown(organizationId, start, end);
     return {
@@ -314,15 +320,14 @@ export class FinanceService {
     return this.financeBreakdown.getBreakdown(organizationId, start, end);
   }
 
-  // ── Private Helper: Date Range ─────────────────────────────────────────────
+  // ── Private Helper: Date Range (EAT Africa/Nairobi) ────────────────────────
   private getDateRange(dateMode: 'rolling30' | 'calendar'): { start: Date; end: Date } {
     const now = new Date();
     if (dateMode === 'calendar') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      return { start, end };
+      const { start, end: nextStart } = eatMonthBounds(0, now);
+      return { start, end: new Date(nextStart.getTime() - 1) };
     }
-    const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const { start } = eatDayBounds(-29, now);
     return { start, end: now };
   }
 
@@ -332,20 +337,20 @@ export class FinanceService {
 
     const transactions = await this.prisma.db.inventoryTransaction.findMany({
       where,
-      include: { item: { select: { costPrice: true, sellingPrice: true } } },
+      include: { item: { select: { costPrice: true, sellingPrice: true, isComposite: true } } },
       orderBy: { createdAt: 'asc' },
     });
 
     const map = new Map<string, DailyFinancialPoint>();
     for (const tx of transactions) {
-      const dateKey = tx.createdAt.toISOString().slice(0, 10);
+      const dateKey = toEatDateKey(tx.createdAt);
       const qty = Math.abs(Number(tx.quantityChange));
-      const rev = qty * Number(tx.item.sellingPrice ?? 0);
-      const cost = qty * Number(tx.item.costPrice ?? 0);
+      const rev = effectiveTransactionSaleAmount(tx);
+      const cost = roundMoney(qty * Number(tx.item.costPrice ?? 0));
       const existing = map.get(dateKey) ?? { date: dateKey, revenue: 0, cogs: 0, profit: 0, unitsSold: 0 };
-      existing.revenue += rev;
-      existing.cogs += cost;
-      existing.profit = existing.revenue - existing.cogs;
+      existing.revenue = roundMoney(existing.revenue + rev);
+      existing.cogs = roundMoney(existing.cogs + cost);
+      existing.profit = roundMoney(existing.revenue - existing.cogs);
       existing.unitsSold += qty;
       map.set(dateKey, existing);
     }
@@ -364,14 +369,14 @@ export class FinanceService {
     });
     const map = new Map<string, DailyFinancialPoint>();
     for (const tx of transactions) {
-      const dateKey = tx.createdAt.toISOString().slice(0, 10);
+      const dateKey = toEatDateKey(tx.createdAt);
       const qty = Math.abs(Number(tx.quantityChange));
-      const rev = qty * Number(item.sellingPrice ?? 0);
-      const cost = qty * Number(item.costPrice ?? 0);
+      const rev = roundMoney(qty * Number(item.sellingPrice ?? 0));
+      const cost = roundMoney(qty * Number(item.costPrice ?? 0));
       const existing = map.get(dateKey) ?? { date: dateKey, revenue: 0, cogs: 0, profit: 0, unitsSold: 0 };
-      existing.revenue += rev;
-      existing.cogs += cost;
-      existing.profit = existing.revenue - existing.cogs;
+      existing.revenue = roundMoney(existing.revenue + rev);
+      existing.cogs = roundMoney(existing.cogs + cost);
+      existing.profit = roundMoney(existing.revenue - existing.cogs);
       existing.unitsSold += qty;
       map.set(dateKey, existing);
     }

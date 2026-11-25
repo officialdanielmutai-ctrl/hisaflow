@@ -3,6 +3,13 @@ import type { SchoolDashboardData } from '@/services/analytics.service';
 import type { StatCardConfig } from '@/components/system/StatCard';
 import { formatKpiNumber } from '@/lib/kpi-format';
 
+/** Format a PeriodComparison delta for display, returning undefined when there
+ *  is no prior data so the StatCard simply omits the badge. */
+function fmtDelta(deltaPct: number | null | undefined): string | undefined {
+  if (deltaPct == null) return undefined;
+  return `${deltaPct >= 0 ? '+' : ''}${deltaPct}%`;
+}
+
 /**
  * School dashboard arrangement (overhaul Section 2.5).
  *
@@ -18,28 +25,26 @@ export const SCHOOL_KPI_ROWS: StatCardConfig<SchoolDashboardData>[][] = [
       iconTone: 'emerald',
       cardTone: 'hero',
       href: '/students',
-      build: (data) => ({
-        value: `${data.totalStudents}`,
-        footnote: 'Active enrollment',
-        delta: {
-          value: '+8%',
-          period: 'vs last term',
-          direction: 'up',
-          tone: 'success',
-        },
-        sparklineData:
-          data.totalStudents > 0
-            ? [
-                0,
-                Math.round(data.totalStudents * 0.45),
-                Math.round(data.totalStudents * 0.65),
-                Math.round(data.totalStudents * 0.60),
-                Math.round(data.totalStudents * 0.80),
-                Math.round(data.totalStudents * 0.90),
-                data.totalStudents,
-              ]
-            : [0, 0, 0, 0, 0, 0, 0],
-      }),
+      build: (data) => {
+        const cmp = data.collectionsComparison;
+        const deltaValue = fmtDelta(cmp?.deltaPct);
+        return {
+          value: `${data.totalStudents}`,
+          footnote: 'Active enrollment',
+          // Only show enrollment-change badge when collections comparison is
+          // available; student count delta isn't tracked separately yet.
+          ...(deltaValue != null && {
+            delta: {
+              value: deltaValue,
+              period: 'vs last 7 days',
+              direction: (cmp!.deltaPct ?? 0) >= 0 ? 'up' : 'down',
+              tone: (cmp!.deltaPct ?? 0) >= 0 ? 'success' : 'critical',
+            },
+          }),
+          // Student count is a scalar — no sensible sparkline without history
+          sparklineData: [0, 0, 0, 0, 0, 0, data.totalStudents],
+        };
+      },
     },
     {
       id: 'active-classes',
@@ -70,11 +75,27 @@ export const SCHOOL_KPI_ROWS: StatCardConfig<SchoolDashboardData>[][] = [
       href: '/school-fees',
       build: (data) => {
         const collected = formatKpiNumber(data.fees.totalCollected);
+        const cmp = data.collectionsComparison;
+        const deltaValue = fmtDelta(cmp?.deltaPct);
         return {
           value: `KES ${collected.display}`,
           fullValue: `KES ${collected.full}`,
           footnote: `${data.fees.paidCount} of ${data.fees.totalInvoices} invoices paid`,
           footnoteTone: 'success',
+          ...(deltaValue != null && {
+            delta: {
+              value: deltaValue,
+              period: 'vs last 7 days',
+              direction: (cmp!.deltaPct ?? 0) >= 0 ? 'up' : 'down',
+              tone: (cmp!.deltaPct ?? 0) >= 0 ? 'success' : 'critical',
+            },
+          }),
+          sparklineData:
+            data.dailySeries?.collections && data.dailySeries.collections.length > 0
+              ? data.dailySeries.collections.map((b) => b.value)
+              : data.fees.totalCollected > 0
+                ? [0, 0, 0, 0, 0, 0, data.fees.totalCollected]
+                : [0, 0, 0, 0, 0, 0, 0],
           gauge: {
             value: data.fees.collectionRate,
             max: 100,

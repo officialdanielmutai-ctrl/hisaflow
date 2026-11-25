@@ -9,6 +9,13 @@ import type { DashboardData } from '@/services/analytics.service';
 import type { StatCardConfig } from '@/components/system/StatCard';
 import { formatKpiNumber } from '@/lib/kpi-format';
 
+/** Format a PeriodComparison delta for display, returning undefined when there
+ *  is no prior data so the StatCard simply omits the badge. */
+function fmtDelta(deltaPct: number | null | undefined): string | undefined {
+  if (deltaPct == null) return undefined;
+  return `${deltaPct >= 0 ? '+' : ''}${deltaPct}%`;
+}
+
 /**
  * Retail (duka / mini-mart) dashboard arrangement (overhaul Section 2.5).
  *
@@ -26,33 +33,25 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
       href: '/transactions?type=SALE',
       build: (data) => {
         const sales = formatKpiNumber(data.kpis.todaySales);
+        const cmp = data.selectedPeriod?.salesComparison;
+        const deltaValue = fmtDelta(cmp?.deltaPct);
         return {
           value: `KES ${sales.display}`,
           fullValue: `KES ${sales.full}`,
           footnote: data.kpis.salesTrendLabel,
           footnoteTone: data.kpis.salesTrendIsPositive ? 'success' : 'critical',
-          delta: {
-            value: data.kpis.salesTrendPct != null
-              ? `${data.kpis.salesTrendPct >= 0 ? '+' : ''}${data.kpis.salesTrendPct}%`
-              : data.kpis.salesTrendLabel?.includes('%')
-                ? data.kpis.salesTrendLabel.split(' ')[0]
-                : '0%',
-            period: 'vs last month',
-            direction: data.kpis.salesTrendIsPositive ? 'up' : 'down',
-            tone: data.kpis.salesTrendIsPositive ? 'success' : 'critical',
-          },
+          ...(deltaValue != null && {
+            delta: {
+              value: deltaValue,
+              period: 'vs yesterday',
+              direction: (cmp!.deltaPct ?? 0) >= 0 ? 'up' : 'down',
+              tone: (cmp!.deltaPct ?? 0) >= 0 ? 'success' : 'critical',
+            },
+          }),
           sparklineData:
-            data.kpis.todaySales > 0
-              ? [
-                  0,
-                  Math.round(data.kpis.todaySales * 0.38),
-                  Math.round(data.kpis.todaySales * 0.60),
-                  Math.round(data.kpis.todaySales * 0.52),
-                  Math.round(data.kpis.todaySales * 0.75),
-                  Math.round(data.kpis.todaySales * 0.88),
-                  data.kpis.todaySales,
-                ]
-              : [0, 0, 0, 0, 0, 0, 0],
+            data.selectedPeriod?.sevenDaySales && data.selectedPeriod.sevenDaySales.length > 0
+              ? data.selectedPeriod.sevenDaySales.map((b) => b.value)
+              : [0, 0, 0, 0, 0, 0, data.kpis.todaySales],
         };
       },
     },
@@ -65,6 +64,8 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
       href: '/transactions?type=PURCHASE',
       build: (data) => {
         const expenses = formatKpiNumber(data.kpis.todayExpenses);
+        const cmp = data.selectedPeriod?.expensesComparison;
+        const deltaValue = fmtDelta(cmp?.deltaPct);
         return {
           value: `KES ${expenses.display}`,
           fullValue: `KES ${expenses.full}`,
@@ -72,28 +73,18 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
           footnoteTone: data.kpis.expensesTrendIsNegative
             ? 'critical'
             : 'success',
-          delta: {
-            value: data.kpis.expensesTrendPct != null
-              ? `${data.kpis.expensesTrendPct >= 0 ? '+' : ''}${data.kpis.expensesTrendPct}%`
-              : data.kpis.expensesTrendLabel?.includes('%')
-                ? data.kpis.expensesTrendLabel.split(' ')[0]
-                : '0%',
-            period: 'vs last month',
-            direction: data.kpis.expensesTrendIsNegative ? 'down' : 'up',
-            tone: data.kpis.expensesTrendIsNegative ? 'success' : 'critical',
-          },
+          ...(deltaValue != null && {
+            delta: {
+              value: deltaValue,
+              period: 'vs yesterday',
+              direction: (cmp!.deltaPct ?? 0) >= 0 ? 'up' : 'down',
+              tone: data.kpis.expensesTrendIsNegative ? 'success' : 'critical',
+            },
+          }),
           sparklineData:
-            data.kpis.todayExpenses > 0
-              ? [
-                  0,
-                  Math.round(data.kpis.todayExpenses * 0.30),
-                  Math.round(data.kpis.todayExpenses * 0.55),
-                  Math.round(data.kpis.todayExpenses * 0.45),
-                  Math.round(data.kpis.todayExpenses * 0.68),
-                  Math.round(data.kpis.todayExpenses * 0.82),
-                  data.kpis.todayExpenses,
-                ]
-              : [0, 0, 0, 0, 0, 0, 0],
+            data.selectedPeriod?.sevenDayExpenses && data.selectedPeriod.sevenDayExpenses.length > 0
+              ? data.selectedPeriod.sevenDayExpenses.map((b) => b.value)
+              : [0, 0, 0, 0, 0, 0, data.kpis.todayExpenses],
         };
       },
     },
@@ -128,6 +119,8 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
       href: '/finance',
       build: (data) => {
         const profit = formatKpiNumber(data.kpis.profitEstimate);
+        const cmp = data.selectedPeriod?.profitComparison;
+        const deltaValue = fmtDelta(cmp?.deltaPct);
         return {
           value: `KES ${profit.display}`,
           fullValue: `KES ${profit.full}`,
@@ -136,28 +129,18 @@ export const RETAIL_KPI_ROWS: StatCardConfig<DashboardData>[][] = [
           footnoteTone: data.kpis.profitTrendIsPositive
             ? 'success'
             : 'critical',
+          ...(deltaValue != null && {
+            delta: {
+              value: deltaValue,
+              period: 'vs yesterday',
+              direction: (cmp!.deltaPct ?? 0) >= 0 ? 'up' : 'down',
+              tone: (cmp!.deltaPct ?? 0) >= 0 ? 'success' : 'critical',
+            },
+          }),
           sparklineData:
-            data.kpis.profitEstimate > 0
-              ? [
-                  0,
-                  Math.round(data.kpis.profitEstimate * 0.32),
-                  Math.round(data.kpis.profitEstimate * 0.55),
-                  Math.round(data.kpis.profitEstimate * 0.48),
-                  Math.round(data.kpis.profitEstimate * 0.70),
-                  Math.round(data.kpis.profitEstimate * 0.85),
-                  data.kpis.profitEstimate,
-                ]
-              : data.kpis.profitEstimate < 0
-                ? [
-                    0,
-                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.20),
-                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.45),
-                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.60),
-                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.75),
-                    Math.round(Math.abs(data.kpis.profitEstimate) * 0.90),
-                    Math.abs(data.kpis.profitEstimate),
-                  ]
-                : [0, 0, 0, 0, 0, 0, 0],
+            data.selectedPeriod?.sevenDayProfit && data.selectedPeriod.sevenDayProfit.length > 0
+              ? data.selectedPeriod.sevenDayProfit.map((b) => b.value)
+              : [0, 0, 0, 0, 0, 0, Math.abs(data.kpis.profitEstimate)],
         };
       },
     },

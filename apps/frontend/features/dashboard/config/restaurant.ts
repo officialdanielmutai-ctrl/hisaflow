@@ -3,6 +3,13 @@ import type { RestaurantDashboardData } from '@/services/analytics.service';
 import type { StatCardConfig } from '@/components/system/StatCard';
 import { formatKpiNumber } from '@/lib/kpi-format';
 
+/** Format a PeriodComparison delta for display, returning undefined when there
+ *  is no prior data so the StatCard simply omits the badge. */
+function fmtDelta(deltaPct: number | null | undefined): string | undefined {
+  if (deltaPct == null) return undefined;
+  return `${deltaPct >= 0 ? '+' : ''}${deltaPct}%`;
+}
+
 /**
  * Restaurant dashboard arrangement (overhaul Section 2.5).
  *
@@ -19,28 +26,26 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
       cardTone: 'hero',
       build: (data) => {
         const revenue = formatKpiNumber(data.todayRevenue);
+        const cmp = data.revenueComparison;
+        const deltaValue = fmtDelta(cmp?.deltaPct);
         return {
           value: `KES ${revenue.display}`,
           fullValue: `KES ${revenue.full}`,
           footnote: 'Live total',
-          delta: {
-            value: '+12%',
-            period: 'vs yesterday',
-            direction: 'up',
-            tone: 'success',
-          },
+          ...(deltaValue != null && {
+            delta: {
+              value: deltaValue,
+              period: 'vs yesterday',
+              direction: (cmp!.deltaPct ?? 0) >= 0 ? 'up' : 'down',
+              tone: (cmp!.deltaPct ?? 0) >= 0 ? 'success' : 'critical',
+            },
+          }),
           sparklineData:
-            data.todayRevenue > 0
-              ? [
-                  0,
-                  Math.round(data.todayRevenue * 0.40),
-                  Math.round(data.todayRevenue * 0.62),
-                  Math.round(data.todayRevenue * 0.55),
-                  Math.round(data.todayRevenue * 0.78),
-                  Math.round(data.todayRevenue * 0.85),
-                  data.todayRevenue,
-                ]
-              : [0, 0, 0, 0, 0, 0, 0],
+            data.dailySeries?.revenue && data.dailySeries.revenue.length > 0
+              ? data.dailySeries.revenue.map((b) => b.value)
+              : data.todayRevenue > 0
+                ? [0, 0, 0, 0, 0, 0, data.todayRevenue]
+                : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },
@@ -80,7 +85,12 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
         value: `${data.paidOrdersToday}`,
         footnote: 'Tables settled',
         progress: {
-          value: Math.min((data.paidOrdersToday / Math.max(data.paidOrdersToday + data.openOrdersCount, 12)) * 100, 100),
+          value: Math.min(
+            (data.paidOrdersToday /
+              Math.max(data.paidOrdersToday + data.openOrdersCount, 1)) *
+              100,
+            100,
+          ),
           max: 100,
           label: 'Order Turnover',
           targetLabel: `${data.paidOrdersToday} Settled`,
@@ -100,16 +110,8 @@ export const RESTAURANT_KPI_ROWS: StatCardConfig<RestaurantDashboardData>[][] = 
           fullValue: `KES ${pending.full}`,
           footnote: 'Active orders',
           sparklineData:
-            data.openOrdersValue > 0
-              ? [
-                  0,
-                  Math.round(data.openOrdersValue * 0.35),
-                  Math.round(data.openOrdersValue * 0.58),
-                  Math.round(data.openOrdersValue * 0.48),
-                  Math.round(data.openOrdersValue * 0.72),
-                  Math.round(data.openOrdersValue * 0.82),
-                  data.openOrdersValue,
-                ]
+            data.dailySeries?.orders && data.dailySeries.orders.length > 0
+              ? data.dailySeries.orders.map((b) => b.value)
               : [0, 0, 0, 0, 0, 0, 0],
         };
       },

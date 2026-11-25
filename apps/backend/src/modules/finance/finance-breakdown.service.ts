@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import type { DailyFinancialPoint, ExpenseCategoryBreakdown } from './finance.service';
+import {
+  effectiveTransactionSaleAmount,
+  roundMoney,
+  toEatDateKey,
+} from '../analytics/time-buckets';
 
 export interface BreakdownRow {
   key: string;
@@ -110,30 +115,30 @@ export class FinanceBreakdownService {
 
     for (const tx of inventoryTx) {
       const qty = Math.abs(Number(tx.quantityChange));
-      const cost = qty * Number(tx.item.costPrice ?? 0);
-      const day = tx.createdAt.toISOString().slice(0, 10);
+      const cost = roundMoney(qty * Number(tx.item.costPrice ?? 0));
+      const day = toEatDateKey(tx.createdAt);
       const point =
         inventoryDaily.get(day) ??
         { date: day, revenue: 0, cogs: 0, profit: 0, unitsSold: 0 };
 
-      inventoryCogs += cost;
-      point.cogs += cost;
+      inventoryCogs = roundMoney(inventoryCogs + cost);
+      point.cogs = roundMoney(point.cogs + cost);
       point.unitsSold += qty;
 
       if (tx.type === 'SALE') {
-        const rev = qty * Number(tx.item.sellingPrice ?? 0);
-        inventoryRevenue += rev;
-        point.revenue += rev;
+        const rev = effectiveTransactionSaleAmount(tx);
+        inventoryRevenue = roundMoney(inventoryRevenue + rev);
+        point.revenue = roundMoney(point.revenue + rev);
         const key = tx.item.name;
         const row = commodityMap.get(key) ?? { amount: 0, qty: 0 };
-        row.amount += rev;
+        row.amount = roundMoney(row.amount + rev);
         row.qty += qty;
         commodityMap.set(key, row);
       } else if (tx.type === 'WASTAGE') {
-        wastageCost += cost;
+        wastageCost = roundMoney(wastageCost + cost);
       }
 
-      point.profit = point.revenue - point.cogs;
+      point.profit = roundMoney(point.revenue - point.cogs);
       inventoryDaily.set(day, point);
     }
 
@@ -200,11 +205,11 @@ export class FinanceBreakdownService {
       }
     }
     for (const payment of external.daily) {
-      const day = payment.date.toISOString().slice(0, 10);
+      const day = toEatDateKey(payment.date);
       const point =
         dailyMap.get(day) ?? { date: day, revenue: 0, cogs: 0, profit: 0, unitsSold: 0 };
-      point.revenue += payment.amount;
-      point.profit = point.revenue - point.cogs;
+      point.revenue = roundMoney(point.revenue + payment.amount);
+      point.profit = roundMoney(point.revenue - point.cogs);
       dailyMap.set(day, point);
     }
     const dailyTrend = Array.from(dailyMap.values()).sort((a, b) =>

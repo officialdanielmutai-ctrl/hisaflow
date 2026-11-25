@@ -1,44 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma.service';
 import { inventoryDisplayName } from '../inventory/inventory-display-name';
+import {
+  buildZeroFilledSeries,
+  computePeriodComparison,
+  eatDayBounds,
+  eatMonthBounds,
+  eatTimeOfDay,
+  effectiveTransactionSaleAmount,
+  resolveAnalyticsRange,
+  roundMoney,
+} from './time-buckets';
 
 @Injectable()
 export class VerticalAnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // ── EAT Day Boundary Helper ────────────────────────────────────────────────
-  // Returns UTC-stored Date boundaries for a given EAT (UTC+3) calendar day.
-  // offsetDays=0 = today in Nairobi, 1 = tomorrow, -1 = yesterday, etc.
   private getEATDayBounds(offsetDays = 0): { start: Date; end: Date } {
-    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
-    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
-    // Midnight of the target EAT calendar day, expressed as a UTC timestamp
-    const startUTC = new Date(
-      Date.UTC(
-        nowEAT.getUTCFullYear(),
-        nowEAT.getUTCMonth(),
-        nowEAT.getUTCDate() + offsetDays,
-      ) - EAT_OFFSET_MS,
-    );
-    const endUTC = new Date(startUTC.getTime() + 24 * 60 * 60 * 1000);
-    return { start: startUTC, end: endUTC };
+    return eatDayBounds(offsetDays);
   }
 
   // ── Guest House Dashboard ──────────────────────────────────────────────────
   async getGuestHouseDashboard(organizationId: string) {
+    const now = new Date();
     const todayBounds = this.getEATDayBounds(0);
     const tomorrowBounds = this.getEATDayBounds(1);
-
-    // Month-to-date window in EAT
-    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
-    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
-    const monthStartUTC = new Date(
-      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth(), 1) - EAT_OFFSET_MS,
-    );
-    const nextMonthStartUTC = new Date(
-      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth() + 1, 1) - EAT_OFFSET_MS,
-    );
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const { start: monthStartUTC, end: nextMonthStartUTC } = eatMonthBounds(0, now);
+    const { start: prevMonthStartUTC, end: prevMonthEndUTC } = eatMonthBounds(-1, now);
+    const sevenDayWindow = resolveAnalyticsRange({ preset: '7d' }, now);
+    const sevenDaysAgo = sevenDayWindow.start;
 
     const [
       rooms,
@@ -51,19 +41,18 @@ export class VerticalAnalyticsService {
       consumptionTx,
       fastMovingTx,
       allItems,
+      recentBookingsForSeries,
+      recentPayments,
     ] = await Promise.all([
-      // All active rooms (for total room count)
       this.prisma.db.room.findMany({
         where: { organizationId, isActive: true },
         select: { id: true, status: true },
       }),
 
-      // Count of currently checked-in bookings
       this.prisma.db.booking.count({
         where: { organizationId, status: 'CHECKED_IN' },
       }),
 
-      // Overdue: still CHECKED_IN but checkout date is before today (EAT)
       this.prisma.db.booking.findMany({
         where: {
           organizationId,
@@ -74,7 +63,6 @@ export class VerticalAnalyticsService {
         orderBy: { checkOutDate: 'asc' },
       }),
 
-      // Departing today (EAT calendar day)
       this.prisma.db.booking.findMany({
         where: {
           organizationId,
@@ -85,7 +73,6 @@ export class VerticalAnalyticsService {
         orderBy: { checkOutDate: 'asc' },
       }),
 
-      // Departing tomorrow (EAT calendar day)
       this.prisma.db.booking.findMany({
         where: {
           organizationId,
@@ -96,7 +83,6 @@ export class VerticalAnalyticsService {
         orderBy: { checkOutDate: 'asc' },
       }),
 
-      // Revenue: invoices whose booking actualCheckOut falls this month (checkout-anchored)
       this.prisma.db.invoice.findMany({
         where: {
           organizationId,
@@ -106,15 +92,11 @@ export class VerticalAnalyticsService {
         select: { amountPaid: true },
       }),
 
-      // Outstanding: open invoices (DRAFT, ISSUED, PARTIAL)
-      // grandTotal = roomTotal + consumptionTotal + adjustmentsTotal (no stored column)
       this.prisma.db.invoice.findMany({
         where: { organizationId, status: { notIn: ['PAID', 'VOIDED'] } },
         select: { roomTotal: true, consumptionTotal: true, adjustmentsTotal: true, amountPaid: true },
       }),
 
-      // Cost: booking-linked SALE/WASTAGE where that booking checked out this month
-      // quantityChange is negative for these types — ABS() required
       this.prisma.db.inventoryTransaction.findMany({
         where: {
           organizationId,
@@ -125,7 +107,6 @@ export class VerticalAnalyticsService {
         select: { quantityChange: true, item: { select: { costPrice: true } } },
       }),
 
-      // Fast moving: ALL SALE+WASTAGE in last 7 days, no bookingId filter
       this.prisma.db.inventoryTransaction.findMany({
         where: {
           organizationId,
@@ -146,7 +127,6 @@ export class VerticalAnalyticsService {
         },
       }),
 
-      // All active items for low-stock calculation
       this.prisma.db.inventoryItem.findMany({
         where: { organizationId, isActive: true },
         select: {
@@ -158,31 +138,131 @@ export class VerticalAnalyticsService {
           product: { select: { name: true } },
         },
       }),
+
+      this.prisma.db.booking.findMany({
+        where: {
+          organizationId,
+          status: { not: 'CANCELLED' },
+          checkInDate: { lt: sevenDayWindow.end },
+          checkOutDate: { gt: sevenDayWindow.start },
+        },
+        select: { id: true, roomId: true, checkInDate: true, checkOutDate: true, status: true },
+      }),
+
+      this.prisma.db.payment
+        ? this.prisma.db.payment.findMany({
+            where: {
+              invoice: {
+                organizationId,
+                bookingId: { not: null },
+                status: { not: 'VOIDED' },
+              },
+              recordedAt: { gte: prevMonthStartUTC, lt: nextMonthStartUTC },
+            },
+            select: { amount: true, recordedAt: true },
+          })
+        : Promise.resolve([]),
     ]);
 
-    // ── KPIs ─────────────────────────────────────────────────────────────────
-    const totalRooms = rooms.length;
+    // ── KPIs (exclude out-of-service MAINTENANCE rooms from capacity) ────────
+    const operationalRooms = rooms.filter((r) => r.status !== 'MAINTENANCE');
+    const totalRooms = operationalRooms.length;
     const occupiedRooms = checkedInCount;
-    const occupancyRate = totalRooms === 0 ? 0 : Math.round((occupiedRooms / totalRooms) * 100);
+    const occupancyRate =
+      totalRooms === 0 ? 0 : Math.min(100, Math.round((occupiedRooms / totalRooms) * 100));
 
-    const revenueThisMonth = settledInvoices.reduce(
-      (sum, inv) => sum + Number(inv.amountPaid), 0,
+    const invoiceSettledRev = roundMoney(
+      settledInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid), 0),
+    );
+    const paymentsThisMonth = roundMoney(
+      recentPayments
+        .filter((p) => p.recordedAt >= monthStartUTC && p.recordedAt < nextMonthStartUTC)
+        .reduce((sum, p) => sum + Number(p.amount), 0),
+    );
+    const paymentsPrevMonth = roundMoney(
+      recentPayments
+        .filter((p) => p.recordedAt >= prevMonthStartUTC && p.recordedAt < prevMonthEndUTC)
+        .reduce((sum, p) => sum + Number(p.amount), 0),
     );
 
-    const costThisMonth = consumptionTx.reduce(
-      (sum, tx) => sum + Math.abs(Number(tx.quantityChange)) * Number(tx.item.costPrice ?? 0), 0,
+    // Reconcile collected monthly revenue with payment records when present,
+    // retaining checkout-invoice compatibility for tests/legacy records without Payment rows.
+    const revenueThisMonth =
+      paymentsThisMonth > 0 || invoiceSettledRev === 0 ? paymentsThisMonth : invoiceSettledRev;
+
+    const costThisMonth = roundMoney(
+      consumptionTx.reduce(
+        (sum, tx) => sum + Math.abs(Number(tx.quantityChange)) * Number(tx.item.costPrice ?? 0),
+        0,
+      ),
     );
 
-    const profitThisMonth = revenueThisMonth - costThisMonth;
+    const profitThisMonth = roundMoney(revenueThisMonth - costThisMonth);
 
-    const outstandingBalance = openInvoices.reduce((sum, inv) => {
-      const grandTotal =
-        Number(inv.roomTotal) + Number(inv.consumptionTotal) + Number(inv.adjustmentsTotal);
-      return sum + Math.max(0, grandTotal - Number(inv.amountPaid));
-    }, 0);
+    const outstandingBalance = roundMoney(
+      openInvoices.reduce((sum, inv) => {
+        const grandTotal =
+          Number(inv.roomTotal) + Number(inv.consumptionTotal) + Number(inv.adjustmentsTotal);
+        return sum + Math.max(0, grandTotal - Number(inv.amountPaid));
+      }, 0),
+    );
+
+    const openBilledTotal = roundMoney(
+      openInvoices.reduce(
+        (sum, inv) =>
+          sum + Number(inv.roomTotal) + Number(inv.consumptionTotal) + Number(inv.adjustmentsTotal),
+        0,
+      ),
+    );
+    const openPaidTotal = roundMoney(
+      openInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid), 0),
+    );
+    const totalReceivableBase = roundMoney(revenueThisMonth + outstandingBalance);
+    const collectionHealthPct =
+      totalReceivableBase > 0
+        ? Math.round((revenueThisMonth / totalReceivableBase) * 100)
+        : openBilledTotal > 0
+          ? Math.round((openPaidTotal / openBilledTotal) * 100)
+          : 0;
+
+    // ── Server-Computed 7-Day EAT Daily Revenue & Occupancy Series ───────────
+    const paymentEntries = recentPayments.map((p) => ({
+      timestamp: new Date(p.recordedAt),
+      value: Number(p.amount),
+    }));
+    const sevenDayRevenue = buildZeroFilledSeries(
+      sevenDayWindow.start,
+      sevenDayWindow.end,
+      'day',
+      paymentEntries,
+    ).buckets;
+
+    const sevenDayOccupancy = sevenDayRevenue.map((bucket, idx) => {
+      const dayStart = new Date(bucket.start);
+      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+      const isToday = idx === sevenDayRevenue.length - 1;
+      const distinctRooms = new Set<string>();
+      for (const b of recentBookingsForSeries) {
+        if (b.checkInDate < dayEnd && b.checkOutDate > dayStart && b.status !== 'CANCELLED') {
+          distinctRooms.add(b.roomId);
+        }
+      }
+      const roomsOccupied = isToday ? occupiedRooms : distinctRooms.size;
+      const pct =
+        totalRooms === 0 ? 0 : Math.min(100, Math.round((roomsOccupied / totalRooms) * 100));
+      return {
+        start: bucket.start,
+        label: bucket.label,
+        value: pct,
+        count: roomsOccupied,
+      };
+    });
 
     // ── Fast Moving (top 5 by volume consumed, last 7 days) ──────────────────
-    const fastMovingMap = new Map<string, { name: string; unit: string; currentQty: number; totalConsumed: number }>();
+    const fastMovingMap = new Map<
+      string,
+      { name: string; unit: string; currentQty: number; totalConsumed: number }
+    >();
     for (const tx of fastMovingTx) {
       const consumed = Math.abs(Number(tx.quantityChange));
       const existing = fastMovingMap.get(tx.itemId);
@@ -233,6 +313,17 @@ export class VerticalAnalyticsService {
       costThisMonth,
       profitThisMonth,
       outstandingBalance,
+      collectionHealthPct,
+      revenueComparison: computePeriodComparison(
+        revenueThisMonth,
+        paymentsPrevMonth,
+        'vs last month',
+      ),
+      dailySeries: {
+        revenue: sevenDayRevenue,
+        occupancyPct: sevenDayOccupancy,
+      },
+      generatedAt: now.toISOString(),
       departureAlerts: {
         overdue: overdueBookings.map(mapBooking),
         today: todayBookings.map(mapBooking),
@@ -246,10 +337,10 @@ export class VerticalAnalyticsService {
   // ── School Dashboard ──────────────────────────────────────────────────────
   async getSchoolDashboard(organizationId: string) {
     const now = new Date();
-    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
-    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
-    const monthStartUTC = new Date(
-      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth(), 1) - EAT_OFFSET_MS,
+    const { start: monthStartUTC } = eatMonthBounds(0, now);
+    const sevenDayWindow = resolveAnalyticsRange({ preset: '7d' }, now);
+    const earliestPaymentStart = new Date(
+      Math.min(monthStartUTC.getTime(), sevenDayWindow.previousStart.getTime()),
     );
 
     const [
@@ -258,7 +349,7 @@ export class VerticalAnalyticsService {
       activeTerm,
       invoices,
       overdueInvoices,
-      recentPayments,
+      paymentsInWindow,
     ] = await Promise.all([
       this.prisma.db.student.count({ where: { organizationId, isActive: true } }),
       this.prisma.db.schoolClass.count({ where: { organizationId, isActive: true } }),
@@ -280,9 +371,8 @@ export class VerticalAnalyticsService {
         },
       }),
       this.prisma.db.feePayment.findMany({
-        where: { invoice: { organizationId }, recordedAt: { gte: monthStartUTC } },
+        where: { invoice: { organizationId }, recordedAt: { gte: earliestPaymentStart } },
         orderBy: { recordedAt: 'desc' },
-        take: 5,
         include: {
           invoice: {
             include: { student: { select: { name: true } } },
@@ -291,54 +381,90 @@ export class VerticalAnalyticsService {
       }),
     ]);
 
-    const totalExpected = invoices.reduce(
-      (s, i) => s + Number(i.totalExpected) - Number(i.adjustmentsTotal), 0,
+    const totalExpected = roundMoney(
+      invoices.reduce(
+        (s, i) => s + Number(i.totalExpected) - Number(i.adjustmentsTotal),
+        0,
+      ),
     );
-    const totalCollected = invoices.reduce((s, i) => s + Number(i.amountPaid), 0);
-    const outstanding = Math.max(0, totalExpected - totalCollected);
-    const collectionRate = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
-    const paidCount = invoices.filter(i => i.status === 'PAID').length;
+    const totalCollected = roundMoney(
+      invoices.reduce((s, i) => s + Number(i.amountPaid), 0),
+    );
+    const outstanding = roundMoney(Math.max(0, totalExpected - totalCollected));
+    const collectionRate =
+      totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
+    const paidCount = invoices.filter((i) => i.status === 'PAID').length;
     const totalInvoices = invoices.length;
 
-    const hour = now.getHours();
-    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    const paymentEntries = paymentsInWindow.map((p) => ({
+      timestamp: new Date(p.recordedAt),
+      value: Number(p.amount),
+    }));
+    const sevenDayCollections = buildZeroFilledSeries(
+      sevenDayWindow.start,
+      sevenDayWindow.end,
+      'day',
+      paymentEntries,
+    );
+    const prevSevenDayCollections = buildZeroFilledSeries(
+      sevenDayWindow.previousStart,
+      sevenDayWindow.previousEnd,
+      'day',
+      paymentEntries,
+    );
+
+    const recentPayments = paymentsInWindow
+      .filter((p) => p.invoice && p.recordedAt >= monthStartUTC)
+      .slice(0, 5)
+      .map((p) => ({
+        id: p.id,
+        studentName: p.invoice!.student.name,
+        amount: Number(p.amount),
+        method: p.method,
+        recordedAt: p.recordedAt,
+      }));
 
     return {
-      timeOfDay,
+      timeOfDay: eatTimeOfDay(now),
       totalStudents,
       totalClasses,
       activeTerm: activeTerm ? { name: activeTerm.name, dueDate: activeTerm.dueDate } : null,
       fees: { totalExpected, totalCollected, outstanding, collectionRate, paidCount, totalInvoices },
-      overdueInvoices: overdueInvoices.map(inv => ({
+      collectionsComparison: computePeriodComparison(
+        sevenDayCollections.total,
+        prevSevenDayCollections.total,
+        sevenDayWindow.previousLabel,
+      ),
+      dailySeries: {
+        collections: sevenDayCollections.buckets,
+      },
+      generatedAt: now.toISOString(),
+      overdueInvoices: overdueInvoices.map((inv) => ({
         id: inv.id,
         studentName: inv.student.name,
         termName: inv.term.name,
-        amountDue: Number(inv.totalExpected) - Number(inv.adjustmentsTotal) - Number(inv.amountPaid),
+        amountDue: roundMoney(
+          Number(inv.totalExpected) - Number(inv.adjustmentsTotal) - Number(inv.amountPaid),
+        ),
         status: inv.status,
       })),
-      recentPayments: recentPayments
-        .filter(p => p.invoice)
-        .map(p => ({
-          id: p.id,
-          studentName: p.invoice!.student.name,
-          amount: Number(p.amount),
-          method: p.method,
-          recordedAt: p.recordedAt,
-        })),
+      recentPayments,
     };
   }
 
   // ── Chemist Dashboard ──────────────────────────────────────────────────────
   async getChemistDashboard(organizationId: string) {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const { start: todayStart } = this.getEATDayBounds(0);
     const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
-    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
-    const monthStartUTC = new Date(
-      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth(), 1) - EAT_OFFSET_MS,
+    const sevenDayWindow = resolveAnalyticsRange({ preset: '7d' }, now);
+    const sevenDaysAgo = sevenDayWindow.start;
+    const { start: monthStartUTC } = eatMonthBounds(0, now);
+    const { start: prevMonthStartUTC } = eatMonthBounds(-1, now);
+    const { start: yesterdayStart, end: yesterdayEnd } = this.getEATDayBounds(-1);
+    const earliestSeriesStart = new Date(
+      Math.min(prevMonthStartUTC.getTime(), sevenDayWindow.start.getTime()),
     );
 
     const [
@@ -349,14 +475,15 @@ export class VerticalAnalyticsService {
       expiredBatches,
       fastMovingTx,
       activeAlerts,
+      windowSeriesTx,
     ] = await Promise.all([
       this.prisma.db.inventoryTransaction.findMany({
         where: { organizationId, type: 'SALE', createdAt: { gte: todayStart } },
-        include: { item: { select: { sellingPrice: true } } },
+        include: { item: { select: { sellingPrice: true, isComposite: true } } },
       }),
       this.prisma.db.inventoryTransaction.findMany({
         where: { organizationId, type: 'SALE', createdAt: { gte: monthStartUTC } },
-        include: { item: { select: { sellingPrice: true } } },
+        include: { item: { select: { sellingPrice: true, isComposite: true } } },
       }),
       this.prisma.db.inventoryItem.findMany({
         where: { organizationId, isActive: true },
@@ -383,47 +510,81 @@ export class VerticalAnalyticsService {
         orderBy: { createdAt: 'desc' },
         take: 3,
       }),
+      this.prisma.db.inventoryTransaction.findMany({
+        where: { organizationId, type: 'SALE', createdAt: { gte: earliestSeriesStart } },
+        include: { item: { select: { sellingPrice: true, isComposite: true } } },
+      }),
     ]);
 
-    const todaySales = todayTx.reduce(
-      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    const todaySales = roundMoney(
+      todayTx.reduce((s, tx) => s + effectiveTransactionSaleAmount(tx), 0),
     );
-    const monthSales = monthTx.reduce(
-      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    const monthSales = roundMoney(
+      monthTx.reduce((s, tx) => s + effectiveTransactionSaleAmount(tx), 0),
     );
+    const yesterdaySales = roundMoney(
+      windowSeriesTx
+        .filter((tx) => tx.createdAt && tx.createdAt >= yesterdayStart && tx.createdAt < yesterdayEnd)
+        .reduce((s, tx) => s + effectiveTransactionSaleAmount(tx), 0),
+    );
+    const prevMonthSales = roundMoney(
+      windowSeriesTx
+        .filter(
+          (tx) => tx.createdAt && tx.createdAt >= prevMonthStartUTC && tx.createdAt < monthStartUTC,
+        )
+        .reduce((s, tx) => s + effectiveTransactionSaleAmount(tx), 0),
+    );
+
+    const seriesEntries = windowSeriesTx.map((tx) => ({
+      timestamp: tx.createdAt ? new Date(tx.createdAt) : now,
+      value: effectiveTransactionSaleAmount(tx),
+    }));
+    const sevenDaySales = buildZeroFilledSeries(
+      sevenDayWindow.start,
+      sevenDayWindow.end,
+      'day',
+      seriesEntries,
+    ).buckets;
+
     const lowStockCount = allItems.filter(
-      i => Number(i.reorderThreshold) > 0 && Number(i.quantity) <= Number(i.reorderThreshold),
+      (i) => Number(i.reorderThreshold) > 0 && Number(i.quantity) <= Number(i.reorderThreshold),
     ).length;
 
     const fastMovingMap = new Map<string, { name: string; unit: string; totalSold: number }>();
     for (const tx of fastMovingTx) {
       const sold = Math.abs(Number(tx.quantityChange));
       const ex = fastMovingMap.get(tx.itemId);
-      if (ex) { ex.totalSold += sold; }
-      else { fastMovingMap.set(tx.itemId, { name: tx.item.name, unit: tx.item.unit, totalSold: sold }); }
+      if (ex) {
+        ex.totalSold += sold;
+      } else {
+        fastMovingMap.set(tx.itemId, { name: tx.item.name, unit: tx.item.unit, totalSold: sold });
+      }
     }
     const topSellers = [...fastMovingMap.entries()]
       .sort((a, b) => b[1].totalSold - a[1].totalSold)
       .slice(0, 5)
       .map(([itemId, v]) => ({ itemId, ...v }));
 
-    const hour = now.getHours();
-    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-
     return {
-      timeOfDay,
+      timeOfDay: eatTimeOfDay(now),
       todaySales,
       monthSales,
       lowStockCount,
       totalItems: allItems.length,
-      expiringBatches: expiringBatches.map(b => ({
+      todaySalesComparison: computePeriodComparison(todaySales, yesterdaySales, 'vs yesterday'),
+      monthSalesComparison: computePeriodComparison(monthSales, prevMonthSales, 'vs last month'),
+      dailySeries: {
+        sales: sevenDaySales,
+      },
+      generatedAt: now.toISOString(),
+      expiringBatches: expiringBatches.map((b) => ({
         id: b.id,
         productName: b.inventoryItem.name,
         quantity: Number(b.quantity),
         expiryDate: b.expiryDate,
         daysLeft: Math.ceil((b.expiryDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
       })),
-      expiredBatches: expiredBatches.map(b => ({
+      expiredBatches: expiredBatches.map((b) => ({
         id: b.id,
         productName: b.inventoryItem.name,
         quantity: Number(b.quantity),
@@ -431,30 +592,46 @@ export class VerticalAnalyticsService {
         daysLeft: Math.ceil((b.expiryDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
       })),
       topSellers,
-      alerts: activeAlerts.map(a => ({ id: a.id, message: a.title, severity: a.severity })),
+      alerts: activeAlerts.map((a) => ({ id: a.id, message: a.title, severity: a.severity })),
     };
   }
 
   // ── Restaurant Dashboard ───────────────────────────────────────────────────
   async getRestaurantDashboard(organizationId: string) {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const { start: todayStart, end: todayEnd } = this.getEATDayBounds(0);
+    const { start: yesterdayStart, end: yesterdayEnd } = this.getEATDayBounds(-1);
+    const sevenDayWindow = resolveAnalyticsRange({ preset: '7d' }, now);
+    const sevenDaysAgo = sevenDayWindow.start;
 
     const [
-      openOrders,
-      paidOrders,
+      ordersInScope,
+      paidOrdersTodayCount,
       todayTx,
       topComposites,
       activeAlerts,
+      sevenDayCounterTx,
     ] = await Promise.all([
       this.prisma.db.tableOrder.findMany({
-        where: { organizationId, status: 'OPEN' },
+        where: {
+          organizationId,
+          OR: [
+            { status: 'OPEN' },
+            { status: 'PAID', closedAt: { gte: sevenDayWindow.previousStart } },
+          ],
+        },
         include: { items: { include: { item: { select: { name: true, sellingPrice: true } } } } },
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.db.tableOrder.count({
-        where: { organizationId, status: 'PAID', createdAt: { gte: todayStart } },
+        where: {
+          organizationId,
+          status: 'PAID',
+          OR: [
+            { closedAt: { gte: todayStart, lt: todayEnd } },
+            { closedAt: null, createdAt: { gte: todayStart } },
+          ],
+        },
       }),
       this.prisma.db.inventoryTransaction.findMany({
         where: { organizationId, type: 'SALE', createdAt: { gte: todayStart } },
@@ -462,7 +639,15 @@ export class VerticalAnalyticsService {
       }),
       this.prisma.db.inventoryTransaction.groupBy({
         by: ['itemId'],
-        where: { organizationId, type: 'SALE', createdAt: { gte: sevenDaysAgo } },
+        where: {
+          organizationId,
+          type: 'SALE',
+          createdAt: { gte: sevenDaysAgo },
+          NOT: [
+            { reason: { startsWith: 'Used in ' } },
+            { reason: { startsWith: 'Table order ' } },
+          ],
+        },
         _sum: { quantityChange: true },
         orderBy: { _sum: { quantityChange: 'asc' } },
         take: 5,
@@ -472,19 +657,80 @@ export class VerticalAnalyticsService {
         orderBy: { createdAt: 'desc' },
         take: 3,
       }),
+      this.prisma.db.inventoryTransaction.findMany({
+        where: {
+          organizationId,
+          type: 'SALE',
+          createdAt: { gte: sevenDayWindow.previousStart },
+        },
+        include: { item: { select: { sellingPrice: true, isComposite: true } } },
+      }),
     ]);
 
-    const todayRevenue = todayTx.reduce(
-      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    // Separate OPEN vs PAID orders cleanly (preserving test mocks where status may be omitted on OPEN items)
+    const openOrders = ordersInScope.filter((o) => !o.status || o.status === 'OPEN');
+    const paidOrders = ordersInScope.filter((o) => o.status === 'PAID');
+
+    const orderRevenue = (ord: (typeof ordersInScope)[number]) =>
+      roundMoney(
+        ord.items.reduce(
+          (si, item) =>
+            si +
+            Number(item.quantity) * Number((item as { unitPrice?: unknown }).unitPrice ?? item.item?.sellingPrice ?? 0),
+          0,
+        ),
+      );
+
+    // Revenue from paid TableOrders in [start, end) PLUS direct non-table InventoryTransaction sales
+    const paidOrdersEntries = paidOrders.map((ord) => ({
+      timestamp: new Date(ord.closedAt ?? ord.createdAt),
+      value: orderRevenue(ord),
+    }));
+    const directCounterTodayRev = roundMoney(
+      todayTx.reduce((s, tx) => s + effectiveTransactionSaleAmount(tx), 0),
     );
+    const paidOrdersTodayRev = roundMoney(
+      paidOrdersEntries
+        .filter((e) => e.timestamp >= todayStart && e.timestamp < todayEnd)
+        .reduce((s, e) => s + e.value, 0),
+    );
+    const todayRevenue = roundMoney(paidOrdersTodayRev + directCounterTodayRev);
+
+    const directCounterSeriesEntries = sevenDayCounterTx
+      .map((tx) => ({
+        timestamp: tx.createdAt ? new Date(tx.createdAt) : now,
+        value: effectiveTransactionSaleAmount(tx),
+      }))
+      .filter((e) => e.value > 0);
+
+    const allRestaurantRevenueEntries = [...paidOrdersEntries, ...directCounterSeriesEntries];
+    const yesterdayRevenue = roundMoney(
+      allRestaurantRevenueEntries
+        .filter((e) => e.timestamp >= yesterdayStart && e.timestamp < yesterdayEnd)
+        .reduce((s, e) => s + e.value, 0),
+    );
+
+    const sevenDayRevenue = buildZeroFilledSeries(
+      sevenDayWindow.start,
+      sevenDayWindow.end,
+      'day',
+      allRestaurantRevenueEntries,
+    ).buckets;
+
+    const sevenDayOrders = buildZeroFilledSeries(
+      sevenDayWindow.start,
+      sevenDayWindow.end,
+      'day',
+      paidOrdersEntries.map((e) => ({ timestamp: e.timestamp, value: 1 })),
+    ).buckets;
+
     const openOrdersCount = openOrders.length;
-    const openOrdersValue = openOrders.reduce((s, ord) =>
-      s + ord.items.reduce((si, item) =>
-        si + Number(item.quantity) * Number(item.item.sellingPrice ?? 0), 0), 0,
+    const openOrdersValue = roundMoney(
+      openOrders.reduce((s, ord) => s + orderRevenue(ord), 0),
     );
 
     const topMenuItems = await Promise.all(
-      topComposites.map(async g => {
+      topComposites.map(async (g) => {
         const item = await this.prisma.db.inventoryItem.findUnique({
           where: { id: g.itemId },
           select: { name: true, unit: true },
@@ -498,37 +744,42 @@ export class VerticalAnalyticsService {
       }),
     );
 
-    const hour = now.getHours();
-    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-
     return {
-      timeOfDay,
+      timeOfDay: eatTimeOfDay(now),
       todayRevenue,
       openOrdersCount,
       openOrdersValue,
-      paidOrdersToday: paidOrders,
-      openOrders: openOrders.map(ord => ({
+      paidOrdersToday: paidOrdersTodayCount,
+      revenueComparison: computePeriodComparison(todayRevenue, yesterdayRevenue, 'vs yesterday'),
+      dailySeries: {
+        revenue: sevenDayRevenue,
+        orders: sevenDayOrders,
+      },
+      generatedAt: now.toISOString(),
+      openOrders: openOrders.map((ord) => ({
         id: ord.id,
         tableLabel: ord.tableLabel,
         itemCount: ord.items.length,
-        orderValue: ord.items.reduce((s, i) => s + Number(i.quantity) * Number(i.item.sellingPrice ?? 0), 0),
+        orderValue: orderRevenue(ord),
         createdAt: ord.createdAt,
       })),
       topMenuItems,
-      alerts: activeAlerts.map(a => ({ id: a.id, message: a.title, severity: a.severity })),
+      alerts: activeAlerts.map((a) => ({ id: a.id, message: a.title, severity: a.severity })),
     };
   }
 
   // ── Wholesale Dashboard ────────────────────────────────────────────────────
   async getWholesaleDashboard(organizationId: string) {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
-    const nowEAT = new Date(Date.now() + EAT_OFFSET_MS);
-    const monthStartUTC = new Date(
-      Date.UTC(nowEAT.getUTCFullYear(), nowEAT.getUTCMonth(), 1) - EAT_OFFSET_MS,
+    const { start: todayStart } = this.getEATDayBounds(0);
+    const { start: yesterdayStart, end: yesterdayEnd } = this.getEATDayBounds(-1);
+    const { start: monthStartUTC } = eatMonthBounds(0, now);
+    const { start: prevMonthStartUTC } = eatMonthBounds(-1, now);
+    const sevenDayWindow = resolveAnalyticsRange({ preset: '7d' }, now);
+    const sevenDaysAgo = sevenDayWindow.start;
+    const earliestSeriesStart = new Date(
+      Math.min(prevMonthStartUTC.getTime(), sevenDayWindow.start.getTime()),
     );
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const [
       todayTx,
@@ -537,19 +788,20 @@ export class VerticalAnalyticsService {
       allItems,
       topSellersTx,
       activeAlerts,
+      windowSeriesTx,
     ] = await Promise.all([
       this.prisma.db.inventoryTransaction.findMany({
         where: { organizationId, type: 'SALE', createdAt: { gte: todayStart } },
-        include: { item: { select: { sellingPrice: true } } },
+        include: { item: { select: { sellingPrice: true, isComposite: true } } },
       }),
       this.prisma.db.inventoryTransaction.findMany({
         where: { organizationId, type: 'SALE', createdAt: { gte: monthStartUTC } },
-        include: { item: { select: { sellingPrice: true } } },
+        include: { item: { select: { sellingPrice: true, isComposite: true } } },
       }),
+      // Fetch ALL open credit accounts so totalOutstanding and openCreditCount are never truncated!
       this.prisma.db.creditRecord.findMany({
         where: { organizationId, status: { in: ['UNPAID', 'PARTIAL'] } },
         orderBy: { amountTotal: 'desc' },
-        take: 5,
       }),
       this.prisma.db.inventoryItem.findMany({
         where: { organizationId, isActive: true },
@@ -567,21 +819,51 @@ export class VerticalAnalyticsService {
         orderBy: { createdAt: 'desc' },
         take: 3,
       }),
+      this.prisma.db.inventoryTransaction.findMany({
+        where: { organizationId, type: 'SALE', createdAt: { gte: earliestSeriesStart } },
+        include: { item: { select: { sellingPrice: true, isComposite: true } } },
+      }),
     ]);
 
-    const todaySales = todayTx.reduce(
-      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    const todaySales = roundMoney(
+      todayTx.reduce((s, tx) => s + effectiveTransactionSaleAmount(tx), 0),
     );
-    const monthSales = monthTx.reduce(
-      (s, tx) => s + Math.abs(Number(tx.quantityChange)) * Number(tx.item.sellingPrice ?? 0), 0,
+    const monthSales = roundMoney(
+      monthTx.reduce((s, tx) => s + effectiveTransactionSaleAmount(tx), 0),
     );
-    const totalOutstanding = openCredits.reduce((s, c) => s + Number(c.amountTotal) - Number(c.amountPaid), 0);
+    const yesterdaySales = roundMoney(
+      windowSeriesTx
+        .filter((tx) => tx.createdAt && tx.createdAt >= yesterdayStart && tx.createdAt < yesterdayEnd)
+        .reduce((s, tx) => s + effectiveTransactionSaleAmount(tx), 0),
+    );
+    const prevMonthSales = roundMoney(
+      windowSeriesTx
+        .filter(
+          (tx) => tx.createdAt && tx.createdAt >= prevMonthStartUTC && tx.createdAt < monthStartUTC,
+        )
+        .reduce((s, tx) => s + effectiveTransactionSaleAmount(tx), 0),
+    );
+
+    const seriesEntries = windowSeriesTx.map((tx) => ({
+      timestamp: tx.createdAt ? new Date(tx.createdAt) : now,
+      value: effectiveTransactionSaleAmount(tx),
+    }));
+    const sevenDaySales = buildZeroFilledSeries(
+      sevenDayWindow.start,
+      sevenDayWindow.end,
+      'day',
+      seriesEntries,
+    ).buckets;
+
+    const totalOutstanding = roundMoney(
+      openCredits.reduce((s, c) => s + Math.max(0, Number(c.amountTotal) - Number(c.amountPaid)), 0),
+    );
     const lowStockCount = allItems.filter(
-      i => Number(i.reorderThreshold) > 0 && Number(i.quantity) <= Number(i.reorderThreshold),
+      (i) => Number(i.reorderThreshold) > 0 && Number(i.quantity) <= Number(i.reorderThreshold),
     ).length;
 
     const topSellers = await Promise.all(
-      topSellersTx.map(async g => {
+      topSellersTx.map(async (g) => {
         const item = await this.prisma.db.inventoryItem.findUnique({
           where: { id: g.itemId },
           select: { name: true, unit: true },
@@ -595,25 +877,28 @@ export class VerticalAnalyticsService {
       }),
     );
 
-    const hour = now.getHours();
-    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-
     return {
-      timeOfDay,
+      timeOfDay: eatTimeOfDay(now),
       todaySales,
       monthSales,
       totalOutstanding,
       openCreditCount: openCredits.length,
       lowStockCount,
       totalItems: allItems.length,
-      topDebtors: openCredits.map(c => ({
+      todaySalesComparison: computePeriodComparison(todaySales, yesterdaySales, 'vs yesterday'),
+      monthSalesComparison: computePeriodComparison(monthSales, prevMonthSales, 'vs last month'),
+      dailySeries: {
+        sales: sevenDaySales,
+      },
+      generatedAt: now.toISOString(),
+      topDebtors: openCredits.slice(0, 5).map((c) => ({
         id: c.id,
         clientName: c.clientName,
-        amountOwed: Number(c.amountTotal) - Number(c.amountPaid),
+        amountOwed: roundMoney(Math.max(0, Number(c.amountTotal) - Number(c.amountPaid))),
         status: c.status,
       })),
       topSellers,
-      alerts: activeAlerts.map(a => ({ id: a.id, message: a.title, severity: a.severity })),
+      alerts: activeAlerts.map((a) => ({ id: a.id, message: a.title, severity: a.severity })),
     };
   }
 }

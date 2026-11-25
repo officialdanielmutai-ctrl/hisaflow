@@ -272,13 +272,33 @@ function RetailDashboard() {
     if (!orgId) throw new Error('No organization found')
     const token = await getToken()
     if (!token) throw new Error('Not authenticated')
-    return getDashboardData(token, orgId)
+    return getDashboardData(token, orgId, preset ? { preset } : undefined)
   }
 
   const { data, error, isLoading } = useSWR<DashboardData>(
     canViewAnalytics && orgId ? ['dashboard', orgId, preset] : null,
     fetcher
   )
+
+  /**
+   * Build 7-day bars from the backend-supplied series. Each bucket already has
+   * a normalised label (Mon/Tue/…) and a value in KES. We scale to percentages
+   * relative to the weekly max so the bar heights are meaningful.
+   */
+  const tab1Bars = (() => {
+    const buckets = data?.selectedPeriod?.sevenDaySales
+    if (!buckets || buckets.length === 0) return undefined
+    const max = Math.max(...buckets.map((b) => b.value), 1)
+    return buckets.map((b) => ({
+      day: b.label,
+      tag: b.value > 0 ? `KES ${Math.round(b.value / 1000)}k` : '—',
+      pct: Math.round((b.value / max) * 100),
+      isHighlight: b.value === max && b.value > 0,
+    }))
+  })()
+
+  /** Daily performance series for the full-width bar chart */
+  const chartData = data?.selectedPeriod?.dailyPerformance
 
   const loading = isLoading
   const firstName = user?.firstName ?? 'there'
@@ -392,15 +412,17 @@ function RetailDashboard() {
             tab2Label="Stock Breakdown"
             headlineValue={`KES ${formatKpiNumber(data.kpis.todaySales).display}`}
             headlineSubtitle={`Net profit estimate: KES ${formatKpiNumber(data.kpis.profitEstimate).display} · ${data.kpis.salesTrendLabel} vs yesterday`}
-            tab1Bars={[
-              { day: 'Mon', tag: '40%', pct: 40 },
-              { day: 'Tue', tag: '55%', pct: 55 },
-              { day: 'Wed', tag: '70%', pct: 70 },
-              { day: 'Thu', tag: '85%', pct: 85, isHighlight: true },
-              { day: 'Fri', tag: '75%', pct: 75 },
-              { day: 'Sat', tag: '+95%', pct: 95, isHighlight: true },
-              { day: 'Sun', tag: '60%', pct: 60 },
-            ]}
+            tab1Bars={
+              tab1Bars ?? [
+                { day: 'Mon', tag: '—', pct: 0 },
+                { day: 'Tue', tag: '—', pct: 0 },
+                { day: 'Wed', tag: '—', pct: 0 },
+                { day: 'Thu', tag: '—', pct: 0 },
+                { day: 'Fri', tag: '—', pct: 0 },
+                { day: 'Sat', tag: '—', pct: 0 },
+                { day: 'Sun', tag: '—', pct: 0 },
+              ]
+            }
             tab2Bars={[
               {
                 day: 'Mon',
@@ -513,7 +535,7 @@ function RetailDashboard() {
 
         {/* Row 3 — Chart spans full width on desktop */}
         <div className="lg:col-span-12">
-          <ModernAnalyticsChart />
+          <ModernAnalyticsChart data={chartData} />
         </div>
       </div>
 
@@ -527,7 +549,7 @@ function RetailDashboard() {
         {/* Main Analytical & Operational Grid */}
         <div className="grid grid-cols-1 gap-6">
           {/* Chart */}
-          <ModernAnalyticsChart />
+          <ModernAnalyticsChart data={chartData} />
 
           {/* Inventory Snapshot */}
           <div>

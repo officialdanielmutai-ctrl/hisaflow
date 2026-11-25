@@ -3,6 +3,13 @@ import type { IspDashboardData } from '@/services/isp.service';
 import type { StatCardConfig } from '@/components/system/StatCard';
 import { formatGrouped, formatKpiNumber } from '@/lib/kpi-format';
 
+/** Format a PeriodComparison delta for display, returning undefined when there
+ *  is no prior data so the StatCard simply omits the badge. */
+function fmtDelta(deltaPct: number | null | undefined): string | undefined {
+  if (deltaPct == null) return undefined;
+  return `${deltaPct >= 0 ? '+' : ''}${deltaPct}%`;
+}
+
 /**
  * ISP dashboard arrangement (overhaul Section 2.5).
  *
@@ -25,6 +32,8 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
           data.subscribers.active > 0
             ? Math.round(data.monthlyRevenue / data.subscribers.active)
             : 0;
+        const cmp = data.revenueComparison;
+        const deltaValue = fmtDelta(cmp?.deltaPct);
         return {
           sublabel: 'Recurring Invoicing',
           value: `KES ${revenue.display}`,
@@ -34,24 +43,20 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
               ? `KES ${formatGrouped(arpu)} ARPU / active sub`
               : 'No billing activity yet',
           trailing: { kind: 'arrow' },
-          delta: {
-            value: '+21%',
-            period: 'vs last month',
-            direction: 'up',
-            tone: 'success',
-          },
+          ...(deltaValue != null && {
+            delta: {
+              value: deltaValue,
+              period: 'vs last month',
+              direction: (cmp!.deltaPct ?? 0) >= 0 ? 'up' : 'down',
+              tone: (cmp!.deltaPct ?? 0) >= 0 ? 'success' : 'critical',
+            },
+          }),
           sparklineData:
-            data.monthlyRevenue > 0
-              ? [
-                  0,
-                  Math.round(data.monthlyRevenue * 0.42),
-                  Math.round(data.monthlyRevenue * 0.65),
-                  Math.round(data.monthlyRevenue * 0.58),
-                  Math.round(data.monthlyRevenue * 0.82),
-                  Math.round(data.monthlyRevenue * 0.74),
-                  data.monthlyRevenue,
-                ]
-              : [0, 0, 0, 0, 0, 0, 0],
+            data.dailySeries?.revenue && data.dailySeries.revenue.length > 0
+              ? data.dailySeries.revenue.map((b) => b.value)
+              : data.monthlyRevenue > 0
+                ? [0, 0, 0, 0, 0, 0, data.monthlyRevenue]
+                : [0, 0, 0, 0, 0, 0, 0],
         };
       },
     },
@@ -128,17 +133,10 @@ export const ISP_KPI_ROWS: StatCardConfig<IspDashboardData>[][] = [
           data.openTickets > 0
             ? { kind: 'badge', text: `${data.openTickets} Open`, tone: 'rose' }
             : { kind: 'badge', text: 'Resolved', tone: 'emerald' },
+        // Use real ticket-series data when available; fall back to honest zeros
         sparklineData:
-          data.openTickets > 0
-            ? [
-                0,
-                Math.max(1, Math.round(data.openTickets * 0.4)),
-                Math.max(0, Math.round(data.openTickets * 0.7)),
-                Math.max(1, Math.round(data.openTickets * 0.5)),
-                Math.max(0, Math.round(data.openTickets * 0.85)),
-                Math.max(1, Math.round(data.openTickets * 0.7)),
-                data.openTickets,
-              ]
+          data.dailySeries?.tickets && data.dailySeries.tickets.length > 0
+            ? data.dailySeries.tickets.map((b) => b.value)
             : [0, 0, 0, 0, 0, 0, 0],
       }),
     },
