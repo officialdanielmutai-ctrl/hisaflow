@@ -18,7 +18,15 @@ import { join, extname } from 'node:path';
 const DASHBOARD_ROOTS = [
   'features/dashboard/config',
   'components/charts',
+  'components/dashboard/bento',
+  'components/system',
   'app/(dashboard)/dashboard',
+  'components/chemist',
+  'components/wholesale',
+  'components/restaurant',
+  'components/guesthouse',
+  'components/school',
+  'components/isp',
 ];
 
 type Rule = { name: string; pattern: RegExp };
@@ -44,6 +52,18 @@ const FORBIDDEN: Rule[] = [
   },
   // DEFAULT_DATA const declaration (the entire constant must be gone)
   { name: 'DEFAULT_DATA const declaration', pattern: /const\s+DEFAULT_DATA\s*[:=]/ },
+  // Fake bar minimum height (must animate from 0% when 0)
+  { name: 'fake 8% minimum bar height in BentoStatisticsCard', pattern: /Math\.max\(\s*bar\.pct\s*,\s*8\s*\)/ },
+  // Fake default mock bar arrays in BentoStatisticsCard
+  { name: 'DEFAULT_TAB1_BARS fixture', pattern: /DEFAULT_TAB1_BARS/ },
+  { name: 'DEFAULT_TAB2_BARS fixture', pattern: /DEFAULT_TAB2_BARS/ },
+  // Fake ratio multiplier arrays that simulated week traffic from single day
+  { name: 'fake ratio series [0.4, 0.55, 0.7...]', pattern: /0\.4,\s*0\.55,\s*0\.7/ },
+  { name: 'fake ratio series [0.45, 0.6, 0.7...]', pattern: /0\.45,\s*0\.6,\s*0\.7/ },
+  // Hardcoded dispensed string in Chemist Bento
+  { name: 'hardcoded Chemist dispensed string', pattern: /KES 12,500 dispensed today/ },
+  // Hardcoded +21% sales trend prop in BentoSalesPair
+  { name: 'hardcoded salesTrendPct={21}', pattern: /salesTrendPct=\{21\}/ },
 ];
 
 /** Recursively collect .ts / .tsx files, skip spec / test / node_modules. */

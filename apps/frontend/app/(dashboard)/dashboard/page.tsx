@@ -288,11 +288,23 @@ function RetailDashboard() {
   const tab1Bars = (() => {
     const buckets = data?.selectedPeriod?.sevenDaySales
     if (!buckets || buckets.length === 0) return undefined
-    const max = Math.max(...buckets.map((b) => b.value), 1)
+    const max = Math.max(...buckets.map((b) => b.value), 0)
     return buckets.map((b) => ({
       day: b.label,
       tag: b.value > 0 ? `KES ${Math.round(b.value / 1000)}k` : '—',
-      pct: Math.round((b.value / max) * 100),
+      pct: max > 0 ? Math.round((b.value / max) * 100) : 0,
+      isHighlight: b.value === max && b.value > 0,
+    }))
+  })()
+
+  const tab2Bars = (() => {
+    const buckets = data?.selectedPeriod?.sevenDayExpenses
+    if (!buckets || buckets.length === 0) return undefined
+    const max = Math.max(...buckets.map((b) => b.value), 0)
+    return buckets.map((b) => ({
+      day: b.label,
+      tag: b.value > 0 ? `KES ${Math.round(b.value / 1000)}k` : '—',
+      pct: max > 0 ? Math.round((b.value / max) * 100) : 0,
       isHighlight: b.value === max && b.value > 0,
     }))
   })()
@@ -407,78 +419,13 @@ function RetailDashboard() {
         {/* Row 2 */}
         <div className="lg:col-span-7">
           <BentoStatisticsCard
-            title="Sales Throughput & Inventory Velocity"
+            title="Sales & Expense Velocity"
             tab1Label="Sales Volume"
-            tab2Label="Stock Breakdown"
+            tab2Label="Expenses"
             headlineValue={`KES ${formatKpiNumber(data.kpis.todaySales).display}`}
             headlineSubtitle={`Net profit estimate: KES ${formatKpiNumber(data.kpis.profitEstimate).display} · ${data.kpis.salesTrendLabel} vs yesterday`}
-            tab1Bars={
-              tab1Bars ?? [
-                { day: 'Mon', tag: '—', pct: 0 },
-                { day: 'Tue', tag: '—', pct: 0 },
-                { day: 'Wed', tag: '—', pct: 0 },
-                { day: 'Thu', tag: '—', pct: 0 },
-                { day: 'Fri', tag: '—', pct: 0 },
-                { day: 'Sat', tag: '—', pct: 0 },
-                { day: 'Sun', tag: '—', pct: 0 },
-              ]
-            }
-            tab2Bars={[
-              {
-                day: 'Mon',
-                tag: `${data.inventorySnapshot.healthy}`,
-                pct: Math.min(
-                  100,
-                  Math.round(
-                    (data.inventorySnapshot.healthy /
-                      Math.max(data.inventorySnapshot.total, 1)) *
-                      100
-                  )
-                ),
-                isHighlight: true,
-              },
-              {
-                day: 'Tue',
-                tag: `${data.inventorySnapshot.low}`,
-                pct: Math.min(
-                  100,
-                  Math.round(
-                    (data.inventorySnapshot.low /
-                      Math.max(data.inventorySnapshot.total, 1)) *
-                      100
-                  )
-                ),
-              },
-              {
-                day: 'Wed',
-                tag: `${data.inventorySnapshot.outOfStock}`,
-                pct: Math.min(
-                  100,
-                  Math.round(
-                    (data.inventorySnapshot.outOfStock /
-                      Math.max(data.inventorySnapshot.total, 1)) *
-                      100
-                  )
-                ),
-              },
-              {
-                day: 'Thu',
-                tag: `${data.inventorySnapshot.total}`,
-                pct: 100,
-                isHighlight: true,
-              },
-              {
-                day: 'Fri',
-                tag: `${data.inventorySnapshot.stockHealthPct}%`,
-                pct: data.inventorySnapshot.stockHealthPct,
-              },
-              {
-                day: 'Sat',
-                tag: `${data.kpis.lowStockCount}`,
-                pct: Math.min(100, data.kpis.lowStockCount * 10),
-              },
-              { day: 'Sun', tag: `${data.inventorySnapshot.healthy}`, pct: 90 },
-            ]}
+            tab1Bars={tab1Bars}
+            tab2Bars={tab2Bars}
             className="h-full"
           />
         </div>

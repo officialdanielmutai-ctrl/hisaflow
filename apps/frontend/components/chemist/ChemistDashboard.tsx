@@ -156,6 +156,97 @@ export function ChemistDashboard() {
     { label: 'View Receipts', href: '/transactions', icon: ReceiptText },
   ]
 
+  const todayDelta =
+    data.todaySalesComparison?.deltaPct != null
+      ? `${data.todaySalesComparison.deltaPct >= 0 ? '+' : ''}${data.todaySalesComparison.deltaPct}%`
+      : '—'
+  const monthDelta =
+    data.monthSalesComparison?.deltaPct != null
+      ? `${data.monthSalesComparison.deltaPct >= 0 ? '+' : ''}${data.monthSalesComparison.deltaPct}%`
+      : '—'
+
+  const chemistTab1Bars = (() => {
+    const series = data.dailySeries?.sales
+    if (!series || series.length === 0) return undefined
+    const max = Math.max(...series.map((s) => s.value), 0)
+    return series.map((s) => ({
+      day: s.label,
+      tag: s.value > 0 ? `KES ${Math.round(s.value / 1000)}k` : '—',
+      pct: max > 0 ? Math.round((s.value / max) * 100) : 0,
+      isHighlight: max > 0 && s.value === max,
+    }))
+  })()
+
+  const chemistTab2Bars = (() => {
+    const total = Math.max(data.totalItems, 1)
+    const healthy = Math.max(0, data.totalItems - data.lowStockCount)
+    return [
+      {
+        day: 'Mon',
+        tag: `${healthy} ok`,
+        pct: data.totalItems > 0 ? Math.round((healthy / total) * 100) : 0,
+        isHighlight: true,
+      },
+      {
+        day: 'Tue',
+        tag: `${data.lowStockCount} low`,
+        pct:
+          data.totalItems > 0
+            ? Math.min(100, Math.round((data.lowStockCount / total) * 100))
+            : 0,
+      },
+      {
+        day: 'Wed',
+        tag: `${data.expiringBatches.length} exp`,
+        pct:
+          data.totalItems > 0
+            ? Math.min(
+                100,
+                Math.round((data.expiringBatches.length / total) * 100)
+              )
+            : 0,
+      },
+      {
+        day: 'Thu',
+        tag: `${data.expiredBatches.length} off`,
+        pct:
+          data.totalItems > 0
+            ? Math.min(
+                100,
+                Math.round((data.expiredBatches.length / total) * 100)
+              )
+            : 0,
+      },
+      {
+        day: 'Fri',
+        tag: `${data.totalItems} lines`,
+        pct: data.totalItems > 0 ? 100 : 0,
+        isHighlight: data.totalItems > 0,
+      },
+      {
+        day: 'Sat',
+        tag: `${data.topSellers.length} top`,
+        pct:
+          data.totalItems > 0
+            ? Math.min(100, Math.round((data.topSellers.length / total) * 100))
+            : 0,
+      },
+      {
+        day: 'Sun',
+        tag: data.lowStockCount === 0 ? 'Optimal' : `${data.lowStockCount} alert`,
+        pct:
+          data.totalItems > 0
+            ? data.lowStockCount === 0
+              ? 100
+              : Math.max(
+                  0,
+                  100 - Math.round((data.lowStockCount / total) * 100)
+                )
+            : 0,
+      },
+    ]
+  })()
+
   return (
     <div className="flex flex-col gap-6 pb-24">
       {/* ── Header & Top Operations Shortcuts (Always on top for PC) ── */}
@@ -207,10 +298,10 @@ export function ChemistDashboard() {
             topIcon={ShoppingCart}
             bottomLabel="Month Sales"
             bottomIcon={Pill}
-            salesTrendPct={18}
-            salesTrendLabel="+18%"
-            purchaseTrendPct={24}
-            purchaseTrendLabel="+24%"
+            salesTrendPct={data.todaySalesComparison?.deltaPct ?? undefined}
+            salesTrendLabel={todayDelta}
+            purchaseTrendPct={data.monthSalesComparison?.deltaPct ?? undefined}
+            purchaseTrendLabel={monthDelta}
             topHref="/transactions"
             bottomHref="/transactions"
             className="h-full"
@@ -220,10 +311,25 @@ export function ChemistDashboard() {
           <BentoGrowthCard
             title="Dispensing Velocity"
             currentCount={`${data.totalItems} SKUs`}
-            currentDelta="+18%"
-            currentProgressPct={Math.min(data.totalItems * 2, 94)}
+            currentDelta={todayDelta}
+            currentProgressPct={
+              data.totalItems > 0
+                ? Math.min(
+                    100,
+                    Math.round(
+                      (Math.max(0, data.totalItems - data.lowStockCount) /
+                        data.totalItems) *
+                        100
+                    )
+                  )
+                : 0
+            }
             footerLeftLabel="Active medications in stock"
-            footerRightLabel="KES 12,500 dispensed today"
+            footerRightLabel={
+              data.todaySales > 0
+                ? `KES ${data.todaySales.toLocaleString()} dispensed today`
+                : 'No sales today'
+            }
             className="h-full"
           />
         </div>
@@ -253,46 +359,8 @@ export function ChemistDashboard() {
                 : `${data.totalItems} SKUs`
             }
             headlineSubtitle={`${data.lowStockCount} medications low in stock · ${data.expiringBatches.length} batches expiring soon`}
-            tab1Bars={[
-              { day: 'Mon', tag: '35%', pct: 35 },
-              { day: 'Tue', tag: '50%', pct: 50 },
-              { day: 'Wed', tag: '68%', pct: 68 },
-              { day: 'Thu', tag: '82%', pct: 82, isHighlight: true },
-              { day: 'Fri', tag: '74%', pct: 74 },
-              { day: 'Sat', tag: '+92%', pct: 92, isHighlight: true },
-              { day: 'Sun', tag: '45%', pct: 45 },
-            ]}
-            tab2Bars={[
-              {
-                day: 'Mon',
-                tag: `${Math.max(0, data.totalItems - data.lowStockCount)}`,
-                pct: 85,
-                isHighlight: true,
-              },
-              {
-                day: 'Tue',
-                tag: `${data.lowStockCount}`,
-                pct: Math.min(100, data.lowStockCount * 15),
-              },
-              {
-                day: 'Wed',
-                tag: `${data.expiringBatches.length}`,
-                pct: Math.min(100, data.expiringBatches.length * 20),
-              },
-              {
-                day: 'Thu',
-                tag: `${data.expiredBatches.length}`,
-                pct: Math.min(100, data.expiredBatches.length * 25),
-              },
-              {
-                day: 'Fri',
-                tag: `${data.totalItems}`,
-                pct: 100,
-                isHighlight: true,
-              },
-              { day: 'Sat', tag: `${data.topSellers.length}`, pct: 60 },
-              { day: 'Sun', tag: 'Optimal', pct: 80 },
-            ]}
+            tab1Bars={chemistTab1Bars}
+            tab2Bars={chemistTab2Bars}
             className="h-full"
           />
         </div>

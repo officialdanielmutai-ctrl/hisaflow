@@ -33,11 +33,11 @@ export default function BentoGrowthCard({
   className,
   onMenuClick,
   customData,
-  currentCount = '100%',
-  currentDelta = '+12%',
-  currentProgressPct = 75,
+  currentCount = '—',
+  currentDelta = '—',
+  currentProgressPct = 0,
   footerLeftLabel = 'Operating velocity',
-  footerRightLabel = 'Paced steadily',
+  footerRightLabel = '—',
   onTimeframeChange,
 }: BentoGrowthCardProps) {
   const [selectedTimeframe, setSelectedTimeframe] =
@@ -57,6 +57,11 @@ export default function BentoGrowthCard({
     setSelectedTimeframe(tf)
     onTimeframeChange?.(tf)
   }
+
+  const hasDelta =
+    Boolean(activeData.delta) &&
+    activeData.delta !== '—' &&
+    activeData.delta !== 'none'
 
   return (
     <div
@@ -117,23 +122,27 @@ export default function BentoGrowthCard({
           <span className="text-3xl sm:text-4xl font-black text-[var(--color-text-primary)] tracking-tight tabular-nums">
             {activeData.count}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/25 px-2.5 py-0.5 text-xs font-bold">
-            <TrendingUp className="h-3 w-3" />
-            <span>{activeData.delta}</span>
-          </span>
+          {hasDelta && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/25 px-2.5 py-0.5 text-xs font-bold">
+              <TrendingUp className="h-3 w-3" />
+              <span>{activeData.delta}</span>
+            </span>
+          )}
         </div>
 
         {/* ── Liquid-like Animated Progress Bar ── */}
         <div className="mt-4 mb-2 group/liquid relative">
-          {/* Floating Hover Indicator Tooltip */}
-          <div
-            className="absolute -top-6 transition-all duration-300 opacity-0 group-hover/liquid:opacity-100 pointer-events-none transform -translate-x-1/2"
-            style={{ left: `${activeData.progressPct}%` }}
-          >
-            <span className="rounded-full bg-[var(--hf-accent-default)] text-[var(--hf-accent-foreground)] px-2 py-0.5 text-[10px] font-black shadow-md border border-[var(--hf-accent-hover)]">
-              {activeData.progressPct}%
-            </span>
-          </div>
+          {/* Floating Hover Indicator Tooltip — only when active progress exists */}
+          {activeData.progressPct > 0 && (
+            <div
+              className="absolute -top-6 transition-all duration-300 opacity-0 group-hover/liquid:opacity-100 pointer-events-none transform -translate-x-1/2"
+              style={{ left: `${activeData.progressPct}%` }}
+            >
+              <span className="rounded-full bg-[var(--hf-accent-default)] text-[var(--hf-accent-foreground)] px-2 py-0.5 text-[10px] font-black shadow-md border border-[var(--hf-accent-hover)]">
+                {activeData.progressPct}%
+              </span>
+            </div>
+          )}
 
           <LiquidProgress
             value={activeData.progressPct}

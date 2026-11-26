@@ -148,8 +148,8 @@ export function FinanceExplorer({
                 {attribute.sharePct != null && (
                   <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--color-bg-base)]">
                     <div
-                      className="h-full rounded-full bg-[var(--color-accent)]"
-                      style={{ width: `${Math.min(100, Math.max(2, attribute.sharePct))}%` }}
+                      className="h-full rounded-full bg-[var(--color-accent)] transition-all duration-500"
+                      style={{ width: `${Math.min(100, Math.max(0, attribute.sharePct))}%` }}
                     />
                   </div>
                 )}

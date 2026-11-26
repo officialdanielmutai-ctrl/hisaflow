@@ -147,105 +147,85 @@ export function SchoolDashboard() {
 
   const defaulters = data.overdueInvoices.slice(0, 3)
 
-  const schoolTab1Bars = [
-    { day: 'Mon', tag: `${data.totalStudents}`, pct: 100, isHighlight: true },
-    {
-      day: 'Tue',
-      tag: `${data.totalClasses} cls`,
-      pct: Math.min(100, data.totalClasses * 12),
-    },
-    {
-      day: 'Wed',
-      tag: `${data.fees.paidCount} paid`,
-      pct: Math.min(
-        100,
-        Math.round(
-          (data.fees.paidCount / Math.max(data.fees.totalInvoices, 1)) * 100
-        )
-      ),
-    },
-    {
-      day: 'Thu',
-      tag: `${data.fees.collectionRate}%`,
-      pct: data.fees.collectionRate,
-      isHighlight: data.fees.collectionRate >= 60,
-    },
-    {
-      day: 'Fri',
-      tag: `${data.overdueInvoices.length} due`,
-      pct: Math.min(100, data.overdueInvoices.length * 15),
-    },
-    {
-      day: 'Sat',
-      tag: `${data.recentPayments.length} rcpt`,
-      pct: Math.min(100, data.recentPayments.length * 20),
-    },
-    { day: 'Sun', tag: `${data.totalStudents}`, pct: 90 },
-  ]
+  const schoolTab1Bars = (() => {
+    const series = data.dailySeries?.collections
+    if (!series || series.length === 0) return undefined
+    const max = Math.max(...series.map((s) => s.value), 0)
+    return series.map((s) => ({
+      day: s.label,
+      tag: s.value > 0 ? `KES ${Math.round(s.value / 1000)}k` : '—',
+      pct: max > 0 ? Math.round((s.value / max) * 100) : 0,
+      isHighlight: max > 0 && s.value === max,
+    }))
+  })()
 
-  const schoolTab2Bars = [
-    {
-      day: 'Mon',
-      tag: `${data.fees.paidCount}`,
-      pct: Math.min(
-        100,
-        Math.round(
-          (data.fees.paidCount / Math.max(data.fees.totalInvoices, 1)) * 100
-        )
-      ),
-      isHighlight: true,
-    },
-    {
-      day: 'Tue',
-      tag: `${Math.max(0, data.fees.totalInvoices - data.fees.paidCount)} unpaid`,
-      pct: Math.min(
-        100,
-        Math.round(
-          (Math.max(0, data.fees.totalInvoices - data.fees.paidCount) /
-            Math.max(data.fees.totalInvoices, 1)) *
-            100
-        )
-      ),
-    },
-    {
-      day: 'Wed',
-      tag: `${data.fees.collectionRate}%`,
-      pct: data.fees.collectionRate,
-    },
-    {
-      day: 'Thu',
-      tag: `${data.fees.totalInvoices} inv`,
-      pct: 100,
-      isHighlight: true,
-    },
-    {
-      day: 'Fri',
-      tag: `KES ${Math.round(data.fees.totalCollected / 1000)}k`,
-      pct: Math.min(
-        100,
-        Math.round(
-          (data.fees.totalCollected / Math.max(data.fees.totalExpected, 1)) *
-            100
-        )
-      ),
-    },
-    {
-      day: 'Sat',
-      tag: `KES ${Math.round(data.fees.outstanding / 1000)}k`,
-      pct: Math.min(
-        100,
-        Math.round(
-          (data.fees.outstanding / Math.max(data.fees.totalExpected, 1)) * 100
-        )
-      ),
-    },
-    {
-      day: 'Sun',
-      tag: `${data.fees.collectionRate}%`,
-      pct: data.fees.collectionRate,
-      isHighlight: true,
-    },
-  ]
+  const schoolTab2Bars = (() => {
+    const total = Math.max(data.fees.totalInvoices, 1)
+    const paid = data.fees.paidCount
+    const unpaid = Math.max(0, data.fees.totalInvoices - paid)
+    return [
+      {
+        day: 'Mon',
+        tag: `${paid} paid`,
+        pct: data.fees.totalInvoices > 0 ? Math.round((paid / total) * 100) : 0,
+        isHighlight: true,
+      },
+      {
+        day: 'Tue',
+        tag: `${unpaid} due`,
+        pct: data.fees.totalInvoices > 0 ? Math.round((unpaid / total) * 100) : 0,
+      },
+      {
+        day: 'Wed',
+        tag: `${data.fees.collectionRate}%`,
+        pct: data.fees.collectionRate,
+      },
+      {
+        day: 'Thu',
+        tag: `${data.fees.totalInvoices} inv`,
+        pct: data.fees.totalInvoices > 0 ? 100 : 0,
+        isHighlight: data.fees.totalInvoices > 0,
+      },
+      {
+        day: 'Fri',
+        tag:
+          data.fees.totalCollected > 0
+            ? `KES ${Math.round(data.fees.totalCollected / 1000)}k`
+            : 'KES 0',
+        pct:
+          data.fees.totalExpected > 0
+            ? Math.min(
+                100,
+                Math.round(
+                  (data.fees.totalCollected / data.fees.totalExpected) * 100
+                )
+              )
+            : 0,
+      },
+      {
+        day: 'Sat',
+        tag:
+          data.fees.outstanding > 0
+            ? `KES ${Math.round(data.fees.outstanding / 1000)}k`
+            : 'Cleared',
+        pct:
+          data.fees.totalExpected > 0
+            ? Math.min(
+                100,
+                Math.round(
+                  (data.fees.outstanding / data.fees.totalExpected) * 100
+                )
+              )
+            : 0,
+      },
+      {
+        day: 'Sun',
+        tag: `${data.fees.collectionRate}%`,
+        pct: data.fees.collectionRate,
+        isHighlight: data.fees.collectionRate >= 50,
+      },
+    ]
+  })()
 
   return (
     <div className="flex flex-col gap-6 pb-24">

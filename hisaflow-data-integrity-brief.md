@@ -224,6 +224,7 @@ Fixtures use known totals written down in the test, so the expected answer never
 | D Timeframe toggles | Antigravity | Completed | 2026-11-25 | `dashboard/page.tsx` wires `preset` into SWR key and API query; `tab1Bars` derived from server `sevenDaySales`; chart data from server `dailyPerformance`. |
 | E Vertical-by-vertical pass | Antigravity | Completed | 2026-11-25 | All 7 verticals updated in `features/dashboard/config/*.ts` (retail, chemist, restaurant, wholesale, guest-house, isp, school) — removed hardcoded deltas and fake sparkline multiplier arrays; honest zero/empty states. |
 | F Guardrails and CI | Antigravity | Completed | 2026-11-25 | Backend `data-integrity.spec.ts` (9 tests), Frontend `data-integrity-guard.spec.ts` (36 tests) enforcing zero hardcoded fake fixtures/deltas. 971 backend tests + 360 frontend tests passing. |
+| G Animation and chart integrity | Antigravity | Completed | 2026-11-26 | Fixed liquid progress maths and bar chart animations: LiquidProgress renders 0% stationary tube when value <= 0 (no meniscus/sheen/bubbles/surge); BentoStatisticsCard removed fake `Math.max(bar.pct, 8)` minimum height and fake mock defaults; BentoGrowthCard defaults to '—'; FinanceExplorer removed 2% min share; all 7 vertical dashboards wired strictly to backend `data.dailySeries` (no fake scalar ratio arrays `[0.4, 0.55, 0.7...]`). Guard test expanded to 209 passing checks across all 11 dashboard directories. |
 
 ---
 

@@ -12,7 +12,6 @@ import {
   Zap,
   Plus,
   ShoppingCart,
-  TrendingUp,
 } from 'lucide-react'
 import {
   getWholesaleDashboardData,
@@ -83,81 +82,91 @@ export function WholesaleDashboard() {
     { label: 'Debtor Accounts', href: '/finance', icon: Banknote },
   ]
 
-  const maxSold = Math.max(...data.topSellers.map((s) => s.totalSold), 1)
-  const wholesaleTab1Bars = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ].map((day, idx) => {
-    const seller = data.topSellers[idx]
-    if (seller) {
-      const pct = Math.min(100, Math.round((seller.totalSold / maxSold) * 100))
-      return {
-        day,
-        tag: `${seller.totalSold} ${seller.unit}`,
-        pct,
-        isHighlight: pct >= 80,
-      }
-    }
-    const ratio = [0.4, 0.55, 0.7, 0.85, 0.8, 0.95, 0.6][idx]
-    const est = Math.round((data.todaySales / 1000) * ratio)
-    return {
-      day,
-      tag: `KES ${est}k`,
-      pct: Math.min(100, Math.round(ratio * 100)),
-      isHighlight: idx === 5,
-    }
-  })
+  const todayDelta =
+    data.todaySalesComparison?.deltaPct != null
+      ? `${data.todaySalesComparison.deltaPct >= 0 ? '+' : ''}${data.todaySalesComparison.deltaPct}%`
+      : '—'
+  const monthDelta =
+    data.monthSalesComparison?.deltaPct != null
+      ? `${data.monthSalesComparison.deltaPct >= 0 ? '+' : ''}${data.monthSalesComparison.deltaPct}%`
+      : '—'
+
+  const wholesaleTab1Bars = (() => {
+    const series = data.dailySeries?.sales
+    if (!series || series.length === 0) return undefined
+    const max = Math.max(...series.map((s) => s.value), 0)
+    return series.map((s) => ({
+      day: s.label,
+      tag: s.value > 0 ? `KES ${Math.round(s.value / 1000)}k` : '—',
+      pct: max > 0 ? Math.round((s.value / max) * 100) : 0,
+      isHighlight: max > 0 && s.value === max,
+    }))
+  })()
 
   const healthySkus = Math.max(0, data.totalItems - data.lowStockCount)
+  const totalItems = Math.max(data.totalItems, 1)
   const wholesaleTab2Bars = [
     {
       day: 'Mon',
-      tag: `${healthySkus}`,
-      pct: Math.min(
-        100,
-        Math.round((healthySkus / Math.max(data.totalItems, 1)) * 100)
-      ),
+      tag: `${healthySkus} ok`,
+      pct: data.totalItems > 0 ? Math.round((healthySkus / totalItems) * 100) : 0,
       isHighlight: true,
     },
     {
       day: 'Tue',
       tag: `${data.lowStockCount} low`,
-      pct: Math.min(
-        100,
-        Math.round((data.lowStockCount / Math.max(data.totalItems, 1)) * 100)
-      ),
+      pct:
+        data.totalItems > 0
+          ? Math.min(100, Math.round((data.lowStockCount / totalItems) * 100))
+          : 0,
     },
     {
       day: 'Wed',
       tag: `${data.openCreditCount} credit`,
-      pct: Math.min(100, Math.round((data.openCreditCount / 20) * 100)),
+      pct:
+        data.openCreditCount > 0
+          ? Math.min(100, data.openCreditCount * 10)
+          : 0,
     },
-    { day: 'Thu', tag: `${data.totalItems} SKUs`, pct: 100, isHighlight: true },
+    {
+      day: 'Thu',
+      tag: `${data.totalItems} SKUs`,
+      pct: data.totalItems > 0 ? 100 : 0,
+      isHighlight: data.totalItems > 0,
+    },
     {
       day: 'Fri',
-      tag: `KES ${Math.round(data.totalOutstanding / 1000)}k`,
-      pct: Math.min(
-        100,
-        Math.round(
-          (data.totalOutstanding / Math.max(data.monthSales || 1, 1)) * 100
-        )
-      ),
+      tag:
+        data.totalOutstanding > 0
+          ? `KES ${Math.round(data.totalOutstanding / 1000)}k`
+          : 'Cleared',
+      pct:
+        data.monthSales > 0
+          ? Math.min(
+              100,
+              Math.round((data.totalOutstanding / data.monthSales) * 100)
+            )
+          : 0,
     },
     {
       day: 'Sat',
       tag: `${data.topSellers.length} sellers`,
-      pct: Math.min(100, data.topSellers.length * 15),
+      pct:
+        data.totalItems > 0
+          ? Math.min(
+              100,
+              Math.round((data.topSellers.length / totalItems) * 100)
+            )
+          : 0,
     },
     {
       day: 'Sun',
-      tag: `KES ${Math.round(data.todaySales / 1000)}k`,
-      pct: 85,
-      isHighlight: true,
+      tag: data.todaySales > 0 ? `KES ${Math.round(data.todaySales / 1000)}k` : '—',
+      pct:
+        data.monthSales > 0
+          ? Math.min(100, Math.round((data.todaySales / data.monthSales) * 100))
+          : 0,
+      isHighlight: data.todaySales > 0,
     },
   ]
 
@@ -265,10 +274,10 @@ export function WholesaleDashboard() {
             topIcon={ShoppingCart}
             bottomLabel="Month Sales"
             bottomIcon={Package}
-            salesTrendPct={16}
-            salesTrendLabel="+16%"
-            purchaseTrendPct={22}
-            purchaseTrendLabel="+22%"
+            salesTrendPct={data.todaySalesComparison?.deltaPct ?? undefined}
+            salesTrendLabel={todayDelta}
+            purchaseTrendPct={data.monthSalesComparison?.deltaPct ?? undefined}
+            purchaseTrendLabel={monthDelta}
             topHref="/transactions"
             bottomHref="/transactions"
             className="h-full"
@@ -278,10 +287,21 @@ export function WholesaleDashboard() {
           <BentoGrowthCard
             title="Warehouse Velocity"
             currentCount={`${data.totalItems} SKUs`}
-            currentDelta="+16%"
-            currentProgressPct={Math.min((data.totalItems / 400) * 100, 92)}
+            currentDelta={todayDelta}
+            currentProgressPct={
+              data.totalItems > 0
+                ? Math.min(
+                    100,
+                    Math.round((healthySkus / totalItems) * 100)
+                  )
+                : 0
+            }
             footerLeftLabel="Active catalog distribution"
-            footerRightLabel={`KES ${data.todaySales.toLocaleString()} today`}
+            footerRightLabel={
+              data.todaySales > 0
+                ? `KES ${data.todaySales.toLocaleString()} today`
+                : 'No sales today'
+            }
             className="h-full"
           />
         </div>

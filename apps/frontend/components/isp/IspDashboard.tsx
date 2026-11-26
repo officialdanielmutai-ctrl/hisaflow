@@ -184,60 +184,29 @@ export function IspDashboard() {
     { label: 'Service Plans', href: '/service-plans', icon: Wifi },
   ]
 
-  const ispTab1Bars = [
-    {
-      day: 'Mon',
-      tag: `${data.subscribers.active} on`,
-      pct: activePct,
-      isHighlight: true,
-    },
-    {
-      day: 'Tue',
-      tag: `${data.subscribers.suspended} susp`,
-      pct: suspendedPct,
-    },
-    { day: 'Wed', tag: `${data.subscribers.churned} off`, pct: churnedPct },
-    { day: 'Thu', tag: `${totalSubs} fleet`, pct: 100, isHighlight: true },
-    {
-      day: 'Fri',
-      tag: `${data.scheduledWorkOrders} jobs`,
-      pct: Math.min(100, data.scheduledWorkOrders * 15),
-    },
-    {
-      day: 'Sat',
-      tag: `${data.openTickets} tix`,
-      pct: Math.min(100, data.openTickets * 20),
-    },
-    {
-      day: 'Sun',
-      tag: `${data.subscribers.active}`,
-      pct: activePct,
-      isHighlight: true,
-    },
-  ]
+  const ispTab1Bars = (() => {
+    const series = data.dailySeries?.revenue
+    if (!series || series.length === 0) return undefined
+    const max = Math.max(...series.map((s) => s.value), 0)
+    return series.map((s) => ({
+      day: s.label,
+      tag: s.value > 0 ? `KES ${Math.round(s.value / 1000)}k` : '—',
+      pct: max > 0 ? Math.round((s.value / max) * 100) : 0,
+      isHighlight: max > 0 && s.value === max,
+    }))
+  })()
 
-  const ispTab2Bars = [
-    { day: 'Mon', tag: `${activePct}%`, pct: activePct, isHighlight: true },
-    { day: 'Tue', tag: `${suspendedPct}%`, pct: suspendedPct },
-    {
-      day: 'Wed',
-      tag: `KES ${Math.round(data.monthlyRevenue / 1000)}k`,
-      pct: 85,
-      isHighlight: true,
-    },
-    { day: 'Thu', tag: `${totalSubs}`, pct: 100, isHighlight: true },
-    {
-      day: 'Fri',
-      tag: `${data.scheduledWorkOrders}`,
-      pct: Math.min(100, data.scheduledWorkOrders * 20),
-    },
-    {
-      day: 'Sat',
-      tag: `${data.openTickets}`,
-      pct: Math.min(100, data.openTickets * 20),
-    },
-    { day: 'Sun', tag: `${activePct}%`, pct: activePct },
-  ]
+  const ispTab2Bars = (() => {
+    const series = data.dailySeries?.tickets
+    if (!series || series.length === 0) return undefined
+    const max = Math.max(...series.map((s) => s.value), 0)
+    return series.map((s) => ({
+      day: s.label,
+      tag: s.value > 0 ? `${s.value} tix` : '0 tix',
+      pct: max > 0 ? Math.round((s.value / max) * 100) : 0,
+      isHighlight: max > 0 && s.value === max,
+    }))
+  })()
 
   return (
     <div className="w-full flex flex-col gap-6 pb-24">
@@ -264,11 +233,15 @@ export function IspDashboard() {
             bottomLabel="Active Subscribers"
             bottomIcon={Users}
             bottomUnit=""
-            salesTrendPct={21}
-            salesTrendLabel="+21%"
-            purchaseTrendPct={activePct >= 70 ? 12 : -5}
+            salesTrendPct={data.revenueComparison?.deltaPct ?? undefined}
+            salesTrendLabel={
+              data.revenueComparison?.deltaPct != null
+                ? `${data.revenueComparison.deltaPct >= 0 ? '+' : ''}${data.revenueComparison.deltaPct}%`
+                : '—'
+            }
+            purchaseTrendPct={undefined}
             purchaseTrendLabel={
-              activePct >= 70 ? `+12% fleet` : `${activePct}% online`
+              totalSubs > 0 ? `${activePct}% active` : '—'
             }
             topHref="/finance"
             bottomHref="/subscribers"
@@ -302,10 +275,14 @@ export function IspDashboard() {
         <div className="lg:col-span-7">
           <BentoStatisticsCard
             title="Subscriber Fleet Statistics"
-            tab1Label="By Status"
-            tab2Label="By Plan"
-            headlineValue={`${totalSubs} Subscribers`}
-            headlineSubtitle={`${activePct}% active · ${suspendedPct}% suspended · ${churnedPct}% churned across the subscriber fleet`}
+            tab1Label="7-Day Revenue"
+            tab2Label="7-Day Tickets"
+            headlineValue={
+              data.monthlyRevenue > 0
+                ? `KES ${data.monthlyRevenue.toLocaleString()}`
+                : 'KES 0'
+            }
+            headlineSubtitle={`${totalSubs} total subscribers · ${activePct}% active · ${data.openTickets} open ticket${data.openTickets === 1 ? '' : 's'}`}
             tab1Bars={ispTab1Bars}
             tab2Bars={ispTab2Bars}
             className="h-full"

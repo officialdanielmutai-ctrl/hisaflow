@@ -305,41 +305,64 @@ export function GuestHouseDashboard() {
     }
   } else {
     // All rooms: 7-day occupancy percentage from real data
-    statisticsBars = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date()
-      d.setDate(now.getDate() - (6 - i))
-      const dayName = daysOfWeek[d.getDay() === 0 ? 6 : d.getDay() - 1]
-      const bookedOnDay = bookings.filter((b) => {
-        const start = new Date(b.checkInDate)
-        const end = new Date(b.checkOutDate)
-        return d >= start && d <= end && b.status !== 'CANCELLED'
-      }).length
-      const totalR = Math.max(data.totalRooms, rooms.length, 1)
-      const isToday = i === 6
-      const dayPct = isToday
-        ? data.occupancyRate
-        : Math.min(Math.round((bookedOnDay / totalR) * 100), 100)
-      return {
-        day: dayName,
-        tag: `${dayPct}%`,
-        pct: dayPct,
-        isHighlight: isToday,
-      }
-    })
+    if (
+      data.dailySeries?.occupancyPct &&
+      data.dailySeries.occupancyPct.length > 0
+    ) {
+      statisticsBars = data.dailySeries.occupancyPct.map((s) => ({
+        day: s.label,
+        tag: `${s.value}%`,
+        pct: s.value,
+        isHighlight: s.value === data.occupancyRate && s.value > 0,
+      }))
+    } else {
+      statisticsBars = Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date()
+        d.setDate(now.getDate() - (6 - i))
+        const dayName = daysOfWeek[d.getDay() === 0 ? 6 : d.getDay() - 1]
+        const bookedOnDay = bookings.filter((b) => {
+          const start = new Date(b.checkInDate)
+          const end = new Date(b.checkOutDate)
+          return d >= start && d <= end && b.status !== 'CANCELLED'
+        }).length
+        const totalR = Math.max(data.totalRooms, rooms.length, 1)
+        const isToday = i === 6
+        const dayPct = isToday
+          ? data.occupancyRate
+          : Math.min(Math.round((bookedOnDay / totalR) * 100), 100)
+        return {
+          day: dayName,
+          tag: `${dayPct}%`,
+          pct: dayPct,
+          isHighlight: isToday && dayPct > 0,
+        }
+      })
+    }
 
-    secondaryBars = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date()
-      d.setDate(now.getDate() - (6 - i))
-      const dayName = daysOfWeek[d.getDay() === 0 ? 6 : d.getDay() - 1]
-      const ratio = [0.45, 0.6, 0.7, 0.8, 0.75, 0.95, 0.65][i]
-      const dayRev = Math.round((data.revenueThisMonth / 30) * ratio * 1.5)
-      return {
-        day: dayName,
-        tag: `KES ${(dayRev / 1000).toFixed(0)}k`,
-        pct: Math.min(Math.round(ratio * 100), 100),
-        isHighlight: i === 5,
-      }
-    })
+    if (data.dailySeries?.revenue && data.dailySeries.revenue.length > 0) {
+      const max = Math.max(
+        ...data.dailySeries.revenue.map((s) => s.value),
+        0
+      )
+      secondaryBars = data.dailySeries.revenue.map((s) => ({
+        day: s.label,
+        tag: s.value > 0 ? `KES ${Math.round(s.value / 1000)}k` : '—',
+        pct: max > 0 ? Math.round((s.value / max) * 100) : 0,
+        isHighlight: max > 0 && s.value === max,
+      }))
+    } else {
+      secondaryBars = Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date()
+        d.setDate(now.getDate() - (6 - i))
+        const dayName = daysOfWeek[d.getDay() === 0 ? 6 : d.getDay() - 1]
+        return {
+          day: dayName,
+          tag: '—',
+          pct: 0,
+          isHighlight: false,
+        }
+      })
+    }
 
     // Real Departures feed
     if (data.departureAlerts.overdue.length > 0) {
@@ -466,13 +489,21 @@ export function GuestHouseDashboard() {
             }
             bottomIcon={Bed}
             bottomUnit={isAll ? 'KES' : ''}
-            salesTrendPct={isAll ? 15 : undefined}
-            salesTrendLabel={isAll ? '+15%' : undefined}
+            salesTrendPct={
+              isAll
+                ? (data.revenueComparison?.deltaPct ?? undefined)
+                : undefined
+            }
+            salesTrendLabel={
+              isAll
+                ? data.revenueComparison?.deltaPct != null
+                  ? `${data.revenueComparison.deltaPct >= 0 ? '+' : ''}${data.revenueComparison.deltaPct}%`
+                  : undefined
+                : undefined
+            }
             purchaseTrendPct={
               isAll
-                ? data.profitThisMonth >= 0
-                  ? 14
-                  : -6
+                ? undefined
                 : isSelectedRoomOccupied
                   ? 100
                   : 0
@@ -480,8 +511,8 @@ export function GuestHouseDashboard() {
             purchaseTrendLabel={
               isAll
                 ? data.profitThisMonth >= 0
-                  ? '+14%'
-                  : '-6%'
+                  ? 'Profitable'
+                  : 'Deficit'
                 : isSelectedRoomOccupied
                   ? 'Occupied'
                   : 'Vacant'

@@ -11,24 +11,14 @@ export interface DayBarData {
   isHighlight?: boolean
 }
 
-const DEFAULT_TAB1_BARS: DayBarData[] = [
-  { day: 'Mon', tag: '35%', pct: 35 },
-  { day: 'Tue', tag: '50%', pct: 50 },
-  { day: 'Wed', tag: '65%', pct: 65 },
-  { day: 'Thu', tag: '82%', pct: 82, isHighlight: true },
-  { day: 'Fri', tag: '70%', pct: 70 },
-  { day: 'Sat', tag: '+95%', pct: 95, isHighlight: true },
-  { day: 'Sun', tag: '60%', pct: 60 },
-]
-
-const DEFAULT_TAB2_BARS: DayBarData[] = [
-  { day: 'Mon', tag: '40%', pct: 40 },
-  { day: 'Tue', tag: '55%', pct: 55 },
-  { day: 'Wed', tag: '70%', pct: 70 },
-  { day: 'Thu', tag: '85%', pct: 85, isHighlight: true },
-  { day: 'Fri', tag: '75%', pct: 75 },
-  { day: 'Sat', tag: '+90%', pct: 90, isHighlight: true },
-  { day: 'Sun', tag: '50%', pct: 50 },
+const EMPTY_7_DAYS: DayBarData[] = [
+  { day: 'Mon', tag: '—', pct: 0 },
+  { day: 'Tue', tag: '—', pct: 0 },
+  { day: 'Wed', tag: '—', pct: 0 },
+  { day: 'Thu', tag: '—', pct: 0 },
+  { day: 'Fri', tag: '—', pct: 0 },
+  { day: 'Sat', tag: '—', pct: 0 },
+  { day: 'Sun', tag: '—', pct: 0 },
 ]
 
 export interface DropdownOption {
@@ -56,7 +46,7 @@ export default function BentoStatisticsCard({
   tab1Label = 'Primary Metric',
   tab2Label = 'Operational Flow',
   className,
-  headlineValue = '+76%',
+  headlineValue = '—',
   headlineSubtitle = 'Throughput metrics tracked across all active streams',
   tab1Bars,
   tab2Bars,
@@ -89,14 +79,14 @@ export default function BentoStatisticsCard({
 
   const rawBars =
     activeTab === 'tab1'
-      ? (tab1Bars ?? DEFAULT_TAB1_BARS)
-      : (tab2Bars ?? DEFAULT_TAB2_BARS)
+      ? (tab1Bars ?? EMPTY_7_DAYS)
+      : (tab2Bars ?? EMPTY_7_DAYS)
 
-  // Auto-highlight peak bar if none explicitly marked
-  const maxPct = Math.max(...rawBars.map((b) => b.pct), 1)
+  // Auto-highlight peak bar if none explicitly marked and there is real data
+  const maxPct = Math.max(...rawBars.map((b) => b.pct), 0)
   const bars = rawBars.map((b) => ({
     ...b,
-    isHighlight: b.isHighlight ?? (b.pct === maxPct && maxPct > 0),
+    isHighlight: maxPct > 0 ? (b.isHighlight ?? (b.pct === maxPct && b.pct > 0)) : false,
   }))
 
   const selectedOption =
@@ -227,42 +217,55 @@ export default function BentoStatisticsCard({
 
         {/* Right 7 Vertical Capsule Bars */}
         <div className="md:col-span-8 flex items-end justify-between gap-2 pt-8">
-          {bars.map((bar) => (
-            <div
-              key={bar.day}
-              className="flex flex-col items-center gap-2 group flex-1 cursor-pointer transition-transform duration-300 hover:-translate-y-1"
-            >
-              {/* Floating Pill Tag Above Pillar */}
+          {bars.map((bar) => {
+            const hasData = bar.pct > 0
+            return (
               <div
+                key={bar.day}
                 className={cn(
-                  'rounded-full px-1.5 py-0.5 text-[10px] font-bold transition-all shadow-sm shrink-0 whitespace-nowrap group-hover:scale-110 group-hover:shadow-md',
-                  bar.isHighlight
-                    ? 'bg-emerald-500 text-white dark:bg-emerald-400 dark:text-slate-950 font-black scale-105 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
-                    : 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/25'
+                  'flex flex-col items-center gap-2 group flex-1 transition-transform duration-300',
+                  hasData && 'cursor-pointer hover:-translate-y-1'
                 )}
               >
-                {bar.tag}
-              </div>
-
-              {/* Vertical Capsule Pillar Track */}
-              <div className="relative w-8 sm:w-10 h-36 sm:h-40 rounded-full bg-[var(--color-bg-elevated)] p-1 flex flex-col justify-end overflow-hidden transition-all group-hover:bg-[var(--color-border)]/60 group-hover:shadow-inner">
+                {/* Floating Pill Tag Above Pillar */}
                 <div
                   className={cn(
-                    'w-full rounded-full transition-all duration-700 ease-out group-hover:brightness-110',
-                    bar.isHighlight
-                      ? 'bg-gradient-to-t from-cyan-400 via-teal-400 to-emerald-400 shadow-sm'
-                      : 'bg-gradient-to-t from-cyan-300/80 via-teal-300/80 to-emerald-300/80 dark:from-cyan-500/50 dark:to-emerald-500/50'
+                    'rounded-full px-1.5 py-0.5 text-[10px] font-bold transition-all shadow-sm shrink-0 whitespace-nowrap',
+                    bar.isHighlight && hasData
+                      ? 'bg-emerald-500 text-white dark:bg-emerald-400 dark:text-slate-950 font-black scale-105 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                      : hasData
+                        ? 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/25 group-hover:scale-110'
+                        : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)] opacity-60'
                   )}
-                  style={{ height: `${Math.max(bar.pct, 8)}%` }}
-                />
-              </div>
+                >
+                  {bar.tag}
+                </div>
 
-              {/* Day Axis Label */}
-              <span className="text-xs font-semibold text-[var(--color-text-secondary)] mt-1 transition-colors group-hover:text-[var(--color-text-primary)]">
-                {bar.day}
-              </span>
-            </div>
-          ))}
+                {/* Vertical Capsule Pillar Track */}
+                <div className="relative w-8 sm:w-10 h-36 sm:h-40 rounded-full bg-[var(--color-bg-elevated)] p-1 flex flex-col justify-end overflow-hidden transition-all group-hover:bg-[var(--color-border)]/60">
+                  <div
+                    className={cn(
+                      'w-full rounded-full',
+                      hasData
+                        ? cn(
+                            'transition-all duration-700 ease-out group-hover:brightness-110',
+                            bar.isHighlight
+                              ? 'bg-gradient-to-t from-cyan-400 via-teal-400 to-emerald-400 shadow-sm'
+                              : 'bg-gradient-to-t from-cyan-300/80 via-teal-300/80 to-emerald-300/80 dark:from-cyan-500/50 dark:to-emerald-500/50'
+                          )
+                        : 'bg-transparent'
+                    )}
+                    style={{ height: `${Math.max(bar.pct, 0)}%` }}
+                  />
+                </div>
+
+                {/* Day Axis Label */}
+                <span className="text-xs font-semibold text-[var(--color-text-secondary)] mt-1 transition-colors group-hover:text-[var(--color-text-primary)]">
+                  {bar.day}
+                </span>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

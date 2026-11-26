@@ -418,6 +418,26 @@ Update this file after every meaningful implementation change.
   `isIsp`, so MikroTik setup only appears for ISP organisations; all other
   verticals keep Team management without any router controls. Added Settings
   page tests for the ISP/non-ISP and owner/manager cases.
+- **2026-11-26 — Chart Animation & Visual Data Integrity Overhaul.** Scaled all
+  dashboard animations and visualizations strictly to faithful backend data.
+  Liquid progress (`LiquidProgress.tsx`) now stays completely stationary and empty
+  when value <= 0 (no surge, no meniscus, no moving sheen, zero bubbles; surge
+  duration and bubble counts scale proportionally with fluid volume). Bento
+  statistics capsule bars (`BentoStatisticsCard.tsx`) removed the fake 8% minimum
+  height (`Math.max(bar.pct, 8)`) and default fixtures, rendering 0% height with
+  transparent backgrounds and muted tags when data is zero. Removed mock scalar ratio
+  multiplier arrays (`[0.4, 0.55, 0.7...]`) across all 7 verticals (Retail, Chemist,
+  Wholesale, Restaurant, Guest House, School, ISP), wiring all 7-day capsule bars
+  and growth metrics directly to backend `data.dailySeries`. Expanded the automated
+  CI data-integrity guard suite (`lib/data-integrity-guard.spec.ts`) to 209 checks
+  across all 11 dashboard directories, passing strict typecheck, lint, and all 533
+  frontend unit tests.
+- **2026-11-25 — Data Integrity Overhaul Across All Verticals.** Completed Phases
+  0–F of the HisaFlow Data Integrity Brief. Implemented Africa/Nairobi (EAT) day/week
+  bucketing engine (`time-buckets.ts`), zero-filled daily series, honest period
+  comparisons (`deltaPct: null` on zero prior activity), Wholesale credit non-truncation,
+  composite recipe ingredient exclusion, and verified with 9 backend Jest tests and
+  the initial frontend guard suite.
 - **2026-10-24 — KPI terminal glow and Lagoon contrast.** Moved the finance
   sparkline's breathing light onto the terminal dot itself (the stretched
   under-chart ellipse is gone), and made the AI recommendation panel fully

@@ -80,82 +80,36 @@ export function RestaurantDashboard() {
     { label: 'Dining Sales', href: '/transactions', icon: TrendingUp },
   ]
 
-  const maxMenuItemSold = Math.max(
-    ...data.topMenuItems.map((m) => m.totalSold),
-    1
-  )
-  const restaurantTab1Bars = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ].map((day, idx) => {
-    const item = data.topMenuItems[idx]
-    if (item) {
-      const pct = Math.min(
-        100,
-        Math.round((item.totalSold / maxMenuItemSold) * 100)
-      )
-      return {
-        day,
-        tag: `${item.totalSold}`,
-        pct,
-        isHighlight: pct >= 80,
-      }
-    }
-    const ratio = [0.45, 0.6, 0.7, 0.85, 0.8, 0.95, 0.7][idx]
-    return {
-      day,
-      tag: `${Math.round((data.paidOrdersToday || 12) * ratio)}`,
-      pct: Math.min(100, Math.round(ratio * 100)),
-      isHighlight: idx === 5,
-    }
-  })
+  const revenueDelta =
+    data.revenueComparison?.deltaPct != null
+      ? `${data.revenueComparison.deltaPct >= 0 ? '+' : ''}${data.revenueComparison.deltaPct}%`
+      : '—'
+
+  const restaurantTab1Bars = (() => {
+    const series = data.dailySeries?.revenue
+    if (!series || series.length === 0) return undefined
+    const max = Math.max(...series.map((s) => s.value), 0)
+    return series.map((s) => ({
+      day: s.label,
+      tag: s.value > 0 ? `KES ${Math.round(s.value / 1000)}k` : '—',
+      pct: max > 0 ? Math.round((s.value / max) * 100) : 0,
+      isHighlight: max > 0 && s.value === max,
+    }))
+  })()
+
+  const restaurantTab2Bars = (() => {
+    const series = data.dailySeries?.orders
+    if (!series || series.length === 0) return undefined
+    const max = Math.max(...series.map((s) => s.value), 0)
+    return series.map((s) => ({
+      day: s.label,
+      tag: s.value > 0 ? `${s.value} orders` : '—',
+      pct: max > 0 ? Math.round((s.value / max) * 100) : 0,
+      isHighlight: max > 0 && s.value === max,
+    }))
+  })()
 
   const totalOrders = data.paidOrdersToday + data.openOrdersCount
-  const restaurantTab2Bars = [
-    {
-      day: 'Mon',
-      tag: `${data.paidOrdersToday}`,
-      pct: Math.min(
-        100,
-        Math.round((data.paidOrdersToday / Math.max(totalOrders, 1)) * 100)
-      ),
-      isHighlight: true,
-    },
-    {
-      day: 'Tue',
-      tag: `${data.openOrdersCount} open`,
-      pct: Math.min(100, Math.round((data.openOrdersCount / 16) * 100)),
-    },
-    { day: 'Wed', tag: `${totalOrders} orders`, pct: 85 },
-    {
-      day: 'Thu',
-      tag: `${data.topMenuItems.length} items`,
-      pct: Math.min(100, data.topMenuItems.length * 15),
-    },
-    {
-      day: 'Fri',
-      tag: `KES ${Math.round(data.openOrdersValue / 1000)}k`,
-      pct: Math.min(
-        100,
-        Math.round(
-          (data.openOrdersValue / Math.max(data.todayRevenue || 1, 1)) * 100
-        )
-      ),
-      isHighlight: true,
-    },
-    {
-      day: 'Sat',
-      tag: `KES ${Math.round(data.todayRevenue / 1000)}k`,
-      pct: 95,
-      isHighlight: true,
-    },
-    { day: 'Sun', tag: `${data.paidOrdersToday}`, pct: 70 },
-  ]
 
   return (
     <div className="flex flex-col gap-6 pb-24">
@@ -180,10 +134,14 @@ export function RestaurantDashboard() {
             topIcon={TrendingUp}
             bottomLabel="Pending Orders"
             bottomIcon={ShoppingBag}
-            salesTrendPct={12}
-            salesTrendLabel="+12%"
-            purchaseTrendPct={8}
-            purchaseTrendLabel="+8%"
+            salesTrendPct={data.revenueComparison?.deltaPct ?? undefined}
+            salesTrendLabel={revenueDelta}
+            purchaseTrendPct={undefined}
+            purchaseTrendLabel={
+              data.openOrdersCount > 0
+                ? `${data.openOrdersCount} active`
+                : 'Clear'
+            }
             topHref="/table-orders"
             bottomHref="/table-orders"
             className="h-full"
@@ -192,14 +150,16 @@ export function RestaurantDashboard() {
         <div className="lg:col-span-4">
           <BentoGrowthCard
             title="Dining Velocity"
-            currentCount={`${data.paidOrdersToday + data.openOrdersCount} orders`}
-            currentDelta="+14%"
-            currentProgressPct={Math.min(
-              (data.paidOrdersToday /
-                Math.max(data.paidOrdersToday + data.openOrdersCount, 1)) *
-                100,
-              100
-            )}
+            currentCount={`${totalOrders} orders`}
+            currentDelta={revenueDelta}
+            currentProgressPct={
+              totalOrders > 0
+                ? Math.min(
+                    100,
+                    Math.round((data.paidOrdersToday / totalOrders) * 100)
+                  )
+                : 0
+            }
             footerLeftLabel="Tables occupied and settled"
             footerRightLabel={`${data.paidOrdersToday} orders settled today`}
             className="h-full"
